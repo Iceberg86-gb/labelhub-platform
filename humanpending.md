@@ -10,7 +10,8 @@
 - [M6-P3a-2 resolved] AI cost computation from usage implemented: USD pricing config from DeepSeek official English pricing, A2 fallback (prompt+completion required), R2 rounding (BigDecimal internal, `DECIMAL(12,6)` DB), and `AiReviewService.review` now writes calculator output when usage is complete.
 - [M6-P3b resolved] Idempotency metrics baseline implemented: hit/miss/mismatch Micrometer counters with provider tags are exposed through `/actuator/prometheus`, and saved-cost derivation is now possible from hit count plus M6-P3a-2 real cost.
 - [M6-P3c ready] Large-task export and Quality Ledger performance baseline remain ready after token persistence.
-- [M6-P4 ready] Robustness hardening remains ready: provider retry/backoff, timeout, failed-call recording, and export residue cleanup.
+- [M6-P4.0 in progress] Robustness failure semantics research is drafted: AI provider failures currently have metrics/log evidence but no failed `ai_calls` fact, and Trusted Export can leave object-storage residue because S3/MinIO PUTs do not roll back with SQL.
+- [M6-P4 ready after裁决] Robustness implementation should wait until Q1-Q10 are裁决: failed AI call persistence, timeout config, retry/backoff, retry metrics, export residue cleanup, and failed export visibility.
 - [Metrics data accumulation watch] Idempotency hit ratio needs 100+ AI review attempts over a 7-day observation window before the metric is stable enough for claims; revisit during M6-P5 final regression.
 - [Production posture watch] `/actuator/prometheus` and `/actuator/metrics` are exposed without auth for local development observability; productionization requires a separate actuator security review.
 - [Pricing follow-up] If DeepSeek changes official USD pricing or a stable CNY v4-flash pricing source appears, refresh `application.yml` and the decision-log evidence date.
