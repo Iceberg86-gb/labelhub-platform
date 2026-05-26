@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: LabelHub API
-  version: 0.9.1
+  version: 0.10.0
   description: Contract-first API for the LabelHub modular monolith and AI worker.
 servers:
   - url: http://localhost:8080/api
@@ -1856,6 +1856,22 @@ components:
           type: string
           format: decimal
           nullable: true
+    AiCallUsage:
+      type: object
+      description: Provider-reported token usage. Null fields mean the provider omitted that metric.
+      properties:
+        promptTokens:
+          type: integer
+          nullable: true
+        completionTokens:
+          type: integer
+          nullable: true
+        totalTokens:
+          type: integer
+          nullable: true
+        cacheHitTokens:
+          type: integer
+          nullable: true
     AiReviewResult:
       type: object
       required: [aiCall, fieldFindings, overallSuggestion, idempotencyHit]
@@ -1878,6 +1894,8 @@ components:
           nullable: true
         idempotencyHit:
           type: boolean
+        usage:
+          $ref: '#/components/schemas/AiCallUsage'
     TriggerAiReviewRequest:
       type: object
       required: [promptVersion]
