@@ -110,7 +110,9 @@ export function LabelerMarketplacePage() {
           <Typography.Title heading={3} className="page-title">
             任务广场
           </Typography.Title>
-          <Typography.Text type="tertiary">领取已发布且仍有可用数据项的任务。</Typography.Text>
+          <Typography.Text type="tertiary">
+            领取已发布且仍有可用数据项的任务。每次领取会分配一个可用数据项;同一任务可多次领取不同 item。
+          </Typography.Text>
         </div>
         <Button icon={<IconRefresh />} onClick={() => marketplaceQuery.refetch()} loading={marketplaceQuery.isFetching}>
           刷新

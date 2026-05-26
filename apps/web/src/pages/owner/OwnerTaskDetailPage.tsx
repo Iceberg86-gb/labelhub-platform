@@ -7,6 +7,7 @@ import { DatasetUploadSection } from '../../features/dataset/DatasetUploadSectio
 import { TrustedExportCard } from '../../features/export/TrustedExportCard';
 import { OwnerTaskSubmissionsSection } from '../../features/submission/OwnerTaskSubmissionsSection';
 import type { TaskStatus } from '../../features/task/list-tasks/useTasksQuery';
+import { TaskNextStepGuidance } from '../../features/task/task-detail/TaskNextStepGuidance';
 import { useTaskDetailQuery } from '../../features/task/task-detail/useTaskDetailQuery';
 import { useTaskTransitionsQuery, type TaskTransition } from '../../features/task/task-transitions/useTaskTransitionsQuery';
 import { TransitionButtons } from '../../features/task/transition-task/TransitionButtons';
@@ -76,6 +77,10 @@ export function OwnerTaskDetailPage() {
   const task = taskQuery.data;
 
   const tags = useMemo(() => task?.tags?.filter(Boolean) ?? [], [task?.tags]);
+
+  const scrollToDataset = () => {
+    document.querySelector('.detail-dataset-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   if (!taskId) {
     return (
@@ -164,6 +169,17 @@ export function OwnerTaskDetailPage() {
           </div>
           {transitionsQuery.isLoading ? <Spin /> : <TransitionTimeline transitions={transitionsQuery.data ?? []} />}
         </Card>
+
+        {task.status === 'draft' ? (
+          <Card className="task-setup-guidance-card">
+            <TaskNextStepGuidance
+              task={task}
+              onNavigateToSchema={() => navigate('/owner/schemas')}
+              onScrollToDataset={scrollToDataset}
+              onPublish={() => setTargetStatus('published')}
+            />
+          </Card>
+        ) : null}
 
         <Card className="detail-dataset-card">
           <DatasetUploadSection task={task} />

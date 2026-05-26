@@ -341,13 +341,81 @@ a {
 .detail-main-card,
 .detail-timeline-card,
 .detail-dataset-card,
-.detail-submissions-card {
+.detail-submissions-card,
+.task-setup-guidance-card {
   border: 1px solid #d8dee9;
 }
 
 .detail-dataset-card,
-.detail-submissions-card {
+.detail-submissions-card,
+.task-setup-guidance-card {
   grid-column: 1 / -1;
+}
+
+.task-setup-guidance {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.task-setup-guidance__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.task-setup-guidance__steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.task-setup-step {
+  display: flex;
+  min-height: 132px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+
+.task-setup-step--done {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.task-setup-step--blocked {
+  background: #f8fafc;
+}
+
+.task-setup-step__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-setup-step__copy {
+  min-height: 44px;
+  line-height: 1.5;
+}
+
+.task-setup-step__actions {
+  min-height: 28px;
+}
+
+@media (max-width: 900px) {
+  .task-setup-guidance__steps {
+    grid-template-columns: 1fr;
+  }
+
+  .task-setup-guidance__header {
+    flex-direction: column;
+  }
 }
 
 .detail-title-row {
