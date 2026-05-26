@@ -19,7 +19,9 @@
 - [Runtime startup guardrail] `ApplicationContextStartupTest` is now the 12th cross-phase guardrail; it loads the real Spring Boot context with runtime-equivalent datasource, security, and object-storage properties and brings the backend suite to `390+78` green.
 - [Runtime startup guardrail D-口径] `ApplicationContextStartupTest` requires local MySQL and MinIO/object storage services because it loads the real Spring Boot context; missing local infra can fail the guardrail before application-code wiring is reached.
 - [Defense ready] M6-P5 final regression report is archived at `docs/internal/m6p5-final-regression-report.md` and serves as the defense readiness baseline.
-- [M6-P6 unblocked] UI Experience Polish can resume now that the API runtime startup path is green; M6-P6 remains scoped to `apps/web/` + docs unless separately裁决ed.
+- [M6-P6a resolved] UI Audit + Polish Plan is locked: 10 before screenshots archived, 5 unavailable states recorded as D-口径, P0/P1/out-of-scope issue lists finalized, and P6b remains frontend-only under the 900-line P0 / 1500-line total cap.
+- [M6-P6b ready] UI Experience Polish implementation may begin from the locked P0 list: global primitives first, then schema, AI provenance, export, reviewer, and owner-setup defense surfaces.
+- [M6-P6 audit D-口径] Reviewer detail issue `#22` was removed after re-audit; "提示 / 通过 / 拒绝" were legitimate ledger-card tags, not render residue.
 - [M6-P3c optional] Large-task performance baseline remains optional; M6-P5 did not uncover a scale-evidence gap that requires P3c before defense.
 - [False symmetry deferred] Export failed-job persistence is intentionally not mirrored to failed AI call persistence; defer until async export/job化 creates a real API/UI consumer.
 - [Metrics data accumulation watch] Idempotency hit ratio needs 100+ AI review attempts over a 7-day observation window before the metric is stable enough for claims; M6-P5 confirmed the endpoint/counters are ready, but long-window data is still pending.
