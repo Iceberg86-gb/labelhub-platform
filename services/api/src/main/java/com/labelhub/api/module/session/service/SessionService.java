@@ -22,6 +22,7 @@ import com.labelhub.api.module.session.mapper.DraftMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
 import com.labelhub.api.module.session.service.view.SessionDetailView;
+import com.labelhub.api.module.submission.SubmissionStatusCodes;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
@@ -39,7 +40,6 @@ public class SessionService {
 
     private static final String SESSION_CLAIMED = "claimed";
     private static final String SESSION_SUBMITTED = "submitted";
-    private static final String SUBMISSION_UNDER_AI_REVIEW = "under_ai_review";
     private static final String ITEM_CLAIMED = "claimed";
 
     private final TaskMapper taskMapper;
@@ -191,7 +191,7 @@ public class SessionService {
         submission.setAnswerPayload(answerPayload);
         submission.setProvenance(null);
         submission.setContentHash(canonicalizer.sha256Hex(canonicalizer.canonicalJson(answerPayload)));
-        submission.setStatusCode(SUBMISSION_UNDER_AI_REVIEW);
+        submission.setStatusCode(SubmissionStatusCodes.SUBMITTED);
         submission.setCreatedAt(LocalDateTime.now(clock));
         requireOneRow(submissionMapper.insert(submission), "insert submission");
 
