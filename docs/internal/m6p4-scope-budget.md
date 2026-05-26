@@ -1,105 +1,45 @@
-# M6-P4 Scope Budget (Draft Based on M6-P4.0 Research)
+# M6-P4 Scope Budget Index (Final Split)
 
-> This is a draft budget. It becomes actionable only after the user裁决 final Q1-Q10 failure-semantics decisions.
+M6-P4.0 final裁决 split robustness hardening into two independent implementation phases:
 
-## Theme
+- **M6-P4a:** AI Provider Failure Evidence + Retry Semantics.
+- **M6-P4b:** Trusted Export Inline Cleanup.
 
-Robustness hardening for failure paths that became visible after M6-P3b observability:
+The split is intentional R10 discipline: AI provider failure and export object-storage residue are separate failure surfaces, with separate tests, commits, rollback paths, and review criteria.
 
-- AI provider timeout/retry/failure evidence.
-- Idempotency metrics compatibility with retry.
-- Trusted Export object-storage residue cleanup.
+## Final裁决 Snapshot
 
-## Provisional Implementation Tracks
+| Question | Final裁决 |
+|----------|-----------|
+| Q1 failed AI provider attempts | B: persist failed `ai_calls` rows |
+| Q2 AI call status model | A: minimal `COMPLETED` / `FAILED` constants |
+| Q3 timeout config | C: provider-specific, limited to existing `openai-compatible` config |
+| Q4 retry attempts | C: config-driven, default 3 |
+| Q5 backoff | B: deterministic exponential backoff |
+| Q6 retryable failures | B: retry only `AiProviderException.isRetryable()` |
+| Q7 idempotency during retry | B: retry within one logical MISS, no per-retry idempotency re-check |
+| Q8 retry metrics | C: miss stays once, add separate retry counter |
+| Q9 export residue cleanup | B: inline cleanup of exact written object keys |
+| Q10 export failure visibility | A: exception-only; no failed export-job persistence |
+| S1 implementation shape | B: split P4a / P4b |
 
-### Track A: AI Provider Failure Evidence And Retry
+## Budget Files
 
-| File / area | Change type | Strict-constraint class | Estimate |
-|-------------|-------------|-------------------------|----------|
-| `AiCallStatusCodes` | New constants file | Additive | ~15 lines |
-| Failed call recorder | New helper or service method | Additive + behavior exception | ~60 lines |
-| Provider retry policy config | New yml/properties fields | Additive config | ~50 lines |
-| `AiReviewService.invokeProvider` | Replace single attempt with retry policy | Existing behavior exception | ~60 lines |
-| Retry metrics | Add counters | Additive observability | ~40 lines |
-| Tests | Failed-row, retryable/non-retryable, timeout config, metrics | Test-only | ~250-350 lines |
+- [m6p4a-scope-budget.md](m6p4a-scope-budget.md) — AI failure evidence, timeout, retry/backoff, retry metrics.
+- [m6p4b-scope-budget.md](m6p4b-scope-budget.md) — Trusted Export inline cleanup.
 
-Draft total: **225-260 functional lines**.
+## Non-Mirrored Decision
 
-### Track B: Export Object-Storage Cleanup
+M6-P4 does **not** persist failed export jobs just because failed AI calls are persisted. That would be false symmetry:
 
-| File / area | Change type | Strict-constraint class | Estimate |
-|-------------|-------------|-------------------------|----------|
-| `ObjectStorageWriter` | Add delete method | Additive | ~25 lines |
-| `ExportService.createSnapshot` | Track written keys and cleanup on failure | Existing behavior exception | ~45 lines |
-| Tests | Partial write failure + cleanup verification | Test-only | ~120-180 lines |
+- AI failure rows have current consumers across provenance, retry, cost, and metrics.
+- Export failed jobs have no current synchronous API/UI consumer.
+- Export failed-job persistence is deferred until async export/job化 exists.
 
-Draft total: **70-90 functional lines**.
+## Cross-Phase Guardrails
 
-## V11 Migration
-
-Pending Q1/Q10:
-
-- If failed AI attempts need new diagnostic columns, V11 may add nullable failure diagnostics to `ai_calls`.
-- If minimal failed rows can use existing `status`, `request_payload`, `response_payload`, and timestamps, V11 may not be required.
-- Export cleanup recommendation does not require V11 if failed export-job persistence is deferred.
-
-## OpenAPI
-
-Pending Q1/Q10:
-
-- AI failed-row persistence does not require OpenAPI if failed calls are visible through existing provenance lists.
-- Retry/backoff behavior does not require OpenAPI.
-- Export cleanup does not require OpenAPI.
-- New public failure diagnostics would require a later compatible OpenAPI addition, but M6-P4.0 does not recommend that for the first implementation.
-
-## Draft Commit Granularity
-
-If recommendations are accepted and M6-P4 is not split:
-
-1. `docs: finalize M6-P4 failure semantics decision`
-2. `test: add AI robustness regression tests`
-3. `feat: add AI failure status and retry configuration`
-4. `feat: record failed AI provider attempts`
-5. `feat: add retry/backoff and retry metrics`
-6. `test: add export residue cleanup regressions`
-7. `feat: cleanup export objects on snapshot failure`
-8. `docs: record M6-P4 verification`
-
-If total functional code exceeds 400 lines, split into:
-
-- `M6-P4a`: AI failure evidence + retry.
-- `M6-P4b`: Export residue cleanup.
-
-## Risk Assessment
-
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Failed `ai_calls` rows collide with idempotency unique key | Could block future successful retry with same idempotency key | Decide whether failed rows use same idempotency key, a suffixed attempt key, or are excluded from reuse queries. Must be settled before implementation. |
-| Retry changes M6-P3b hit/miss semantics | Hit ratio could become attempt-based instead of review-based | Keep miss counter at one logical review and add separate retry counters. |
-| Retrying non-retryable provider errors | Repeats bad requests and increases cost | Use existing `AiProviderException.isRetryable()`. |
-| Failed-row persistence inside same transaction | Rollback may erase failure evidence | Use separate transaction or dedicated recorder if Q1=B. |
-| Inline export cleanup failure | Cleanup itself can fail, leaving residue and masking original error | Cleanup should be best-effort and preserve the original `ExportFailureException` cause. |
-| Export cleanup deletes valid files | Could destroy a completed snapshot if prefix tracking is wrong | Track exact keys written in current attempt, not broad prefixes. |
-
-## Scope Stop Conditions
-
-Stop and rescope before implementation if any condition triggers:
-
-- Final裁决 requires both detailed failed AI statuses and failed export-job persistence.
-- Failed `ai_calls` evidence requires non-additive schema changes or idempotency-key redesign.
-- Retry implementation changes existing HIT/MISS/MISMATCH branch logic.
-- Export cleanup needs background scanner/startup reconciliation.
-- Total functional code estimate exceeds 400 lines.
-- Test designs for retry and failed-row persistence contradict M6-P3b metric semantics.
-
-## Verification Budget
-
-Expected verification after implementation:
-
-- Backend tests increase by at least 10-14 cases.
-- Existing M6-P1 Q6 status invariant remains green.
-- Existing M6-P3a-2 A2 fallback and calculator-path tests remain green.
-- Existing M6-P3b hit/miss/mismatch tests remain green.
-- Protected endpoint script passes.
-- Sensitive scan passes.
+- M6-P4a must preserve M6-P3b hit/miss semantics: one logical MISS per review request, retry attempts counted separately.
+- M6-P4a must preserve M6-P1 Q6: AI review does not mutate `submission.status`.
+- M6-P4a must preserve M6-P3a-2 A2 fallback and calculator-path tests.
+- M6-P4b must not add OpenAPI, migrations, background scanners, or failed export-job persistence.
 
