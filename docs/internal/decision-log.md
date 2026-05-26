@@ -1017,3 +1017,77 @@ Hit ratio is not meaningful at code-merge time. A useful baseline needs at least
 - 100+ AI review attempts across the observation window.
 - A 7-day rolling window for stable rate data.
 - Provider-tagged comparison if multiple providers are used.
+
+## 2026-05-26 M6 Phase 4.0 Robustness Failure Semantics Decision (Draft)
+
+> M6-P4.0 is a decision phase. M6-P0 audit explicitly deferred destructive/failure probes, and M6-P3b made failure paths observable. M6-P4.0 records current failure behavior and prepares semantic choices for M6-P4 implementation.
+>
+> **Status:** draft pending user裁决. No production code, OpenAPI, migration, or tests are changed by this phase.
+
+### Physical Evidence Summary
+
+- AI provider failures currently throw before `ai_calls` insert. `AiReviewService.review` inserts success rows only after `invokeProvider(...)` returns.
+- Provider diagnostics already classify retryability through `AiProviderException.retryable`, `providerCode`, and `statusCode`.
+- M6-P3b `recordMiss(...)` runs before provider invocation. Provider failure therefore increments miss metrics without a persisted `ai_calls` row.
+- Export writes object-storage files inside a SQL `@Transactional` method. SQL rows roll back on failure, but S3/MinIO objects cannot roll back with the database transaction.
+- Dataset upload, task transitions, schema operations, and session flows are SQL-only or parse-before-insert flows, so they do not have the same remote-resource residue problem.
+
+### Pending Failure Semantics
+
+The following decisions are pending user裁决:
+
+1. Whether failed AI provider attempts become persisted `ai_calls` facts.
+2. Whether AI call status is represented by minimal terminal constants or detailed failure statuses.
+3. Whether provider timeout becomes configurable.
+4. Retry attempt count.
+5. Backoff strategy.
+6. Retryable failure classes.
+7. Retry interaction with idempotency.
+8. Retry metrics semantics.
+9. Export object-storage residue cleanup strategy.
+10. Export failure visibility/persistence.
+
+### Recommendation Package (Not Final)
+
+The implementation recommendation from M6-P4.0 research is:
+
+- Q1 = B: record failed AI provider attempts as failed `ai_calls` facts, if M6-P4 is scoped to AI failure first.
+- Q2 = A: introduce minimal `AiCallStatusCodes` with `COMPLETED` and `FAILED`.
+- Q3 = C: provider-specific timeout config under OpenAI-compatible provider settings.
+- Q4 = C: config-driven max attempts, default 3.
+- Q5 = B: deterministic exponential backoff, no jitter in M6-P4.
+- Q6 = B: retry only `AiProviderException.isRetryable()`.
+- Q7 = B: retry inside one logical MISS, without re-checking idempotency on each attempt.
+- Q8 = C: keep miss counter at one and add separate retry counters if retry is implemented.
+- Q9 = B: inline cleanup for object-storage keys written during failed sync export.
+- Q10 = A: keep sync export failure visibility as exception only; failed export-job persistence is deferred.
+
+These are recommendations only. They are not active until the user裁决 records final Q1-Q10 answers.
+
+### Strict-Constraint Exceptions (Draft)
+
+Likely M6-P4 exceptions if the recommendation package is accepted:
+
+| Candidate exception | Location | Reason | R10 path |
+|---------------------|----------|--------|----------|
+| Persist failed provider attempts | `AiReviewService` / new failure recorder | Adds append-only failed AI evidence where current transaction rolls back before insert | Dedicated commit with failed-row tests; revert restores current no-row behavior |
+| Configurable timeout + retry wrapper | provider config / `AiReviewService.invokeProvider` or helper | Replaces hardcoded single attempt with configured retry policy | Dedicated commit with retry tests; revert restores single-attempt 30s behavior |
+| Retry metrics | observability component | Keeps idempotency miss as logical request while measuring retry attempts separately | Dedicated commit; metrics are additive |
+| Object-storage cleanup | `ObjectStorageWriter` + `ExportService` | Deletes object keys written before failed sync export rethrows | Dedicated commit; revert restores documented orphan behavior |
+
+### M6-P4 Budget Placeholder
+
+Until Q1-Q10 are final, M6-P4 should be treated as high risk for scope growth. If the final裁决 includes failed AI rows plus retry plus export cleanup, split is recommended:
+
+- **M6-P4a:** AI provider failure evidence, timeout, retry, retry metrics.
+- **M6-P4b:** Export object-storage residue cleanup.
+
+### Workflow Milestone
+
+M6-P4.0 repeats the M6-P0.5 model:
+
+1. Audit/research first.
+2. Semantic裁决 second.
+3. Implementation third.
+
+This prevents "touch whichever failure path is easiest" from creating inconsistent failure semantics across AI provenance, idempotency metrics, and Trusted Export.
