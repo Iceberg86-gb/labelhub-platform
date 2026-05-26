@@ -120,6 +120,12 @@ M6-P5.1 adds `ApplicationContextStartupTest` as the 12th cross-phase guardrail s
 
 This is not a production-code fix. It keeps the guardrail on the real Spring Boot context graph while avoiding mocks for `AiRetryPolicy`, `OpenAiCompatibleProperties`, or AI provider beans.
 
+### Runtime Dependency D-口径
+
+`ApplicationContextStartupTest` is intentionally a full Spring Boot context guardrail, not a sliced or mocked unit test. It therefore requires the same local runtime dependencies used by `spring-boot:run`: MySQL reachable at `localhost:3306` with the LabelHub test credentials and MinIO/object storage reachable at `localhost:9000`.
+
+If those local services are not running, `mvn -pl services/api test` may fail on the startup guardrail before application-code wiring is reached. That is an environment precondition for this guardrail, not a product regression. Start the local infra stack (for example, the project docker-compose MySQL/MinIO services or an equivalent local setup) before treating this test as defense-readiness evidence.
+
 After the constructor fix and guardrail properties were in place:
 
 - `mvn -pl services/api -Dtest=ApplicationContextStartupTest test` passed with `1` test, `0` failures, `0` errors.
