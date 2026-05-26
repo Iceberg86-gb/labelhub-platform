@@ -36,6 +36,18 @@ Expected functional budget: **220-310 lines**.
 
 ## Required Semantics
 
+### Pre-Implementation Research Findings (M6-P4a Segment 1)
+
+- `ai_calls.idempotency_key` is `VARCHAR(160) NOT NULL` with `UNIQUE KEY uk_ai_calls_idempotency (idempotency_key)` in `V202611220900__init_schema.sql`.
+- Canonical key format is `submission:{submissionId}:provider:{providerName}:model:{modelName}:prompt:{promptVersion}` in `AiReviewService.idempotencyKey(...)`.
+- Current unit-test canonical example: `submission:300:provider:mock:model:mock-v1:prompt:prompt-v1` = 59 chars.
+- Current DeepSeek-style example: `submission:300:provider:openai-compatible:model:deepseek-v4-flash:prompt:prompt-v1` = 82 chars.
+- Failed attempt suffix max for default 3 attempts is `#failed-attempt-3` = 17 chars.
+- Current known max example: 82 + 17 = 99 chars, within the 160-char DB limit.
+- Caveat: `TriggerAiReviewRequest.promptVersion` has no OpenAPI `maxLength`, so P4a implementation must not silently truncate if a future key exceeds 160. Failed-attempt key construction should explicitly validate length and fail fast rather than generating a truncated key.
+- `AiReviewService.review(...)` is `@Transactional`; no existing production code uses `REQUIRES_NEW` or `TransactionTemplate`.
+- `AiProviderException.isRetryable()` already exists and is set by provider code: timeouts/I/O/interruption are retryable, HTTP 5xx is retryable, malformed/4xx-style provider response errors are non-retryable.
+
 ### Logical MISS Compatibility
 
 M6-P3b `labelhub.ai.idempotency.miss` remains a logical review-request counter. A provider retry does not increment miss again.
@@ -89,4 +101,3 @@ Stop and rescope before implementation if:
 - Retry implementation changes existing HIT/MISS/MISMATCH branch semantics.
 - Functional code estimate exceeds 330 lines.
 - Retry metrics expand into latency/error dashboards or alerting.
-
