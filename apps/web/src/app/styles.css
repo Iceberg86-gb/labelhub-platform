@@ -1459,6 +1459,40 @@ a {
   gap: 10px;
 }
 
+.ai-call-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ai-call-stat {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid #d8dee9;
+  background: #ffffff;
+}
+
+.ai-call-stat strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.ai-call-hashes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-call-hashes > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .ai-review-state {
   display: flex;
   min-height: 180px;

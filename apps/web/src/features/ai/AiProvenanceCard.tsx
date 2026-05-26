@@ -1,6 +1,7 @@
 import { Button, Card, Empty, Tag, Typography } from '@douyinfe/semi-ui';
 import { IconRefresh } from '@douyinfe/semi-icons';
 import type { AiCall } from '../../entities/ai/aiTypes';
+import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { useSubmissionAiProvenanceQuery } from './useSubmissionAiProvenanceQuery';
 
 interface AiProvenanceCardProps {
@@ -55,17 +56,30 @@ function AiCallItem({ call }: { call: AiCall }) {
         <Tag color={call.status === 'completed' ? 'green' : 'red'}>{call.status}</Tag>
       </div>
       <Typography.Text type="tertiary">Prompt: {call.promptVersion}</Typography.Text>
-      <Typography.Text type="tertiary">
-        Cost: {call.cost ?? '-'} USD · Latency: {call.latencyMs ?? '-'} ms
-      </Typography.Text>
-      <Typography.Text type="tertiary">Completed: {formatDateTime(call.completedAt ?? call.createdAt)}</Typography.Text>
-      <Typography.Text className="mono-value">input {shortHash(call.inputHash)} · output {shortHash(call.outputHash)}</Typography.Text>
+      <div className="ai-call-stat-grid">
+        <AiCallStat label="Cost" value={`${call.cost ?? '-'} USD`} />
+        <AiCallStat label="Latency" value={call.latencyMs != null ? `${call.latencyMs} ms` : '-'} />
+        <AiCallStat label="Completed" value={formatDateTime(call.completedAt ?? call.createdAt)} />
+      </div>
+      <div className="ai-call-hashes">
+        <span>
+          input <TruncatedHash value={call.inputHash} ariaLabel={`AI call ${call.id} input hash`} />
+        </span>
+        <span>
+          output <TruncatedHash value={call.outputHash} ariaLabel={`AI call ${call.id} output hash`} />
+        </span>
+      </div>
     </div>
   );
 }
 
-function shortHash(value?: string | null) {
-  return value ? `${value.slice(0, 16)}...` : '-';
+function AiCallStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="ai-call-stat">
+      <Typography.Text type="tertiary">{label}</Typography.Text>
+      <Typography.Text strong>{value}</Typography.Text>
+    </div>
+  );
 }
 
 function formatDateTime(value?: string | null) {
