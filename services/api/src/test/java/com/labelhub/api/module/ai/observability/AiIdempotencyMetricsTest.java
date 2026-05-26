@@ -33,4 +33,12 @@ class AiIdempotencyMetricsTest {
         assertThat(registry.counter("labelhub.ai.idempotency.mismatch", "provider", "deepseek").count())
             .isEqualTo(1.0);
     }
+
+    @Test
+    void increments_provider_retry_counter_with_provider_tag() {
+        metrics.recordRetryAttempt("deepseek");
+
+        assertThat(registry.counter("labelhub.ai.provider.retry", "provider", "deepseek").count())
+            .isEqualTo(1.0);
+    }
 }
