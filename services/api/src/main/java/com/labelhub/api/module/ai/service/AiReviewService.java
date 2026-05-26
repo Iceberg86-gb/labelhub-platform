@@ -207,20 +207,29 @@ public class AiReviewService {
         try {
             return retryPolicy.invokeWithRetry(
                 () -> aiProvider.invokeWithUsage(new AiCallRequest(promptVersion, input, aiProvider.timeout())),
-                (attemptNumber, exception, willRetry) -> failedCallRecorder.recordFailedAttempt(
-                    submissionId,
-                    idempotencyKey,
-                    attemptNumber,
-                    promptVersion,
-                    aiProvider.providerName(),
-                    aiProvider.modelName(),
-                    inputHash,
-                    input,
-                    exception
-                )
+                (attemptNumber, exception, willRetry) -> {
+                    failedCallRecorder.recordFailedAttempt(
+                        submissionId,
+                        idempotencyKey,
+                        attemptNumber,
+                        promptVersion,
+                        aiProvider.providerName(),
+                        aiProvider.modelName(),
+                        inputHash,
+                        input,
+                        exception
+                    );
+                    recordRetryAttempt(willRetry);
+                }
             );
         } catch (AiProviderException exception) {
             throw new AiProviderFailureException("AI provider invocation failed", exception);
+        }
+    }
+
+    private void recordRetryAttempt(boolean willRetry) {
+        if (willRetry) {
+            metrics.recordRetryAttempt(aiProvider.providerName());
         }
     }
 
