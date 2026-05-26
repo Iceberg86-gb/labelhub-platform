@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: labelhub-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://localhost:3306/labelhub?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${MYSQL_USER:labelhub}
+    password: ${MYSQL_PASSWORD:labelhub}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+server:
+  port: ${LABELHUB_API_PORT:8080}
+  servlet:
+    context-path: /api
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+labelhub:
+  ai:
+    active-provider: ${LABELHUB_AI_PROVIDER:mock}
+    openai-compatible:
+      base-url: ${AI_BASE_URL:}
+      api-key: ${AI_API_KEY:}
+      model-name: ${AI_MODEL_NAME:}
+      provider-name: ${AI_PROVIDER_NAME:openai-compatible}
+      estimated-cost-per-call: ${AI_COST_PER_CALL:0.001}
+  security:
+    jwt-secret: ${JWT_SECRET:dev-only-32-bytes-minimum-secret-please-change-me}
+    jwt-ttl-hours: ${JWT_TTL_HOURS:24}
+    internal-token: ${LABELHUB_INTERNAL_TOKEN:dev-internal-token}
+  object-storage:
+    endpoint: ${OBJECT_STORAGE_ENDPOINT:http://localhost:9000}
+    region: ${OBJECT_STORAGE_REGION:us-east-1}
+    access-key: ${OBJECT_STORAGE_ACCESS_KEY:}
+    secret-key: ${OBJECT_STORAGE_SECRET_KEY:}
+    bucket: ${OBJECT_STORAGE_BUCKET:labelhub-exports}
+    path-style-access: ${OBJECT_STORAGE_PATH_STYLE:true}

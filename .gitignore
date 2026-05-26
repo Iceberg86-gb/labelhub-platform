@@ -1,0 +1,36 @@
+# Build outputs
+**/target/
+**/dist/
+**/node_modules/
+**/.gradle/
+
+# Package manager caches
+.pnpm-store/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local env and secrets
+.env
+.env.*
+!.env.example
+application-secrets.yml
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+**/surefire-reports/
+**/coverage/
+*.tsbuildinfo
+
+# DB local
+mysql-data/
+minio-data/
