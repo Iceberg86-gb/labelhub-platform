@@ -776,3 +776,28 @@ M6-P1 implements the M6-P0.5 lifecycle裁决 through a small bug-fix exception s
 - The M5 Trusted Export hash/diff evidence remains valid. M6-P1 fixes the skipped state-space gap so future smoke can produce nonzero submitted records through the real labeler submit path.
 - M4 Quality Ledger and M5 AI ledger integration remain append-only fact flows; no reviewer queue or export reader widening was needed.
 - M6-P2 should re-smoke the Owner task setup UX and may refresh the Trusted Export browser evidence with nonzero records.
+
+## 2026-05-25 M6 Phase 2 Implementation Verification
+
+M6-P2 closes the setup UX items found during the M6-P0 audit without changing backend contracts, migrations, or existing service behavior. The phase stays intentionally UI-only.
+
+### M6-P0 Audit Polish Resolution
+
+- **Polish #001 login autofill validation drift**: the login submit path now reads the actual browser form values through `FormData` before validating/mutating, so browser autofill and React state cannot disagree at submit time.
+- **Polish #002 owner task created-time `-`**: the owner task list now renders the missing created-time fallback as `未记录`. The root cause is contract shape, not parsing: the public `Task` schema does not expose `createdAt`, so M6-P2 keeps this as copy polish instead of changing OpenAPI.
+- **Bug #003 schema creation discoverability**: draft task detail now shows a scoped `TaskNextStepGuidance` card with exactly three setup CTAs: Schema, Dataset, and Publish.
+- **Product Boundary #001 repeat claim semantics**: the Labeler marketplace copy now states the Q9=A semantics directly: each claim assigns one available dataset item, and the same task can be claimed again for different items.
+
+### Anti-Scope-Creep Compliance
+
+- No backend, OpenAPI, migration, or service files changed.
+- No new API endpoints, routes, onboarding flow, tutorial, tooltip wizard, or dashboard/sidebar UX was introduced.
+- The next-step guidance is visible only on the Owner task detail setup surface and only for draft tasks.
+- The CTA cap stayed at three: Schema management, Dataset section, and Publish transition.
+- Product Boundary #001 remains copy-only; claim API behavior is unchanged.
+- Segment 5 functional output stayed within the approved budget: `TaskNextStepGuidance.tsx` is 96 lines, CSS is 72 lines, and the page integrations are small glue changes.
+
+### Evidence Impact
+
+- M6-P2 does not alter the M5 four-highlight evidence chains.
+- M6-P2 does not alter M6-P1 submission lifecycle semantics. The setup guidance derives state from existing `Task` fields and links to existing surfaces.

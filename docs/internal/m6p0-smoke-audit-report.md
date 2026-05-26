@@ -316,3 +316,19 @@ M6-P1 resolves the two audit bugs that were promoted into the submission lifecyc
 ### Evidence Follow-Up
 
 The M5 Trusted Export browser evidence remains structurally valid, but M6-P1 makes the real labeler submit path populate the `submitted` scope. M6-P2 or a final regression pass should refresh the Trusted Export screenshot with nonzero records.
+
+## Appendix: M6-P2 Resolution Log
+
+M6-P2 closes the remaining setup UX items from the M6-P0 audit without backend, OpenAPI, or migration changes.
+
+### Resolved
+
+- **Polish #001: login autofill/manual credential friction** — resolved by reading actual browser form values with `FormData` before login validation and mutation.
+- **Polish #002: owner task created-time empty display** — resolved by rendering the missing created-time fallback as `未记录` instead of the generic `-`.
+- **Bug #003: schema creation discoverability** — resolved by adding a draft-task setup guidance card on Owner task detail with exactly three CTAs: Schema, Dataset, Publish.
+- **Product Boundary #001: duplicate claim semantics** — resolved at the UI-copy level by clarifying that each claim assigns one dataset item and that the same task may be claimed again for different items.
+
+### Still Deferred
+
+- **Product Boundary #002: destructive/failure probes** — provider failure, export failure with MinIO down, expired token behavior, browser back navigation, same-name schema fields, and large-data stress remain M6-P4 robustness/performance work.
+- Cost/performance baseline remains M6-P3 work now that M6-P1 lifecycle alignment and M6-P2 setup UX repair are complete.

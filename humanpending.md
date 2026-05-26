@@ -5,8 +5,9 @@
 - [M6-P0 resolved] Baseline lock and full smoke audit completed on `m6-engineering-hardening`; `m5-p7-baseline` tag exists, and `docs/internal/m6p0-smoke-audit-report.md` records 53 audit checks.
 - [M6-P0.5 resolved] Submission lifecycle semantics decision is complete: Q1-Q9=A, Q10=B; `submitted` is the immutable answer fact, `under_ai_review` will be V9-normalized, AI/reviewer facts stay append-only, and `deadlineAt` is required at task create.
 - [M6-P1 resolved] Submission Lifecycle + Default Flow Repair implemented: V9 normalizes `under_ai_review` to `submitted`, normal submit writes `submitted`, real-submit reviewer/export regressions were added, AI review is guarded as a side fact, and create-task `deadlineAt` is contract-required with controlled validation.
-- [M6-P2 ready] Owner Setup UX Repair: schema creation discoverability, owner task created-time display, status-label polish, and repeat-claim copy/UX clarification.
-- [M6-P3 pending] Cost/performance baseline is gated by M6-P2/final smoke because export and reviewer measurements should be taken after lifecycle and setup UX repairs are verified.
+- [M6-P2 resolved] Owner Setup UX Repair implemented: login autofill submit reads actual browser form values, owner task created-time fallback is explicit, draft task detail shows three setup CTAs, and repeat-claim semantics are stated in Labeler marketplace copy.
+- [M6-P3 ready] Cost/performance baseline is unblocked now that lifecycle alignment and setup UX repairs are in place; final smoke can still refresh evidence screenshots as part of later verification.
+- [M6-P5 pending] Final regression should capture the M6-P2 TaskNextStepGuidance browser screenshot; M6-P2 is type/build verified, but browser automation tools were not exposed in this session.
 
 ## M3 启动前必做(P0)
 
