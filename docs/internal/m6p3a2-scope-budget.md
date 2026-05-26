@@ -91,8 +91,9 @@ Stop conditions:
 | Exception | Location | Justification | R10 path |
 |-----------|----------|---------------|----------|
 | Switch `cost_decimal` write source | `AiReviewService.review()` | M3 fixed estimate was a placeholder; M6-P3a now captures provider tokens, so M6-P3a-2 can compute real cost when prompt and completion tokens are present | Revert the dedicated cost-source switch commit to restore `result.cost()`; pricing config and calculator remain additive and harmless |
+| Add `modelName()` to `AiProvider` | `AiProvider.java`, `MockAiProvider.java`, `OpenAiCompatibleProvider.java` | Additive interface evolution mirroring the existing `providerName()` self-describing pattern; both existing providers were updated synchronously, so no breaking change occurred inside LabelHub | Revert the provider-usage/cost commits that introduced the method; both implementations safely lose their `modelName()` overrides |
 
-This is the only existing-behavior change in M6-P3a-2. All other changes are additive.
+The `cost_decimal` source switch is the only existing-behavior change in M6-P3a-2. The `modelName()` row is an additive interface evolution, recorded here so future reviews can see every non-file-local surface change.
 
 ## Commit Granularity
 
