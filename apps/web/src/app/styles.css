@@ -1,4 +1,12 @@
 :root {
+  --lh-font-size-h1: 28px;
+  --lh-font-size-h2: 22px;
+  --lh-font-size-h3: 18px;
+  --lh-font-size-body: 14px;
+  --lh-font-size-caption: 12px;
+  --lh-line-height-title: 1.25;
+  --lh-line-height-body: 1.55;
+
   color: #172033;
   background: #eef2f7;
   font-family:
@@ -9,6 +17,8 @@
 
 body {
   margin: 0;
+  font-size: var(--lh-font-size-body);
+  line-height: var(--lh-line-height-body);
 }
 
 a {
@@ -154,6 +164,21 @@ a {
   box-sizing: border-box;
 }
 
+.app-content h1 {
+  font-size: var(--lh-font-size-h1);
+  line-height: var(--lh-line-height-title);
+}
+
+.app-content h2 {
+  font-size: var(--lh-font-size-h2);
+  line-height: var(--lh-line-height-title);
+}
+
+.app-content h3 {
+  font-size: var(--lh-font-size-h3);
+  line-height: var(--lh-line-height-title);
+}
+
 .workspace-empty {
   display: flex;
   min-height: calc(100vh - 120px);
@@ -243,6 +268,8 @@ a {
 
 .page-title {
   margin: 0 0 6px;
+  font-size: var(--lh-font-size-h1);
+  line-height: var(--lh-line-height-title);
 }
 
 .task-toolbar {
