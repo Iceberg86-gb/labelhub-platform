@@ -66,7 +66,7 @@ rg -c "deferred|Deferred|defer|deferred" humanpending.md
 
 | Category | Count / State |
 |----------|---------------|
-| Bracketed entries | 116 |
+| Bracketed entries | 118 |
 | Entries containing `resolved` | 26 |
 | Entries containing `ready` | 3 |
 | Entries containing `watch` | 4 |

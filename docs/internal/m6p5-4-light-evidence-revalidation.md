@@ -27,7 +27,7 @@ LabelHub treats published schema versions and submitted answers as immutable evi
 | Schema publishing and version history still covered | `SchemaServiceTest` focused smoke | Green |
 | Session/submission still locks schema version | `SessionServiceTest`, `SubmissionServiceTest` focused smoke | Green |
 | Historical renderer evidence remains archived | Existing screenshots under `docs/screenshots/phase-m2p6c-*` | Archived |
-| M6 migrations do not alter schema-version semantics | Migration count remains V1-V10; V9 submission lifecycle and V10 AI token columns do not touch schema tables | Pending final command block |
+| M6 migrations do not alter schema-version semantics | Migration count remains V1-V10; V9 submission lifecycle and V10 AI token columns do not touch schema tables | Green |
 
 ### M6 Interaction Check
 
