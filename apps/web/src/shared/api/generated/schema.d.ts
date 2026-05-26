@@ -597,7 +597,7 @@ export interface components {
                 [key: string]: unknown;
             };
             /** Format: date-time */
-            deadlineAt?: string;
+            deadlineAt: string;
             quotaTotal: number;
         };
         Task: components["schemas"]["CreateTaskRequest"] & {

@@ -39,12 +39,18 @@ export function CreateTaskModal({ visible, onClose }: CreateTaskModalProps) {
   const formApiRef = useRef<FormApi<CreateTaskFormValues>>();
 
   const handleSubmit = async (values: CreateTaskFormValues) => {
+    const deadlineAt = normalizeDeadline(values.deadlineAt);
+    if (!deadlineAt) {
+      formApiRef.current?.setError('deadlineAt', '请选择截止时间');
+      return;
+    }
+
     try {
       await createTask.mutateAsync({
         title: values.title,
         description: values.description,
         quotaTotal: Number(values.quotaTotal),
-        deadlineAt: normalizeDeadline(values.deadlineAt),
+        deadlineAt,
         tags: values.tags?.filter(Boolean),
       });
       Toast.success('任务已创建。');
