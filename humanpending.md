@@ -17,6 +17,7 @@
 - [M6-P5 resolved] Final regression + operational verification complete: 4 highlight evidence chains green, Signal 1 A/B class closed, decision-log/humanpending consistent, backend `389+78` green after socket-bind D-口径 rerun, frontend typecheck/build green.
 - [M6-P5.1 resolved] Runtime startup hotfix complete: `spring-boot:run` startup gap was reproduced, root-caused to `AiRetryPolicy` constructor selection, fixed with explicit constructor injection, and guarded by `ApplicationContextStartupTest`.
 - [Runtime startup guardrail] `ApplicationContextStartupTest` is now the 12th cross-phase guardrail; it loads the real Spring Boot context with runtime-equivalent datasource, security, and object-storage properties and brings the backend suite to `390+78` green.
+- [Runtime startup guardrail D-口径] `ApplicationContextStartupTest` requires local MySQL and MinIO/object storage services because it loads the real Spring Boot context; missing local infra can fail the guardrail before application-code wiring is reached.
 - [Defense ready] M6-P5 final regression report is archived at `docs/internal/m6p5-final-regression-report.md` and serves as the defense readiness baseline.
 - [M6-P6 unblocked] UI Experience Polish can resume now that the API runtime startup path is green; M6-P6 remains scoped to `apps/web/` + docs unless separately裁决ed.
 - [M6-P3c optional] Large-task performance baseline remains optional; M6-P5 did not uncover a scale-evidence gap that requires P3c before defense.
