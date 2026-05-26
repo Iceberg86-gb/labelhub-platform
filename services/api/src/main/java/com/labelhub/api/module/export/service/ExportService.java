@@ -24,11 +24,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ExportService {
+
+    private static final Logger log = LoggerFactory.getLogger(ExportService.class);
 
     private final TaskMapper taskMapper;
     private final ExportJobMapper exportJobMapper;
@@ -66,17 +70,18 @@ public class ExportService {
         job.setDownloadCount(0);
         requireOneRow(exportJobMapper.insert(job), "insert export job");
 
+        List<String> writtenKeys = new ArrayList<>();
         try {
             ExportFactBundle bundle = factCollector.collectForTask(taskId);
             ExportArtifact artifact = artifactBuilder.build(bundle);
             String objectKeyPrefix = "exports/tasks/" + taskId + "/jobs/" + job.getId() + "/";
 
             for (ArtifactFile file : artifact.files()) {
-                storageWriter.putObject(objectKeyPrefix + file.name(), file.content());
+                writeObject(objectKeyPrefix + file.name(), file.content(), writtenKeys);
             }
 
             Map<String, Object> fullManifest = buildFullManifest(artifact, job, now, objectKeyPrefix);
-            storageWriter.putObject(objectKeyPrefix + "manifest.json", toJsonBytes(fullManifest));
+            writeObject(objectKeyPrefix + "manifest.json", toJsonBytes(fullManifest), writtenKeys);
 
             ExportSnapshotEntity snapshot = new ExportSnapshotEntity();
             snapshot.setExportJobId(job.getId());
@@ -96,6 +101,7 @@ public class ExportService {
             requireOneRow(exportSnapshotMapper.insert(snapshot), "insert export snapshot");
             return snapshot;
         } catch (RuntimeException e) {
+            cleanupBestEffort(writtenKeys);
             throw new ExportFailureException("Export failed for task " + taskId, e);
         }
     }
@@ -227,6 +233,21 @@ public class ExportService {
             return objectMapper.writeValueAsString(value).getBytes(StandardCharsets.UTF_8);
         } catch (JsonProcessingException e) {
             throw new ExportFailureException("Unable to serialize export manifest", e);
+        }
+    }
+
+    private void writeObject(String objectKey, byte[] content, List<String> writtenKeys) {
+        storageWriter.putObject(objectKey, content);
+        writtenKeys.add(objectKey);
+    }
+
+    private void cleanupBestEffort(List<String> writtenKeys) {
+        for (String key : writtenKeys) {
+            try {
+                storageWriter.deleteObject(key);
+            } catch (RuntimeException cleanupException) {
+                log.warn("Failed to cleanup object key {} during export failure: {}", key, cleanupException.getMessage());
+            }
         }
     }
 
