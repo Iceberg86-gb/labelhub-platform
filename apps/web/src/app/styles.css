@@ -1679,7 +1679,9 @@ a {
 .diff-status-tag {
   border: 0;
   color: #ffffff;
+  flex-shrink: 0;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .diff-status-tag--match {
