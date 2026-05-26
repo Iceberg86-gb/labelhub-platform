@@ -60,6 +60,11 @@ public class OpenAiCompatibleProvider implements AiProvider {
     }
 
     @Override
+    public Duration timeout() {
+        return props.resolvedTimeout();
+    }
+
+    @Override
     public AiCallResult invoke(AiCallRequest request) {
         return invokeWithUsage(request).result();
     }
@@ -86,7 +91,7 @@ public class OpenAiCompatibleProvider implements AiProvider {
 
     private HttpRequest httpRequest(AiCallRequest request) {
         String body = serialize(chatCompletionBody(request));
-        Duration timeout = request.timeout() == null ? Duration.ofSeconds(30) : request.timeout();
+        Duration timeout = request.timeout() == null ? props.resolvedTimeout() : request.timeout();
         return HttpRequest.newBuilder(chatCompletionsUri())
             .timeout(timeout)
             .header("Authorization", "Bearer " + props.apiKey())
