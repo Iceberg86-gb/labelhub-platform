@@ -6,7 +6,10 @@
 - [M6-P0.5 resolved] Submission lifecycle semantics decision is complete: Q1-Q9=A, Q10=B; `submitted` is the immutable answer fact, `under_ai_review` will be V9-normalized, AI/reviewer facts stay append-only, and `deadlineAt` is required at task create.
 - [M6-P1 resolved] Submission Lifecycle + Default Flow Repair implemented: V9 normalizes `under_ai_review` to `submitted`, normal submit writes `submitted`, real-submit reviewer/export regressions were added, AI review is guarded as a side fact, and create-task `deadlineAt` is contract-required with controlled validation.
 - [M6-P2 resolved] Owner Setup UX Repair implemented: login autofill submit reads actual browser form values, owner task created-time fallback is explicit, draft task detail shows three setup CTAs, and repeat-claim semantics are stated in Labeler marketplace copy.
-- [M6-P3 ready] Cost/performance baseline is unblocked now that lifecycle alignment and setup UX repairs are in place; final smoke can still refresh evidence screenshots as part of later verification.
+- [M6-P3a resolved] AI token usage persistence implemented: V10 adds nullable token columns, OpenAI-compatible provider usage is parsed defensively, `ai_calls` persists prompt/completion/total/cache-hit tokens when present, and `cost_decimal` remains the M3 fixed estimate.
+- [M6-P3a-2 ready] AI cost computation from usage is ready for a follow-up once China-region DeepSeek billing/pricing source, currency, and rounding semantics are confirmed.
+- [M6-P3b ready] Idempotency hit ratio and Spring Actuator/Micrometer metrics baseline remain the next cost/performance measurement track.
+- [M6-P3c ready] Large-task export and Quality Ledger performance baseline remain ready after token persistence.
 - [M6-P5 pending] Final regression should capture the M6-P2 TaskNextStepGuidance browser screenshot; M6-P2 is type/build verified, but browser automation tools were not exposed in this session.
 
 ## M3 启动前必做(P0)
@@ -36,7 +39,7 @@
 - [M5 计划] Persist failed AI provider attempts as append-only `ai_calls.status=failed` facts once retry/backoff and failure evidence semantics are designed.
 - [M5 计划] Replace synchronous AI review with async job state only when outbox/worker/polling behavior is implemented; M3 keeps calls synchronous and terminal.
 - [M3-P6 resolved by M5-P6] 真实 OpenAI-compatible provider smoke 已用 DeepSeek (`deepseek-v4-flash`) 补齐；截图为 `phase-m5p6-deepseek-first-call.png` 和 `phase-m5p6-deepseek-idempotency-hit.png`,DB 证据为 `phase-m5p6-db-ai-ledger-evidence.png`。
-- [M5 计划] Use provider `usage` token counts and model-specific pricing to compute `ai_calls.cost_decimal` instead of M3's fixed estimated per-call cost.
+- [M6-P3a partial] Provider `usage` token counts are now persisted to `ai_calls`. Model-specific pricing and `cost_decimal` computation remain deferred to M6-P3a-2 pending confirmed pricing data.
 - [M5 计划] Add streaming response support only after the synchronous provenance path and async job semantics are stable.
 - [M5 计划] Add encrypted API key storage / management UI instead of requiring raw provider keys in local env.
 - [M5 计划] Add provider-specific adapters only when OpenAI-compatible behavior is insufficient, e.g. native Anthropic messages or provider tool-use APIs.
@@ -117,7 +120,7 @@
 - [M5-P5 resolved by M5-P6] Reviewer mixed AI/reviewer ledger UI screenshots were captured locally: `phase-m5p5-reviewer-ledger-mixed.png` and `phase-m5p5-reviewer-ledger-mixed-after-approve.png`.
 - [M5-P6 resolved] Real DeepSeek smoke completed with provider metadata, idempotency hit, sanitized DB evidence, Trusted Export screenshots, and mixed AI/reviewer ledger screenshots.
 - [M5-P7 resolved] M5 acceptance checklist, README highlight status, screenshot INDEX evidence chains, M5 quarter summary, and humanpending cleanup are complete.
-- [M5+ 计划] Replace fixed `AI_COST_PER_CALL` estimates with provider usage/token-based pricing once the OpenAI-compatible response usage payload is normalized.
+- [M6-P3a partial] OpenAI-compatible response usage payload is normalized and persisted; replacing fixed `AI_COST_PER_CALL` estimates with token-based pricing remains M6-P3a-2.
 - [M5+ 计划] Add retry/backoff and provider-specific JSON hardening for real provider responses after the first DeepSeek smoke proved the happy path.
 - [M5+ 计划] Re-run Trusted Export final-defense smoke with at least one still-`submitted` submission in scope so the snapshot list demonstrates nonzero submitted-record counts as well as hash reproducibility.
 - [M5+ 计划] Replace the AI Drawer success copy that still says "Mock provider" when the active provider is OpenAI-compatible/DeepSeek.
