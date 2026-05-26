@@ -100,15 +100,13 @@ Production posture is deferred: a real deployment would require an explicit `/ac
 
 ## Strict-Constraint Exceptions
 
-Expected: **none**.
-
 M6-P3b should be purely observational. Counter increments must not influence control flow, persistence decisions, response shape, pricing, token persistence, or Quality Ledger behavior.
 
-If `SecurityConfig` needs an Actuator exception, this table must be updated before the implementation commit:
+SecurityConfig currently permits `/actuator/health` and `/actuator/info` only. M6-P3b therefore needs one narrow dev-observability exception to expose Prometheus scraping:
 
 | Exception | Location | Justification | R10 path |
 |-----------|----------|---------------|----------|
-| _None expected_ | _n/a_ | _n/a_ | _n/a_ |
+| Permit metrics and Prometheus actuator endpoints | `SecurityConfig` | Development observability requires `/actuator/metrics` and `/actuator/prometheus` to be scrapeable; production posture remains deferred to a future security review | Revert the actuator security matcher addition; metrics counters remain harmless but inaccessible without auth |
 
 ## Commit Granularity
 
