@@ -14,13 +14,15 @@
 - [M6-P4a resolved] AI Provider Failure Evidence + Retry Semantics implemented: failed `ai_calls` rows use attempt-specific idempotency keys, `AiCallStatusCodes` is explicit, OpenAI-compatible timeout/retry config is scoped without a provider registry, retryable failures use deterministic exponential backoff, miss remains one logical review, and `labelhub.ai.provider.retry` records retry attempts separately.
 - [M6-P4b resolved] Trusted Export Inline Cleanup implemented: exact object-storage keys written by a failed sync export attempt are cleaned best-effort, cleanup failures do not mask the original `ExportFailureException`, and failed export jobs remain intentionally unpersisted.
 - [Signal 1 B class complete] M6-P4a + M6-P4b close the 60-day M6+ robustness track: AI provider failures now have evidence/retry semantics, and Trusted Export failure residue is cleaned inline without false-symmetry failed-job persistence.
-- [M6-P5 ready] Final regression + operational verification can start after deciding whether to run optional M6-P3c large-task performance baseline first.
+- [M6-P5 resolved] Final regression + operational verification complete: 4 highlight evidence chains green, Signal 1 A/B class closed, decision-log/humanpending consistent, backend `389+78` green after socket-bind D-口径 rerun, frontend typecheck/build green.
+- [Defense ready] M6-P5 final regression report is archived at `docs/internal/m6p5-final-regression-report.md` and serves as the defense readiness baseline.
+- [M6-P3c optional] Large-task performance baseline remains optional; M6-P5 did not uncover a scale-evidence gap that requires P3c before defense.
 - [False symmetry deferred] Export failed-job persistence is intentionally not mirrored to failed AI call persistence; defer until async export/job化 creates a real API/UI consumer.
-- [Metrics data accumulation watch] Idempotency hit ratio needs 100+ AI review attempts over a 7-day observation window before the metric is stable enough for claims; revisit during M6-P5 final regression.
+- [Metrics data accumulation watch] Idempotency hit ratio needs 100+ AI review attempts over a 7-day observation window before the metric is stable enough for claims; M6-P5 confirmed the endpoint/counters are ready, but long-window data is still pending.
 - [Production posture watch] `/actuator/prometheus` and `/actuator/metrics` are exposed without auth for local development observability; productionization requires a separate actuator security review.
 - [Pricing follow-up] If DeepSeek changes official USD pricing or a stable CNY v4-flash pricing source appears, refresh `application.yml` and the decision-log evidence date.
 - [v4-pro discount watch] DeepSeek notes v4-pro pricing adjusts after the 75% discount promotion ends on `2026-05-31 15:59 UTC`; update config before relying on v4-pro cost values after that date.
-- [M6-P5 pending] Final regression should capture the M6-P2 TaskNextStepGuidance browser screenshot; M6-P2 is type/build verified, but browser automation tools were not exposed in this session.
+- [M6-P5 screenshot D-口径] Fresh browser screenshots were not captured because browser automation tools were not exposed in this session; screenshot targets are indexed at `docs/screenshots/m6p5-smoke-set/INDEX.md`.
 
 ## M3 启动前必做(P0)
 
