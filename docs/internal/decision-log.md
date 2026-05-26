@@ -854,3 +854,66 @@ M6-P3a-2 will add usage-based cost calculation after pricing source, currency, a
 - Frontend typecheck and production build passed.
 - New regression coverage guards provider usage parsing, missing/partial usage payloads, cache-hit field compatibility, V10 nullable/no-default columns, token persistence, null-token persistence, and fixed `cost_decimal` behavior.
 - M6-P1 Q6 invariant remains green: AI review does not mutate `submission.status`.
+
+## 2026-05-25 M6 Phase 3a-2 AI Cost Computation From Token Usage
+
+M6-P3a-2 closes the cost layer left open by M6-P3a. It computes USD cost from token usage when token data is complete enough, and falls back to the M3 fixed estimate when it is not. Strict-constraint a' is intentionally relaxed for one logged exception: `AiReviewService.review` changes the `cost_decimal` source from `AiCallResult.cost()` to `AiCallCostCalculator.computeCost(...)`.
+
+### Pricing Evidence Source
+
+- DeepSeek English pricing doc verified 2026-05-25: `https://api-docs.deepseek.com/quick_start/pricing`.
+- Currency: USD. CNY v4-flash pricing is not stably documented, so the official English pricing page is the system of record for M6-P3a-2.
+- `deepseek-v4-flash`:
+  - Input cache hit: `$0.0028` / 1M tokens.
+  - Input cache miss: `$0.14` / 1M tokens.
+  - Output: `$0.28` / 1M tokens.
+- `deepseek-v4-pro`:
+  - Input cache hit: `$0.003625` / 1M tokens with DeepSeek's 75% off note.
+  - Input cache miss: `$0.435` / 1M tokens with DeepSeek's 75% off note.
+  - Output: `$0.87` / 1M tokens with DeepSeek's 75% off note.
+  - DeepSeek states the v4-pro price will be adjusted after the 75% promotion ends on `2026-05-31 15:59 UTC`; config refresh is required if the project uses v4-pro after that date.
+
+### A2 Fallback Decision
+
+Cost is computed only when both `promptTokens` and `completionTokens` are present.
+
+- `promptTokens == null` -> fixed estimate fallback.
+- `completionTokens == null` -> fixed estimate fallback.
+- `usage == null` -> fixed estimate fallback.
+- pricing config missing for `modelName` -> fixed estimate fallback.
+- `cacheHitTokens == null` -> compute with zero cache-hit tokens.
+- `totalTokens` remains display/audit data and is not required for compute.
+
+This avoids partial-data cost computation that would systematically understate cost, such as computing input cost while missing output tokens.
+
+### R2 Rounding
+
+`AiCallCostCalculator` uses `BigDecimal` internally and divides per-million rates at 10 decimal places with `HALF_UP`. The DB write value is rounded with `setScale(6, HALF_UP)` to preserve the existing `DECIMAL(12,6)` column.
+
+Known precision limitation: small cache-hit amounts such as `30 * $0.0028 / 1_000_000 = $0.000000084` round to `0.000000` at DB precision. This is accepted to avoid V11 and keep strict-constraint a'. R3 (`DECIMAL(18,10)`) was explicitly rejected for M6-P3a-2.
+
+### Behavior Change Justification
+
+`AiReviewService.review` now writes `ai_calls.cost_decimal` from `AiCallCostCalculator.computeCost(aiProvider.modelName(), usage)` instead of `AiCallResult.cost()`.
+
+- Backward compatible fallback: mock provider and providers without usage still produce the configured fixed estimate.
+- `AiCallResult.cost()` remains in place as M3 evidence and R10 revert support.
+- Token persistence from M6-P3a is unchanged.
+- AI provenance, Quality Ledger, and submission lifecycle behavior are unchanged.
+
+R10 path: revert the dedicated `fix: switch ai_calls cost_decimal source from fixed estimate to calculator` commit to restore the M3 fixed-estimate write path. Pricing config and calculator files are additive and can remain harmless.
+
+### Regression Coverage
+
+- `AiCallCostCalculatorTest` covers no-cache computation, cache-hit split computation, prompt-missing fallback, completion-missing fallback, null-usage fallback, missing-pricing fallback, and R2 small-cache-hit rounding.
+- `AiReviewServiceTest.review_uses_calculator_cost_when_usage_present` proves complete usage writes calculator cost rather than the M3 fixed estimate.
+- `AiReviewServiceTest.review_falls_back_to_fixed_estimate_when_usage_incomplete` preserves the A2 fallback path.
+- M6-P1 `ai_review_does_not_mutate_submission_status` remains green.
+
+### What M6-P3a-2 Does Not Do
+
+- No V11 migration.
+- No CNY pricing.
+- No real-time pricing fetch.
+- No cost alerting, dashboards, idempotency metrics, or hit-ratio counters.
+- No OpenAPI shape change.
