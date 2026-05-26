@@ -6,16 +6,18 @@ export function FieldFrame({
   field,
   errors,
   children,
+  showRequiredMarker = true,
 }: {
   field: SchemaField;
   errors?: string[];
   children: ReactNode;
+  showRequiredMarker?: boolean;
 }) {
   return (
     <div className={['labeling-field', errors?.length ? 'labeling-field--error' : ''].join(' ')}>
       <div className="labeling-field__header">
         <Typography.Text strong>{field.label || '未命名字段'}</Typography.Text>
-        {field.validation?.required ? <span className="labeling-field__required">必填</span> : null}
+        {showRequiredMarker && field.validation?.required ? <span className="labeling-field__required">必填</span> : null}
       </div>
       {field.help ? (
         <Typography.Text type="tertiary" size="small">

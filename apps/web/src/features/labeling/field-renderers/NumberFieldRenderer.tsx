@@ -4,7 +4,7 @@ import { FieldFrame, ReadOnlyValue } from './rendererUtils';
 
 export function NumberFieldRenderer({ field, value, onChange, readOnly, errors }: FieldRendererProps<number>) {
   return (
-    <FieldFrame field={field} errors={errors}>
+    <FieldFrame field={field} errors={errors} showRequiredMarker={!readOnly}>
       {readOnly ? (
         <ReadOnlyValue value={value} />
       ) : (
