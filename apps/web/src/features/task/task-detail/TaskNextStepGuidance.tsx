@@ -1,4 +1,5 @@
 import { Button, Tag, Typography } from '@douyinfe/semi-ui';
+import { IconLockStroked } from '@douyinfe/semi-icons';
 import type { Task } from '../list-tasks/useTasksQuery';
 
 type SetupStep = {
@@ -24,7 +25,7 @@ function statusTag(status: SetupStep['status']) {
   }
 
   if (status === 'blocked') {
-    return <Tag color="grey">待前置</Tag>;
+    return <Tag className="task-setup-step__blocked-tag" prefixIcon={<IconLockStroked />}>待前置</Tag>;
   }
 
   return <Tag color="blue">待处理</Tag>;
