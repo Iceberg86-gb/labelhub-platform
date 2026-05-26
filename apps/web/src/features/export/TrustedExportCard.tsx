@@ -1,4 +1,4 @@
-import { Button, Card, Checkbox, Empty, Pagination, Space, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Checkbox, Empty, Pagination, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconRefresh, IconUpload } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -31,6 +31,13 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const exportsQuery = useTaskExportsQuery(taskId, { page, size });
   const createExport = useCreateExportMutation();
   const items = exportsQuery.data?.items ?? [];
+  const manifestHashCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      counts.set(item.manifestHash, (counts.get(item.manifestHash) ?? 0) + 1);
+    }
+    return counts;
+  }, [items]);
   const canDiff = selectedIds.length === 2;
   const baseSnapshotId = canDiff ? selectedIds[0] ?? null : null;
   const compareSnapshotId = canDiff ? selectedIds[1] ?? null : null;
@@ -48,7 +55,12 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
       {
         title: 'Manifest Hash',
         dataIndex: 'manifestHash',
-        render: (value: string) => <TruncatedHash value={value} ariaLabel="Export manifest hash" />,
+        render: (value: string) => (
+          <span className="export-manifest-hash-cell">
+            <TruncatedHash value={value} ariaLabel="Export manifest hash" />
+            {(manifestHashCounts.get(value) ?? 0) > 1 ? <Tag className="export-same-hash-tag">✓ 同 hash</Tag> : null}
+          </span>
+        ),
       },
       {
         title: '提交数',
@@ -62,7 +74,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         render: (value: string) => formatDateTime(value),
       },
     ],
-    [selectedIds],
+    [manifestHashCounts, selectedIds],
   );
 
   async function handleCreateExport() {

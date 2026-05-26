@@ -1646,6 +1646,19 @@ a {
   margin-bottom: 14px;
 }
 
+.export-manifest-hash-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-same-hash-tag {
+  border: 0;
+  background: #16a34a;
+  color: #ffffff;
+  font-weight: 700;
+}
+
 .export-pagination {
   display: flex;
   justify-content: flex-end;
