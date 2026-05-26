@@ -7,6 +7,7 @@ import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.export.entity.ExportJobEntity;
 import com.labelhub.api.module.export.entity.ExportSnapshotEntity;
+import com.labelhub.api.module.export.exception.ExportFailureException;
 import com.labelhub.api.module.export.mapper.ExportJobMapper;
 import com.labelhub.api.module.export.mapper.ExportSnapshotMapper;
 import com.labelhub.api.module.export.storage.ObjectStorageProperties;
@@ -28,12 +29,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +47,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 
 class ExportServiceTest {
 
@@ -188,6 +193,63 @@ class ExportServiceTest {
     }
 
     @Test
+    void partial_export_failure_deletes_written_object_keys() {
+        failPutObjectOnAttempt(3);
+
+        assertThatThrownBy(() -> exportService.createSnapshot(TASK_ID, OWNER_ID))
+            .isInstanceOf(ExportFailureException.class);
+
+        assertThat(deletedKeys()).containsExactly(
+            "exports/tasks/100/jobs/10/task.json",
+            "exports/tasks/100/jobs/10/schema_versions.jsonl"
+        );
+    }
+
+    @Test
+    void cleanup_does_not_delete_unrelated_objects() {
+        failPutObjectOnAttempt(3);
+
+        assertThatThrownBy(() -> exportService.createSnapshot(TASK_ID, OWNER_ID))
+            .isInstanceOf(ExportFailureException.class);
+
+        assertThat(deletedKeys())
+            .allMatch(key -> key.startsWith("exports/tasks/100/jobs/10/"))
+            .noneMatch(key -> key.startsWith("exports/tasks/100/jobs/11/"));
+    }
+
+    @Test
+    void cleanup_failure_preserves_original_export_failure() {
+        failPutObjectOnAttempt(2);
+        doThrow(new RuntimeException("cleanup failed"))
+            .when(s3Client).deleteObject(any(DeleteObjectRequest.class));
+
+        assertThatThrownBy(() -> exportService.createSnapshot(TASK_ID, OWNER_ID))
+            .isInstanceOf(ExportFailureException.class)
+            .hasRootCauseMessage("put failed at attempt 2");
+    }
+
+    @Test
+    void successful_export_does_not_trigger_cleanup() {
+        exportService.createSnapshot(TASK_ID, OWNER_ID);
+
+        verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
+    void no_failed_export_job_persistence() {
+        failPutObjectOnAttempt(2);
+
+        assertThatThrownBy(() -> exportService.createSnapshot(TASK_ID, OWNER_ID))
+            .isInstanceOf(ExportFailureException.class);
+
+        ArgumentCaptor<ExportJobEntity> jobCaptor = ArgumentCaptor.forClass(ExportJobEntity.class);
+        verify(exportJobMapper).insert(jobCaptor.capture());
+        assertThat(jobCaptor.getAllValues())
+            .extracting(ExportJobEntity::getStatus)
+            .doesNotContain("failed");
+    }
+
+    @Test
     void listSnapshotsForOwner_enforces_task_ownership_and_returns_page() {
         ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
         when(exportSnapshotMapper.selectByTaskId(TASK_ID, 0L, 20L)).thenReturn(List.of(snapshot));
@@ -247,6 +309,22 @@ class ExportServiceTest {
             snapshot.setId(snapshotIds.getAndIncrement());
             return 1;
         });
+    }
+
+    private void failPutObjectOnAttempt(int failingAttempt) {
+        AtomicInteger attempts = new AtomicInteger();
+        doAnswer(invocation -> {
+            if (attempts.incrementAndGet() == failingAttempt) {
+                throw new RuntimeException("put failed at attempt " + failingAttempt);
+            }
+            return null;
+        }).when(s3Client).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    private List<String> deletedKeys() {
+        ArgumentCaptor<DeleteObjectRequest> requestCaptor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        verify(s3Client, times(2)).deleteObject(requestCaptor.capture());
+        return requestCaptor.getAllValues().stream().map(DeleteObjectRequest::key).toList();
     }
 
     private String writtenUtf8(String suffix) {
