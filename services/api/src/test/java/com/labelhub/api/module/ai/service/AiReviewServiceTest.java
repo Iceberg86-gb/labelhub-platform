@@ -64,6 +64,7 @@ class AiReviewServiceTest {
     private final AiCallInFieldMapper aiCallInFieldMapper = mock(AiCallInFieldMapper.class);
     private final LedgerService ledgerService = mock(LedgerService.class);
     private final AiProvider aiProvider = mock(AiProvider.class);
+    private final AiCallCostCalculator costCalculator = mock(AiCallCostCalculator.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
     private AiReviewService service;
@@ -82,13 +83,15 @@ class AiReviewServiceTest {
             canonicalizer,
             objectMapper,
             clock,
-            aiProvider
+            aiProvider,
+            costCalculator
         );
         when(aiProvider.providerName()).thenReturn("mock");
         when(aiProvider.modelName()).thenReturn("mock-v1");
         when(aiProvider.invokeWithUsage(any(AiCallRequest.class))).thenAnswer(invocation ->
             new ProviderInvocationResult(aiProvider.invoke(invocation.getArgument(0)), null)
         );
+        when(costCalculator.computeCost(any(), any())).thenReturn(new BigDecimal("0.000100"));
         seedOwnedSubmission();
     }
 
@@ -285,10 +288,11 @@ class AiReviewServiceTest {
     }
 
     @Test
-    void review_does_not_change_cost_decimal_path_when_usage_is_present() {
-        AiCallUsage usage = new AiCallUsage(101, 52, 153, 30);
+    void review_falls_back_to_fixed_estimate_when_usage_incomplete() {
+        AiCallUsage usage = new AiCallUsage(101, null, null, null);
         when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
             .thenReturn(new ProviderInvocationResult(providerResult(), usage));
+        when(costCalculator.computeCost("mock-v1", usage)).thenReturn(new BigDecimal("0.001000"));
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
@@ -296,7 +300,26 @@ class AiReviewServiceTest {
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
-        assertThat(captor.getValue().getCostDecimal()).isEqualByComparingTo("0.000100");
+        assertThat(captor.getValue().getCostDecimal()).isEqualByComparingTo("0.001000");
+        verify(costCalculator).computeCost("mock-v1", usage);
+    }
+
+    @Test
+    void review_uses_calculator_cost_when_usage_present() {
+        AiCallUsage usage = new AiCallUsage(1000, 500, 1500, null);
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenReturn(new ProviderInvocationResult(providerResult(), usage));
+        when(costCalculator.computeCost("mock-v1", usage)).thenReturn(new BigDecimal("0.000280"));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        assertThat(captor.getValue().getCostDecimal()).isEqualByComparingTo("0.000280");
+        assertThat(captor.getValue().getCostDecimal()).isNotEqualByComparingTo(providerResult().cost());
+        verify(costCalculator).computeCost("mock-v1", usage);
     }
 
     @Test
