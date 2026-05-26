@@ -21,6 +21,8 @@
 - [Defense ready] M6-P5 final regression report is archived at `docs/internal/m6p5-final-regression-report.md` and serves as the defense readiness baseline.
 - [M6-P6a resolved] UI Audit + Polish Plan is locked: 10 before screenshots archived, 5 unavailable states recorded as D-口径, P0/P1/out-of-scope issue lists finalized, and P6b remains frontend-only under the 900-line P0 / 1500-line total cap.
 - [M6-P6b ready] UI Experience Polish implementation may begin from the locked P0 list: global primitives first, then schema, AI provenance, export, reviewer, and owner-setup defense surfaces.
+- [M6-P6b1 resolved] Global UI primitives are implemented under the frontend-only P6b boundary: header subtitle contrast repaired, local typography scale added, `RoleBadge` integrated in the app shell, and `TruncatedHash` scaffolded without page imports; frontend diff is 182/300 changed lines.
+- [M6-P6b2 ready] Page-level evidence polish may begin: schema version history, labeler submission AI evidence, reviewer queue/detail anchors, Trusted Export surfaces, AI drawer, and owner setup CTA lock state remain scoped by the P6a audit list.
 - [M6-P6 audit D-口径] Reviewer detail issue `#22` was removed after re-audit; "提示 / 通过 / 拒绝" were legitimate ledger-card tags, not render residue.
 - [M6-P3c optional] Large-task performance baseline remains optional; M6-P5 did not uncover a scale-evidence gap that requires P3c before defense.
 - [False symmetry deferred] Export failed-job persistence is intentionally not mirrored to failed AI call persistence; defer until async export/job化 creates a real API/UI consumer.
