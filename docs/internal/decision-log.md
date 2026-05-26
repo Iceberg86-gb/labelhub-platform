@@ -917,3 +917,15 @@ R10 path: revert the dedicated `fix: switch ai_calls cost_decimal source from fi
 - No real-time pricing fetch.
 - No cost alerting, dashboards, idempotency metrics, or hit-ratio counters.
 - No OpenAPI shape change.
+
+### Interface Evolution Record (Backfilled in M6-P3b)
+
+M6-P3a-2 also extended the `AiProvider` interface with a new abstract method `String modelName()`, mirroring the existing self-describing pattern of `String providerName()`.
+
+- Both implementations (`MockAiProvider`, `OpenAiCompatibleProvider`) were updated synchronously, so no breaking change occurred inside LabelHub.
+- This is additive interface evolution, not an existing-behavior change.
+- It is recorded here as a transparency backfill because the M6-P3a-2 strict-constraint exception table only listed the `cost_decimal` source switch. Listing only the behavior change could mislead future review into missing the additive interface evolution.
+
+Future strict-constraint exception tables should explicitly list both existing-behavior changes and additive interface or contract evolutions so reviewers can see what changed beyond config and new files.
+
+This backfill is the result of审计师 push back during M6-P3a-2 review, accepted by裁决师 as an附加硬要求 for M6-P3b.
