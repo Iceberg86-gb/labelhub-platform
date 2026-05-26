@@ -7,9 +7,11 @@
 - [M6-P1 resolved] Submission Lifecycle + Default Flow Repair implemented: V9 normalizes `under_ai_review` to `submitted`, normal submit writes `submitted`, real-submit reviewer/export regressions were added, AI review is guarded as a side fact, and create-task `deadlineAt` is contract-required with controlled validation.
 - [M6-P2 resolved] Owner Setup UX Repair implemented: login autofill submit reads actual browser form values, owner task created-time fallback is explicit, draft task detail shows three setup CTAs, and repeat-claim semantics are stated in Labeler marketplace copy.
 - [M6-P3a resolved] AI token usage persistence implemented: V10 adds nullable token columns, OpenAI-compatible provider usage is parsed defensively, `ai_calls` persists prompt/completion/total/cache-hit tokens when present, and `cost_decimal` remains the M3 fixed estimate.
-- [M6-P3a-2 ready] AI cost computation from usage is ready for a follow-up once China-region DeepSeek billing/pricing source, currency, and rounding semantics are confirmed.
+- [M6-P3a-2 resolved] AI cost computation from usage implemented: USD pricing config from DeepSeek official English pricing, A2 fallback (prompt+completion required), R2 rounding (BigDecimal internal, `DECIMAL(12,6)` DB), and `AiReviewService.review` now writes calculator output when usage is complete.
 - [M6-P3b ready] Idempotency hit ratio and Spring Actuator/Micrometer metrics baseline remain the next cost/performance measurement track.
 - [M6-P3c ready] Large-task export and Quality Ledger performance baseline remain ready after token persistence.
+- [Pricing follow-up] If DeepSeek changes official USD pricing or a stable CNY v4-flash pricing source appears, refresh `application.yml` and the decision-log evidence date.
+- [v4-pro discount watch] DeepSeek notes v4-pro pricing adjusts after the 75% discount promotion ends on `2026-05-31 15:59 UTC`; update config before relying on v4-pro cost values after that date.
 - [M6-P5 pending] Final regression should capture the M6-P2 TaskNextStepGuidance browser screenshot; M6-P2 is type/build verified, but browser automation tools were not exposed in this session.
 
 ## M3 启动前必做(P0)
@@ -39,7 +41,7 @@
 - [M5 计划] Persist failed AI provider attempts as append-only `ai_calls.status=failed` facts once retry/backoff and failure evidence semantics are designed.
 - [M5 计划] Replace synchronous AI review with async job state only when outbox/worker/polling behavior is implemented; M3 keeps calls synchronous and terminal.
 - [M3-P6 resolved by M5-P6] 真实 OpenAI-compatible provider smoke 已用 DeepSeek (`deepseek-v4-flash`) 补齐；截图为 `phase-m5p6-deepseek-first-call.png` 和 `phase-m5p6-deepseek-idempotency-hit.png`,DB 证据为 `phase-m5p6-db-ai-ledger-evidence.png`。
-- [M6-P3a partial] Provider `usage` token counts are now persisted to `ai_calls`. Model-specific pricing and `cost_decimal` computation remain deferred to M6-P3a-2 pending confirmed pricing data.
+- [M6-P3a partial resolved by M6-P3a-2] Provider `usage` token counts are persisted to `ai_calls`; M6-P3a-2 now computes USD `cost_decimal` from complete prompt/completion token usage and falls back to the fixed estimate when usage is incomplete.
 - [M5 计划] Add streaming response support only after the synchronous provenance path and async job semantics are stable.
 - [M5 计划] Add encrypted API key storage / management UI instead of requiring raw provider keys in local env.
 - [M5 计划] Add provider-specific adapters only when OpenAI-compatible behavior is insufficient, e.g. native Anthropic messages or provider tool-use APIs.

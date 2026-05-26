@@ -517,3 +517,14 @@ Record major AI-assisted implementation prompts, accepted changes, rejected sugg
 - Trusted Export browser evidence now includes empty state, one snapshot, two selected snapshots, and the equal diff modal with three hash rows plus ten content-file matches. The smoke task had no `submitted` rows at export time because the target submission had moved to `under_ai_review`, so the reproducibility proof is valid but a nonzero-record final-defense export remains useful.
 - Mixed ledger browser evidence now includes `phase-m5p5-reviewer-ledger-mixed.png` for an AI `ai_field_finding` row and `phase-m5p5-reviewer-ledger-mixed-after-approve.png` for AI + reviewer verdict rows coexisting after Reviewer approval.
 - UI copy note: the DeepSeek Drawer still displayed success text mentioning "Mock provider" while metadata correctly showed `deepseek` / `deepseek-v4-flash`; this is a copy issue for a later polish pass, not a provider-selection failure.
+
+## 2026-05-25 M6 Phase 3a-2 AI Cost Computation From Token Usage
+
+- Prompt: implement the cost layer deferred from M6-P3a: USD pricing config, `AiCallCostCalculator`, A2 fallback, R2 rounding, and switch `AiReviewService.review` to write calculator output to `ai_calls.cost_decimal`.
+- User裁决: `A + USD + A2 + R2`. Cost is computed only when `promptTokens` and `completionTokens` are both present; `cacheHitTokens` may be null and then counts as zero cache hits; DB precision remains `DECIMAL(12,6)`.
+- Pricing evidence: DeepSeek official English pricing page was checked on 2026-05-25. `deepseek-v4-flash` rates are `$0.0028` cache-hit input, `$0.14` cache-miss input, and `$0.28` output per 1M tokens. `deepseek-v4-pro` rates are recorded with DeepSeek's 75% off note and the `2026-05-31 15:59 UTC` adjustment warning.
+- RED check: added `AiCallCostCalculatorTest` and updated `AiReviewServiceTest` first. The initial Maven run failed at test compilation because `AiPricingProperties` and `AiCallCostCalculator` did not exist; after pricing binding, the remaining red point was the missing calculator/service wiring.
+- Accepted implementation: added `AiPricingProperties`, application.yml USD pricing, `AiCallCostCalculator`, and one strict-constraint exception in `AiReviewService.review`: `setCostDecimal` now uses `costCalculator.computeCost(aiProvider.modelName(), usage)`.
+- R2 implementation: internal BigDecimal division uses 10 decimal places before final `setScale(6, HALF_UP)` for DB write. The small-cache-hit rounding test documents that tiny cache-hit contributions can round to `0.000000`.
+- Verification: sandbox `mvn -pl services/api test` hit the known local `HttpServer` bind restriction in `OpenAiCompatibleProviderTest`; rerunning with approved local-bind permission passed with 362 tests, 0 failures/errors, and 78 Docker-dependent skips.
+- Scope guard: no V11 migration, no OpenAPI shape change, no CNY pricing, no metrics endpoint, no dashboard, and no real-time pricing fetch were added.
