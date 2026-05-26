@@ -8,8 +8,15 @@ export function LoginPage() {
   const formApiRef = useRef<FormApi<LoginValues>>();
 
   const handleSubmit = async (values: LoginValues) => {
+    const formElement = document.querySelector<HTMLFormElement>('form.login-form');
+    const formData = formElement ? new FormData(formElement) : null;
+    const actualValues = {
+      username: String(formData?.get('username') || values.username || ''),
+      password: String(formData?.get('password') || values.password || ''),
+    };
+
     try {
-      await login.mutateAsync(values);
+      await login.mutateAsync(actualValues);
     } catch (error) {
       const loginError = login.normalizeError(error);
 
