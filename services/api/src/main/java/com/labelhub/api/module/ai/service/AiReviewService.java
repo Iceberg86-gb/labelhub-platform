@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
+import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
@@ -144,7 +145,7 @@ public class AiReviewService {
         aiCall.setTotalTokens(usage == null ? null : usage.totalTokens());
         aiCall.setCacheHitTokens(usage == null ? null : usage.cacheHitTokens());
         aiCall.setLatencyMs(Math.toIntExact(result.latencyMs()));
-        aiCall.setStatus("completed");
+        aiCall.setStatus(AiCallStatusCodes.COMPLETED);
         aiCall.setIdempotencyKey(idempotencyKey);
         aiCall.setCreatedAt(now);
         aiCall.setCompletedAt(now);
