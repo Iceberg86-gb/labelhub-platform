@@ -61,6 +61,11 @@ public class OpenAiCompatibleProvider implements AiProvider {
 
     @Override
     public AiCallResult invoke(AiCallRequest request) {
+        return invokeWithUsage(request).result();
+    }
+
+    @Override
+    public ProviderInvocationResult invokeWithUsage(AiCallRequest request) {
         long start = System.nanoTime();
         try {
             HttpResponse<String> response = httpClient.send(httpRequest(request), HttpResponse.BodyHandlers.ofString());
@@ -68,7 +73,7 @@ public class OpenAiCompatibleProvider implements AiProvider {
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw providerHttpError(response);
             }
-            return resultFromResponse(response.body(), latencyMs);
+            return invocationResultFromResponse(response.body(), latencyMs);
         } catch (HttpTimeoutException ex) {
             throw new AiProviderException("AI provider request timed out", ex, true, "timeout", null);
         } catch (IOException ex) {
@@ -106,10 +111,14 @@ public class OpenAiCompatibleProvider implements AiProvider {
     }
 
     private AiCallResult resultFromResponse(String responseBody, long latencyMs) {
+        return invocationResultFromResponse(responseBody, latencyMs).result();
+    }
+
+    private ProviderInvocationResult invocationResultFromResponse(String responseBody, long latencyMs) {
         Map<String, Object> response = parseJsonObject(responseBody, "AI provider response is not valid JSON");
         String content = extractContent(response);
         Map<String, Object> output = parseJsonObject(content, "AI response is not valid JSON");
-        return new AiCallResult(
+        AiCallResult result = new AiCallResult(
             output,
             stringOrDefault(output.get("overallSuggestion"), "needs_review"),
             decimalValue(output.get("confidence")),
@@ -121,6 +130,7 @@ public class OpenAiCompatibleProvider implements AiProvider {
             latencyMs,
             content
         );
+        return new ProviderInvocationResult(result, usageFromResponse(response));
     }
 
     private String extractContent(Map<String, Object> response) {
@@ -230,6 +240,41 @@ public class OpenAiCompatibleProvider implements AiProvider {
             }
         }
         return 0;
+    }
+
+    private AiCallUsage usageFromResponse(Map<String, Object> response) {
+        Object usage = response.get("usage");
+        if (!(usage instanceof Map<?, ?> usageMap)) {
+            return null;
+        }
+        return new AiCallUsage(
+            integerValue(usageMap.get("prompt_tokens")),
+            integerValue(usageMap.get("completion_tokens")),
+            integerValue(usageMap.get("total_tokens")),
+            cacheHitTokens(usageMap)
+        );
+    }
+
+    private Integer cacheHitTokens(Map<?, ?> usageMap) {
+        Integer deepseekValue = integerValue(usageMap.get("prompt_cache_hit_tokens"));
+        if (deepseekValue != null) {
+            return deepseekValue;
+        }
+        return integerValue(usageMap.get("cached_tokens"));
+    }
+
+    private Integer integerValue(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value != null) {
+            try {
+                return Integer.parseInt(String.valueOf(value));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private BigDecimal decimalValue(Object value) {
