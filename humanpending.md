@@ -4,8 +4,9 @@
 
 - [M6-P0 resolved] Baseline lock and full smoke audit completed on `m6-engineering-hardening`; `m5-p7-baseline` tag exists, and `docs/internal/m6p0-smoke-audit-report.md` records 53 audit checks.
 - [M6-P0.5 resolved] Submission lifecycle semantics decision is complete: Q1-Q9=A, Q10=B; `submitted` is the immutable answer fact, `under_ai_review` will be V9-normalized, AI/reviewer facts stay append-only, and `deadlineAt` is required at task create.
-- [M6-P1 ready] Implement Submission Lifecycle + Default Flow Repair after the implementation prompt: V9 status normalization, submit status repair, real-submit reviewer/export regressions, AI-review no-status-mutation guard, deadlineAt 400 validation, and full P0/P1 regression set.
-- [M6-P3 pending] Cost/performance baseline is gated by M6-P1 because export and reviewer measurements are not meaningful while normal submitted facts can be excluded by status drift.
+- [M6-P1 resolved] Submission Lifecycle + Default Flow Repair implemented: V9 normalizes `under_ai_review` to `submitted`, normal submit writes `submitted`, real-submit reviewer/export regressions were added, AI review is guarded as a side fact, and create-task `deadlineAt` is contract-required with controlled validation.
+- [M6-P2 ready] Owner Setup UX Repair: schema creation discoverability, owner task created-time display, status-label polish, and repeat-claim copy/UX clarification.
+- [M6-P3 pending] Cost/performance baseline is gated by M6-P2/final smoke because export and reviewer measurements should be taken after lifecycle and setup UX repairs are verified.
 
 ## M3 启动前必做(P0)
 

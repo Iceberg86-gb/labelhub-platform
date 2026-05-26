@@ -741,3 +741,38 @@ M6-P1 is a bug-fix sprint centered on submission lifecycle semantics and task-cr
 - Tests: about 250-450 lines, intentionally larger than the fix.
 
 Cost/performance remains gated until the normal submit -> reviewer queue -> Trusted Export path is semantically correct.
+
+## 2026-05-25 M6 Phase 1 Implementation Verification
+
+M6-P1 implements the M6-P0.5 lifecycle裁决 through a small bug-fix exception set. The implementation keeps the answer lifecycle minimal: normal submit writes `submitted`; AI review and reviewer verdict remain append-only facts around that answer.
+
+### Bug #001 Resolution
+
+- V9 migration `V202611281000__submission_lifecycle_alignment.sql` changes the `submissions.status` physical default to `submitted` and normalizes historical `under_ai_review` rows to `submitted`.
+- `SessionService.submit` now writes `SubmissionStatusCodes.SUBMITTED` for the submission row while leaving the session row's submitted status independent.
+- Reviewer queue and Trusted Export readers keep their canonical `submitted` scope. They do not add legacy multi-status readers; real-submit regression tests prove the scope is now populated.
+- AI review does not mutate `submission.status`. `AiReviewServiceTest.ai_review_does_not_mutate_submission_status` guards that AI provenance and Quality Ledger writes remain side facts.
+
+### Bug #002 Resolution
+
+- OpenAPI is bumped to `0.9.1` as a patch-level contract correction.
+- `CreateTaskRequest.required` now includes `deadlineAt`, and generated Java/TypeScript types both treat `deadlineAt` as required.
+- `TaskControllerValidationContractTest.create_task_request_keeps_deadline_required_contract` guards the generated Java validation shape so missing `deadlineAt` returns controlled validation errors before controller logic can dereference null.
+- `m6p1-submission-lifecycle.contract.tsx` guards the frontend generated type shape.
+
+### Regression Tests Added
+
+- `SessionServiceTest.submit_creates_submission_with_submitted_status_and_inherits_session_schema_version_id` — normal submit creates a `submitted` answer fact.
+- `SessionServiceTest.submit_writes_session_status_submitted_independently_from_submission_status` — session and submission status are independent concepts.
+- `AiReviewServiceTest.ai_review_does_not_mutate_submission_status` — AI review appends facts without lifecycle mutation.
+- `SubmissionLifecycleMigrationContractTest.submission_status_default_is_submitted_and_legacy_under_ai_review_is_normalized` — V9 keeps the physical default and normalization rule.
+- `SubmissionLifecycleIntegrationTest.labeler_submit_appears_in_default_reviewer_queue` — real labeler submit path feeds the default reviewer queue.
+- `SubmissionLifecycleIntegrationTest.trusted_export_includes_submission_created_by_real_submit_path` — real labeler submit path feeds Trusted Export records.
+- `M1ApiIntegrationTest.create_task_requires_deadline_with_400` — missing `deadlineAt` returns 400 rather than a null dereference.
+- `TaskControllerValidationContractTest.create_task_request_keeps_deadline_required_contract` and `m6p1-submission-lifecycle.contract.tsx` — generated contract drift guards for backend and frontend.
+
+### M5 Evidence Re-Verification Impact
+
+- The M5 Trusted Export hash/diff evidence remains valid. M6-P1 fixes the skipped state-space gap so future smoke can produce nonzero submitted records through the real labeler submit path.
+- M4 Quality Ledger and M5 AI ledger integration remain append-only fact flows; no reviewer queue or export reader widening was needed.
+- M6-P2 should re-smoke the Owner task setup UX and may refresh the Trusted Export browser evidence with nonzero records.

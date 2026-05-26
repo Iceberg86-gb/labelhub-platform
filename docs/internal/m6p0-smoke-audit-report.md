@@ -292,3 +292,27 @@ M6-P1 is **not** Cost/Performance Baseline. It is **Submission Lifecycle + Defau
 
 Reason: audit exposed a central semantic mismatch that affects reviewer queue defaults and Trusted Export data inclusion. Optimizing cost/performance before repairing this would measure the wrong system.
 
+## Appendix: M6-P1 Resolution Log
+
+M6-P1 resolves the two audit bugs that were promoted into the submission lifecycle repair sprint.
+
+### Resolved
+
+- **Bug #001: submission lifecycle status mismatch** — resolved by V9 default normalization, `SessionService.submit` writing `submitted`, and real-submit regressions for reviewer queue and Trusted Export.
+- **Bug #002: task create missing `deadlineAt` could reach null dereference** — resolved by OpenAPI `0.9.1` required `deadlineAt`, generated backend/frontend required types, and validation contract tests.
+- **Polish #003: Owner submitted-records table showed raw `under_ai_review`** — resolved by user-facing status labels, with legacy `under_ai_review` mapped to the same submitted label during transition.
+
+### Deferred To M6-P2
+
+- **Bug #003: schema creation discoverability** — Owner setup UX should make schema creation reachable from the task setup path.
+- **Polish #001: login autofill/manual credential friction** — keep as setup UX polish.
+- **Polish #002: owner task created-time empty display** — normalize table copy/formatting.
+- **Product Boundary #001: duplicate claim semantics** — M6-P0.5裁决 keeps claim semantics item-scoped; M6-P2 should clarify copy or UX affordances.
+
+### Deferred To M6-P4
+
+- **Product Boundary #002: destructive/failure probes** — provider failure, export failure with MinIO down, expired token, browser back navigation, same-name schema fields, and large-data stress remain robustness/performance work.
+
+### Evidence Follow-Up
+
+The M5 Trusted Export browser evidence remains structurally valid, but M6-P1 makes the real labeler submit path populate the `submitted` scope. M6-P2 or a final regression pass should refresh the Trusted Export screenshot with nonzero records.
