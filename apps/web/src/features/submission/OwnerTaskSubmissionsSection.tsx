@@ -16,6 +16,11 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   minute: '2-digit',
 });
 
+const STATUS_LABELS: Record<string, string> = {
+  submitted: '已提交',
+  under_ai_review: '已提交',
+};
+
 export function OwnerTaskSubmissionsSection({ taskId }: OwnerTaskSubmissionsSectionProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,7 +43,7 @@ export function OwnerTaskSubmissionsSection({ taskId }: OwnerTaskSubmissionsSect
       },
       { title: 'Labeler', dataIndex: 'labelerId', width: 110, render: (value: number) => `#${value}` },
       { title: 'Schema', dataIndex: 'schemaVersionId', width: 110, render: (value: number) => `#${value}` },
-      { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag color="green">{value}</Tag> },
+      { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag color="green">{statusLabel(value)}</Tag> },
       { title: '提交时间', dataIndex: 'createdAt', width: 150, render: (value: string) => formatDateTime(value) },
       {
         title: '操作',
@@ -102,4 +107,8 @@ function parsePositiveInt(value: string | null) {
 
 function formatDateTime(value?: string) {
   return value ? dateFormatter.format(new Date(value)) : '-';
+}
+
+function statusLabel(status: string) {
+  return STATUS_LABELS[status] ?? status;
 }
