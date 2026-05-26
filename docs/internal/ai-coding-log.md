@@ -528,3 +528,13 @@ Record major AI-assisted implementation prompts, accepted changes, rejected sugg
 - R2 implementation: internal BigDecimal division uses 10 decimal places before final `setScale(6, HALF_UP)` for DB write. The small-cache-hit rounding test documents that tiny cache-hit contributions can round to `0.000000`.
 - Verification: sandbox `mvn -pl services/api test` hit the known local `HttpServer` bind restriction in `OpenAiCompatibleProviderTest`; rerunning with approved local-bind permission passed with 362 tests, 0 failures/errors, and 78 Docker-dependent skips.
 - Scope guard: no V11 migration, no OpenAPI shape change, no CNY pricing, no metrics endpoint, no dashboard, and no real-time pricing fetch were added.
+
+## 2026-05-26 M6 Phase 3b Idempotency Metrics Baseline
+
+- Prompt: add idempotency hit/miss/mismatch observability after M6-P3a token persistence and M6-P3a-2 USD cost computation, while first backfilling the M6-P3a-2 `AiProvider.modelName()` transparency record.
+- Backfill: `decision-log.md` now records the M6-P3a-2 `AiProvider.modelName()` interface evolution and `m6p3a2-scope-budget.md` lists it in the strict-constraint exception table.
+- Scope: M6-P3b is observational only. It adds Micrometer/Prometheus infrastructure and counter calls without changing `AiCallMapper.selectByIdempotencyKey`, idempotency branch logic, token persistence, cost calculation, OpenAPI, or migrations.
+- RED check: added `AiIdempotencyMetricsTest`, `ActuatorPrometheusEndpointExposureTest`, and three `AiReviewServiceTest` counter-regression cases first. The Maven run failed at compilation because `AiIdempotencyMetrics` did not exist, which proved the new tests were active.
+- Accepted implementation: added `micrometer-registry-prometheus`, exposed `metrics,prometheus` actuator endpoints, added a narrow dev-only SecurityConfig exception for `/actuator/metrics` and `/actuator/prometheus`, introduced `AiIdempotencyMetrics`, and instrumented HIT/MISS/MISMATCH branches in `AiReviewService.review`.
+- Prometheus evidence: `ActuatorPrometheusEndpointExposureTest` verifies the scrape output contains `labelhub_ai_idempotency_hit_total`, `labelhub_ai_idempotency_miss_total`, and `labelhub_ai_idempotency_mismatch_total`.
+- Full verification: reran `mvn -pl services/api test` with approved local-bind permission and it passed with 369 tests, 0 failures/errors, and 78 Docker-dependent skips.

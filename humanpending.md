@@ -8,8 +8,11 @@
 - [M6-P2 resolved] Owner Setup UX Repair implemented: login autofill submit reads actual browser form values, owner task created-time fallback is explicit, draft task detail shows three setup CTAs, and repeat-claim semantics are stated in Labeler marketplace copy.
 - [M6-P3a resolved] AI token usage persistence implemented: V10 adds nullable token columns, OpenAI-compatible provider usage is parsed defensively, `ai_calls` persists prompt/completion/total/cache-hit tokens when present, and `cost_decimal` remains the M3 fixed estimate.
 - [M6-P3a-2 resolved] AI cost computation from usage implemented: USD pricing config from DeepSeek official English pricing, A2 fallback (prompt+completion required), R2 rounding (BigDecimal internal, `DECIMAL(12,6)` DB), and `AiReviewService.review` now writes calculator output when usage is complete.
-- [M6-P3b ready] Idempotency hit ratio and Spring Actuator/Micrometer metrics baseline remain the next cost/performance measurement track.
+- [M6-P3b resolved] Idempotency metrics baseline implemented: hit/miss/mismatch Micrometer counters with provider tags are exposed through `/actuator/prometheus`, and saved-cost derivation is now possible from hit count plus M6-P3a-2 real cost.
 - [M6-P3c ready] Large-task export and Quality Ledger performance baseline remain ready after token persistence.
+- [M6-P4 ready] Robustness hardening remains ready: provider retry/backoff, timeout, failed-call recording, and export residue cleanup.
+- [Metrics data accumulation watch] Idempotency hit ratio needs 100+ AI review attempts over a 7-day observation window before the metric is stable enough for claims; revisit during M6-P5 final regression.
+- [Production posture watch] `/actuator/prometheus` and `/actuator/metrics` are exposed without auth for local development observability; productionization requires a separate actuator security review.
 - [Pricing follow-up] If DeepSeek changes official USD pricing or a stable CNY v4-flash pricing source appears, refresh `application.yml` and the decision-log evidence date.
 - [v4-pro discount watch] DeepSeek notes v4-pro pricing adjusts after the 75% discount promotion ends on `2026-05-31 15:59 UTC`; update config before relying on v4-pro cost values after that date.
 - [M6-P5 pending] Final regression should capture the M6-P2 TaskNextStepGuidance browser screenshot; M6-P2 is type/build verified, but browser automation tools were not exposed in this session.
