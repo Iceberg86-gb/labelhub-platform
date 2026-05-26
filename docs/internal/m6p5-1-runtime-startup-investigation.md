@@ -113,3 +113,15 @@ Blast radius: one production file, one annotation import, one constructor annota
 M6-P5 ran focused service tests and the full backend Maven test suite, but the suite did not include a full Spring Boot context startup test. The existing AI tests instantiate `AiRetryPolicy` manually, including the package-private two-argument constructor in tests, so they exercised retry behavior but not Spring bean construction.
 
 M6-P5.1 adds `ApplicationContextStartupTest` as the 12th cross-phase guardrail so the runtime context has to load in the test suite before future defense-readiness claims.
+
+## Guardrail Test Setup Note
+
+`services/api/src/test/resources/application.yml` intentionally supplies only object-storage test credentials. Because test resources shadow the main `application.yml`, the new full-context guardrail must provide the runtime-equivalent datasource, security, and object-storage properties directly on `@SpringBootTest`.
+
+This is not a production-code fix. It keeps the guardrail on the real Spring Boot context graph while avoiding mocks for `AiRetryPolicy`, `OpenAiCompatibleProperties`, or AI provider beans.
+
+After the constructor fix and guardrail properties were in place:
+
+- `mvn -pl services/api -Dtest=ApplicationContextStartupTest test` passed with `1` test, `0` failures, `0` errors.
+- `mvn -pl services/api test` passed with `390` tests, `0` failures, `0` errors, `78` skipped.
+- `mvn -pl services/api spring-boot:run` logged `Started ApiApplication in 1.578 seconds`.
