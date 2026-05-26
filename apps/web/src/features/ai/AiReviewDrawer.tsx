@@ -68,7 +68,7 @@ function AiReviewResultPanel({ result }: { result: AiReviewResult }) {
       </div>
 
       <div className="ai-review-meta-grid">
-        <MetaItem label="AI 建议" value={<Tag color="green">AI 建议: {OVERALL_SUGGESTION_LABELS[result.overallSuggestion]}</Tag>} />
+        <MetaItem label="AI 建议" value={<Tag color="green">{OVERALL_SUGGESTION_LABELS[result.overallSuggestion]}</Tag>} />
         <MetaItem label="Provider" value={`${aiCall.providerName} / ${aiCall.modelName}`} />
         <MetaItem label="Prompt" value={aiCall.promptVersion} />
         <MetaItem label="Input hash" value={<TruncatedHash value={aiCall.inputHash} ariaLabel={`AI review ${aiCall.id} input hash`} />} />
