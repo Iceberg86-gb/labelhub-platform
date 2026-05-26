@@ -1,5 +1,5 @@
-import { Button, Card, Empty, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconArrowLeft, IconClose, IconPlusCircle, IconTickCircle } from '@douyinfe/semi-icons';
+import { Button, Card, Empty, Space, Spin, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { IconArrowLeft, IconClose, IconInfoCircle, IconPlusCircle, IconTickCircle } from '@douyinfe/semi-icons';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
@@ -93,9 +93,14 @@ export function ReviewerSubmissionPage() {
             <VerdictTag status={verdictQuery.data?.status ?? 'pending'} />
           </Space>
         </div>
-        <Typography.Text type="tertiary">
-          Verdict 来源: {verdictQuery.data?.derivedFromEntryId ? `Ledger #${verdictQuery.data.derivedFromEntryId}` : '暂无 ledger entry'}
-        </Typography.Text>
+        <div className="verdict-source-line">
+          <Typography.Text>
+            Verdict 来源: {verdictQuery.data?.derivedFromEntryId ? `Ledger #${verdictQuery.data.derivedFromEntryId}` : '暂无 ledger entry'}
+          </Typography.Text>
+          <Tooltip content="当前 Verdict 由最新 Quality Ledger entry 派生。">
+            <IconInfoCircle aria-label="Verdict ledger derivation" />
+          </Tooltip>
+        </div>
       </div>
 
       <div className="reviewer-submission-grid">
