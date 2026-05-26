@@ -9,6 +9,7 @@ import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
 import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
+import com.labelhub.api.module.ai.observability.AiIdempotencyMetrics;
 import com.labelhub.api.module.ai.provider.AiCallRequest;
 import com.labelhub.api.module.ai.provider.AiCallResult;
 import com.labelhub.api.module.ai.provider.AiCallUsage;
@@ -65,6 +66,7 @@ class AiReviewServiceTest {
     private final LedgerService ledgerService = mock(LedgerService.class);
     private final AiProvider aiProvider = mock(AiProvider.class);
     private final AiCallCostCalculator costCalculator = mock(AiCallCostCalculator.class);
+    private final AiIdempotencyMetrics metrics = mock(AiIdempotencyMetrics.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
     private AiReviewService service;
@@ -84,7 +86,8 @@ class AiReviewServiceTest {
             objectMapper,
             clock,
             aiProvider,
-            costCalculator
+            costCalculator,
+            metrics
         );
         when(aiProvider.providerName()).thenReturn("mock");
         when(aiProvider.modelName()).thenReturn("mock-v1");
@@ -392,6 +395,33 @@ class AiReviewServiceTest {
     }
 
     @Test
+    void review_increments_hit_counter_when_idempotency_key_matches() {
+        String inputHash = inputHashForDefaultFixture();
+        AiCallEntity existing = persistedAiCall(inputHash);
+        when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
+        when(aiCallInFieldMapper.selectBySubmissionAndAiCall(300L, 900L)).thenReturn(List.of(fieldRow(300L, 900L, "field-title", 1)));
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        verify(metrics).recordHit("mock");
+        verify(metrics, never()).recordMiss(any());
+        verify(metrics, never()).recordMismatch(any());
+    }
+
+    @Test
+    void review_increments_miss_counter_on_new_invocation() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        verify(metrics).recordMiss("mock");
+        verify(metrics, never()).recordHit(any());
+        verify(metrics, never()).recordMismatch(any());
+    }
+
+    @Test
     void review_throws_ai_input_hash_mismatch_when_key_matches_but_hash_differs() {
         AiCallEntity existing = persistedAiCall("different-input-hash");
         when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
@@ -400,6 +430,19 @@ class AiReviewServiceTest {
             .isInstanceOf(AiInputHashMismatchException.class);
 
         verify(aiProvider, never()).invoke(any());
+    }
+
+    @Test
+    void review_increments_mismatch_counter_on_input_hash_difference() {
+        AiCallEntity existing = persistedAiCall("different-input-hash");
+        when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(AiInputHashMismatchException.class);
+
+        verify(metrics).recordMismatch("mock");
+        verify(metrics, never()).recordHit(any());
+        verify(metrics, never()).recordMiss(any());
     }
 
     @Test
