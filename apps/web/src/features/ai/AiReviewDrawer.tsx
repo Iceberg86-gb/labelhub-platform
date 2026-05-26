@@ -2,6 +2,7 @@ import { Banner, Empty, SideSheet, Spin, Tag, Typography } from '@douyinfe/semi-
 import type { ReactNode } from 'react';
 import type { AiReviewResult, FieldFinding } from '../../entities/ai/aiTypes';
 import { OVERALL_SUGGESTION_LABELS, SEVERITY_COLORS, SEVERITY_LABELS } from '../../entities/ai/aiTypes';
+import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 
 type AiReviewDrawerProps = {
   open: boolean;
@@ -41,30 +42,37 @@ export function AiReviewDrawer({ open, onClose, result, loading }: AiReviewDrawe
 function AiReviewResultPanel({ result }: { result: AiReviewResult }) {
   const aiCall = result.aiCall;
   const completedAt = aiCall.completedAt ?? aiCall.createdAt;
+  const costText = aiCall.cost ? `${aiCall.cost} USD` : '-';
+  const latencyText = aiCall.latencyMs != null ? `${aiCall.latencyMs} ms` : '-';
+  const completedText = formatDateTime(completedAt);
 
   return (
     <>
       <Banner
+        className={result.idempotencyHit ? 'ai-review-banner ai-review-banner--hit' : 'ai-review-banner'}
         fullMode={false}
         type={result.idempotencyHit ? 'info' : 'success'}
         closeIcon={null}
         title={result.idempotencyHit ? '复用历史结果' : 'AI 检查完成'}
         description={
           result.idempotencyHit
-            ? 'input hash 与 idempotency key 命中,本次没有再次调用 AI provider。'
+            ? `input hash 与 idempotency key 命中,本次未产生 cost(命中历史 ${costText})。`
             : 'Mock provider 已完成本次字段级检查。'
         }
       />
 
+      <div className="ai-review-stat-grid">
+        <ReviewStat label="Cost" value={costText} />
+        <ReviewStat label="Latency" value={latencyText} />
+        <ReviewStat label="Completed" value={completedText} />
+      </div>
+
       <div className="ai-review-meta-grid">
-        <MetaItem label="建议" value={<Tag color="green">{OVERALL_SUGGESTION_LABELS[result.overallSuggestion]}</Tag>} />
+        <MetaItem label="AI 建议" value={<Tag color="green">AI 建议: {OVERALL_SUGGESTION_LABELS[result.overallSuggestion]}</Tag>} />
         <MetaItem label="Provider" value={`${aiCall.providerName} / ${aiCall.modelName}`} />
         <MetaItem label="Prompt" value={aiCall.promptVersion} />
-        <MetaItem label="Cost" value={`${aiCall.cost ?? '-'} USD`} />
-        <MetaItem label="Latency" value={aiCall.latencyMs != null ? `${aiCall.latencyMs} ms` : '-'} />
-        <MetaItem label="Completed" value={formatDateTime(completedAt)} />
-        <MetaItem label="Input hash" value={shortHash(aiCall.inputHash)} mono />
-        <MetaItem label="Output hash" value={shortHash(aiCall.outputHash)} mono />
+        <MetaItem label="Input hash" value={<TruncatedHash value={aiCall.inputHash} ariaLabel={`AI review ${aiCall.id} input hash`} />} />
+        <MetaItem label="Output hash" value={<TruncatedHash value={aiCall.outputHash} ariaLabel={`AI review ${aiCall.id} output hash`} />} />
         {result.usage ? (
           <>
             <MetaItem label="Prompt Tokens" value={result.usage.promptTokens ?? '-'} />
@@ -94,6 +102,15 @@ function AiReviewResultPanel({ result }: { result: AiReviewResult }) {
   );
 }
 
+function ReviewStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="ai-review-stat">
+      <Typography.Text type="tertiary">{label}</Typography.Text>
+      <Typography.Text strong>{value}</Typography.Text>
+    </div>
+  );
+}
+
 function MetaItem({ label, value, mono = false }: { label: string; value: ReactNode; mono?: boolean }) {
   return (
     <div>
@@ -117,10 +134,6 @@ function FindingItem({ finding }: { finding: FieldFinding }) {
       {finding.confidence ? <Typography.Text type="tertiary">confidence: {finding.confidence}</Typography.Text> : null}
     </div>
   );
-}
-
-function shortHash(value?: string | null) {
-  return value ? `${value.slice(0, 16)}...` : '-';
 }
 
 function formatDateTime(value?: string | null) {

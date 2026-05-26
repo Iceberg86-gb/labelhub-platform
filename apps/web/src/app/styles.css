@@ -1506,6 +1506,40 @@ a {
   gap: 12px;
 }
 
+.ai-review-banner--hit {
+  border-color: #93c5fd;
+  background: #1d4ed8;
+}
+
+.ai-review-banner--hit .semi-banner-title,
+.ai-review-banner--hit .semi-banner-content {
+  color: #eff6ff;
+}
+
+.ai-review-banner--hit .semi-banner-title {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.ai-review-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ai-review-stat {
+  display: grid;
+  gap: 3px;
+  padding: 12px;
+  border: 1px solid #d8dee9;
+  background: #ffffff;
+}
+
+.ai-review-stat strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
 .ai-review-meta-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
