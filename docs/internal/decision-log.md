@@ -1186,3 +1186,57 @@ All preceding invariants still hold:
 - No retry latency timer or error dashboard.
 - No multi-provider registry.
 - No retry jitter.
+
+## 2026-05-26 M6 Phase 4b Trusted Export Inline Cleanup
+
+M6-P4b implements the export side of the M6-P4.0 final裁决. Object-storage keys written during a failed synchronous export are now cleaned up inline before the existing `ExportFailureException` is rethrown. M6-P4b intentionally does **not** persist failed export jobs (Q10=A, false symmetry deferred).
+
+### Inline Cleanup Strategy
+
+- `ExportService.createSnapshot` tracks object keys in a local `writtenKeys` list.
+- Keys are appended only after `ObjectStorageWriter.putObject(...)` succeeds.
+- On `RuntimeException`, `ExportService` calls `cleanupBestEffort(writtenKeys)` before rethrowing the existing `ExportFailureException`.
+- Cleanup deletes exact keys only. It does not delete prefixes, scan buckets, or touch unrelated export attempts.
+
+### Why Best-Effort
+
+Cleanup itself can fail because S3/MinIO delete operations are remote calls. M6-P4b treats cleanup as best-effort:
+
+- Each key is deleted in its own try/catch.
+- Cleanup failure is logged with the object key.
+- Cleanup failure does not mask the original export failure.
+- The caller still receives `ExportFailureException` for the original failed export path.
+
+This preserves the most useful root cause while still reducing object-storage residue.
+
+### Q10=A: No Failed Export Persistence
+
+M6-P4b preserves the M6-P4.0 false-symmetry decision:
+
+- AI failed calls are provenance/cost/retry evidence with direct consumers.
+- Synchronous export failed jobs currently have no API/UI consumer.
+- Adding failed export-job persistence here would introduce transaction/state-machine debt without current product value.
+
+Failed export-job persistence remains deferred until a future async export/job化 phase.
+
+### Strict-Constraint Exception
+
+| Exception | Location | R10 path |
+|-----------|----------|----------|
+| Track written object keys and cleanup exact keys on failure | `ExportService.createSnapshot` + `ObjectStorageWriter.deleteObject` | Revert P4b cleanup commits; behavior returns to documented orphan-object risk |
+
+### Regression Coverage
+
+- `partial_export_failure_deletes_written_object_keys` proves only successfully written keys are cleaned.
+- `cleanup_does_not_delete_unrelated_objects` proves cleanup is exact-key, not prefix-based.
+- `cleanup_failure_preserves_original_export_failure` proves cleanup failures do not replace the original export failure.
+- `successful_export_does_not_trigger_cleanup` proves success path remains untouched.
+- `no_failed_export_job_persistence` guards Q10=A.
+
+### Sanity Check
+
+- No OpenAPI change.
+- No V11 migration.
+- No background orphan scanner.
+- No failed export-job persistence.
+- Existing Trusted Export hash/reproducibility tests still pass.

@@ -12,7 +12,9 @@
 - [M6-P3c ready] Large-task export and Quality Ledger performance baseline remain ready after token persistence.
 - [M6-P4.0 resolved] Robustness failure semantics final裁决 is complete: Q1=B, Q2=A, Q3=C, Q4=C, Q5=B, Q6=B, Q7=B, Q8=C, Q9=B, Q10=A, S1=B split into P4a/P4b.
 - [M6-P4a resolved] AI Provider Failure Evidence + Retry Semantics implemented: failed `ai_calls` rows use attempt-specific idempotency keys, `AiCallStatusCodes` is explicit, OpenAI-compatible timeout/retry config is scoped without a provider registry, retryable failures use deterministic exponential backoff, miss remains one logical review, and `labelhub.ai.provider.retry` records retry attempts separately.
-- [M6-P4b ready] Trusted Export Inline Cleanup: clean exact object-storage keys written by a failed sync export attempt; do not persist failed export jobs.
+- [M6-P4b resolved] Trusted Export Inline Cleanup implemented: exact object-storage keys written by a failed sync export attempt are cleaned best-effort, cleanup failures do not mask the original `ExportFailureException`, and failed export jobs remain intentionally unpersisted.
+- [Signal 1 B class complete] M6-P4a + M6-P4b close the 60-day M6+ robustness track: AI provider failures now have evidence/retry semantics, and Trusted Export failure residue is cleaned inline without false-symmetry failed-job persistence.
+- [M6-P5 ready] Final regression + operational verification can start after deciding whether to run optional M6-P3c large-task performance baseline first.
 - [False symmetry deferred] Export failed-job persistence is intentionally not mirrored to failed AI call persistence; defer until async export/job化 creates a real API/UI consumer.
 - [Metrics data accumulation watch] Idempotency hit ratio needs 100+ AI review attempts over a 7-day observation window before the metric is stable enough for claims; revisit during M6-P5 final regression.
 - [Production posture watch] `/actuator/prometheus` and `/actuator/metrics` are exposed without auth for local development observability; productionization requires a separate actuator security review.
