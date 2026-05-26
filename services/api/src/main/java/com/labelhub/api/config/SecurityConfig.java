@@ -39,7 +39,14 @@ public class SecurityConfig {
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**", "/actuator/health", "/actuator/info", "/error").permitAll()
+                .requestMatchers(
+                    "/auth/**",
+                    "/actuator/health",
+                    "/actuator/info",
+                    "/actuator/metrics",
+                    "/actuator/prometheus",
+                    "/error"
+                ).permitAll()
                 .requestMatchers("/internal/**").permitAll()
                 .requestMatchers("/schemas/**").hasRole("OWNER")
                 .requestMatchers("/datasets/**").hasRole("OWNER")
