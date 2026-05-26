@@ -801,3 +801,56 @@ M6-P2 closes the setup UX items found during the M6-P0 audit without changing ba
 
 - M6-P2 does not alter the M5 four-highlight evidence chains.
 - M6-P2 does not alter M6-P1 submission lifecycle semantics. The setup guidance derives state from existing `Task` fields and links to existing surfaces.
+
+## 2026-05-25 M6 Phase 3a AI Token Usage Persistence
+
+M6-P3a captures provider-reported token usage into `ai_calls` as the first data layer for the M6+ cost/performance baseline. Cost computation from token usage is intentionally deferred to M6-P3a-2 until the pricing source and billing currency semantics are locked.
+
+### V10 Schema
+
+- V10 migration `V202611291000__ai_calls_token_usage.sql` adds four nullable INT columns on `ai_calls`: `prompt_tokens`, `completion_tokens`, `total_tokens`, and `cache_hit_tokens`.
+- The columns have no DEFAULT. `NULL` means the call predates token tracking or the provider omitted usage; `0` means the provider reported a real zero-token value.
+- This distinction is required for M6-P3a-2: `NULL` keeps the fixed estimate fallback available, while `0` remains a real usage value.
+
+### Provider Compatibility
+
+- `OpenAiCompatibleProvider` now parses `usage.prompt_tokens`, `usage.completion_tokens`, and `usage.total_tokens`.
+- Cache-hit tokens use a defensive parser: it prefers DeepSeek's `prompt_cache_hit_tokens` and falls back to the OpenAI-compatible `cached_tokens` shape used by some providers.
+- Evidence source checked on 2026-05-25: official DeepSeek API docs for chat completion usage and context caching token usage.
+
+### Behavior Change Justification
+
+`AiReviewService.review` now calls `aiProvider.invokeWithUsage(...)` internally. This is a data-collection extension, not a contract break:
+
+- The public review endpoint and service return shape remain compatible; OpenAPI 0.10.0 only adds optional `AiReviewResult.usage`.
+- `AiProvider.invoke(...)` and `AiCallResult` signatures are unchanged.
+- `AiProvider.invokeWithUsage(...)` is a default method returning usage `null`, so existing providers keep working unless they opt into usage parsing.
+- AI provenance, Quality Ledger, and submission lifecycle paths are unchanged.
+- `cost_decimal` write behavior is unchanged and remains the M3 fixed-estimate path.
+
+R10 path: revert the token persistence commit to restore `AiReviewService` to `invoke(...)`; V10 columns are additive and nullable, so leaving them unused is safe.
+
+### Pricing Computation Deferral
+
+M6-P3a does not introduce an `AiCallCostCalculator` or pricing configuration because pricing is not yet a stable input:
+
+- DeepSeek English docs expose v4-flash style USD pricing, while China-region billing/currency needs confirmation for the user's setup.
+- Existing Chinese pricing references focus on other model names or have timing inconsistencies.
+- Persisting raw token usage has standalone engineering value and avoids calculating money from uncertain rates.
+
+M6-P3a-2 will add usage-based cost calculation after pricing source, currency, and rounding semantics are confirmed. Until then, `ai_calls.cost_decimal` continues to record the configured fixed estimate.
+
+### What M6-P3a Does Not Do
+
+- No cost computation from usage.
+- No pricing config in `application.yml`.
+- No metrics endpoint.
+- No idempotency hit ratio counter.
+- No retry/backoff.
+
+### Verification
+
+- Backend tests: 354 run, 0 failures, 78 skipped in the Docker-disabled local environment.
+- Frontend typecheck and production build passed.
+- New regression coverage guards provider usage parsing, missing/partial usage payloads, cache-hit field compatibility, V10 nullable/no-default columns, token persistence, null-token persistence, and fixed `cost_decimal` behavior.
+- M6-P1 Q6 invariant remains green: AI review does not mutate `submission.status`.
