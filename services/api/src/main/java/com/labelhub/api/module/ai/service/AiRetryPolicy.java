@@ -5,6 +5,7 @@ import com.labelhub.api.module.ai.provider.OpenAiCompatibleProperties;
 import com.labelhub.api.module.ai.provider.ProviderInvocationResult;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,6 +14,7 @@ public class AiRetryPolicy {
     private final OpenAiCompatibleProperties properties;
     private final LongConsumer sleeper;
 
+    @Autowired
     public AiRetryPolicy(OpenAiCompatibleProperties properties) {
         this(properties, AiRetryPolicy::sleepUnchecked);
     }
