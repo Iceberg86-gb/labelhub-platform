@@ -56,6 +56,7 @@ public class AiReviewService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final AiProvider aiProvider;
+    private final AiCallCostCalculator costCalculator;
 
     public AiReviewService(
         SubmissionMapper submissionMapper,
@@ -68,7 +69,8 @@ public class AiReviewService {
         Canonicalizer canonicalizer,
         ObjectMapper objectMapper,
         Clock clock,
-        AiProvider aiProvider
+        AiProvider aiProvider,
+        AiCallCostCalculator costCalculator
     ) {
         this.submissionMapper = submissionMapper;
         this.schemaVersionMapper = schemaVersionMapper;
@@ -81,6 +83,7 @@ public class AiReviewService {
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.aiProvider = aiProvider;
+        this.costCalculator = costCalculator;
     }
 
     @Transactional
@@ -128,7 +131,7 @@ public class AiReviewService {
         aiCall.setResponsePayload(responsePayload);
         aiCall.setTokenInput(result.tokenInput());
         aiCall.setTokenOutput(result.tokenOutput());
-        aiCall.setCostDecimal(result.cost());
+        aiCall.setCostDecimal(costCalculator.computeCost(aiProvider.modelName(), usage));
         aiCall.setPromptTokens(usage == null ? null : usage.promptTokens());
         aiCall.setCompletionTokens(usage == null ? null : usage.completionTokens());
         aiCall.setTotalTokens(usage == null ? null : usage.totalTokens());
