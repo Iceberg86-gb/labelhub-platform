@@ -10,6 +10,7 @@ import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
 import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
+import com.labelhub.api.module.ai.observability.AiIdempotencyMetrics;
 import com.labelhub.api.module.ai.provider.AiCallRequest;
 import com.labelhub.api.module.ai.provider.AiCallResult;
 import com.labelhub.api.module.ai.provider.AiCallUsage;
@@ -57,6 +58,7 @@ public class AiReviewService {
     private final Clock clock;
     private final AiProvider aiProvider;
     private final AiCallCostCalculator costCalculator;
+    private final AiIdempotencyMetrics metrics;
 
     public AiReviewService(
         SubmissionMapper submissionMapper,
@@ -70,7 +72,8 @@ public class AiReviewService {
         ObjectMapper objectMapper,
         Clock clock,
         AiProvider aiProvider,
-        AiCallCostCalculator costCalculator
+        AiCallCostCalculator costCalculator,
+        AiIdempotencyMetrics metrics
     ) {
         this.submissionMapper = submissionMapper;
         this.schemaVersionMapper = schemaVersionMapper;
@@ -84,6 +87,7 @@ public class AiReviewService {
         this.clock = clock;
         this.aiProvider = aiProvider;
         this.costCalculator = costCalculator;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -109,11 +113,14 @@ public class AiReviewService {
                 existing.setOutputHash(hash(existing.getResponsePayload()));
                 List<AiCallInFieldEntity> rows =
                     aiCallInFieldMapper.selectBySubmissionAndAiCall(submissionId, existing.getId());
+                metrics.recordHit(aiProvider.providerName());
                 return new AiReviewResultView(existing, reconstructResult(existing), rows, true);
             }
+            metrics.recordMismatch(aiProvider.providerName());
             throw new AiInputHashMismatchException(submissionId, idempotencyKey);
         }
 
+        metrics.recordMiss(aiProvider.providerName());
         ProviderInvocationResult invocation = invokeProvider(promptVersion, input);
         AiCallResult result = invocation.result();
         AiCallUsage usage = invocation.usage();
