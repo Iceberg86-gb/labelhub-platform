@@ -1423,6 +1423,17 @@ a {
   margin-top: 14px;
 }
 
+.review-approve-button {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.review-approve-button:hover:not(:disabled) {
+  border-color: #15803d;
+  background: #15803d;
+}
+
 .ledger-entry-item {
   display: flex;
   flex-direction: column;
