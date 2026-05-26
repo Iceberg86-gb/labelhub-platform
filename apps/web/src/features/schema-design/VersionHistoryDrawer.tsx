@@ -1,8 +1,10 @@
 import { Button, Card, Empty, SideSheet, Spin, Tag, Typography } from '@douyinfe/semi-ui';
+import { IconCalendarClock, IconHash, IconListView } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { previewJson } from '../../entities/schema/schemaPreview';
 import { summarizeSchema } from '../../entities/schema/schemaSummary';
 import type { SchemaVersion } from '../../entities/schema/schemaTypes';
+import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { useSchemaVersionsQuery } from './useSchemaVersionsQuery';
 
 type VersionHistoryDrawerProps = {
@@ -48,13 +50,15 @@ export function VersionHistoryDrawer({ visible, schemaId, currentVersionId, onCl
       ) : (
         <div className="version-history-list">
           {versions.map((version) => (
-            <VersionCard
-              key={version.id}
-              version={version}
-              expanded={expandedIds.has(version.id)}
-              current={version.id === currentVersionId}
-              onToggle={() => toggleExpanded(version.id)}
-            />
+            <div className="version-history-timeline-item" key={version.id}>
+              <span className="version-history-timeline-node" aria-hidden />
+              <VersionCard
+                version={version}
+                expanded={expandedIds.has(version.id)}
+                current={version.id === currentVersionId}
+                onToggle={() => toggleExpanded(version.id)}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -71,10 +75,9 @@ type VersionCardProps = {
 
 function VersionCard({ version, expanded, current, onToggle }: VersionCardProps) {
   const summary = summarizeSchema(version.schemaJson);
-  const contentHash = version.contentHash ? `${version.contentHash.slice(0, 8)}...` : '-';
 
   return (
-    <Card className="version-history-card">
+    <Card className={['version-history-card', current ? 'version-history-card--current' : ''].filter(Boolean).join(' ')}>
       <div className="version-history-card__header">
         <div>
           <Typography.Title heading={5}>v{version.versionNumber}</Typography.Title>
@@ -84,13 +87,21 @@ function VersionCard({ version, expanded, current, onToggle }: VersionCardProps)
       </div>
 
       <div className="version-history-meta">
-        <span>contentHash: {contentHash}</span>
         <span>
+          <IconHash aria-hidden />
+          contentHash: <TruncatedHash value={version.contentHash} prefixLength={8} suffixLength={6} ariaLabel={`v${version.versionNumber} content hash`} />
+        </span>
+        <span>
+          <IconListView aria-hidden />
           字段总数: {summary.totalCount}（顶层 {summary.topLevelCount} / 嵌套 {summary.nestedCount}）
+        </span>
+        <span>
+          <IconCalendarClock aria-hidden />
+          {formatDateTime(version.publishedAt)}
         </span>
       </div>
 
-      <Button theme="borderless" onClick={onToggle}>
+      <Button className="version-history-json-toggle" theme="borderless" type="tertiary" onClick={onToggle}>
         {expanded ? '收起 JSON' : '展开 JSON'}
       </Button>
       {expanded ? <pre className="schema-json-preview schema-version-json-preview">{previewJson(version.schemaJson)}</pre> : null}

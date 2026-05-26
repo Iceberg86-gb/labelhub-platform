@@ -1025,11 +1025,45 @@ a {
 .version-history-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  position: relative;
+  gap: 14px;
+  padding-left: 18px;
+}
+
+.version-history-list::before {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 5px;
+  width: 2px;
+  background: #d8dee9;
+  content: '';
+}
+
+.version-history-timeline-item {
+  position: relative;
+}
+
+.version-history-timeline-node {
+  position: absolute;
+  top: 20px;
+  left: -18px;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #7c3aed;
+  border-radius: 999px;
+  background: #ffffff;
 }
 
 .version-history-card {
   border: 1px solid #d8dee9;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.version-history-card--current {
+  border-color: #7c3aed;
+  box-shadow: 0 10px 28px rgba(124, 58, 237, 0.16);
 }
 
 .version-history-card__header {
@@ -1042,6 +1076,30 @@ a {
 
 .version-history-card__header h5 {
   margin: 0 0 4px;
+}
+
+.version-history-card--current .semi-tag {
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #5b21b6;
+  font-weight: 700;
+}
+
+.version-history-meta {
+  margin-bottom: 10px;
+}
+
+.version-history-meta span {
+  gap: 6px;
+}
+
+.version-history-meta .semi-icon {
+  color: #64748b;
+}
+
+.version-history-json-toggle {
+  padding-left: 0;
+  font-weight: 700;
 }
 
 .schema-version-json-preview {
