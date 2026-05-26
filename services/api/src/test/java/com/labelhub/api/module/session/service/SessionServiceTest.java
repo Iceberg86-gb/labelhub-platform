@@ -401,7 +401,7 @@ class SessionServiceTest {
     }
 
     @Test
-    void submit_creates_submission_inheriting_session_schema_version_id() {
+    void submit_creates_submission_with_submitted_status_and_inherits_session_schema_version_id() {
         when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(claimedSession(900L, 1002L));
         when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
             SubmissionEntity submission = invocation.getArgument(0);
@@ -418,7 +418,25 @@ class SessionServiceTest {
         assertThat(submission.getDatasetItemId()).isEqualTo(700L);
         assertThat(submission.getLabelerId()).isEqualTo(1002L);
         assertThat(submission.getSchemaVersionId()).isEqualTo(300L);
-        assertThat(submission.getStatusCode()).isEqualTo("under_ai_review");
+        assertThat(submission.getStatusCode()).isEqualTo("submitted");
+    }
+
+    @Test
+    void submit_writes_session_status_submitted_independently_from_submission_status() {
+        SessionEntity session = claimedSession(900L, 1002L);
+        when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(session);
+        when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
+            SubmissionEntity submission = invocation.getArgument(0);
+            submission.setId(1200L);
+            return 1;
+        });
+        when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
+
+        SubmissionEntity submission = sessionService.submit(900L, 1002L, Map.of("field_0", "answer"));
+
+        assertThat(submission.getStatusCode()).isEqualTo("submitted");
+        assertThat(session.getStatus()).isEqualTo("submitted");
+        assertThat(session.getSubmittedAt()).isEqualTo(NOW);
     }
 
     @Test

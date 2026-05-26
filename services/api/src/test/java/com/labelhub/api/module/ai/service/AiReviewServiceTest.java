@@ -276,6 +276,24 @@ class AiReviewServiceTest {
     }
 
     @Test
+    void ai_review_does_not_mutate_submission_status() {
+        SubmissionEntity submission = submission();
+        submission.setStatusCode("submitted");
+        when(submissionMapper.selectById(300L)).thenReturn(submission);
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        assertThat(submission.getStatusCode()).isEqualTo("submitted");
+    }
+
+    @Test
     void review_returns_existing_result_when_idempotency_key_matches_and_input_hash_matches() {
         String inputHash = inputHashForDefaultFixture();
         AiCallEntity existing = persistedAiCall(inputHash);
