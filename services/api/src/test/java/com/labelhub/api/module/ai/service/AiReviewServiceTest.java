@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
+import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
@@ -15,6 +16,7 @@ import com.labelhub.api.module.ai.provider.AiCallResult;
 import com.labelhub.api.module.ai.provider.AiCallUsage;
 import com.labelhub.api.module.ai.provider.AiProvider;
 import com.labelhub.api.module.ai.provider.FieldFinding;
+import com.labelhub.api.module.ai.provider.OpenAiCompatibleProperties;
 import com.labelhub.api.module.ai.provider.ProviderInvocationResult;
 import com.labelhub.api.module.ai.service.view.AiReviewResultView;
 import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
@@ -31,16 +33,19 @@ import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.mockito.stubbing.Answer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -50,6 +55,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -74,6 +80,18 @@ class AiReviewServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-05-25T12:00:00Z"), ZoneOffset.UTC);
+        OpenAiCompatibleProperties retryProperties = new OpenAiCompatibleProperties(
+            "",
+            "",
+            "mock-v1",
+            "mock",
+            new BigDecimal("0.001"),
+            Duration.ofSeconds(30),
+            3,
+            Duration.ZERO
+        );
+        AiRetryPolicy retryPolicy = new AiRetryPolicy(retryProperties, ignored -> {});
+        FailedAiCallRecorder failedRecorder = new FailedAiCallRecorder(aiCallMapper, clock);
         service = new AiReviewService(
             submissionMapper,
             schemaVersionMapper,
@@ -87,10 +105,13 @@ class AiReviewServiceTest {
             clock,
             aiProvider,
             costCalculator,
-            metrics
+            metrics,
+            retryPolicy,
+            failedRecorder
         );
         when(aiProvider.providerName()).thenReturn("mock");
         when(aiProvider.modelName()).thenReturn("mock-v1");
+        when(aiProvider.timeout()).thenReturn(Duration.ofSeconds(30));
         when(aiProvider.invokeWithUsage(any(AiCallRequest.class))).thenAnswer(invocation ->
             new ProviderInvocationResult(aiProvider.invoke(invocation.getArgument(0)), null)
         );
@@ -117,7 +138,7 @@ class AiReviewServiceTest {
         assertThat(inserted.getPurpose()).isEqualTo("submission_review");
         assertThat(inserted.getModelProvider()).isEqualTo("mock");
         assertThat(inserted.getModelName()).isEqualTo("mock-v1");
-        assertThat(inserted.getStatus()).isEqualTo("completed");
+        assertThat(inserted.getStatus()).isEqualTo(AiCallStatusCodes.COMPLETED);
         assertThat(inserted.getIdempotencyKey()).isEqualTo("submission:300:provider:mock:model:mock-v1:prompt:prompt-v1");
         assertThat(inserted.getRequestPayload()).doesNotContainKey("labelerId");
         assertThat(inserted.getResponsePayload()).containsEntry("overallSuggestion", "looks_good");
@@ -249,7 +270,7 @@ class AiReviewServiceTest {
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo("completed");
+        assertThat(captor.getValue().getStatus()).isEqualTo(AiCallStatusCodes.COMPLETED);
         assertThat(captor.getValue().getCompletedAt()).isEqualTo(NOW);
     }
 
@@ -323,6 +344,128 @@ class AiReviewServiceTest {
         assertThat(captor.getValue().getCostDecimal()).isEqualByComparingTo("0.000280");
         assertThat(captor.getValue().getCostDecimal()).isNotEqualByComparingTo(providerResult().cost());
         verify(costCalculator).computeCost("mock-v1", usage);
+    }
+
+    @Test
+    void failed_provider_attempt_persists_failed_ai_calls_row_with_attempt_suffix_key() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenThrow(retryableProviderException("timeout"));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(AiProviderFailureException.class)
+            .hasCauseInstanceOf(AiProviderException.class);
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper, times(3)).insert(captor.capture());
+        assertThat(captor.getAllValues()).extracting(AiCallEntity::getStatus)
+            .containsExactly(AiCallStatusCodes.FAILED, AiCallStatusCodes.FAILED, AiCallStatusCodes.FAILED);
+        assertThat(captor.getAllValues()).extracting(AiCallEntity::getIdempotencyKey)
+            .containsExactly(
+                canonicalKey() + "#failed-attempt-1",
+                canonicalKey() + "#failed-attempt-2",
+                canonicalKey() + "#failed-attempt-3"
+            );
+        verify(aiProvider, times(3)).invokeWithUsage(any(AiCallRequest.class));
+        verify(aiCallInFieldMapper, never()).insert(any());
+    }
+
+    @Test
+    void successful_call_uses_canonical_idempotency_key() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenReturn(new ProviderInvocationResult(providerResult(), null));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        AiCallEntity row = captor.getValue();
+        assertThat(row.getStatus()).isEqualTo(AiCallStatusCodes.COMPLETED);
+        assertThat(row.getIdempotencyKey()).isEqualTo(canonicalKey());
+    }
+
+    @Test
+    void eventual_success_after_failure_writes_both_failed_and_success_rows() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenThrow(retryableProviderException("timeout"))
+            .thenReturn(new ProviderInvocationResult(providerResult(), null));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper, times(2)).insert(captor.capture());
+        assertThat(captor.getAllValues()).extracting(AiCallEntity::getStatus)
+            .containsExactly(AiCallStatusCodes.FAILED, AiCallStatusCodes.COMPLETED);
+        assertThat(captor.getAllValues()).extracting(AiCallEntity::getIdempotencyKey)
+            .containsExactly(canonicalKey() + "#failed-attempt-1", canonicalKey());
+        verify(aiCallMapper, times(1)).selectByIdempotencyKey(canonicalKey());
+        verify(metrics).recordMiss("mock");
+        verify(metrics).recordRetryAttempt("mock");
+        verify(metrics, never()).recordHit(any());
+    }
+
+    @Test
+    void retryable_exception_triggers_retry_up_to_max_attempts() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenThrow(retryableProviderException("rate_limit"));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(AiProviderFailureException.class);
+
+        verify(aiProvider, times(3)).invokeWithUsage(any(AiCallRequest.class));
+    }
+
+    @Test
+    void non_retryable_exception_does_not_retry() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenThrow(nonRetryableProviderException());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(AiProviderFailureException.class);
+
+        verify(aiProvider, times(1)).invokeWithUsage(any(AiCallRequest.class));
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        assertThat(captor.getValue().getIdempotencyKey()).isEqualTo(canonicalKey() + "#failed-attempt-1");
+        assertThat(captor.getValue().getStatus()).isEqualTo(AiCallStatusCodes.FAILED);
+        verify(metrics, never()).recordRetryAttempt(any());
+    }
+
+    @Test
+    void miss_counter_increments_once_per_logical_review_regardless_of_retries() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenThrow(retryableProviderException("timeout"))
+            .thenThrow(retryableProviderException("timeout"))
+            .thenReturn(new ProviderInvocationResult(providerResult(), null));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        verify(metrics, times(1)).recordMiss("mock");
+        verify(metrics, never()).recordHit(any());
+        verify(metrics, never()).recordMismatch(any());
+    }
+
+    @Test
+    void retry_attempts_increment_retry_counter_separately() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenThrow(retryableProviderException("timeout"))
+            .thenReturn(new ProviderInvocationResult(providerResult(), null));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        verify(metrics).recordRetryAttempt("mock");
+        verify(metrics).recordMiss("mock");
+        verify(metrics, never()).recordHit(any());
     }
 
     @Test
@@ -482,14 +625,15 @@ class AiReviewServiceTest {
     }
 
     @Test
-    void review_wraps_provider_exception_as_ai_provider_failure() {
-        when(aiProvider.invoke(any())).thenThrow(new AiProviderException("rate limited", true, "rate_limit", 429));
+    void review_wraps_provider_exception_as_ai_provider_failure_after_failed_attempt_evidence() {
+        when(aiProvider.invokeWithUsage(any())).thenThrow(new AiProviderException("rate limited", true, "rate_limit", 429));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
 
         assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
             .isInstanceOf(AiProviderFailureException.class)
             .hasCauseInstanceOf(AiProviderException.class);
 
-        verify(aiCallMapper, never()).insert(any());
+        verify(aiCallMapper, times(3)).insert(any(AiCallEntity.class));
         verify(aiCallInFieldMapper, never()).insert(any());
     }
 
@@ -509,6 +653,27 @@ class AiReviewServiceTest {
         when(taskMapper.selectById(10L)).thenReturn(task(10L, 1001L));
         when(schemaVersionMapper.selectById(700L)).thenReturn(schemaVersion());
         when(datasetItemMapper.selectById(500L)).thenReturn(datasetItem());
+    }
+
+    private Answer<Integer> assignAiCallIds() {
+        AtomicLong nextId = new AtomicLong(900L);
+        return invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(nextId.getAndIncrement());
+            return 1;
+        };
+    }
+
+    private String canonicalKey() {
+        return "submission:300:provider:mock:model:mock-v1:prompt:prompt-v1";
+    }
+
+    private AiProviderException retryableProviderException(String providerCode) {
+        return new AiProviderException("temporary " + providerCode, true, providerCode, 503);
+    }
+
+    private AiProviderException nonRetryableProviderException() {
+        return new AiProviderException("bad request", false, "bad_request", 400);
     }
 
     private String inputHashForDefaultFixture() {
@@ -593,7 +758,7 @@ class AiReviewServiceTest {
         entity.setTokenOutput(20);
         entity.setCostDecimal(new BigDecimal("0.000100"));
         entity.setLatencyMs(100);
-        entity.setStatus("completed");
+        entity.setStatus(AiCallStatusCodes.COMPLETED);
         entity.setIdempotencyKey("submission:300:provider:mock:model:mock-v1:prompt:prompt-v1");
         entity.setCreatedAt(NOW);
         entity.setCompletedAt(NOW);
