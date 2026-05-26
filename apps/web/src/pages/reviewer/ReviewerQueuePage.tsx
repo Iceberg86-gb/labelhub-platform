@@ -1,5 +1,5 @@
-import { Button, Empty, Pagination, Select, Spin, Table, Tag, Typography } from '@douyinfe/semi-ui';
-import { IconPlay, IconRefresh } from '@douyinfe/semi-icons';
+import { Button, Empty, Pagination, Select, Spin, Table, Tag, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { IconInfoCircle, IconPlay, IconRefresh } from '@douyinfe/semi-icons';
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -86,7 +86,12 @@ export function ReviewerQueuePage() {
           <Typography.Title heading={3} className="page-title">
             审核队列
           </Typography.Title>
-          <Typography.Text type="tertiary">从 append-only Quality Ledger 派生当前 Verdict。</Typography.Text>
+          <div className="reviewer-ledger-subtitle">
+            <Typography.Text>从 append-only Quality Ledger 派生当前 Verdict。</Typography.Text>
+            <Tooltip content="Verdict 由最新 ledger entry 派生,不会直接依赖 submission.status。">
+              <IconInfoCircle aria-label="Quality Ledger verdict derivation" />
+            </Tooltip>
+          </div>
         </div>
         <Select
           className="reviewer-filter-select"

@@ -1320,11 +1320,28 @@ a {
   min-width: 170px;
 }
 
+.reviewer-ledger-subtitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.reviewer-ledger-subtitle .semi-icon {
+  color: #2563eb;
+}
+
 .reviewer-submission-cell {
   display: flex;
   min-width: 120px;
   flex-direction: column;
   gap: 4px;
+}
+
+.task-table-surface .semi-table-row:hover td {
+  background: #f8fafc;
 }
 
 .reviewer-submission-header {
