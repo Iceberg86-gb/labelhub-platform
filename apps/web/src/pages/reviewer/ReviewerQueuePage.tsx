@@ -95,6 +95,7 @@ export function ReviewerQueuePage() {
         </div>
         <Select
           className="reviewer-filter-select"
+          size="small"
           value={verdict ?? 'all'}
           onChange={(value) => updateParams({ page: 1, verdict: value === 'all' ? null : (value as VerdictStatus) })}
         >
