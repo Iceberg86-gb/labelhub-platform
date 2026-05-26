@@ -27,9 +27,9 @@ function parseStatus(value: string | null): TaskStatus | undefined {
   return TASK_STATUSES.includes(value as TaskStatus) ? (value as TaskStatus) : undefined;
 }
 
-function formatDateTime(value?: string) {
+function formatDateTime(value?: string, fallback = '-') {
   if (!value) {
-    return '-';
+    return fallback;
   }
   return new Intl.DateTimeFormat('zh-CN', {
     month: '2-digit',
@@ -97,7 +97,7 @@ export function OwnerTasksListPage() {
         title: '创建时间',
         dataIndex: 'createdAt',
         width: 150,
-        render: (value?: string) => formatDateTime(value),
+        render: (value?: string) => formatDateTime(value, '未记录'),
       },
       {
         title: '操作',
