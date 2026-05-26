@@ -3,6 +3,7 @@ package com.labelhub.api.module.export.storage;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Component
@@ -23,6 +24,14 @@ public class ObjectStorageWriter {
             .contentType(contentTypeFor(objectKey))
             .build();
         s3Client.putObject(request, RequestBody.fromBytes(content));
+    }
+
+    public void deleteObject(String objectKey) {
+        DeleteObjectRequest request = DeleteObjectRequest.builder()
+            .bucket(properties.bucket())
+            .key(objectKey)
+            .build();
+        s3Client.deleteObject(request);
     }
 
     private String contentTypeFor(String objectKey) {
