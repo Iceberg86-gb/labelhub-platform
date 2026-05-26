@@ -1,5 +1,6 @@
 import { Banner, Empty, Modal, Spin, Table, Tag, Typography } from '@douyinfe/semi-ui';
 import type { ExportSnapshotDiff } from '../../entities/export/exportTypes';
+import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { useExportSnapshotDiffQuery } from './useExportSnapshotDiffQuery';
 
 type ExportSnapshotDiffModalProps = {
@@ -14,6 +15,7 @@ export function ExportSnapshotDiffModal({ baseSnapshotId, compareSnapshotId, onC
   const diffQuery = useExportSnapshotDiffQuery(baseSnapshotId, compareSnapshotId);
   const diff = diffQuery.data;
   const fileLevelMatches = diff?.fileLevelMatches ?? [];
+  const matchingFileCount = fileLevelMatches.filter((file) => file.match).length;
 
   return (
     <Modal
@@ -29,6 +31,7 @@ export function ExportSnapshotDiffModal({ baseSnapshotId, compareSnapshotId, onC
         {diff ? (
           <>
             <Banner
+              className={diff.equal ? 'export-diff-success-banner' : undefined}
               fullMode={false}
               type={diff.equal ? 'success' : 'warning'}
               closeIcon={null}
@@ -50,7 +53,10 @@ export function ExportSnapshotDiffModal({ baseSnapshotId, compareSnapshotId, onC
             </section>
 
             <section className="diff-file-section">
-              <Typography.Text strong>文件级 SHA-256 对照({fileLevelMatches.length} 个文件)</Typography.Text>
+              <div className="diff-file-section__heading">
+                <Typography.Text strong>文件级 SHA-256 对照({fileLevelMatches.length} 个文件)</Typography.Text>
+                <Tag className="diff-status-tag diff-status-tag--match">{matchingFileCount}/{fileLevelMatches.length} 一致</Tag>
+              </div>
               <Table
                 columns={[
                   { title: '文件', dataIndex: 'fileName', width: 210 },
@@ -60,11 +66,12 @@ export function ExportSnapshotDiffModal({ baseSnapshotId, compareSnapshotId, onC
                     title: '匹配',
                     dataIndex: 'match',
                     width: 100,
-                    render: (value: boolean) => <Tag color={value ? 'green' : 'red'}>{value ? '✓ 一致' : '✗ 不一致'}</Tag>,
+                    render: (value: boolean) => <MatchTag match={value} />,
                   },
                 ]}
                 dataSource={fileLevelMatches}
                 rowKey="fileName"
+                onRow={(record) => ({ className: record?.match ? 'diff-file-row--match' : 'diff-file-row--mismatch' })}
                 pagination={false}
                 size="small"
               />
@@ -80,15 +87,19 @@ function HashMatchRow({ label, match }: { label: string; match: boolean }) {
   return (
     <div className="hash-match-row">
       <Typography.Text type="tertiary">{label}</Typography.Text>
-      <Tag color={match ? 'green' : 'red'}>{match ? '✓ 一致' : '✗ 不一致'}</Tag>
+      <MatchTag match={match} />
     </div>
   );
 }
 
 function HashText({ value }: { value: FileMatch['baseSha256'] }) {
-  return <Typography.Text className="mono-value">{shortHash(value)}</Typography.Text>;
+  return <TruncatedHash value={value} prefixLength={12} suffixLength={6} ariaLabel="File SHA-256 hash" />;
 }
 
-function shortHash(value?: string | null) {
-  return value ? `${value.slice(0, 16)}...` : '-';
+function MatchTag({ match }: { match: boolean }) {
+  return (
+    <Tag className={match ? 'diff-status-tag diff-status-tag--match' : 'diff-status-tag diff-status-tag--mismatch'}>
+      {match ? '✓ 一致' : '✗ 不一致'}
+    </Tag>
+  );
 }
