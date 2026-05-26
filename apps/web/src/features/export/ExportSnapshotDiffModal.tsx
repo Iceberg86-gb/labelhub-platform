@@ -23,7 +23,7 @@ export function ExportSnapshotDiffModal({ baseSnapshotId, compareSnapshotId, onC
       visible
       onCancel={onClose}
       footer={null}
-      width={720}
+      width={840}
     >
       <div className="export-diff-modal">
         {diffQuery.isLoading ? <Spin /> : null}
