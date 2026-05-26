@@ -929,3 +929,91 @@ M6-P3a-2 also extended the `AiProvider` interface with a new abstract method `St
 Future strict-constraint exception tables should explicitly list both existing-behavior changes and additive interface or contract evolutions so reviewers can see what changed beyond config and new files.
 
 This backfill is the result of审计师 push back during M6-P3a-2 review, accepted by裁决师 as an附加硬要求 for M6-P3b.
+
+## 2026-05-26 M6 Phase 3b Idempotency Metrics Baseline
+
+M6-P3b closes the cost/performance observability loop opened by M6-P3a and M6-P3a-2. Token usage is now persisted, USD cost is computed when usage is complete enough, and idempotency hit/miss/mismatch behavior is observable through Micrometer counters. The derivation is now evidence-backed:
+
+```text
+saved_cost = idempotency_hits * avg(cost_per_real_invocation)
+```
+
+### Counter Design
+
+Three counters are registered under the `labelhub.ai.idempotency` namespace:
+
+- `labelhub.ai.idempotency.hit` increments when an existing `ai_call` is found and the input hash matches.
+- `labelhub.ai.idempotency.miss` increments when no existing `ai_call` is found and the request proceeds to a provider invocation.
+- `labelhub.ai.idempotency.mismatch` increments when an existing `ai_call` is found but the input hash differs. This is a data-integrity warning, not a normal miss.
+
+Each counter has a `provider` tag, for example `provider=deepseek` or `provider=mock`, so hit ratio can be compared across providers.
+
+### Hit Ratio Expression
+
+Prometheus converts dots in Micrometer counter names to underscores. A rolling hit-ratio query can be derived as:
+
+```promql
+sum(rate(labelhub_ai_idempotency_hit_total[5m])) /
+  (sum(rate(labelhub_ai_idempotency_hit_total[5m])) + sum(rate(labelhub_ai_idempotency_miss_total[5m])))
+```
+
+`mismatch` is excluded from the denominator because it represents an integrity anomaly rather than expected cache behavior.
+
+### Saved Cost Derivation
+
+Once enough traffic accumulates, saved cost can be estimated from the metric stream and the M6-P3a-2 cost data:
+
+```text
+saved_cost = hits_total * avg(cost_decimal for real provider invocations)
+```
+
+`cost_decimal` now comes from the M6-P3a-2 USD calculator when prompt and completion tokens are present, and from the M3 fixed fallback when usage is incomplete. This means the saved-cost calculation is grounded in the same persisted evidence that powers AI provenance.
+
+### Observability Posture
+
+M6-P3b exposes `/actuator/metrics` and `/actuator/prometheus` for development observability. This required a narrow `SecurityConfig` exception because the pre-existing M2 posture only permitted `/actuator/health` and `/actuator/info`.
+
+- This is a local engineering training project, not a production deployment.
+- The endpoint is intentionally unauthenticated for local Prometheus-style scraping.
+- If LabelHub is productionized, `/actuator/**` must receive a separate security review before exposure.
+
+### Instrumentation Discipline
+
+`AiReviewService.review` records counters at existing branch points without changing idempotency behavior:
+
+- HIT branch: `metrics.recordHit(provider)` before returning the persisted result.
+- MISMATCH branch: `metrics.recordMismatch(provider)` before throwing `AiInputHashMismatchException`.
+- MISS branch: `metrics.recordMiss(provider)` before provider invocation.
+
+`AiCallMapper.selectByIdempotencyKey`, input-hash comparison, provider invocation, token persistence, cost calculation, Quality Ledger writes, and response shape are unchanged by M6-P3b.
+
+### Regression Coverage
+
+- `AiIdempotencyMetricsTest` verifies hit/miss/mismatch counters and provider tags with `SimpleMeterRegistry`.
+- `AiReviewServiceTest` verifies HIT, MISS, and MISMATCH branches increment only the expected counter.
+- `ActuatorPrometheusEndpointExposureTest` verifies `/actuator/prometheus` output contains the Prometheus metric names `labelhub_ai_idempotency_hit_total`, `labelhub_ai_idempotency_miss_total`, and `labelhub_ai_idempotency_mismatch_total`.
+
+### Sanity Check
+
+All preceding invariants still hold:
+
+- M6-P1 Q6: AI review does not mutate `submission.status`.
+- M6-P3a: token usage persistence still writes nullable token fields when usage is present.
+- M6-P3a-2 A2 fallback: cost falls back to the fixed estimate when prompt or completion tokens are missing.
+- M6-P3a-2 calculator path: complete usage writes calculator-derived `cost_decimal`.
+
+### What M6-P3b Does Not Do
+
+- No cost-savings dashboard.
+- No Grafana or alerting integration.
+- No provider latency, provider error, or retry metrics.
+- No retry/backoff behavior.
+- No DB persistence for metrics; Prometheus scrapes in-memory counters.
+
+### Data Accumulation Time
+
+Hit ratio is not meaningful at code-merge time. A useful baseline needs at least:
+
+- 100+ AI review attempts across the observation window.
+- A 7-day rolling window for stable rate data.
+- Provider-tagged comparison if multiple providers are used.
