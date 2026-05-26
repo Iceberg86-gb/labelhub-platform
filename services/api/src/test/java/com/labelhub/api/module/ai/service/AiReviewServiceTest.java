@@ -11,8 +11,10 @@ import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
 import com.labelhub.api.module.ai.provider.AiCallRequest;
 import com.labelhub.api.module.ai.provider.AiCallResult;
+import com.labelhub.api.module.ai.provider.AiCallUsage;
 import com.labelhub.api.module.ai.provider.AiProvider;
 import com.labelhub.api.module.ai.provider.FieldFinding;
+import com.labelhub.api.module.ai.provider.ProviderInvocationResult;
 import com.labelhub.api.module.ai.service.view.AiReviewResultView;
 import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
@@ -84,6 +86,9 @@ class AiReviewServiceTest {
         );
         when(aiProvider.providerName()).thenReturn("mock");
         when(aiProvider.modelName()).thenReturn("mock-v1");
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class))).thenAnswer(invocation ->
+            new ProviderInvocationResult(aiProvider.invoke(invocation.getArgument(0)), null)
+        );
         seedOwnedSubmission();
     }
 
@@ -240,6 +245,58 @@ class AiReviewServiceTest {
         verify(aiCallMapper).insert(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo("completed");
         assertThat(captor.getValue().getCompletedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void review_persists_token_usage_when_provider_returns_usage() {
+        AiCallUsage usage = new AiCallUsage(101, 52, 153, 30);
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenReturn(new ProviderInvocationResult(providerResult(), usage));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        AiCallEntity inserted = captor.getValue();
+        assertThat(inserted.getPromptTokens()).isEqualTo(101);
+        assertThat(inserted.getCompletionTokens()).isEqualTo(52);
+        assertThat(inserted.getTotalTokens()).isEqualTo(153);
+        assertThat(inserted.getCacheHitTokens()).isEqualTo(30);
+    }
+
+    @Test
+    void review_persists_null_tokens_when_provider_omits_usage() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenReturn(new ProviderInvocationResult(providerResult(), null));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        AiCallEntity inserted = captor.getValue();
+        assertThat(inserted.getPromptTokens()).isNull();
+        assertThat(inserted.getCompletionTokens()).isNull();
+        assertThat(inserted.getTotalTokens()).isNull();
+        assertThat(inserted.getCacheHitTokens()).isNull();
+    }
+
+    @Test
+    void review_does_not_change_cost_decimal_path_when_usage_is_present() {
+        AiCallUsage usage = new AiCallUsage(101, 52, 153, 30);
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenReturn(new ProviderInvocationResult(providerResult(), usage));
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        assertThat(captor.getValue().getCostDecimal()).isEqualByComparingTo("0.000100");
     }
 
     @Test
