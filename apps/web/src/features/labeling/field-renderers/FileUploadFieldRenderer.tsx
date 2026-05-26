@@ -10,7 +10,7 @@ export function FileUploadFieldRenderer({
   errors,
 }: FieldRendererProps<string>) {
   return (
-    <FieldFrame field={field} errors={errors}>
+    <FieldFrame field={field} errors={errors} showRequiredMarker={!readOnly}>
       {readOnly ? (
         <ReadOnlyValue value={value} />
       ) : (

@@ -4,7 +4,7 @@ import { FieldFrame, ReadOnlyValue } from './rendererUtils';
 
 export function TextFieldRenderer({ field, value, onChange, readOnly, errors }: FieldRendererProps<string>) {
   return (
-    <FieldFrame field={field} errors={errors}>
+    <FieldFrame field={field} errors={errors} showRequiredMarker={!readOnly}>
       {readOnly ? (
         <ReadOnlyValue value={value} />
       ) : (

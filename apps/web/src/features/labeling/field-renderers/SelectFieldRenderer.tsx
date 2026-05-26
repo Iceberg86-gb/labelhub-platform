@@ -32,7 +32,7 @@ export function SelectFieldRenderer({
   };
 
   return (
-    <FieldFrame field={field} errors={errors}>
+    <FieldFrame field={field} errors={errors} showRequiredMarker={!readOnly}>
       {readOnly ? (
         renderReadOnly()
       ) : (

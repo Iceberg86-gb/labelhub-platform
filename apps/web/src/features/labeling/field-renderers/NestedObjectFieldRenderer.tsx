@@ -14,7 +14,7 @@ export function NestedObjectFieldRenderer({
   const childPayload = coerceAnswerPayload(value);
 
   return (
-    <FieldFrame field={field} errors={errors}>
+    <FieldFrame field={field} errors={errors} showRequiredMarker={!readOnly}>
       <div className="nested-renderer">
         <SchemaRenderer
           fields={field.children ?? []}
