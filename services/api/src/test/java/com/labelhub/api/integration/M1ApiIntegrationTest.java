@@ -196,6 +196,25 @@ class M1ApiIntegrationTest {
             .andExpect(jsonPath("$.fieldErrors[0].message").value("Task deadline must be in the future"));
     }
 
+    @Test
+    void create_task_requires_deadline_with_400() throws Exception {
+        String token = login("owner_demo", "demo1234");
+
+        mockMvc.perform(post("/tasks")
+                .header("Authorization", bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "No deadline task",
+                      "description": "No deadline",
+                      "instructionRichText": "<p>No deadline</p>",
+                      "quotaTotal": 1
+                    }
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors[0].field").value("deadlineAt"));
+    }
+
     private String login(String username, String password) throws Exception {
         String body = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -208,7 +208,7 @@ class SessionApiIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.sessionId").value(sessionId))
             .andExpect(jsonPath("$.schemaVersionId").value(fixture.schemaVersionId()))
-            .andExpect(jsonPath("$.status").value("under_ai_review"))
+            .andExpect(jsonPath("$.status").value("submitted"))
             .andReturn()
             .getResponse()
             .getContentAsString();
