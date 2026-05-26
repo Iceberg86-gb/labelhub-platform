@@ -63,3 +63,10 @@ Stop and rescope before implementation if:
 - Failed export-job persistence becomes necessary to test cleanup.
 - Functional code estimate exceeds 120 lines.
 
+## Pre-Implementation Research Findings (M6-P4b Segment 1)
+
+- `ExportService.createSnapshot` catches `RuntimeException` at lines 98-99 and wraps it as `ExportFailureException`. The method is `@Transactional`, so SQL rows roll back while already-written S3/MinIO objects remain outside the SQL transaction.
+- `ObjectStorageWriter` currently exposes `putObject(String objectKey, byte[] content)` only; no delete method exists yet.
+- Object keys are deterministic and local to the current export attempt via `objectKeyPrefix = "exports/tasks/" + taskId + "/jobs/" + job.getId() + "/"`.
+- Current writes are exact-key calls: one `putObject` per artifact file plus `manifest.json`.
+- Cleanup strategy: track exact keys in a local list only after a successful `putObject`, delete those keys in the catch block, log cleanup failures without replacing the original export failure, and keep failed export-job persistence out of scope.
