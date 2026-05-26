@@ -63,6 +63,71 @@ class OpenAiCompatibleProviderTest {
     }
 
     @Test
+    void invokeWithUsage_parses_usage_when_provider_returns_usage_object() throws Exception {
+        server = TestHttpServer.responding(200, successResponse(contentJson(), Map.of(
+            "prompt_tokens", 100,
+            "completion_tokens", 50,
+            "total_tokens", 150,
+            "prompt_cache_hit_tokens", 30
+        )));
+        OpenAiCompatibleProvider provider = provider(server.baseUrl());
+
+        ProviderInvocationResult result = provider.invokeWithUsage(request());
+
+        assertThat(result.result().overallSuggestion()).isEqualTo("needs_review");
+        assertThat(result.usage()).isEqualTo(new AiCallUsage(100, 50, 150, 30));
+    }
+
+    @Test
+    void invokeWithUsage_returns_null_usage_when_provider_omits_usage() throws Exception {
+        server = TestHttpServer.responding(200, successResponseWithoutUsage(contentJson()));
+        OpenAiCompatibleProvider provider = provider(server.baseUrl());
+
+        ProviderInvocationResult result = provider.invokeWithUsage(request());
+
+        assertThat(result.result().overallSuggestion()).isEqualTo("needs_review");
+        assertThat(result.usage()).isNull();
+    }
+
+    @Test
+    void invokeWithUsage_handles_partial_usage_fields_defensively() throws Exception {
+        server = TestHttpServer.responding(200, successResponse(contentJson(), Map.of("prompt_tokens", 100)));
+        OpenAiCompatibleProvider provider = provider(server.baseUrl());
+
+        ProviderInvocationResult result = provider.invokeWithUsage(request());
+
+        assertThat(result.usage()).isEqualTo(new AiCallUsage(100, null, null, null));
+    }
+
+    @Test
+    void invokeWithUsage_accepts_deepseek_and_openai_cache_hit_field_names() throws Exception {
+        server = TestHttpServer.responding(200, successResponse(contentJson(), Map.of(
+            "prompt_tokens", 100,
+            "completion_tokens", 50,
+            "total_tokens", 150,
+            "prompt_cache_hit_tokens", 30
+        )));
+        OpenAiCompatibleProvider provider = provider(server.baseUrl());
+
+        ProviderInvocationResult deepseekResult = provider.invokeWithUsage(request());
+
+        assertThat(deepseekResult.usage().cacheHitTokens()).isEqualTo(30);
+
+        server.stop();
+        server = TestHttpServer.responding(200, successResponse(contentJson(), Map.of(
+            "prompt_tokens", 100,
+            "completion_tokens", 50,
+            "total_tokens", 150,
+            "cached_tokens", 12
+        )));
+        provider = provider(server.baseUrl());
+
+        ProviderInvocationResult openAiStyleResult = provider.invokeWithUsage(request());
+
+        assertThat(openAiStyleResult.usage().cacheHitTokens()).isEqualTo(12);
+    }
+
+    @Test
     void invoke_throws_when_response_content_is_not_valid_json() throws Exception {
         server = TestHttpServer.responding(200, successResponse("not-json"));
         OpenAiCompatibleProvider provider = provider(server.baseUrl());
@@ -150,9 +215,19 @@ class OpenAiCompatibleProviderTest {
     }
 
     private String successResponse(String content) throws Exception {
+        return successResponse(content, Map.of("prompt_tokens", 11, "completion_tokens", 7));
+    }
+
+    private String successResponse(String content, Map<String, Object> usage) throws Exception {
         return objectMapper.writeValueAsString(Map.of(
             "choices", List.of(Map.of("message", Map.of("content", content))),
-            "usage", Map.of("prompt_tokens", 11, "completion_tokens", 7)
+            "usage", usage
+        ));
+    }
+
+    private String successResponseWithoutUsage(String content) throws Exception {
+        return objectMapper.writeValueAsString(Map.of(
+            "choices", List.of(Map.of("message", Map.of("content", content)))
         ));
     }
 
