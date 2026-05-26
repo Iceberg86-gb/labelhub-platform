@@ -33,7 +33,6 @@ import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
 import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -60,6 +59,8 @@ public class AiReviewService {
     private final AiProvider aiProvider;
     private final AiCallCostCalculator costCalculator;
     private final AiIdempotencyMetrics metrics;
+    private final AiRetryPolicy retryPolicy;
+    private final FailedAiCallRecorder failedCallRecorder;
 
     public AiReviewService(
         SubmissionMapper submissionMapper,
@@ -74,7 +75,9 @@ public class AiReviewService {
         Clock clock,
         AiProvider aiProvider,
         AiCallCostCalculator costCalculator,
-        AiIdempotencyMetrics metrics
+        AiIdempotencyMetrics metrics,
+        AiRetryPolicy retryPolicy,
+        FailedAiCallRecorder failedCallRecorder
     ) {
         this.submissionMapper = submissionMapper;
         this.schemaVersionMapper = schemaVersionMapper;
@@ -89,6 +92,8 @@ public class AiReviewService {
         this.aiProvider = aiProvider;
         this.costCalculator = costCalculator;
         this.metrics = metrics;
+        this.retryPolicy = retryPolicy;
+        this.failedCallRecorder = failedCallRecorder;
     }
 
     @Transactional
@@ -122,7 +127,7 @@ public class AiReviewService {
         }
 
         metrics.recordMiss(aiProvider.providerName());
-        ProviderInvocationResult invocation = invokeProvider(promptVersion, input);
+        ProviderInvocationResult invocation = invokeProvider(submissionId, promptVersion, input, inputHash, idempotencyKey);
         AiCallResult result = invocation.result();
         AiCallUsage usage = invocation.usage();
         Map<String, Object> responsePayload = persistedJsonShape(result.output());
@@ -192,9 +197,28 @@ public class AiReviewService {
         );
     }
 
-    private ProviderInvocationResult invokeProvider(String promptVersion, Map<String, Object> input) {
+    private ProviderInvocationResult invokeProvider(
+        Long submissionId,
+        String promptVersion,
+        Map<String, Object> input,
+        String inputHash,
+        String idempotencyKey
+    ) {
         try {
-            return aiProvider.invokeWithUsage(new AiCallRequest(promptVersion, input, Duration.ofSeconds(30)));
+            return retryPolicy.invokeWithRetry(
+                () -> aiProvider.invokeWithUsage(new AiCallRequest(promptVersion, input, aiProvider.timeout())),
+                (attemptNumber, exception, willRetry) -> failedCallRecorder.recordFailedAttempt(
+                    submissionId,
+                    idempotencyKey,
+                    attemptNumber,
+                    promptVersion,
+                    aiProvider.providerName(),
+                    aiProvider.modelName(),
+                    inputHash,
+                    input,
+                    exception
+                )
+            );
         } catch (AiProviderException exception) {
             throw new AiProviderFailureException("AI provider invocation failed", exception);
         }
