@@ -1240,3 +1240,21 @@ Failed export-job persistence remains deferred until a future async export/jobåŒ
 - No background orphan scanner.
 - No failed export-job persistence.
 - Existing Trusted Export hash/reproducibility tests still pass.
+
+## 2026-05-26 M6 Phase 5.1 Runtime Startup Hotfix
+
+Discovery path: M6-P6a screenshot preflight tried to start the API with `spring-boot:run`; bean creation failed before the app served requests.
+
+Verification gap: M6-P5 test suite passed (`389` tests, `78` skipped) but did not exercise full Spring Boot context startup. `@SpringBootTest` with a real context was absent, so Spring bean-construction regressions could slip through service/unit tests.
+
+Root cause: `AiRetryPolicy` had two constructors: a public production constructor accepting `OpenAiCompatibleProperties` and a package-private test constructor accepting `OpenAiCompatibleProperties` plus `LongConsumer`. With multiple constructors and no explicit injection annotation, Spring did not select the production constructor and fell back to no-arg instantiation, failing with `NoSuchMethodException: AiRetryPolicy.<init>()`.
+
+Fix: the public `AiRetryPolicy(OpenAiCompatibleProperties)` constructor is now annotated with `@Autowired`. The package-private test constructor remains intact so deterministic sleeper tests are preserved. `OpenAiCompatibleProperties` was investigated and rejected as the root cause because the stack trace bottomed out at `AiRetryPolicy.<init>()`.
+
+Guardrail added: `ApplicationContextStartupTest` is the 12th cross-phase guardrail. It loads the real Spring Boot context without mocking AI provider beans. Because test resources intentionally shadow main `application.yml`, the test supplies runtime-equivalent datasource, security, and object-storage properties so the context reaches real bean construction.
+
+Verification: `mvn -pl services/api test` now reports `390` tests, `0` failures, `0` errors, `78` skipped. `mvn -pl services/api spring-boot:run` logs `Started ApiApplication in 1.578 seconds`.
+
+Docs: `m6p5-final-regression-report.md` was amended transparently; M6-P5 APPROVED status is retained for its original verification scope, and M6-P5.1 closes the runtime-startup gap.
+
+Out of scope: any UI polish, OpenAPI change, migration change, or unrelated AI business-logic change.

@@ -300,3 +300,22 @@ Because mirroring them would be false symmetry. AI failures are consumed by prov
 
 M6-P5 did not require production code changes. LabelHub is defense-ready with known optional/deferred items clearly recorded.
 
+## Amendment: M6-P5.1 Runtime Startup Gap
+
+M6-P5 test/build/typecheck regression remains valid as evidence. After P5 closure, M6-P6 screenshot preflight attempted `spring-boot:run` and surfaced a runtime context startup failure that the P5 test suite did not cover.
+
+M6-P5.1 documents:
+
+- the verification blind spot: no full-context `@SpringBootTest` startup test existed in the P5 suite,
+- the root cause: `AiRetryPolicy` had multiple constructors, but the production constructor was not explicitly selected for Spring injection,
+- the fix: `@Autowired` now marks the public `AiRetryPolicy(OpenAiCompatibleProperties)` constructor while preserving the package-private deterministic-sleeper test constructor,
+- the new guardrail: `ApplicationContextStartupTest` is the 12th cross-phase guardrail and loads the real Spring Boot context against the local runtime MySQL/object-storage configuration.
+
+Verification after the fix:
+
+- `mvn -pl services/api test`: `390` tests, `0` failures, `0` errors, `78` skipped.
+- `mvn -pl services/api spring-boot:run`: `Started ApiApplication in 1.578 seconds`.
+- OpenAPI remains `0.10.0`.
+- Migration count remains `10`.
+
+This amendment is a transparent calibration of M6-P5 readiness, not a retraction. P5 APPROVED status stands for the verification scope it claimed; P5.1 closes the runtime-startup gap.
