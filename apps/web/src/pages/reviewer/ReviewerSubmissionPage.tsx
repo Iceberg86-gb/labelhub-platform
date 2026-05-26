@@ -145,7 +145,7 @@ function ReviewActionCard({
         />
       </label>
       <div className="review-actions">
-        <Button icon={<IconTickCircle />} type="primary" theme="solid" loading={loading} onClick={onApprove}>
+        <Button className="review-approve-button" icon={<IconTickCircle />} type="tertiary" theme="solid" loading={loading} onClick={onApprove}>
           通过
         </Button>
         <Button icon={<IconClose />} type="danger" theme="solid" loading={loading} onClick={onReject}>
