@@ -3,6 +3,7 @@ import { IconRefresh, IconUpload } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ExportSnapshot } from '../../entities/export/exportTypes';
+import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { CreateExportFailure, useCreateExportMutation } from './useCreateExportMutation';
 import { ExportSnapshotDiffModal } from './ExportSnapshotDiffModal';
 import { useTaskExportsQuery } from './useTaskExportsQuery';
@@ -47,7 +48,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
       {
         title: 'Manifest Hash',
         dataIndex: 'manifestHash',
-        render: (value: string) => <Typography.Text className="mono-value">{shortHash(value)}</Typography.Text>,
+        render: (value: string) => <TruncatedHash value={value} ariaLabel="Export manifest hash" />,
       },
       {
         title: '提交数',
@@ -93,8 +94,10 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
     <Card className="trusted-export-card">
       <div className="trusted-export-header">
         <div>
-          <Typography.Title heading={5}>Trusted Export(可信训练数据集)</Typography.Title>
-          <Typography.Text type="tertiary">将 task 的 source facts 物化为 canonical export 快照。</Typography.Text>
+          <Typography.Title className="trusted-export-title" heading={4}>
+            Trusted Export(可信训练数据集)
+          </Typography.Title>
+          <Typography.Text className="trusted-export-subtitle">将 task 的 source facts 物化为 canonical export 快照。</Typography.Text>
         </div>
       </div>
 
@@ -151,10 +154,6 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 function parsePositiveInt(value: string | null) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
-function shortHash(value?: string | null) {
-  return value ? `${value.slice(0, 16)}...` : '-';
 }
 
 function formatDateTime(value?: string) {

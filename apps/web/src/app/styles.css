@@ -1545,6 +1545,16 @@ a {
   margin-bottom: 14px;
 }
 
+.trusted-export-title {
+  margin-bottom: 6px;
+}
+
+.trusted-export-subtitle {
+  color: #334155;
+  font-size: 15px;
+  font-weight: 650;
+}
+
 .trusted-export-toolbar {
   align-items: center;
   margin-bottom: 14px;
@@ -1569,6 +1579,17 @@ a {
   margin-top: 16px;
 }
 
+.export-diff-success-banner .semi-banner-title {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.export-diff-success-banner .semi-banner-content {
+  color: #064e3b;
+  font-size: 16px;
+  font-weight: 650;
+}
+
 .hash-matches-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1584,6 +1605,35 @@ a {
   padding: 12px;
   border: 1px solid #e5eaf1;
   background: #f8fafc;
+}
+
+.diff-file-section__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.diff-status-tag {
+  border: 0;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.diff-status-tag--match {
+  background: #16a34a;
+}
+
+.diff-status-tag--mismatch {
+  background: #dc2626;
+}
+
+.diff-file-row--match td {
+  background: #f0fdf4;
+}
+
+.diff-file-row--mismatch td {
+  background: #fef2f2;
 }
 
 .session-status-filter {
