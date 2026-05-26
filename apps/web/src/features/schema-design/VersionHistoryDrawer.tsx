@@ -35,7 +35,13 @@ export function VersionHistoryDrawer({ visible, schemaId, currentVersionId, onCl
   };
 
   return (
-    <SideSheet title="Schema 版本历史" visible={visible} width={640} onCancel={onClose}>
+    <SideSheet
+      title="Schema 版本历史"
+      visible={visible}
+      width={640}
+      maskStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      onCancel={onClose}
+    >
       {versionsQuery.isLoading ? (
         <div className="version-history-state">
           <Spin />
