@@ -687,3 +687,57 @@ Real provider evidence:
 | AI Provenance + 训练污染防控 | ✅ 完整(M3 + M5-P6 real provider) | DeepSeek first call + idempotency hit + DB fact chain |
 
 M5 收尾后,LabelHub 4 个亮点均具备 Contract / Service / HTTP or DB / UI evidence,无未闭合 D 口径。
+## 2026-05-25 M6 Phase 0.5 Submission Lifecycle Semantics Final Decision
+
+> M6-P0 audit exposed Bug #001: M3/M4/M5 encoded different assumptions about `submissions.status`.
+> M6-P0.5 does not implement code. It locks the system-level lifecycle semantics that M6-P1 must implement.
+
+### Philosophy
+
+Submission is an immutable answer fact. AI review and reviewer verdict are append-only facts around that answer, recorded through `ai_calls`, `ai_call_in_fields`, and Quality Ledger entries. Verdict is derived from ledger facts. M6-P1 explicitly corrects M3's `under_ai_review` naming mistake, normalizes historical rows through V9, aligns task deadline contract behavior, and keeps the lifecycle model minimal instead of preserving legacy noise.
+
+### Physical Evidence
+
+- V1 physical schema defines `submissions.status VARCHAR(48) NOT NULL DEFAULT 'under_ai_review'`.
+- `SessionService.submit` writes `submission.status = "under_ai_review"` while writing `session.status = "submitted"`.
+- `ReviewerQueueService`, `ReviewerController`, frontend reviewer queue query keys/copy, and `QualityLedgerEntryMapper` default to exact `status = submitted`.
+- `ExportFactCollector` delegates to `SubmissionMapper.selectSubmittedByTaskOrderedById`, whose SQL filters exact `status = 'submitted'`.
+- `Submission.status`, `OwnerSubmissionSummary.status`, and `ReviewerSubmissionSummary.status` are public free strings, not a `SubmissionStatus` enum.
+- Tests currently encode phase-local assumptions: Session tests expect `under_ai_review`, while Quality Ledger and Export fixtures seed `submitted`.
+
+### Final User裁决
+
+| Q | 裁决 | Final rationale |
+|---|------|-----------------|
+| Q1 submit write status | A: write `submitted` | A normal submit creates the immutable answer fact. `under_ai_review` encoded an AI side process into the answer lifecycle. |
+| Q2 `under_ai_review` lifecycle | A: deprecate and V9-normalize historical rows to `submitted` | LabelHub has no production data, the baseline tag gives rollback, and long-term coexistence would preserve the same semantic entropy that caused Bug #001. |
+| Q3 reviewer default queue | A: default queue only uses `submitted` | Reviewer queue should read completed answer facts. Transitional multi-status query would hide the state-machine error instead of fixing it. |
+| Q4 Trusted Export scope | A: export submitted answer facts | Trusted Export exports canonical source facts; trust is represented by ledger/verdict files, not by mutating `submission.status`. |
+| Q5 approved/rejected exportability | A: approved/rejected remain exportable via ledger context | `approved` and `rejected` are verdict facts, not submission lifecycle states. Export can include answer facts plus verdict context. |
+| Q6 AI review transition | A: AI review appends facts only | AI review must write AI provenance and `ai_field_finding` ledger entries without changing submission lifecycle status. |
+| Q7 legal transition table | A: minimal submitted-only answer lifecycle for M6-P1 | The M6 repair should restore the simplest state machine: submit finalizes the answer; review/evidence flows append facts around it. |
+| Q8 `deadlineAt` contract | A: required at create | The frontend already requires `deadlineAt`; backend null handling is a bug. Create-required is the smallest correction and avoids inventing draft-task UX in M6-P1. |
+| Q9 repeat claim semantics | A: one session per dataset item per labeler | A labeler may claim multiple dataset items for the same task; repeat claim semantics are item-scoped, not task-scoped. |
+| Q10 regression threshold | B: full regression set because functional budget is under 500 lines | The estimated 100-220 functional lines leaves room for the full P0/P1 regression set; the tests should encode the real submit path instead of phase-local fixtures. |
+
+### Strict-Constraint Exceptions For M6-P1
+
+M6 remains strict by default, but Bug #001 and Bug #002 require logged bug-fix exceptions. Each exception needs a regression test and an independent git revert path.
+
+| Exception | Location | Change type | R10 path |
+|-----------|----------|-------------|----------|
+| Bug #001 | `SessionService.submit` | existing behavior change: write `submitted` for normal submission | dedicated commit + submit/status regression tests |
+| Bug #001 | V9 migration | additive migration correcting the physical default and normalizing historical `under_ai_review` rows | dedicated migration commit; rollback through `m5-p7-baseline` tag/dev DB reset |
+| Bug #001 | queue/export readers | keep canonical `submitted` scope and add real-submit regressions to prove the scope is now populated | dedicated tests for default queue and nonzero export |
+| Bug #002 | task create deadline handling | contract/validation alignment: `deadlineAt` required at create with controlled 400 instead of 500 | dedicated controller/frontend regression |
+
+### M6-P1 Budget
+
+M6-P1 is a bug-fix sprint centered on submission lifecycle semantics and task-create deadline validation. The finalized裁决 keeps the estimated functional code under 500 lines:
+
+- Backend functional code: about 75-155 lines.
+- Frontend functional code: about 25-65 lines.
+- Total functional code: about 100-220 lines.
+- Tests: about 250-450 lines, intentionally larger than the fix.
+
+Cost/performance remains gated until the normal submit -> reviewer queue -> Trusted Export path is semantically correct.
