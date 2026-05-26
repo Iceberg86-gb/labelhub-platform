@@ -1298,6 +1298,10 @@ a {
   box-shadow: none;
 }
 
+.submission-schema-binding-banner {
+  margin-bottom: 16px;
+}
+
 .owner-submission-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);

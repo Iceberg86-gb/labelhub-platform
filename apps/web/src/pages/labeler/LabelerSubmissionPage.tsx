@@ -1,4 +1,4 @@
-import { Button, Card, Empty, Space, Spin, Tag, Typography } from '@douyinfe/semi-ui';
+import { Banner, Button, Card, Empty, Space, Spin, Tag, Typography } from '@douyinfe/semi-ui';
 import { useParams } from 'react-router-dom';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
@@ -79,6 +79,13 @@ export function LabelerSubmissionPage() {
       </div>
 
       <Card className="labeler-submission-card" bodyStyle={{ padding: 24 }}>
+        <Banner
+          className="submission-schema-binding-banner"
+          closeIcon={null}
+          description={`此 submission 按提交时绑定的 Schema v${schemaVersion.versionNumber} 渲染,历史答案不会被新 schema 重写。`}
+          fullMode={false}
+          type="info"
+        />
         <SchemaRenderer
           fields={schemaVersion.schemaJson.fields}
           value={answerPayload}
