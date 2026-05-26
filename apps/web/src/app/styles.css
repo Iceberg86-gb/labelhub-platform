@@ -89,6 +89,36 @@ a {
   font-weight: 600;
 }
 
+.role-badge {
+  border: 1px solid transparent;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.role-badge--owner {
+  border-color: #c4b5fd;
+  background: #f5f3ff;
+  color: #5b21b6;
+}
+
+.role-badge--labeler {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.role-badge--reviewer {
+  border-color: #fbbf24;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.role-badge--unknown {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+}
+
 .login-link {
   display: inline-flex;
   align-items: center;
