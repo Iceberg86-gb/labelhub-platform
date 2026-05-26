@@ -1086,3 +1086,103 @@ M6-P4.0 repeats the M6-P0.5 model:
 3. Implementation third.
 
 This prevents "touch whichever failure path is easiest" from creating inconsistent failure semantics across AI provenance, idempotency metrics, and Trusted Export.
+
+## 2026-05-26 M6 Phase 4a AI Provider Failure Evidence + Retry Semantics
+
+M6-P4a implements the AI side of the M6-P4.0 final裁决. Failed provider attempts are now append-only `ai_calls` facts with attempt-specific idempotency keys; timeout and retry are configurable under the existing OpenAI-compatible provider config; retryable failures use deterministic exponential backoff; retry attempts are observed through a separate metric without corrupting M6-P3b hit/miss semantics.
+
+### Idempotency Key Strategy
+
+Failed AI attempts use attempt-specific idempotency keys. Failed rows are evidence, not cache entries.
+
+- Success row `idempotency_key` = `{canonical_key}`.
+- Failed row `idempotency_key` = `{canonical_key}#failed-attempt-{n}`.
+- `selectByIdempotencyKey(canonical)` still performs exact canonical-key lookup only.
+- Failed rows never satisfy idempotency cache reuse.
+
+This preserves the DB `UNIQUE KEY uk_ai_calls_idempotency (idempotency_key)` invariant without V11 schema redesign.
+
+### Column Width Verification
+
+M6-P4a segment 1 verified the physical key budget before implementation:
+
+- `ai_calls.idempotency_key` is `VARCHAR(160) NOT NULL`.
+- Current unit-test canonical key example length: 59 chars.
+- Current DeepSeek-style canonical key example length: 82 chars.
+- Failed suffix `#failed-attempt-3` length: 17 chars.
+- Current known max example: 82 + 17 = 99 chars, within the 160-char DB limit.
+
+`FailedAiCallRecorder` still validates generated failed-attempt keys and throws before insert if a future prompt/version/provider combination exceeds 160 chars. This follows the user hard requirement: do not silently truncate.
+
+### Failed Row Transaction Boundary
+
+`FailedAiCallRecorder.recordFailedAttempt(...)` uses `@Transactional(propagation = REQUIRES_NEW)`. Failed evidence persists even when the outer `AiReviewService.review(...)` transaction later rolls back because the provider ultimately fails.
+
+Failed rows write:
+
+- `status = failed`
+- attempt-suffixed idempotency key
+- request payload and input hash
+- provider diagnostic payload (`providerCode`, `statusCode`, `retryable`, `message`)
+- zero token/cost placeholders for NOT NULL legacy columns
+- nullable M6-P3a token columns as `NULL`
+
+### Retry Semantics
+
+- Q4=C: `max-attempts` is config-driven under `labelhub.ai.openai-compatible.max-attempts`, default 3.
+- Q5=B: deterministic exponential backoff. With base delay `1000ms`, retries wait `1000ms`, then `2000ms`.
+- Q6=B: only `AiProviderException.isRetryable() == true` retries. Non-retryable exceptions write one failed attempt and fail fast.
+- Q7=B: retry lives inside one logical MISS. `selectByIdempotencyKey` runs once before the retry loop.
+
+M1 implementation choice: `AiRetryPolicy.invokeWithRetry(...)` uses a failed-attempt callback rather than directly depending on persistence. Retry logic and failed-evidence persistence remain decoupled and independently testable.
+
+### Timeout Configuration
+
+Timeout remains provider behavior, scoped only to the existing OpenAI-compatible provider config:
+
+- `labelhub.ai.openai-compatible.timeout`
+- `labelhub.ai.openai-compatible.max-attempts`
+- `labelhub.ai.openai-compatible.base-delay`
+
+No `labelhub.ai.providers.*` registry or multi-provider configuration hierarchy was introduced.
+
+### Metrics Semantics
+
+- M6-P3b `labelhub.ai.idempotency.miss` still increments once per logical review request.
+- M6-P4a `labelhub.ai.provider.retry` increments when a retry will be attempted after a failed provider attempt.
+- Hit ratio remains `hit / (hit + miss)`.
+
+M2 implementation choice: retry metric was added to the existing `AiIdempotencyMetrics` component for wiring simplicity, but uses the independent `labelhub.ai.provider.retry` namespace so retry does not become an idempotency metric.
+
+### Strict-Constraint Exceptions
+
+| Exception | Location | R10 path |
+|-----------|----------|----------|
+| Persist failed provider attempts | `FailedAiCallRecorder` + `AiReviewService.invokeProvider(...)` callback | Revert `feat: persist failed provider attempts and integrate retry policy`; successful AI review path remains intact |
+| Configurable timeout/retry wrapper | `OpenAiCompatibleProperties`, `AiProvider.timeout()`, `AiRetryPolicy`, `AiReviewService.invokeProvider(...)` | Revert timeout/retry config and retry-policy commits to restore M3 single-attempt behavior |
+| Retry metrics counter | `AiIdempotencyMetrics.recordRetryAttempt(...)` | Revert retry-metric commit; M6-P3b hit/miss/mismatch counters remain unchanged |
+
+### Regression Coverage
+
+- `FailedAiCallRecorderTest` proves attempt-suffixed failed rows and overlong-key fail-fast behavior.
+- `AiRetryPolicyTest` proves retryable retry, non-retryable fail-fast, and deterministic backoff sequence.
+- `AiReviewServiceTest` proves failed rows, eventual success after failure, non-retryable no-retry behavior, one logical MISS, and separate retry counter.
+- `AiCallMapperContractTest.selectByIdempotencyKey_uses_exact_canonical_key_lookup` proves failed rows are not cache entries.
+- `OpenAiCompatiblePropertiesTest` proves config binds under `openai-compatible` and not a generalized provider registry.
+
+### Sanity Check
+
+All preceding invariants still hold:
+
+- M6-P1 Q6: AI review does not mutate `submission.status`.
+- M6-P3a token persistence: nullable token fields still persist when usage is present.
+- M6-P3a-2 A2 fallback and calculator path remain guarded.
+- M6-P3b hit/miss/mismatch counters and Prometheus exposure remain guarded.
+
+### What M6-P4a Does Not Do
+
+- No export inline cleanup (M6-P4b).
+- No failed export-job persistence (M6-P4.0 false-symmetry decision).
+- No retry latency timer or error dashboard.
+- No multi-provider registry.
+- No retry jitter.
