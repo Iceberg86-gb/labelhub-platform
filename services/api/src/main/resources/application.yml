@@ -36,6 +36,9 @@ labelhub:
       model-name: ${AI_MODEL_NAME:}
       provider-name: ${AI_PROVIDER_NAME:openai-compatible}
       estimated-cost-per-call: ${AI_COST_PER_CALL:0.001}
+      timeout: ${AI_TIMEOUT:30s}
+      max-attempts: ${AI_MAX_ATTEMPTS:3}
+      base-delay: ${AI_BASE_DELAY:1000ms}
     pricing:
       currency: USD
       models:
