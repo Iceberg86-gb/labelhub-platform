@@ -19,13 +19,15 @@ public interface AiCallMapper {
         INSERT INTO ai_calls
         (submission_id, field_path, purpose, prompt_version, model_provider, model_name,
          input_hash, request_payload, response_payload, scores, verdict, token_input,
-         token_output, cost_decimal, latency_ms, status, idempotency_key, created_at, completed_at)
+         token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
+         latency_ms, status, idempotency_key, created_at, completed_at)
         VALUES
         (#{submissionId}, #{fieldPath}, #{purpose}, #{promptVersion}, #{modelProvider}, #{modelName},
          #{inputHash}, #{requestPayload, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
          #{responsePayload, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
          #{scores, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
-         #{verdict}, #{tokenInput}, #{tokenOutput}, #{costDecimal}, #{latencyMs}, #{status},
+         #{verdict}, #{tokenInput}, #{tokenOutput}, #{costDecimal}, #{promptTokens}, #{completionTokens},
+         #{totalTokens}, #{cacheHitTokens}, #{latencyMs}, #{status},
          #{idempotencyKey}, #{createdAt}, #{completedAt})
         """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
@@ -34,7 +36,8 @@ public interface AiCallMapper {
     @Select("""
         SELECT id, submission_id, field_path, purpose, prompt_version, model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
-               token_output, cost_decimal, latency_ms, status, idempotency_key, created_at, completed_at
+               token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
+               latency_ms, status, idempotency_key, created_at, completed_at
         FROM ai_calls
         WHERE id = #{id}
         """)
@@ -51,6 +54,10 @@ public interface AiCallMapper {
         @Result(column = "token_input", property = "tokenInput"),
         @Result(column = "token_output", property = "tokenOutput"),
         @Result(column = "cost_decimal", property = "costDecimal"),
+        @Result(column = "prompt_tokens", property = "promptTokens"),
+        @Result(column = "completion_tokens", property = "completionTokens"),
+        @Result(column = "total_tokens", property = "totalTokens"),
+        @Result(column = "cache_hit_tokens", property = "cacheHitTokens"),
         @Result(column = "latency_ms", property = "latencyMs"),
         @Result(column = "idempotency_key", property = "idempotencyKey"),
         @Result(column = "created_at", property = "createdAt"),
@@ -61,7 +68,8 @@ public interface AiCallMapper {
     @Select("""
         SELECT id, submission_id, field_path, purpose, prompt_version, model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
-               token_output, cost_decimal, latency_ms, status, idempotency_key, created_at, completed_at
+               token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
+               latency_ms, status, idempotency_key, created_at, completed_at
         FROM ai_calls
         WHERE idempotency_key = #{idempotencyKey}
         """)
@@ -71,7 +79,8 @@ public interface AiCallMapper {
     @Select("""
         SELECT id, submission_id, field_path, purpose, prompt_version, model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
-               token_output, cost_decimal, latency_ms, status, idempotency_key, created_at, completed_at
+               token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
+               latency_ms, status, idempotency_key, created_at, completed_at
         FROM ai_calls
         WHERE submission_id = #{submissionId}
         ORDER BY created_at ASC
@@ -83,7 +92,8 @@ public interface AiCallMapper {
         <script>
         SELECT id, submission_id, field_path, purpose, prompt_version, model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
-               token_output, cost_decimal, latency_ms, status, idempotency_key, created_at, completed_at
+               token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
+               latency_ms, status, idempotency_key, created_at, completed_at
         FROM ai_calls
         WHERE submission_id IN
         <foreach collection="submissionIds" item="submissionId" open="(" separator="," close=")">

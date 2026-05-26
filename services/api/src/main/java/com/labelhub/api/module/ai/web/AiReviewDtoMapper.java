@@ -3,6 +3,7 @@ package com.labelhub.api.module.ai.web;
 import com.labelhub.api.generated.model.AiCall;
 import com.labelhub.api.generated.model.AiCallInField;
 import com.labelhub.api.generated.model.AiCallStatus;
+import com.labelhub.api.generated.model.AiCallUsage;
 import com.labelhub.api.generated.model.AiReviewResult;
 import com.labelhub.api.generated.model.FieldFinding;
 import com.labelhub.api.generated.model.SubmissionAiProvenance;
@@ -28,6 +29,7 @@ public class AiReviewDtoMapper {
         dto.setConfidence(providerResult.confidence());
         dto.setSummary(providerResult.summary());
         dto.setIdempotencyHit(view.idempotencyHit());
+        dto.setUsage(toUsage(view.aiCall()));
         return dto;
     }
 
@@ -59,6 +61,21 @@ public class AiReviewDtoMapper {
         dto.setCreatedAt(offset(entity.getCreatedAt()));
         dto.setCompletedAt(offset(entity.getCompletedAt()));
         return dto;
+    }
+
+    private AiCallUsage toUsage(AiCallEntity entity) {
+        if (entity.getPromptTokens() == null
+            && entity.getCompletionTokens() == null
+            && entity.getTotalTokens() == null
+            && entity.getCacheHitTokens() == null) {
+            return null;
+        }
+        AiCallUsage usage = new AiCallUsage();
+        usage.setPromptTokens(entity.getPromptTokens());
+        usage.setCompletionTokens(entity.getCompletionTokens());
+        usage.setTotalTokens(entity.getTotalTokens());
+        usage.setCacheHitTokens(entity.getCacheHitTokens());
+        return usage;
     }
 
     public AiCallInField toAiCallInField(AiCallInFieldEntity entity) {

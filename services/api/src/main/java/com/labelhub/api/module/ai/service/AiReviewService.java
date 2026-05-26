@@ -12,8 +12,10 @@ import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
 import com.labelhub.api.module.ai.provider.AiCallRequest;
 import com.labelhub.api.module.ai.provider.AiCallResult;
+import com.labelhub.api.module.ai.provider.AiCallUsage;
 import com.labelhub.api.module.ai.provider.AiProvider;
 import com.labelhub.api.module.ai.provider.FieldFinding;
+import com.labelhub.api.module.ai.provider.ProviderInvocationResult;
 import com.labelhub.api.module.ai.service.view.AiReviewResultView;
 import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
@@ -109,7 +111,9 @@ public class AiReviewService {
             throw new AiInputHashMismatchException(submissionId, idempotencyKey);
         }
 
-        AiCallResult result = invokeProvider(promptVersion, input);
+        ProviderInvocationResult invocation = invokeProvider(promptVersion, input);
+        AiCallResult result = invocation.result();
+        AiCallUsage usage = invocation.usage();
         Map<String, Object> responsePayload = persistedJsonShape(result.output());
         String outputHash = hash(responsePayload);
         LocalDateTime now = LocalDateTime.now(clock);
@@ -125,6 +129,10 @@ public class AiReviewService {
         aiCall.setTokenInput(result.tokenInput());
         aiCall.setTokenOutput(result.tokenOutput());
         aiCall.setCostDecimal(result.cost());
+        aiCall.setPromptTokens(usage == null ? null : usage.promptTokens());
+        aiCall.setCompletionTokens(usage == null ? null : usage.completionTokens());
+        aiCall.setTotalTokens(usage == null ? null : usage.totalTokens());
+        aiCall.setCacheHitTokens(usage == null ? null : usage.cacheHitTokens());
         aiCall.setLatencyMs(Math.toIntExact(result.latencyMs()));
         aiCall.setStatus("completed");
         aiCall.setIdempotencyKey(idempotencyKey);
@@ -173,9 +181,9 @@ public class AiReviewService {
         );
     }
 
-    private AiCallResult invokeProvider(String promptVersion, Map<String, Object> input) {
+    private ProviderInvocationResult invokeProvider(String promptVersion, Map<String, Object> input) {
         try {
-            return aiProvider.invoke(new AiCallRequest(promptVersion, input, Duration.ofSeconds(30)));
+            return aiProvider.invokeWithUsage(new AiCallRequest(promptVersion, input, Duration.ofSeconds(30)));
         } catch (AiProviderException exception) {
             throw new AiProviderFailureException("AI provider invocation failed", exception);
         }

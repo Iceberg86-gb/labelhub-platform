@@ -65,6 +65,16 @@ function AiReviewResultPanel({ result }: { result: AiReviewResult }) {
         <MetaItem label="Completed" value={formatDateTime(completedAt)} />
         <MetaItem label="Input hash" value={shortHash(aiCall.inputHash)} mono />
         <MetaItem label="Output hash" value={shortHash(aiCall.outputHash)} mono />
+        {result.usage ? (
+          <>
+            <MetaItem label="Prompt Tokens" value={result.usage.promptTokens ?? '-'} />
+            <MetaItem label="Completion Tokens" value={result.usage.completionTokens ?? '-'} />
+            <MetaItem label="Total Tokens" value={result.usage.totalTokens ?? '-'} />
+            {result.usage.cacheHitTokens != null ? (
+              <MetaItem label="Cache Hit Tokens" value={result.usage.cacheHitTokens} />
+            ) : null}
+          </>
+        ) : null}
       </div>
 
       <section className="ai-review-summary">

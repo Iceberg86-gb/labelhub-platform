@@ -32,6 +32,10 @@ public class AiCallEntity {
     private Integer tokenInput;
     private Integer tokenOutput;
     private BigDecimal costDecimal;
+    private Integer promptTokens;
+    private Integer completionTokens;
+    private Integer totalTokens;
+    private Integer cacheHitTokens;
     private Integer latencyMs;
     private String status;
     private String idempotencyKey;
@@ -70,6 +74,14 @@ public class AiCallEntity {
     public void setTokenOutput(Integer tokenOutput) { this.tokenOutput = tokenOutput; }
     public BigDecimal getCostDecimal() { return costDecimal; }
     public void setCostDecimal(BigDecimal costDecimal) { this.costDecimal = costDecimal; }
+    public Integer getPromptTokens() { return promptTokens; }
+    public void setPromptTokens(Integer promptTokens) { this.promptTokens = promptTokens; }
+    public Integer getCompletionTokens() { return completionTokens; }
+    public void setCompletionTokens(Integer completionTokens) { this.completionTokens = completionTokens; }
+    public Integer getTotalTokens() { return totalTokens; }
+    public void setTotalTokens(Integer totalTokens) { this.totalTokens = totalTokens; }
+    public Integer getCacheHitTokens() { return cacheHitTokens; }
+    public void setCacheHitTokens(Integer cacheHitTokens) { this.cacheHitTokens = cacheHitTokens; }
     public Integer getLatencyMs() { return latencyMs; }
     public void setLatencyMs(Integer latencyMs) { this.latencyMs = latencyMs; }
     public String getStatus() { return status; }

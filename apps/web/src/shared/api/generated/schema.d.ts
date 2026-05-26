@@ -956,6 +956,13 @@ export interface components {
             /** Format: decimal */
             confidence?: string | null;
         };
+        /** @description Provider-reported token usage. Null fields mean the provider omitted that metric. */
+        AiCallUsage: {
+            promptTokens?: number | null;
+            completionTokens?: number | null;
+            totalTokens?: number | null;
+            cacheHitTokens?: number | null;
+        };
         AiReviewResult: {
             aiCall: components["schemas"]["AiCall"];
             fieldFindings: components["schemas"]["FieldFinding"][];
@@ -965,6 +972,7 @@ export interface components {
             confidence?: string | null;
             summary?: string | null;
             idempotencyHit: boolean;
+            usage?: components["schemas"]["AiCallUsage"];
         };
         TriggerAiReviewRequest: {
             promptVersion: string;
