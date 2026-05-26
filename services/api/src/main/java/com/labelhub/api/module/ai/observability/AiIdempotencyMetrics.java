@@ -27,6 +27,10 @@ public class AiIdempotencyMetrics {
         registry.counter(NAMESPACE + ".mismatch", TAG_PROVIDER, normalize(providerName)).increment();
     }
 
+    public void recordRetryAttempt(String providerName) {
+        registry.counter("labelhub.ai.provider.retry", TAG_PROVIDER, normalize(providerName)).increment();
+    }
+
     private String normalize(String providerName) {
         return providerName == null || providerName.isBlank() ? "unknown" : providerName;
     }

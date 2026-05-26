@@ -3,6 +3,7 @@ package com.labelhub.api.module.ai.provider;
 import java.math.BigDecimal;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 @ConfigurationProperties(prefix = "labelhub.ai.openai-compatible")
 public record OpenAiCompatibleProperties(
@@ -15,6 +16,10 @@ public record OpenAiCompatibleProperties(
     Integer maxAttempts,
     Duration baseDelay
 ) {
+
+    @ConstructorBinding
+    public OpenAiCompatibleProperties {
+    }
 
     public OpenAiCompatibleProperties(
         String baseUrl,
