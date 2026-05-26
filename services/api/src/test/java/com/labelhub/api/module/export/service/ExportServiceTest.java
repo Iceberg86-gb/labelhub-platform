@@ -201,7 +201,7 @@ class ExportServiceTest {
 
         assertThat(deletedKeys()).containsExactly(
             "exports/tasks/100/jobs/10/task.json",
-            "exports/tasks/100/jobs/10/schema_versions.jsonl"
+            "exports/tasks/100/jobs/10/source-state.json"
         );
     }
 
