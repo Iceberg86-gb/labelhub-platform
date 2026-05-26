@@ -43,7 +43,7 @@ export function AppLayout() {
             <Typography.Title heading={4} className="brand-title">
               LabelHub
             </Typography.Title>
-            <Typography.Text type="tertiary">AI 监督信号治理系统</Typography.Text>
+            <Typography.Text className="brand-subtitle">AI 监督信号治理系统</Typography.Text>
           </span>
         </Link>
 
