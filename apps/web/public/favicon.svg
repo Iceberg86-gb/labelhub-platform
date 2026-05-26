@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" fill="#111827"/>
+  <rect x="8" y="8" width="48" height="48" fill="#1f2937" stroke="#64748b" stroke-width="2"/>
+  <rect x="8" y="8" width="7" height="48" fill="#d97706"/>
+  <text x="22" y="40" fill="#ffffff" font-family="Arial, sans-serif" font-size="20" font-weight="700">LH</text>
+</svg>

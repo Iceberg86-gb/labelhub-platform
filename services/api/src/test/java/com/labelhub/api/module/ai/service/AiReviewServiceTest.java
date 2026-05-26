@@ -1,0 +1,512 @@
+package com.labelhub.api.module.ai.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.labelhub.api.module.ai.entity.AiCallEntity;
+import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
+import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
+import com.labelhub.api.module.ai.exception.AiProviderException;
+import com.labelhub.api.module.ai.exception.AiProviderFailureException;
+import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
+import com.labelhub.api.module.ai.mapper.AiCallMapper;
+import com.labelhub.api.module.ai.provider.AiCallRequest;
+import com.labelhub.api.module.ai.provider.AiCallResult;
+import com.labelhub.api.module.ai.provider.AiProvider;
+import com.labelhub.api.module.ai.provider.FieldFinding;
+import com.labelhub.api.module.ai.service.view.AiReviewResultView;
+import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
+import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
+import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
+import com.labelhub.api.module.quality.service.LedgerService;
+import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
+import com.labelhub.api.module.schema.entity.SubmissionEntity;
+import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
+import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
+import com.labelhub.api.module.schema.mapper.SubmissionMapper;
+import com.labelhub.api.module.task.entity.TaskEntity;
+import com.labelhub.api.module.task.mapper.TaskMapper;
+import com.labelhub.api.shared.canonical.Canonicalizer;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class AiReviewServiceTest {
+
+    private static final LocalDateTime NOW = LocalDateTime.parse("2026-05-25T12:00:00");
+
+    private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
+    private final SchemaVersionMapper schemaVersionMapper = mock(SchemaVersionMapper.class);
+    private final DatasetItemMapper datasetItemMapper = mock(DatasetItemMapper.class);
+    private final TaskMapper taskMapper = mock(TaskMapper.class);
+    private final AiCallMapper aiCallMapper = mock(AiCallMapper.class);
+    private final AiCallInFieldMapper aiCallInFieldMapper = mock(AiCallInFieldMapper.class);
+    private final LedgerService ledgerService = mock(LedgerService.class);
+    private final AiProvider aiProvider = mock(AiProvider.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
+    private AiReviewService service;
+
+    @BeforeEach
+    void setUp() {
+        Clock clock = Clock.fixed(Instant.parse("2026-05-25T12:00:00Z"), ZoneOffset.UTC);
+        service = new AiReviewService(
+            submissionMapper,
+            schemaVersionMapper,
+            datasetItemMapper,
+            taskMapper,
+            aiCallMapper,
+            aiCallInFieldMapper,
+            ledgerService,
+            canonicalizer,
+            objectMapper,
+            clock,
+            aiProvider
+        );
+        when(aiProvider.providerName()).thenReturn("mock");
+        when(aiProvider.modelName()).thenReturn("mock-v1");
+        seedOwnedSubmission();
+    }
+
+    @Test
+    void review_invokes_provider_and_writes_ai_call_with_correct_fields() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        AiCallEntity inserted = captor.getValue();
+        assertThat(inserted.getSubmissionId()).isEqualTo(300L);
+        assertThat(inserted.getPurpose()).isEqualTo("submission_review");
+        assertThat(inserted.getModelProvider()).isEqualTo("mock");
+        assertThat(inserted.getModelName()).isEqualTo("mock-v1");
+        assertThat(inserted.getStatus()).isEqualTo("completed");
+        assertThat(inserted.getIdempotencyKey()).isEqualTo("submission:300:provider:mock:model:mock-v1:prompt:prompt-v1");
+        assertThat(inserted.getRequestPayload()).doesNotContainKey("labelerId");
+        assertThat(inserted.getResponsePayload()).containsEntry("overallSuggestion", "looks_good");
+        assertThat(result.idempotencyHit()).isFalse();
+        assertThat(result.aiCall().getOutputHash()).hasSize(64);
+    }
+
+    @Test
+    void review_writes_in_order_ai_call_before_fields() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        InOrder inOrder = inOrder(aiCallMapper, aiCallInFieldMapper);
+        inOrder.verify(aiCallMapper).insert(any(AiCallEntity.class));
+        inOrder.verify(aiCallInFieldMapper).insert(any(AiCallInFieldEntity.class));
+    }
+
+    @Test
+    void review_writes_ai_call_in_field_per_field_finding() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallInFieldEntity> captor = ArgumentCaptor.forClass(AiCallInFieldEntity.class);
+        verify(aiCallInFieldMapper).insert(captor.capture());
+        AiCallInFieldEntity row = captor.getValue();
+        assertThat(row.getSubmissionId()).isEqualTo(300L);
+        assertThat(row.getAiCallId()).isEqualTo(900L);
+        assertThat(row.getFieldPath()).isEqualTo("field-title");
+        assertThat(row.getAccepted()).isFalse();
+        assertThat(row.getUserModifiedAfter()).isFalse();
+        assertThat(result.fieldRows()).hasSize(1);
+    }
+
+    @Test
+    void review_computes_canonical_input_hash() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        assertThat(captor.getValue().getInputHash()).isEqualTo(inputHashForDefaultFixture());
+    }
+
+    @Test
+    void review_computes_canonical_output_hash() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+
+        assertThat(result.aiCall().getOutputHash())
+            .isEqualTo(canonicalizer.sha256Hex(canonicalizer.canonicalJson(jsonRoundTrip(providerResult().output()))));
+    }
+
+    @Test
+    void review_computes_output_hash_from_persisted_response_payload_shape() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+
+        Map<String, Object> persistedShape = jsonRoundTrip(result.aiCall().getResponsePayload());
+        assertThat(result.aiCall().getOutputHash())
+            .isEqualTo(canonicalizer.sha256Hex(canonicalizer.canonicalJson(persistedShape)));
+    }
+
+    @Test
+    void review_assigns_ordinal_1_for_first_field_review() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.selectMaxOrdinal(300L, "field-title")).thenReturn(null);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallInFieldEntity> captor = ArgumentCaptor.forClass(AiCallInFieldEntity.class);
+        verify(aiCallInFieldMapper).insert(captor.capture());
+        assertThat(captor.getValue().getOrdinal()).isEqualTo(1);
+    }
+
+    @Test
+    void review_increments_ordinal_for_repeated_field_review() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.selectMaxOrdinal(300L, "field-title")).thenReturn(2);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallInFieldEntity> captor = ArgumentCaptor.forClass(AiCallInFieldEntity.class);
+        verify(aiCallInFieldMapper).insert(captor.capture());
+        assertThat(captor.getValue().getOrdinal()).isEqualTo(3);
+    }
+
+    @Test
+    void review_marks_status_completed_and_records_completed_at() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, "prompt-v1");
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo("completed");
+        assertThat(captor.getValue().getCompletedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void review_does_not_persist_field_findings_when_provider_returns_empty() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(emptyProviderResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
+
+        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+
+        assertThat(result.fieldRows()).isEmpty();
+        verify(aiCallInFieldMapper, never()).insert(any());
+        verify(ledgerService, never()).appendAiFieldFindings(any(), any(), any(), any());
+    }
+
+    @Test
+    void ai_field_findings_appended_to_ledger_on_new_review() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(twoFindingProviderResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+
+        assertThat(result.idempotencyHit()).isFalse();
+        verify(ledgerService).appendAiFieldFindings(
+            eq(300L),
+            eq(10L),
+            eq(900L),
+            argThat(findings -> findings.size() == 2)
+        );
+    }
+
+    @Test
+    void review_returns_existing_result_when_idempotency_key_matches_and_input_hash_matches() {
+        String inputHash = inputHashForDefaultFixture();
+        AiCallEntity existing = persistedAiCall(inputHash);
+        when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
+        when(aiCallInFieldMapper.selectBySubmissionAndAiCall(300L, 900L)).thenReturn(List.of(fieldRow(300L, 900L, "field-title", 1)));
+
+        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+
+        assertThat(result.idempotencyHit()).isTrue();
+        assertThat(result.providerResult().overallSuggestion()).isEqualTo("looks_good");
+        assertThat(result.providerResult().fieldFindings()).extracting(FieldFinding::fieldPath).containsExactly("field-title");
+        verify(aiProvider, never()).invoke(any());
+        verify(aiCallMapper, never()).insert(any());
+        verify(aiCallInFieldMapper, never()).insert(any());
+        verify(ledgerService, never()).appendAiFieldFindings(any(), any(), any(), any());
+    }
+
+    @Test
+    void review_throws_ai_input_hash_mismatch_when_key_matches_but_hash_differs() {
+        AiCallEntity existing = persistedAiCall("different-input-hash");
+        when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(AiInputHashMismatchException.class);
+
+        verify(aiProvider, never()).invoke(any());
+    }
+
+    @Test
+    void getProvenance_sets_output_hash_for_each_ai_call() {
+        AiCallEntity aiCall = persistedAiCall(inputHashForDefaultFixture());
+        when(aiCallMapper.selectBySubmissionId(300L)).thenReturn(List.of(aiCall));
+        when(aiCallInFieldMapper.selectBySubmissionId(300L)).thenReturn(List.of(fieldRow(300L, 900L, "field-title", 1)));
+
+        SubmissionAiProvenanceView result = service.getProvenance(300L, 1001L);
+
+        assertThat(result.aiCalls()).singleElement()
+            .extracting(AiCallEntity::getOutputHash)
+            .isEqualTo(canonicalizer.sha256Hex(canonicalizer.canonicalJson(jsonRoundTrip(providerResult().output()))));
+        assertThat(result.fieldRows()).hasSize(1);
+    }
+
+    @Test
+    void getProvenance_allows_reviewer_to_read_any_submission() {
+        TaskEntity task = task(10L, 2002L);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        AiCallEntity aiCall = persistedAiCall(inputHashForDefaultFixture());
+        when(aiCallMapper.selectBySubmissionId(300L)).thenReturn(List.of(aiCall));
+
+        SubmissionAiProvenanceView result = service.getProvenance(300L, 3003L, Set.of("REVIEWER"));
+
+        assertThat(result.aiCalls()).hasSize(1);
+    }
+
+    @Test
+    void review_throws_submission_not_found_when_submission_missing() {
+        when(submissionMapper.selectById(300L)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(SubmissionNotFoundException.class);
+
+        verify(aiProvider, never()).invoke(any());
+    }
+
+    @Test
+    void review_wraps_provider_exception_as_ai_provider_failure() {
+        when(aiProvider.invoke(any())).thenThrow(new AiProviderException("rate limited", true, "rate_limit", 429));
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(AiProviderFailureException.class)
+            .hasCauseInstanceOf(AiProviderException.class);
+
+        verify(aiCallMapper, never()).insert(any());
+        verify(aiCallInFieldMapper, never()).insert(any());
+    }
+
+    @Test
+    void review_throws_submission_not_found_when_task_belongs_to_different_owner() {
+        TaskEntity task = task(10L, 2002L);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(SubmissionNotFoundException.class);
+
+        verify(aiProvider, never()).invoke(any());
+    }
+
+    private void seedOwnedSubmission() {
+        when(submissionMapper.selectById(300L)).thenReturn(submission());
+        when(taskMapper.selectById(10L)).thenReturn(task(10L, 1001L));
+        when(schemaVersionMapper.selectById(700L)).thenReturn(schemaVersion());
+        when(datasetItemMapper.selectById(500L)).thenReturn(datasetItem());
+    }
+
+    private String inputHashForDefaultFixture() {
+        return canonicalizer.sha256Hex(canonicalizer.canonicalJson(expectedInput()));
+    }
+
+    private Map<String, Object> expectedInput() {
+        return Map.of(
+            "schemaVersionId", 700L,
+            "schemaFields", List.of(Map.of(
+                "stableId", "field-title",
+                "label", "标题",
+                "type", "text"
+            )),
+            "answerPayload", Map.of("field-title", "good answer"),
+            "datasetItemPayload", Map.of("source", "row-1"),
+            "task", Map.of("id", 10L, "title", "Task title", "description", "Task description"),
+            "submission", Map.of("id", 300L, "createdAt", "2026-05-25T11:00")
+        );
+    }
+
+    private AiCallResult providerResult() {
+        FieldFinding finding = new FieldFinding("field-title", "field-title", "标题", "info", "looks fine", new BigDecimal("0.90"));
+        Map<String, Object> output = output(List.of(finding), "summary");
+        return new AiCallResult(output, "looks_good", new BigDecimal("0.90"), "summary",
+            List.of(finding), 10, 20, new BigDecimal("0.000100"), 100, null);
+    }
+
+    private AiCallResult twoFindingProviderResult() {
+        FieldFinding first = new FieldFinding("field-title", "field-title", "标题", "warning", "tighten title", new BigDecimal("0.80"));
+        FieldFinding second = new FieldFinding("field-body", "field-body", "正文", "info", "body looks fine", new BigDecimal("0.70"));
+        List<FieldFinding> findings = List.of(first, second);
+        Map<String, Object> output = output(findings, "two findings");
+        return new AiCallResult(output, "needs_review", new BigDecimal("0.75"), "two findings",
+            findings, 10, 20, new BigDecimal("0.000100"), 100, null);
+    }
+
+    private AiCallResult emptyProviderResult() {
+        Map<String, Object> output = output(List.of(), "empty");
+        return new AiCallResult(output, "looks_good", new BigDecimal("0.90"), "empty",
+            List.of(), 10, 0, new BigDecimal("0.000100"), 100, null);
+    }
+
+    private Map<String, Object> output(List<FieldFinding> findings, String summary) {
+        return Map.of(
+            "overallSuggestion", "looks_good",
+            "confidence", new BigDecimal("0.90"),
+            "summary", summary,
+            "fieldFindings", findings.stream().map(finding -> Map.of(
+                "fieldPath", finding.fieldPath(),
+                "stableId", finding.stableId(),
+                "label", finding.label(),
+                "severity", finding.severity(),
+                "finding", finding.finding(),
+                "confidence", finding.confidence()
+            )).toList()
+        );
+    }
+
+    private Map<String, Object> jsonRoundTrip(Map<String, Object> value) {
+        try {
+            return objectMapper.readValue(
+                objectMapper.writeValueAsString(value),
+                new TypeReference<Map<String, Object>>() {}
+            );
+        } catch (Exception exception) {
+            throw new IllegalStateException("Failed to round-trip JSON fixture", exception);
+        }
+    }
+
+    private AiCallEntity persistedAiCall(String inputHash) {
+        AiCallEntity entity = new AiCallEntity();
+        entity.setId(900L);
+        entity.setSubmissionId(300L);
+        entity.setPurpose("submission_review");
+        entity.setPromptVersion("prompt-v1");
+        entity.setModelProvider("mock");
+        entity.setModelName("mock-v1");
+        entity.setInputHash(inputHash);
+        entity.setResponsePayload(jsonRoundTrip(providerResult().output()));
+        entity.setTokenInput(10);
+        entity.setTokenOutput(20);
+        entity.setCostDecimal(new BigDecimal("0.000100"));
+        entity.setLatencyMs(100);
+        entity.setStatus("completed");
+        entity.setIdempotencyKey("submission:300:provider:mock:model:mock-v1:prompt:prompt-v1");
+        entity.setCreatedAt(NOW);
+        entity.setCompletedAt(NOW);
+        return entity;
+    }
+
+    private AiCallInFieldEntity fieldRow(Long submissionId, Long aiCallId, String fieldPath, int ordinal) {
+        AiCallInFieldEntity entity = new AiCallInFieldEntity();
+        entity.setSubmissionId(submissionId);
+        entity.setAiCallId(aiCallId);
+        entity.setFieldPath(fieldPath);
+        entity.setAccepted(false);
+        entity.setUserModifiedAfter(false);
+        entity.setOrdinal(ordinal);
+        entity.setCreatedAt(NOW);
+        return entity;
+    }
+
+    private SubmissionEntity submission() {
+        SubmissionEntity entity = new SubmissionEntity();
+        entity.setId(300L);
+        entity.setTaskId(10L);
+        entity.setDatasetItemId(500L);
+        entity.setSchemaVersionId(700L);
+        entity.setLabelerId(1002L);
+        entity.setAnswerPayload(Map.of("field-title", "good answer"));
+        entity.setCreatedAt(LocalDateTime.parse("2026-05-25T11:00:00"));
+        return entity;
+    }
+
+    private SchemaVersionEntity schemaVersion() {
+        SchemaVersionEntity entity = new SchemaVersionEntity();
+        entity.setId(700L);
+        entity.setSchemaJson(Map.of("fields", List.of(Map.of(
+            "stableId", "field-title",
+            "label", "标题",
+            "type", "text"
+        ))));
+        return entity;
+    }
+
+    private DatasetItemEntity datasetItem() {
+        DatasetItemEntity entity = new DatasetItemEntity();
+        entity.setId(500L);
+        entity.setItemPayload(Map.of("source", "row-1"));
+        return entity;
+    }
+
+    private TaskEntity task(Long id, Long ownerId) {
+        TaskEntity entity = new TaskEntity();
+        entity.setId(id);
+        entity.setOwnerId(ownerId);
+        entity.setTitle("Task title");
+        entity.setDescription("Task description");
+        return entity;
+    }
+}

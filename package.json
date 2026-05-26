@@ -1,0 +1,21 @@
+{
+  "name": "labelhub",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.0",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @labelhub/web dev",
+    "gen:api": "pnpm --filter @labelhub/web gen:api",
+    "lint": "pnpm --filter @labelhub/web lint",
+    "typecheck": "pnpm --filter @labelhub/web typecheck",
+    "test": "pnpm --filter @labelhub/web test"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

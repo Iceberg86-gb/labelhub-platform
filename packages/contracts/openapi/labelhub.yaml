@@ -1,0 +1,2222 @@
+openapi: 3.0.3
+info:
+  title: LabelHub API
+  version: 0.9.0
+  description: Contract-first API for the LabelHub modular monolith and AI worker.
+servers:
+  - url: http://localhost:8080/api
+tags:
+  - name: Auth
+  - name: Tasks
+  - name: Datasets
+  - name: Schemas
+  - name: Sessions
+  - name: AIReview
+  - name: Reviews
+  - name: Exports
+  - name: Internal
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Auth token and role profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+  /tasks:
+    get:
+      tags: [Tasks]
+      operationId: listTasks
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+      responses:
+        '200':
+          description: Owner tasks for the authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedTasks'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+    post:
+      tags: [Tasks]
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Created task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /tasks/{taskId}:
+    get:
+      tags: [Tasks]
+      operationId: getTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Task detail visible to the authenticated Owner.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/submissions:
+    get:
+      tags: [Tasks]
+      operationId: listOwnerTaskSubmissions
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Owner-visible submission summaries for a task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedOwnerSubmissions'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/exports:
+    post:
+      tags: [Exports]
+      operationId: createTaskExport
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '201':
+          description: Synchronous immutable export snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSnapshot'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+    get:
+      tags: [Exports]
+      operationId: listTaskExports
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Export snapshots for the task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedExportSnapshots'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/transitions:
+    get:
+      tags: [Tasks]
+      operationId: getTaskTransitions
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Append-only task transition history in chronological order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskTransition'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /tasks/marketplace:
+    get:
+      tags: [Tasks]
+      operationId: listMarketplaceTasks
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Available tasks for labelers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedMarketplaceTasks'
+  /tasks/{taskId}/transition:
+    patch:
+      tags: [Tasks]
+      operationId: transitionTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskTransitionRequest'
+      responses:
+        '200':
+          description: Updated task state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+  /tasks/{taskId}/current-dataset:
+    patch:
+      tags: [Tasks]
+      operationId: updateTaskCurrentDataset
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskCurrentDatasetRequest'
+      responses:
+        '200':
+          description: Task current dataset updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+  /datasets:
+    post:
+      tags: [Datasets]
+      operationId: uploadDataset
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, taskId]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                taskId:
+                  type: integer
+                  format: int64
+                sourceName:
+                  type: string
+                format:
+                  $ref: '#/components/schemas/DatasetImportFormat'
+      responses:
+        '201':
+          description: Dataset uploaded and imported.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+    get:
+      tags: [Datasets]
+      operationId: listDatasets
+      parameters:
+        - name: taskId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Owner-scoped datasets for a task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDatasets'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /datasets/{datasetId}:
+    get:
+      tags: [Datasets]
+      operationId: getDataset
+      parameters:
+        - name: datasetId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Owner-scoped dataset detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dataset'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/claim:
+    post:
+      tags: [Tasks]
+      operationId: claimTaskItem
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '201':
+          description: Claimed annotation session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+  /schemas:
+    get:
+      tags: [Schemas]
+      operationId: listSchemas
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Owner schemas for the authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedSchemas'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+    post:
+      tags: [Schemas]
+      operationId: createSchema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSchemaRequest'
+      responses:
+        '201':
+          description: Created schema family.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelSchema'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /schemas/{schemaId}:
+    get:
+      tags: [Schemas]
+      operationId: getSchema
+      parameters:
+        - $ref: '#/components/parameters/SchemaId'
+      responses:
+        '200':
+          description: Schema family detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LabelSchema'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /schemas/{schemaId}/versions:
+    get:
+      tags: [Schemas]
+      operationId: listSchemaVersions
+      parameters:
+        - $ref: '#/components/parameters/SchemaId'
+      responses:
+        '200':
+          description: Immutable schema versions for this schema family.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SchemaVersion'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+    post:
+      tags: [Schemas]
+      operationId: publishSchemaVersion
+      parameters:
+        - $ref: '#/components/parameters/SchemaId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchemaVersionRequest'
+      responses:
+        '201':
+          description: Immutable schema version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaVersion'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /schemas/{schemaId}/versions/{versionId}:
+    get:
+      tags: [Schemas]
+      operationId: getSchemaVersion
+      parameters:
+        - $ref: '#/components/parameters/SchemaId'
+        - $ref: '#/components/parameters/SchemaVersionId'
+      responses:
+        '200':
+          description: Immutable schema version detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaVersion'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /submissions/{submissionId}:
+    get:
+      tags: [Submissions]
+      operationId: getSubmission
+      description: Return a submission owned by the authenticated labeler. M2 only exposes submissions to their labeler owner; reviewer and owner visibility opens in M4.
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      responses:
+        '200':
+          description: Submission detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /submissions/{submissionId}/render-schema:
+    get:
+      tags: [Submissions]
+      operationId: getSubmissionRenderSchema
+      description: Owner of the task or the submission's labeler may read the historical schema and bound answer payload.
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      responses:
+        '200':
+          description: Schema version and answer payload bound to a historical submission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionRenderSchema'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /sessions/{sessionId}:
+    get:
+      tags: [Sessions]
+      operationId: getSession
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Labeler-owned session detail with immutable schema version and latest draft.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDetail'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /my/sessions:
+    get:
+      tags: [Sessions]
+      operationId: listMySessions
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/SessionStatus'
+      responses:
+        '200':
+          description: Sessions claimed by the authenticated labeler.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedSessions'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /sessions/{sessionId}/draft:
+    get:
+      tags: [Sessions]
+      operationId: getSessionDraft
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: Latest draft revision for this session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+    put:
+      tags: [Sessions]
+      operationId: saveDraft
+      description: Save a new draft revision. Each call creates a new revision_no in append-only `drafts` table, even if payload is identical to the previous revision. Frontend should throttle saves (recommended 3-5s) to avoid excessive revisions.
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveDraftRequest'
+      responses:
+        '201':
+          description: Draft revision saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+  /sessions/{sessionId}/submit:
+    post:
+      tags: [Sessions]
+      operationId: submitSession
+      description: Submit final answers for a claimed session. Once submitted, the session transitions to `submitted` and cannot be modified.
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitSessionRequest'
+      responses:
+        '201':
+          description: Submission created and queued for AI review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+  /ai-review/rules:
+    post:
+      tags: [AIReview]
+      operationId: saveAiReviewRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiReviewRuleRequest'
+      responses:
+        '201':
+          description: AI review rule saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiReviewRule'
+  /ai-review/field-assist:
+    post:
+      tags: [AIReview]
+      operationId: createFieldAssistCall
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FieldAssistRequest'
+      responses:
+        '202':
+          description: Field-level AI assistance accepted and traceable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldAssistResponse'
+  /submissions/{submissionId}/ai-review:
+    post:
+      tags: [AIReview]
+      operationId: triggerSubmissionAiReview
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TriggerAiReviewRequest'
+      responses:
+        '201':
+          description: AI review completed or reused through idempotency.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiReviewResult'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+        '502':
+          description: AI provider failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+    get:
+      tags: [AIReview]
+      operationId: getSubmissionAiProvenance
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      responses:
+        '200':
+          description: AI provenance for a submission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionAiProvenance'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /submissions/{submissionId}/ai-trace:
+    get:
+      tags: [AIReview]
+      operationId: getSubmissionAiTrace
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      responses:
+        '200':
+          description: Full AI provenance chain for a submission, including field-level assistance history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionAiProvenance'
+  /reviewer/submissions:
+    get:
+      tags: [Reviews]
+      operationId: listReviewerQueue
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            default: submitted
+        - name: verdict
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+      responses:
+        '200':
+          description: Reviewer queue over submitted annotations with real-time derived verdicts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedReviewerSubmissions'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /submissions/{submissionId}/ledger-entries:
+    post:
+      tags: [Reviews]
+      operationId: createLedgerEntry
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLedgerEntryRequest'
+      responses:
+        '201':
+          description: Append-only quality ledger entry recorded by a reviewer.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityLedgerEntry'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+    get:
+      tags: [Reviews]
+      operationId: listSubmissionLedger
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Append-only quality ledger history for a submission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedQualityLedgerEntries'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /submissions/{submissionId}/verdict:
+    get:
+      tags: [Reviews]
+      operationId: getSubmissionVerdict
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      responses:
+        '200':
+          description: Real-time verdict derived from quality ledger entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Verdict'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /adjudication-rules/{ruleId}/recompute:
+    post:
+      tags: [Reviews]
+      operationId: recomputeAdjudicationRule
+      parameters:
+        - $ref: '#/components/parameters/RuleId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecomputeRuleRequest'
+      responses:
+        '202':
+          description: Verdict re-derivation job accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecomputeJob'
+  /exports/snapshots/{snapshotId}:
+    get:
+      tags: [Exports]
+      operationId: getExportSnapshot
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+      responses:
+        '200':
+          description: Immutable export snapshot by snapshot id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSnapshot'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /exports/snapshots/{snapshotId}/diff:
+    get:
+      tags: [Exports]
+      operationId: diffExportSnapshots
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: compareWith
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Hash-level reproducibility diff between two export snapshots.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSnapshotDiff'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /internal/ai-review/results:
+    post:
+      tags: [Internal]
+      operationId: reportAiReviewResult
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InternalAiReviewResultRequest'
+      responses:
+        '204':
+          description: AI result persisted.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SchemaId:
+      name: schemaId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SchemaVersionId:
+      name: versionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SubmissionId:
+      name: submissionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    RuleId:
+      name: ruleId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SnapshotId:
+      name: snapshotId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+  responses:
+    ErrorBadRequest:
+      description: Request validation failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ErrorUnauthorized:
+      description: Missing, expired, or invalid authentication.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ErrorForbidden:
+      description: Authenticated user is not allowed to perform this action.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ErrorNotFound:
+      description: Requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ErrorStateConflict:
+      description: Request conflicts with the current business state.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [accessToken, tokenType, expiresAt, user]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresAt:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/LoginUserProfile'
+    LoginUserProfile:
+      type: object
+      required: [id, username, displayName, roles]
+      properties:
+        id:
+          type: integer
+          format: int64
+        username:
+          type: string
+        displayName:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiFieldError'
+    ApiFieldError:
+      description: |
+        Field-level error from input validation or business guards.
+        `field` uses the OpenAPI camelCase property name, for example `quotaTotal` or `deadlineAt`,
+        and must match the request body schema field name.
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          description: OpenAPI camelCase property name that failed validation.
+          type: string
+        message:
+          description: Human-readable field-level validation or business-guard message.
+          type: string
+    TaskStatus:
+      type: string
+      enum: [draft, published, paused, ended]
+    Verdict:
+      type: object
+      required: [submissionId, status, derivedAt]
+      properties:
+        submissionId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        derivedFromEntryId:
+          type: integer
+          format: int64
+          nullable: true
+        derivedAt:
+          type: string
+          format: date-time
+    CreateTaskRequest:
+      type: object
+      required: [title, quotaTotal]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        instructionRichText:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        rewardRule:
+          type: object
+          additionalProperties: true
+        deadlineAt:
+          type: string
+          format: date-time
+        quotaTotal:
+          type: integer
+    Task:
+      allOf:
+        - $ref: '#/components/schemas/CreateTaskRequest'
+        - type: object
+          required: [id, status, quotaClaimed]
+          properties:
+            id:
+              type: integer
+              format: int64
+            status:
+              $ref: '#/components/schemas/TaskStatus'
+            quotaClaimed:
+              type: integer
+            currentSchemaVersionId:
+              type: integer
+              format: int64
+              nullable: true
+            currentDatasetId:
+              type: integer
+              format: int64
+              nullable: true
+    PagedTasks:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    OwnerSubmissionSummary:
+      type: object
+      required: [id, sessionId, taskId, datasetItemId, schemaVersionId, labelerId, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        sessionId:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        datasetItemId:
+          type: integer
+          format: int64
+        schemaVersionId:
+          type: integer
+          format: int64
+        labelerId:
+          type: integer
+          format: int64
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    PagedOwnerSubmissions:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OwnerSubmissionSummary'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    MarketplaceTask:
+      type: object
+      required: [id, title, status, quotaTotal, quotaClaimed, currentSchemaVersionId, currentDatasetId, availableItemCount]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        deadlineAt:
+          type: string
+          format: date-time
+        quotaTotal:
+          type: integer
+        quotaClaimed:
+          type: integer
+        currentSchemaVersionId:
+          type: integer
+          format: int64
+        currentDatasetId:
+          type: integer
+          format: int64
+        availableItemCount:
+          type: integer
+    SessionTask:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: integer
+          format: int64
+        title:
+          type: string
+        description:
+          type: string
+        instructionRichText:
+          type: string
+        deadlineAt:
+          type: string
+          format: date-time
+    PagedMarketplaceTasks:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketplaceTask'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    TaskTransitionRequest:
+      type: object
+      required: [toStatus]
+      properties:
+        toStatus:
+          $ref: '#/components/schemas/TaskStatus'
+        reason:
+          type: string
+    TaskTransition:
+      type: object
+      required: [id, taskId, toStatus, actorId, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        fromStatus:
+          $ref: '#/components/schemas/TaskStatus'
+        toStatus:
+          $ref: '#/components/schemas/TaskStatus'
+        actorId:
+          type: integer
+          format: int64
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    DatasetImportFormat:
+      type: string
+      enum: [json, jsonl]
+    Dataset:
+      type: object
+      required: [id, taskId, sourceType, itemCount, importStatus, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        sourceType:
+          type: string
+        sourceName:
+          type: string
+        originalFileKey:
+          type: string
+          nullable: true
+        itemCount:
+          type: integer
+        importStatus:
+          type: string
+        errorMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    PagedDatasets:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dataset'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    UpdateTaskCurrentDatasetRequest:
+      type: object
+      required: [datasetId]
+      properties:
+        datasetId:
+          type: integer
+          format: int64
+    CreateSchemaRequest:
+      type: object
+      required: [name]
+      properties:
+        taskId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+    LabelSchema:
+      type: object
+      required: [id, name, ownerId, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        ownerId:
+          type: integer
+          format: int64
+        currentVersionId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    PagedSchemas:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LabelSchema'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    SchemaFieldType:
+      type: string
+      enum: [text, number, single_select, multi_select, date, file_upload, nested_object]
+    SchemaFieldValidation:
+      type: object
+      properties:
+        required:
+          type: boolean
+        minLength:
+          type: integer
+          minimum: 0
+        maxLength:
+          type: integer
+          minimum: 0
+        min:
+          type: number
+        max:
+          type: number
+        pattern:
+          type: string
+    SchemaFieldOption:
+      type: object
+      required: [label, value]
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+    SchemaField:
+      type: object
+      required: [stableId, label, type]
+      properties:
+        stableId:
+          type: string
+        label:
+          type: string
+        type:
+          $ref: '#/components/schemas/SchemaFieldType'
+        placeholder:
+          type: string
+        help:
+          type: string
+        validation:
+          $ref: '#/components/schemas/SchemaFieldValidation'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaFieldOption'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaField'
+    SchemaDocument:
+      type: object
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaField'
+    SchemaVersionRequest:
+      type: object
+      required: [schemaJson]
+      properties:
+        schemaJson:
+          $ref: '#/components/schemas/SchemaDocument'
+    SchemaVersion:
+      type: object
+      required: [id, schemaId, versionNumber, schemaJson, fieldStableIds, contentHash, ownerId]
+      properties:
+        id:
+          type: integer
+          format: int64
+        schemaId:
+          type: integer
+          format: int64
+        versionNumber:
+          type: integer
+        schemaJson:
+          $ref: '#/components/schemas/SchemaDocument'
+        fieldStableIds:
+          type: array
+          items:
+            type: string
+        contentHash:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        ownerId:
+          type: integer
+          format: int64
+    SubmissionRenderSchema:
+      type: object
+      required: [submissionId, schemaVersion, answerPayload]
+      properties:
+        submissionId:
+          type: integer
+          format: int64
+        schemaVersion:
+          $ref: '#/components/schemas/SchemaVersion'
+        answerPayload:
+          type: object
+          additionalProperties: true
+        provenance:
+          type: object
+          additionalProperties: true
+    SessionStatus:
+      type: string
+      enum: [claimed, submitted, abandoned]
+    Session:
+      type: object
+      required: [id, taskId, datasetItemId, labelerId, schemaVersionId, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        datasetItemId:
+          type: integer
+          format: int64
+        labelerId:
+          type: integer
+          format: int64
+        schemaVersionId:
+          type: integer
+          format: int64
+        status:
+          $ref: '#/components/schemas/SessionStatus'
+        claimSnapshot:
+          type: object
+          additionalProperties: true
+        claimedAt:
+          type: string
+          format: date-time
+        submittedAt:
+          type: string
+          format: date-time
+    DatasetItem:
+      type: object
+      required: [id, ordinal, itemPayload]
+      properties:
+        id:
+          type: integer
+          format: int64
+        ordinal:
+          type: integer
+        itemPayload:
+          type: object
+          additionalProperties: true
+    Draft:
+      type: object
+      required: [sessionId, revisionNo, payload, savedAt]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        revisionNo:
+          type: integer
+        payload:
+          type: object
+          additionalProperties: true
+        savedAt:
+          type: string
+          format: date-time
+    SessionDetail:
+      type: object
+      required: [session, task, schemaVersion, datasetItem]
+      properties:
+        session:
+          $ref: '#/components/schemas/Session'
+        task:
+          $ref: '#/components/schemas/SessionTask'
+        schemaVersion:
+          $ref: '#/components/schemas/SchemaVersion'
+        datasetItem:
+          $ref: '#/components/schemas/DatasetItem'
+        latestDraft:
+          $ref: '#/components/schemas/Draft'
+    PagedSessions:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    SaveDraftRequest:
+      type: object
+      required: [payload]
+      properties:
+        payload:
+          type: object
+          additionalProperties: true
+    SubmitSessionRequest:
+      type: object
+      required: [answerPayload]
+      description: Submit final answers for a session. `contentHash` is server-derived and is not accepted from clients.
+      properties:
+        answerPayload:
+          type: object
+          additionalProperties: true
+    Submission:
+      type: object
+      required: [id, sessionId, taskId, datasetItemId, labelerId, schemaVersionId, answerPayload, contentHash, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        sessionId:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        datasetItemId:
+          type: integer
+          format: int64
+        labelerId:
+          type: integer
+          format: int64
+        schemaVersionId:
+          type: integer
+          format: int64
+        answerPayload:
+          type: object
+          additionalProperties: true
+        provenance:
+          type: object
+          nullable: true
+          additionalProperties: true
+        contentHash:
+          type: string
+          description: Server-derived. Computed via canonicalization and SHA-256 on answerPayload.
+        status:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        supersededById:
+          type: integer
+          format: int64
+          nullable: true
+    AiReviewRuleRequest:
+      type: object
+      required: [taskId, promptTemplate, dimensions, threshold]
+      properties:
+        taskId:
+          type: integer
+          format: int64
+        promptTemplate:
+          type: string
+        dimensions:
+          type: array
+          items:
+            type: string
+        threshold:
+          type: number
+    AiReviewRule:
+      allOf:
+        - $ref: '#/components/schemas/AiReviewRuleRequest'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              format: int64
+    AiCallStatus:
+      type: string
+      enum: [completed, failed]
+    AiCall:
+      type: object
+      required: [id, submissionId, purpose, promptVersion, providerName, modelName, inputHash, status, idempotencyKey, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        submissionId:
+          type: integer
+          format: int64
+        fieldPath:
+          type: string
+          nullable: true
+        purpose:
+          type: string
+        promptVersion:
+          type: string
+        providerName:
+          type: string
+        modelName:
+          type: string
+        inputHash:
+          type: string
+          minLength: 64
+          maxLength: 64
+        outputHash:
+          type: string
+          minLength: 64
+          maxLength: 64
+          nullable: true
+        tokenInput:
+          type: integer
+        tokenOutput:
+          type: integer
+        cost:
+          type: string
+          format: decimal
+        latencyMs:
+          type: integer
+          nullable: true
+        status:
+          $ref: '#/components/schemas/AiCallStatus'
+        idempotencyKey:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+    AiCallInField:
+      type: object
+      required: [id, submissionId, fieldPath, aiCallId, accepted, userModifiedAfter, ordinal, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        submissionId:
+          type: integer
+          format: int64
+        fieldPath:
+          type: string
+          description: StableId path, e.g. parentStableId.childStableId.
+        aiCallId:
+          type: integer
+          format: int64
+        accepted:
+          type: boolean
+        userModifiedAfter:
+          type: boolean
+        ordinal:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    FieldFinding:
+      type: object
+      required: [fieldPath, severity, finding]
+      properties:
+        fieldPath:
+          type: string
+        stableId:
+          type: string
+          nullable: true
+        label:
+          type: string
+          nullable: true
+        severity:
+          type: string
+          enum: [info, warning, error]
+        finding:
+          type: string
+        confidence:
+          type: string
+          format: decimal
+          nullable: true
+    AiReviewResult:
+      type: object
+      required: [aiCall, fieldFindings, overallSuggestion, idempotencyHit]
+      properties:
+        aiCall:
+          $ref: '#/components/schemas/AiCall'
+        fieldFindings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldFinding'
+        overallSuggestion:
+          type: string
+          enum: [looks_good, needs_review, issues_found]
+        confidence:
+          type: string
+          format: decimal
+          nullable: true
+        summary:
+          type: string
+          nullable: true
+        idempotencyHit:
+          type: boolean
+    TriggerAiReviewRequest:
+      type: object
+      required: [promptVersion]
+      properties:
+        promptVersion:
+          type: string
+    FieldAssistRequest:
+      type: object
+      required: [sessionId, fieldPath, input]
+      properties:
+        sessionId:
+          type: integer
+          format: int64
+        fieldPath:
+          type: string
+        input:
+          type: object
+          additionalProperties: true
+        promptVersion:
+          type: string
+    FieldAssistResponse:
+      type: object
+      required: [aiCallId, fieldPath, output, provenance]
+      properties:
+        aiCallId:
+          type: integer
+          format: int64
+        fieldPath:
+          type: string
+        output:
+          type: object
+          additionalProperties: true
+        provenance:
+          $ref: '#/components/schemas/FieldAITrace'
+    FieldAITrace:
+      type: object
+      required: [aiCallId, fieldPath, source, accepted, userModifiedAfter, ordinal]
+      properties:
+        aiCallId:
+          type: integer
+          format: int64
+        fieldPath:
+          type: string
+        source:
+          type: string
+          description: Prompt or provider source, such as prompt_v3.
+        confidence:
+          type: number
+        accepted:
+          type: boolean
+        userModifiedAfter:
+          type: boolean
+        ordinal:
+          type: integer
+    SubmissionAiProvenance:
+      type: object
+      required: [submissionId, aiCalls, fieldFindings]
+      properties:
+        submissionId:
+          type: integer
+          format: int64
+        aiCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiCall'
+        fieldFindings:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiCallInField'
+    QualityLedgerEntry:
+      type: object
+      required: [id, submissionId, taskId, entryType, actorType, payload, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        submissionId:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        entryType:
+          $ref: '#/components/schemas/QualityLedgerEntryType'
+        actorType:
+          type: string
+        actorUserId:
+          type: integer
+          format: int64
+          nullable: true
+        aiCallId:
+          type: integer
+          format: int64
+          nullable: true
+        payload:
+          $ref: '#/components/schemas/QualityLedgerEntryPayload'
+        createdAt:
+          type: string
+          format: date-time
+    QualityLedgerEntryType:
+      type: string
+      enum: [reviewer_overall_verdict, ai_field_finding]
+      description: |
+        Quality ledger entry types. M4 implemented `reviewer_overall_verdict`.
+        M5 adds `ai_field_finding` for AI-derived field-level evidence.
+    QualityLedgerEntryPayload:
+      oneOf:
+        - $ref: '#/components/schemas/ReviewerOverallVerdictPayload'
+        - $ref: '#/components/schemas/AiFieldFindingPayload'
+    ReviewerOverallVerdictPayload:
+      type: object
+      required: [verdict]
+      properties:
+        verdict:
+          type: string
+          enum: [approve, reject]
+        reason:
+          type: string
+          nullable: true
+    AiFieldFindingPayload:
+      type: object
+      required: [fieldPath, severity, finding]
+      properties:
+        fieldPath:
+          type: string
+        stableId:
+          type: string
+        label:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, error]
+        finding:
+          type: string
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+    CreateLedgerEntryRequest:
+      type: object
+      required: [entryType, payload]
+      properties:
+        entryType:
+          $ref: '#/components/schemas/QualityLedgerEntryType'
+        payload:
+          $ref: '#/components/schemas/ReviewerOverallVerdictPayload'
+    PagedQualityLedgerEntries:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityLedgerEntry'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    ReviewerSubmissionSummary:
+      type: object
+      required: [id, taskId, taskTitle, labelerId, schemaVersionId, status, submittedAt, verdict]
+      properties:
+        id:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        taskTitle:
+          type: string
+        labelerId:
+          type: integer
+          format: int64
+        schemaVersionId:
+          type: integer
+          format: int64
+        status:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        verdict:
+          $ref: '#/components/schemas/Verdict'
+    PagedReviewerSubmissions:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewerSubmissionSummary'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    RecomputeRuleRequest:
+      type: object
+      properties:
+        taskId:
+          type: integer
+          format: int64
+        mode:
+          type: string
+          enum: [batch, lazy_probe]
+          default: batch
+        reason:
+          type: string
+    RecomputeJob:
+      type: object
+      required: [id, ruleId, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        ruleId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [queued, running, completed, failed]
+        affectedSubmissionCount:
+          type: integer
+    ExportSnapshot:
+      type: object
+      required: [id, exportJobId, taskId, fileHash, manifestHash, sourceStateHash, objectKey, fileManifest, recordCounts, canonicalizationVersion, generatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        exportJobId:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        fileHash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        manifestHash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        sourceStateHash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        objectKey:
+          type: string
+        fileManifest:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportFileEntry'
+        recordCounts:
+          type: object
+          additionalProperties:
+            type: integer
+        canonicalizationVersion:
+          type: string
+        generatedAt:
+          type: string
+    ExportFileEntry:
+      type: object
+      required: [name, sha256, lines, sizeBytes]
+      properties:
+        name:
+          type: string
+        sha256:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        lines:
+          type: integer
+        sizeBytes:
+          type: integer
+          format: int64
+    ExportSnapshotDiff:
+      type: object
+      required: [equal, baseSnapshotId, compareSnapshotId, hashMatches]
+      properties:
+        equal:
+          type: boolean
+        baseSnapshotId:
+          type: integer
+          format: int64
+        compareSnapshotId:
+          type: integer
+          format: int64
+        hashMatches:
+          type: object
+          required: [fileHash, manifestHash, sourceStateHash]
+          properties:
+            fileHash:
+              type: boolean
+            manifestHash:
+              type: boolean
+            sourceStateHash:
+              type: boolean
+        fileLevelMatches:
+          type: array
+          items:
+            type: object
+            required: [fileName, baseSha256, compareSha256, match]
+            properties:
+              fileName:
+                type: string
+              baseSha256:
+                type: string
+                pattern: '^[a-f0-9]{64}$'
+              compareSha256:
+                type: string
+                pattern: '^[a-f0-9]{64}$'
+              match:
+                type: boolean
+    PagedExportSnapshots:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportSnapshot'
+        total:
+          type: integer
+        page:
+          type: integer
+        size:
+          type: integer
+    InternalAiReviewResultRequest:
+      type: object
+      required: [submissionId, idempotencyKey, result]
+      properties:
+        submissionId:
+          type: integer
+          format: int64
+        idempotencyKey:
+          type: string
+        result:
+          $ref: '#/components/schemas/AiReviewResult'

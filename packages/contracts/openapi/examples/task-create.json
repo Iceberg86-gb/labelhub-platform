@@ -1,0 +1,12 @@
+{
+  "title": "客服问答质量标注",
+  "description": "判断回答是否准确、完整、可安全用于训练。",
+  "instructionRichText": "<p>请按事实准确性和格式合规性完成标注。</p>",
+  "tags": ["qa", "sft"],
+  "rewardRule": {
+    "unit": "item",
+    "amount": 0.2
+  },
+  "deadlineAt": "2026-12-01T12:00:00Z",
+  "quotaTotal": 500
+}

@@ -1,0 +1,2 @@
+-- Demo seed placeholder for M1.
+-- Keep real seed inserts deterministic and safe to rerun.

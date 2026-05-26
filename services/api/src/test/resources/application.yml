@@ -1,0 +1,4 @@
+labelhub:
+  object-storage:
+    access-key: test-access-key
+    secret-key: test-secret-key

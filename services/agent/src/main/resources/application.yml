@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: labelhub-agent
+
+server:
+  port: ${LABELHUB_AGENT_PORT:8081}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+labelhub:
+  api:
+    base-url: ${LABELHUB_API_BASE_URL:http://localhost:8080}
+    internal-token: ${LABELHUB_INTERNAL_TOKEN:dev-internal-token}
+  llm:
+    primary-provider: ${LLM_PRIMARY_PROVIDER:doubao}
+    doubao:
+      endpoint: ${DOUBAO_ENDPOINT:}
+      api-key: ${DOUBAO_API_KEY:}
+      model: ${DOUBAO_MODEL:}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      model: ${OPENAI_MODEL:gpt-4.1-mini}
