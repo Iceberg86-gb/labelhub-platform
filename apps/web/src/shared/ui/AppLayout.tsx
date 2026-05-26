@@ -1,4 +1,4 @@
-import { Button, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Typography } from '@douyinfe/semi-ui';
 import { IconChecklistStroked, IconUserGroup, IconVerify, IconUserCircle } from '@douyinfe/semi-icons';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -6,6 +6,7 @@ import { useLogout } from '../../features/auth/logout/useLogout';
 import { getUser, SESSION_CHANGED_EVENT, type UserProfile } from '../api/auth-storage';
 import { UNAUTHORIZED_EVENT } from '../api/client';
 import { roleRoutePriority } from '../auth/roleRoutes';
+import { RoleBadge } from './RoleBadge';
 
 const menuIcons = {
   OWNER: <IconChecklistStroked aria-hidden />,
@@ -52,7 +53,9 @@ export function AppLayout() {
             <>
               <IconUserCircle aria-hidden />
               <span className="user-name">{user.displayName}</span>
-              <Tag color="blue">{user.roles.join(' / ')}</Tag>
+              {user.roles.map((role) => (
+                <RoleBadge key={role} role={role} />
+              ))}
               <Button size="small" theme="borderless" type="tertiary" onClick={logout}>
                 登出
               </Button>
