@@ -1365,6 +1365,19 @@ a {
   background: #ffffff;
 }
 
+.verdict-source-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #334155;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.verdict-source-line .semi-icon {
+  color: #2563eb;
+}
+
 .reviewer-submission-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
