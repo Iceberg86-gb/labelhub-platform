@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppLayout } from '../shared/ui/AppLayout';
+import { PublicLayout } from '../shared/ui/PublicLayout';
 import { AuthRedirectBridge } from '../shared/auth/AuthRedirectBridge';
 import { RequireAuth } from '../shared/auth/RequireAuth';
 import { RequireRole } from '../shared/auth/RequireRole';
@@ -33,6 +34,26 @@ function RootRedirect() {
 
 export const router = createBrowserRouter(
   [
+    {
+      path: '/login',
+      element: <PublicLayout />,
+      children: [
+        {
+          index: true,
+          element: <LoginPage />,
+        },
+      ],
+    },
+    {
+      path: '/forbidden',
+      element: <PublicLayout />,
+      children: [
+        {
+          index: true,
+          element: <ForbiddenPage />,
+        },
+      ],
+    },
     {
       path: '/',
       element: (
@@ -174,14 +195,6 @@ export const router = createBrowserRouter(
               </RequireRole>
             </RequireAuth>
           ),
-        },
-        {
-          path: 'login',
-          element: <LoginPage />,
-        },
-        {
-          path: 'forbidden',
-          element: <ForbiddenPage />,
         },
       ],
     },
