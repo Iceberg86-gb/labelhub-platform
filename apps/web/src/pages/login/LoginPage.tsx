@@ -1,11 +1,22 @@
 import { Button, Form, Toast, Typography } from '@douyinfe/semi-ui';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLogin, type LoginValues } from '../../features/auth/login/useLogin';
+import { clearSession } from '../../shared/api/auth-storage';
+
+const demoAccounts = [
+  { role: 'Owner', username: 'owner_demo' },
+  { role: 'Labeler', username: 'labeler_demo' },
+  { role: 'Reviewer', username: 'reviewer_demo' },
+];
 
 export function LoginPage() {
   const login = useLogin();
   const formApiRef = useRef<FormApi<LoginValues>>();
+
+  useEffect(() => {
+    clearSession();
+  }, []);
 
   const handleSubmit = async (values: LoginValues) => {
     const formElement = document.querySelector<HTMLFormElement>('form.login-form');
@@ -34,9 +45,7 @@ export function LoginPage() {
       <div className="login-panel">
         <div className="login-copy">
           <Typography.Title heading={3}>登录 LabelHub</Typography.Title>
-          <Typography.Text type="tertiary">
-            使用演示账号进入 Owner 工作台，验证任务管理链路的认证与权限边界。
-          </Typography.Text>
+          <Typography.Text type="tertiary">登录以继续</Typography.Text>
         </div>
 
         <Form<LoginValues>
@@ -50,14 +59,14 @@ export function LoginPage() {
           <Form.Input
             field="username"
             label="用户名"
-            placeholder="owner_demo"
+            placeholder="请输入用户名"
             rules={[{ required: true, message: '请输入用户名' }]}
           />
           <Form.Input
             field="password"
             label="密码"
             mode="password"
-            placeholder="demo1234"
+            placeholder="请输入密码"
             rules={[
               { required: true, message: '请输入密码' },
               { min: 8, message: '密码至少 8 位' },
@@ -74,6 +83,19 @@ export function LoginPage() {
             登录
           </Button>
         </Form>
+
+        <div className="login-demo-hint" aria-label="Demo accounts">
+          <Typography.Text strong>演示账号</Typography.Text>
+          <ul className="login-demo-list">
+            {demoAccounts.map((account) => (
+              <li key={account.username}>
+                <span>{account.role}</span>
+                <code>{account.username}</code>
+              </li>
+            ))}
+          </ul>
+          <Typography.Text type="tertiary">密码统一为: demo1234</Typography.Text>
+        </div>
       </div>
     </section>
   );
