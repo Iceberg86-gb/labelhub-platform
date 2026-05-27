@@ -1,5 +1,5 @@
 import { Button, Typography } from '@douyinfe/semi-ui';
-import { IconChecklistStroked, IconUserGroup, IconVerify, IconUserCircle, IconExit } from '@douyinfe/semi-icons';
+import { IconArticle, IconChecklistStroked, IconUserGroup, IconVerify, IconUserCircle, IconExit } from '@douyinfe/semi-icons';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useLogout } from '../../features/auth/logout/useLogout';
@@ -13,6 +13,10 @@ const menuIcons = {
   LABELER: <IconUserGroup aria-hidden />,
   REVIEWER: <IconVerify aria-hidden />,
 };
+
+function menuIconFor(path: string, role: keyof typeof menuIcons) {
+  return path === '/owner/audit-logs' ? <IconArticle aria-hidden /> : menuIcons[role];
+}
 
 export function AppLayout() {
   const [user, setUser] = useState<UserProfile | null>(() => getUser());
@@ -84,7 +88,7 @@ export function AppLayout() {
                   to={item.path}
                   className={({ isActive }) => (isActive ? 'nav-item is-active' : 'nav-item')}
                 >
-                  {menuIcons[item.role]}
+                  {menuIconFor(item.path, item.role)}
                   <span>{item.label}</span>
                 </NavLink>
               ))
