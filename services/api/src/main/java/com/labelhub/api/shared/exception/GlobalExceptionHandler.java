@@ -2,6 +2,7 @@ package com.labelhub.api.shared.exception;
 
 import com.labelhub.api.generated.model.ApiError;
 import com.labelhub.api.generated.model.ApiFieldError;
+import com.labelhub.api.module.admin.exception.PayloadTooLargeException;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
 import com.labelhub.api.module.dataset.exception.EmptyDatasetException;
@@ -187,6 +188,12 @@ public class GlobalExceptionHandler {
         fieldError.setMessage(exception.getReason());
         return ResponseEntity.badRequest()
             .body(error("INVALID_SCHEMA_DOCUMENT", "Schema document is invalid", List.of(fieldError)));
+    }
+
+    @ExceptionHandler(PayloadTooLargeException.class)
+    ResponseEntity<ApiError> payloadTooLarge(PayloadTooLargeException exception) {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+            .body(error("PAYLOAD_TOO_LARGE", exception.getMessage()));
     }
 
     @ExceptionHandler({TaskNotFoundException.class, SchemaNotFoundException.class, SchemaVersionNotFoundException.class,

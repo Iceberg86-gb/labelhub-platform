@@ -7,7 +7,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class AuditLogsController implements AuditLogsApi {
+
+    private static final DateTimeFormatter EXPORT_FILENAME_TIMESTAMP =
+        DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     private final AuditLogQueryService auditLogQueryService;
 
@@ -34,14 +40,17 @@ public class AuditLogsController implements AuditLogsApi {
         @Valid @RequestParam(value = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
         @Valid @RequestParam(value = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to
     ) {
-        return ResponseEntity.ok(auditLogQueryService.exportAuditLogsCsv(
-            actionTypes,
-            resourceTypes,
-            actorUserId,
-            resourceId,
-            from,
-            to
-        ));
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"audit-logs-"
+                + OffsetDateTime.now(ZoneOffset.UTC).format(EXPORT_FILENAME_TIMESTAMP) + ".csv\"")
+            .body(auditLogQueryService.exportAuditLogsCsv(
+                actionTypes,
+                resourceTypes,
+                actorUserId,
+                resourceId,
+                from,
+                to
+            ));
     }
 
     @Override
