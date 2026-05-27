@@ -96,9 +96,11 @@ export function OwnerAuditLogsPage() {
         title: '操作',
         width: 180,
         render: (_: unknown, log: AuditLog) => (
-          <Tooltip content={<code>{log.action}</code>}>
-            <Tag color="blue">{ACTION_LABELS.get(log.action) ?? log.action}</Tag>
-          </Tooltip>
+          <span className="audit-action-cell">
+            <Tooltip content={<code>{log.action}</code>}>
+              <Tag color="blue">{ACTION_LABELS.get(log.action) ?? log.action}</Tag>
+            </Tooltip>
+          </span>
         ),
       },
       {
@@ -165,7 +167,7 @@ export function OwnerAuditLogsPage() {
         {!logs.isLoading && !logs.isError && items.length === 0 ? <div className="task-state-panel"><Empty title="未匹配任何审计记录" description="调整筛选条件后重新查询。" /><Button onClick={resetFilters}>重置筛选</Button></div> : null}
         {!logs.isLoading && !logs.isError && items.length > 0 ? (
           <>
-            <Table columns={columns} dataSource={items} rowKey="id" pagination={false} />
+            <Table className="audit-logs-table" columns={columns} dataSource={items} rowKey="id" pagination={false} />
             <div className="task-pagination">
               <Pagination total={logs.data?.total ?? 0} currentPage={page} pageSize={size} showSizeChanger onPageChange={setPage} onPageSizeChange={(next) => { setPage(1); setSize(next); }} />
             </div>

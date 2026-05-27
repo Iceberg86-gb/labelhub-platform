@@ -1,5 +1,5 @@
 import { Button, Typography } from '@douyinfe/semi-ui';
-import { IconArticle, IconChecklistStroked, IconUserGroup, IconVerify, IconUserCircle, IconExit } from '@douyinfe/semi-icons';
+import { IconChecklistStroked, IconHistory, IconUserGroup, IconVerify, IconUserCircle, IconExit } from '@douyinfe/semi-icons';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useLogout } from '../../features/auth/logout/useLogout';
@@ -15,7 +15,7 @@ const menuIcons = {
 };
 
 function menuIconFor(path: string, role: keyof typeof menuIcons) {
-  return path === '/owner/audit-logs' ? <IconArticle aria-hidden /> : menuIcons[role];
+  return path === '/owner/audit-logs' ? <IconHistory aria-hidden /> : menuIcons[role];
 }
 
 export function AppLayout() {
