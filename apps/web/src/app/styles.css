@@ -89,6 +89,15 @@ a {
   font-weight: 600;
 }
 
+.app-header .header-logout-button {
+  color: #f8fafc;
+}
+
+.app-header .header-logout-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
 .role-badge {
   border: 1px solid transparent;
   font-weight: 800;
