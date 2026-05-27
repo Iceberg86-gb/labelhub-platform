@@ -118,7 +118,13 @@ export function OwnerTasksListPage() {
             </Button>
             <Popconfirm
               title="永久删除任务?"
-              content="此操作会永久删除该 task 以及所有 task 范围内的事实数据(sessions、submissions、AI 调用、Quality Ledger、Verdict、Export 快照等)。删除后不可恢复。"
+              content={
+                <Typography.Text style={{ display: 'block', maxWidth: 360, lineHeight: 1.6 }}>
+                  此操作会永久删除该 task 以及所有 task 范围内的事实数据(sessions、submissions、AI 调用、Quality
+                  Ledger、Verdict、Export 快照等)。删除后不可恢复。
+                </Typography.Text>
+              }
+              position="leftTop"
               okText="永久删除"
               cancelText="取消"
               okType="danger"
