@@ -1,5 +1,5 @@
 import { Button, Typography } from '@douyinfe/semi-ui';
-import { IconChecklistStroked, IconUserGroup, IconVerify, IconUserCircle } from '@douyinfe/semi-icons';
+import { IconChecklistStroked, IconUserGroup, IconVerify, IconUserCircle, IconExit } from '@douyinfe/semi-icons';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useLogout } from '../../features/auth/logout/useLogout';
@@ -56,7 +56,13 @@ export function AppLayout() {
               {user.roles.map((role) => (
                 <RoleBadge key={role} role={role} />
               ))}
-              <Button size="small" theme="borderless" type="tertiary" onClick={logout}>
+              <Button
+                size="small"
+                theme="borderless"
+                icon={<IconExit />}
+                className="header-logout-button"
+                onClick={logout}
+              >
                 登出
               </Button>
             </>
