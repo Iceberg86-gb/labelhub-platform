@@ -46,7 +46,11 @@ export interface paths {
         get: operations["getTask"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 永久删除 Owner 任务
+         * @description 永久删除该 task 以及所有 task 范围内的事实数据(sessions、submissions、ai_calls、quality_ledger_entries、verdicts、export_snapshots、task_transitions 等)。本操作覆盖 M6-P0.5 提出的 submission 不可变事实承诺,详细记录见 docs/internal/m6p7-verification.md 的 R8 段。
+         */
+        delete: operations["deleteTask"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1320,6 +1324,29 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Task"];
                 };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    deleteTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Task permanently deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];

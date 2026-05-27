@@ -88,6 +88,11 @@ public class TaskService {
         return task;
     }
 
+    @Transactional
+    public void deleteTask(Long taskId) {
+        throw new UnsupportedOperationException("M6-P7 Cluster 2 pending: hard delete cascade not yet implemented");
+    }
+
     public List<TaskTransitionEntity> listTransitions(Long taskId, Long ownerId) {
         TaskEntity task = requireTask(taskId);
         if (!Objects.equals(task.getOwnerId(), ownerId)) {

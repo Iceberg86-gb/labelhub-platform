@@ -30,6 +30,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -102,6 +103,14 @@ public class TasksController implements TasksApi {
     @GetMapping(path = "/{taskId}", produces = "application/json")
     public ResponseEntity<Task> getTask(@PathVariable("taskId") Long taskId) {
         return ResponseEntity.ok(toDto(taskService.getById(currentUserId(), taskId)));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @DeleteMapping(path = "/{taskId}")
+    public ResponseEntity<Void> deleteTask(@PathVariable("taskId") Long taskId) {
+        taskService.deleteTask(taskId);
+        return ResponseEntity.noContent().build();
     }
 
     @Override
