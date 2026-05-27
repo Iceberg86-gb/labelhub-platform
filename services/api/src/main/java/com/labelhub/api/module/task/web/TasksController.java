@@ -109,7 +109,7 @@ public class TasksController implements TasksApi {
     @PreAuthorize("hasRole('OWNER')")
     @DeleteMapping(path = "/{taskId}")
     public ResponseEntity<Void> deleteTask(@PathVariable("taskId") Long taskId) {
-        taskService.deleteTask(taskId);
+        taskService.deleteTask(taskId, currentUserId());
         return ResponseEntity.noContent().build();
     }
 

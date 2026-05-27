@@ -63,4 +63,14 @@ public interface ExportJobMapper {
 
     @Select("SELECT COUNT(*) FROM export_jobs WHERE task_id = #{taskId}")
     Long selectCountByTaskId(@Param("taskId") Long taskId);
+
+    @Select("""
+        SELECT id, task_id, requested_by, format, status, parameters, created_at, started_at,
+               completed_at, file_key, file_size, download_count
+        FROM export_jobs
+        WHERE task_id = #{taskId}
+        ORDER BY id ASC
+        """)
+    @ResultMap("exportJobResultMap")
+    List<ExportJobEntity> selectAllByTaskId(@Param("taskId") Long taskId);
 }
