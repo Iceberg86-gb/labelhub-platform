@@ -1,9 +1,10 @@
-import { Button, Empty, Pagination, Select, Space, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconExternalOpen, IconPlus, IconRefresh } from '@douyinfe/semi-icons';
+import { Button, Empty, Pagination, Popconfirm, Select, Space, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
+import { IconDelete, IconExternalOpen, IconPlus, IconRefresh } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TaskStatusBadge } from '../../entities/task/TaskStatusBadge';
 import { CreateTaskModal } from '../../features/task/create-task/CreateTaskModal';
+import { useDeleteTaskMutation } from '../../features/task/delete-task/useDeleteTaskMutation';
 import { useTasksQuery, type Task, type TaskStatus } from '../../features/task/list-tasks/useTasksQuery';
 
 const DEFAULT_PAGE = 1;
@@ -48,6 +49,8 @@ export function OwnerTasksListPage() {
   const size = parsePositiveInt(searchParams.get('size'), DEFAULT_SIZE);
   const status = parseStatus(searchParams.get('status'));
   const tasksQuery = useTasksQuery({ page, size, status });
+  const deleteTaskMutation = useDeleteTaskMutation();
+  const deletingTaskId = deleteTaskMutation.isPending ? deleteTaskMutation.variables?.taskId : undefined;
 
   const updateParams = (patch: { page?: number; size?: number; status?: TaskStatus }) => {
     const next = new URLSearchParams(searchParams);
@@ -62,6 +65,12 @@ export function OwnerTasksListPage() {
 
     setSearchParams(next);
   };
+
+  const handleDeleteTask = (task: Task) =>
+    deleteTaskMutation
+      .mutateAsync({ taskId: task.id })
+      .then(() => Toast.success('任务已永久删除'))
+      .catch((error: unknown) => Toast.error(error instanceof Error ? error.message : '删除失败,请稍后重试'));
 
   const columns = useMemo(
     () => [
@@ -101,20 +110,29 @@ export function OwnerTasksListPage() {
       },
       {
         title: '操作',
-        width: 120,
+        width: 200,
         render: (_: unknown, record: Task) => (
-          <Button
-            icon={<IconExternalOpen />}
-            size="small"
-            theme="borderless"
-            onClick={() => navigate(`/owner/tasks/${record.id}`)}
-          >
-            查看详情
-          </Button>
+          <Space>
+            <Button icon={<IconExternalOpen />} size="small" theme="borderless" onClick={() => navigate(`/owner/tasks/${record.id}`)}>
+              查看详情
+            </Button>
+            <Popconfirm
+              title="永久删除任务?"
+              content="此操作会永久删除该 task 以及所有 task 范围内的事实数据(sessions、submissions、AI 调用、Quality Ledger、Verdict、Export 快照等)。删除后不可恢复。"
+              okText="永久删除"
+              cancelText="取消"
+              okType="danger"
+              onConfirm={() => handleDeleteTask(record)}
+            >
+              <Button icon={<IconDelete />} size="small" theme="borderless" type="danger" loading={deletingTaskId === record.id}>
+                删除
+              </Button>
+            </Popconfirm>
+          </Space>
         ),
       },
     ],
-    [navigate],
+    [deletingTaskId, deleteTaskMutation, navigate],
   );
 
   const data = tasksQuery.data;
