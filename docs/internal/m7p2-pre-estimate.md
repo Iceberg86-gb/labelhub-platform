@@ -2,319 +2,315 @@
 
 ## Status
 
-Pre-estimate gate only. No code lands until user adjudication.
+This document supersedes the M7-P2 Path B+C scope-budget + pre-estimate
+recorded in commit 76d61b2 (76d61b2 docs: scope M7-P2 form virtualization
+and performance benchmark). The Path B+C plan is preserved in git history
+as the auditor's original recommendation; user adjudication selected
+Path A-II per rubric 1.4 "推荐栈: Formily + 拖拽库" interpreted as a
+project hard requirement. The supersession is forward-recorded here so
+future readers find both decision branches without retroactive edits.
+
+Pre-estimate gate for Path A-II. Awaiting auditor confirmation of the
+cluster-level breakdown and risk register before C1 spike begins.
 
 Baseline anchor:
 
-- HEAD: `080e9da`
+- HEAD before this rewrite: `c669cbd`
 - Backend tests: `408 / 78`
 - OpenAPI MD5: `b6a8344f2c7cc38db958eb333334ebd1`
 - Migration count: `11`
 - `humanpending.md` bracketed entries: `131`
 
-M7-P2 is frontend-only unless the user chooses the Formily adoption path, which
-would require a rewritten estimate.
+## Path A Adjudication Trail
+
+M7-P2 Path A adjudication recorded by the user:
+
+```
+M7-P2 Path A adjudication recorded by the user:
+
+1. Path A locked, with rubric 1.4 截图 cited as evidence that
+   "Formily + drag library" is a project hard requirement.
+2. Auditor's Path B+C push-back was reviewed and rejected; user
+   re-confirmed Path A regardless of cost (~2.5x scope vs Path B).
+3. Option II selected over Option I: runtime Formily + retained
+   dnd-kit designer. Designable + AntD route REJECTED on React
+   18 + Semi incompatibility grounds.
+4. @formily/semi REJECTED: peer-version conflict with project's
+   @formily/core@2.3.7 (semi binding peers locked to 2.2.1).
+5. Local Semi x-components ACCEPTED as the binding strategy.
+6. C1 PoC is throwaway: baseline numbers update this doc, no
+   production code commits from C1.
+7. @tanstack/react-virtual@^3.x ACCEPTED as new dependency
+   (~5KB gzipped, industry standard).
+8. Vitest bench ACCEPTED for benchmark tooling (existing dep,
+   no new framework).
+9. Soft cap: 3300 changed code lines. Hard cap: 4000.
+```
+
+Note: the user described these as 5 decisions, with one repeated item in the
+chat. This pre-estimate expands them into the 9 concrete implementation
+constraints above so each downstream cluster has unambiguous guidance.
+
+## Compatibility Evidence Recap
 
-## Phantom Dependency Verification
+Full evidence is in `docs/internal/m7p2-formily-research.md` Section 3.
 
-Evidence:
+Key points:
 
-- `apps/web/package.json:18-19` declares `@formily/core` and `@formily/react`.
-- `rg "@formily" apps/web/src` returns zero results.
-- `pnpm-lock.yaml` resolves Formily packages including `@formily/core`,
-  `@formily/react`, `@formily/json-schema`, `@formily/reactive`,
-  `@formily/reactive-react`, `@formily/shared`, and `@formily/validator`.
-- `du -shL apps/web/node_modules/@formily` reports approximately `2.7M` on this
-  workspace.
+- `@formily/react@2.3.7` peers React/ReactDOM `>=16.8.0`, so React 18 is not a
+  peer-dependency blocker.
+- `@formily/core@2.3.7` has no React peer dependency.
+- `@formily/semi@1.0.4-beta.1` peers Formily packages at `2.2.1`, while LabelHub
+  resolves `2.3.7`; rejected.
+- `@designable/react@1.0.0-beta.45` peers React `16.x || 17.x` and AntD
+  `^4.15.4`; rejected for M7-P2 Path A-II.
+- Existing dnd-kit designer already satisfies the drag-library requirement.
 
-Conclusion: Formily is installed but unused. This changes the earlier rubric
-interpretation from "Formily absent" to "Formily is a phantom dependency".
-That is better than missing package availability, but worse than an intentional
-form-engine choice because the runtime dependency is not buying product
-capability.
+## Per-Cluster Plan
 
-User adjudication request:
+### C1: Throwaway PoC
 
-- Path A: adopt Formily as the real form engine.
-- Path B: build Formily-equivalent capabilities on the existing custom renderer.
-- Path C: remove Formily dependency only.
-- Recommended: Path B + C. Extend the custom renderer and remove unused Formily
-  dependencies in the implementation phase.
+Scope:
+
+- Temporarily install or link `@tanstack/react-virtual` in the working tree.
+- Build minimal Formily + local Semi Input integration in a throwaway route or
+  sandbox module.
+- Render 100-field synthetic form.
+- Round-trip `AnswerPayload -> Formily values -> AnswerPayload`.
+- Validate that emitted JSON contains no Formily reactive proxies.
+- Validate that `@tanstack/react-virtual` can coexist with Formily field
+  subscriptions.
+- Revert all code before commit.
 
-## Renderer Architecture Analysis
+Estimate: 180 throwaway lines, not counted toward cap.
 
-### `SchemaRenderer`
+Time-box: 4 hours. If a minimal Formily render + AnswerPayload round-trip is not
+working within 4 hours, stop and report.
 
-File: `apps/web/src/features/labeling/SchemaRenderer.tsx`.
+Stop conditions:
 
-Findings:
+- Vite + TS + React 18 build fails under the Formily minimal integration.
+- AnswerPayload round-trip leaks Formily reactive proxies or changes JSON shape.
+- `@tanstack/react-virtual` cannot coexist with Formily field subscription in the
+  minimal test.
 
-1. Full-tree render: `fields.map(...)` at `SchemaRenderer.tsx:26-106` renders
-   every field every time the parent renders.
-2. Inline change closure: `handleFieldChange` is created inside the map at
-   `SchemaRenderer.tsx:29-31`, so even if field renderers are wrapped in
-   `React.memo`, the `onChange` prop identity changes on every parent render.
-3. Value lookup in map: `getFieldValue(value, field.stableId)` at
-   `SchemaRenderer.tsx:27` means the parent is responsible for slicing every
-   field value.
-4. Error lookup in map: `errors?.get(field.stableId)` at
-   `SchemaRenderer.tsx:28` is cheap alone, but still part of the full-tree pass.
-5. No virtual window: there is no threshold or viewport-aware rendering.
+Output:
 
-Mitigation:
+- C1 chat report.
+- Baseline numbers appended to this pre-estimate doc only if the auditor asks for
+  a follow-up docs commit.
+- No production code commit.
 
-- C2 moves value and update handling behind a form controller that provides
-  stable per-field subscriptions.
-- C2 memoizes field renderers.
-- C3 virtualizes the top-level field list for large schemas.
+### C2: Core Adapters
 
-### `AnswerPayload`
+Scope:
 
-File: `apps/web/src/entities/submission/answerPayload.ts`.
+- `SchemaField[] -> ISchema` mapper for 6 field types and nested object
+  recursion.
+- `AnswerPayload -> Formily initialValues` adapter with deep clone.
+- `Formily form.values -> AnswerPayload` snapshot extraction.
+- Unknown-key dropping so stale UI/form keys do not enter persisted JSON.
+- StableId path preservation for AI findings and Quality Ledger references.
+- Local component registry skeleton.
+- FieldFrame decorator mirroring existing `FieldFrame` label, required marker,
+  help, and error display behavior.
 
-`setFieldValue` returns `{ ...payload, [stableId]: value }` at
-`answerPayload.ts:14-16`. This is correct for immutability, but with the current
-renderer it also changes the parent `value` object identity for every keystroke,
-forcing the top-level renderer to revisit all fields.
+Estimate: 500 lines.
 
-Mitigation:
+Critical risks:
 
-- Preserve this external contract.
-- Internally hold latest payload in a ref/store so child field updates can avoid
-  sibling re-renders.
-- Continue emitting full immutable `AnswerPayload` objects to existing parent
-  pages.
+- Recursive nested-object mapping.
+- Unknown-key dropping while preserving historical-submission rendering.
+- StableId path notation for nested object children.
 
-### Field Renderers
+Stop conditions:
 
-Plain function components:
+- Round-trip equality fails for any of the 6 field types.
+- Nested object round-trip cannot preserve current AnswerPayload shape.
+- Any adapter requires changes to `schemaTypes.ts` or `answerPayload.ts` shape.
 
-- `DateFieldRenderer.tsx:5-20`
-- `FileUploadFieldRenderer.tsx:5-29`
-- `NestedObjectFieldRenderer.tsx:7-28`
-- `NumberFieldRenderer.tsx:5-22`
-- `SelectFieldRenderer.tsx:5-65`
-- `TextFieldRenderer.tsx:5-20`
+### C3: Renderer Replacement
 
-They are good memo candidates because they receive explicit props:
-`field`, `value`, `onChange`, `readOnly`, `errors`.
+Scope:
 
-Special cases:
+- New `SchemaFormilyRenderer` with the same external props as `SchemaRenderer`.
+- Internally uses Formily form and C2 adapters.
+- Six local Semi x-components:
+  - text
+  - number
+  - select single/multi
+  - date
+  - file upload text
+  - nested object
+- Read/write mode toggle via existing `readOnly` prop.
+- Display existing external `errors` prop.
 
-- `NestedObjectFieldRenderer.tsx:19-24` recursively renders `SchemaRenderer`.
-  M7-P2 virtualizes top-level only; nested objects remain in-line.
-- `NumberFieldRenderer.tsx:14-17` and `SelectFieldRenderer.tsx:46-48` create
-  local normalization closures. These are inside memoized components and are
-  acceptable unless profiling shows they are hot.
+Estimate: 650 lines.
 
-### `FieldList`
+Critical rule:
 
-File: `apps/web/src/features/schema-design/FieldList.tsx`.
+- `SchemaRenderer` is not removed in C3. Both renderers coexist until C7 declares
+  parity.
 
-Findings:
+Stop conditions:
 
-1. dnd-kit is used through `DndContext`, `SortableContext`, and `useSortable`
-   at `FieldList.tsx:3-18` and `FieldList.tsx:57-72`.
-2. Full list render uses `fields.map(...)` at `FieldList.tsx:60-69`.
-3. `SortableFieldItem` calculates transform style from dnd-kit transform at
-   `FieldList.tsx:85-89`.
+- Read-only mode allows edits.
+- Any current renderer behavior cannot be reproduced without changing the API.
+- Field-level stableId identity is lost.
 
-Risk:
+### C4: Validation Migration
 
-- Virtualization also controls measurement/positioning, while dnd-kit controls
-  drag transform. C1 must spike this before C4.
+Scope:
 
-## Three-Tier Optimization Plan
+- `payloadValidation.ts` remains submit-time authority.
+- Formily UI rules project only a subset:
+  - required
+  - min/max number
+  - minLength/maxLength
+  - text pattern
+  - basic type guards
+- Submission still calls existing validation path before submit.
+- Document every rule that is not projected to Formily UI validation.
 
-### Tier 1: Memoization + Stable Callbacks
+Estimate: 350 lines.
 
-Cluster: C2.
+Stop conditions:
 
-Design:
+- Formily validation accepts a value rejected by `payloadValidation.ts` and the
+  UI does not surface the submit-time error.
+- Formily validation becomes the only authority.
 
-- Add `useFormController` with a stable public API:
-  - `getValue(stableId)`
-  - `setValue(stableId, value)`
-  - `subscribe(stableId, listener)`
-  - `getSnapshot(stableId)`
-  - `flushPayload()` or internal equivalent for parent `onChange`
-- Use `useSyncExternalStore` for per-field subscriptions if C1 validates the
-  shape. This is a React 18 standard API and avoids ad-hoc event emitter
-  behavior.
-- Keep `SchemaRendererProps` externally compatible.
-- Convert current switch body into a small `FieldRendererSlot` that subscribes
-  to one field and selects the right renderer.
-- Wrap the six field renderers in `React.memo`.
+### C5: Designer Preview Integration
 
-Acceptance criteria:
+Scope:
 
-- A render-count test/harness proves changing field `A` does not re-render field
-  `B` in a 500-field schema.
-- Existing labeler input behavior is unchanged.
-- Validation errors still update for the affected field.
+- dnd-kit Designer remains the source of `SchemaField[]`.
+- Add a live preview panel powered by `SchemaFormilyRenderer` and current draft
+  schema state.
+- Preview updates on add/select/edit/delete/reorder.
+- No `@designable/*` adoption.
 
-### Tier 2a: Labeling Renderer Virtualization
+Estimate: 300 lines.
 
-Cluster: C3.
+Stop conditions:
 
-Design:
+- Designer state and preview state can diverge.
+- Preview mutates designer state directly.
+- Existing add/select/edit/delete/reorder UX regresses.
 
-- Add `@tanstack/react-virtual` only after C1 confirms viability.
-- Virtualize top-level `SchemaRenderer` fields when `fields.length > 50`.
-- Keep direct render for `fields.length <= 50`.
-- Use estimated row height plus measurement if the library supports it cleanly
-  with Semi UI form controls.
+### C6: Virtualization + Benchmark
 
-Acceptance criteria:
+Scope:
 
-- 1000-field first render is under the target threshold or improves by the
-  measured percentage recorded in C5.
-- No visual difference for normal schemas under 50 fields.
-- Nested objects still render correctly.
+- Add `@tanstack/react-virtual` to `SchemaFormilyRenderer` top-level field list.
+- Threshold: full render for `fields.length <= 50`, virtualized render for
+  `fields.length > 50`.
+- Nested objects render inline.
+- Add Vitest bench suite:
+  - first render at 100/500/1000/5000 fields
+  - single-field update isolation
+  - optional 20/50 field anti-regression samples
+- Record benchmark table in durable docs.
 
-### Tier 2b: Designer FieldList Virtualization
+Estimate: 450 lines.
 
-Cluster: C4.
+Stop conditions:
 
-Design:
+- Virtualization breaks validation display or read-only rendering.
+- Sub-50-field forms regress and threshold cannot prevent it.
+- Bench numbers cannot be reproduced with a documented command.
 
-- Use C1 spike result to choose one:
-  1. Full dnd-kit + react-virtual integration.
-  2. Non-virtual FieldList retained, with a documented reason and possible
-     lightweight windowing fallback.
-- Keep `FieldList` public props stable.
-- Do not change schema field ordering semantics.
+### C7: Regression Coverage
 
-Acceptance criteria:
+Scope:
 
-- Add, select, delete, and drag reorder still work.
-- Existing validation error highlighting and selected state remain visible.
-- No page-level horizontal or vertical layout regression at 1440 / 1280 / 1024.
+- Manual regression paths:
+  - LabelerSessionPage: all 6 field types in write mode
+  - LabelerSubmissionPage: historical read-only render
+  - OwnerSubmissionPage: AI review path and read-only render
+  - ReviewerSubmissionPage: read-only render plus review panel
+  - OwnerSchemaDesignerPage: designer preview
+- Three viewport widths: 1440 / 1280 / 1024.
+- Consumer pages switch from `SchemaRenderer` to `SchemaFormilyRenderer` only
+  after parity is confirmed.
+- Old `SchemaRenderer` may be removed only if no fallback need remains.
 
-### Tier 3: Benchmark Evidence
+Estimate: 250 lines.
 
-Cluster: C5.
+Stop conditions:
 
-Design:
+- Any visual or behavioral regression on the five surfaces.
+- Consumer page switch happens before parity confirmation.
+- Old `SchemaRenderer` cannot be removed but no humanpending watch entry is
+  added.
 
-- C1 determines whether the repo should add Vitest or use a Vite benchmark page.
-  There is currently no frontend test runner configured in `apps/web/package.json`.
-- Benchmark scenarios:
-  - initial render: 20 / 50 / 100 / 500 / 1000 / 5000 fields
-  - single-field update: 100 / 500 / 1000 fields
-  - virtualized scroll/frame timing for 1000 fields
-- Store the numbers in a durable README section or M7-P2 benchmark document.
+### C8: Verification Docs
 
-Acceptance criteria:
+Scope:
 
-- The benchmark can be rerun with a documented command.
-- The verification doc records machine/browser/OS.
-- Numbers include both baseline and optimized results, not only final results.
+- `docs/internal/m7p2-verification.md` with commit map and R8 records.
+- `docs/screenshots/m7p2-after-set/INDEX.md`.
+- 5-7 after-screenshots including large-form benchmark output.
+- One `[M7-P2 resolved]` humanpending entry.
 
-## Per-Cluster Estimate
+Estimate: N/A code.
 
-Default path: B + C.
+Stop conditions:
 
-| Cluster | Scope | Estimate |
-|---|---|---:|
-| C1 | Throwaway spike: baseline measurements, `@tanstack/react-virtual` feasibility, dnd-kit coexistence POC | 80 |
-| C2 | Tier 1: `useFormController`, field subscriptions, memoized renderers, optional Formily dependency removal | 350 |
-| C3 | Tier 2a: `SchemaRenderer` virtualization with threshold switch | 250 |
-| C4 | Tier 2b: `FieldList` virtualization or adjudicated fallback after spike | 300 |
-| C5 | Benchmark harness + README/docs evidence table | 200 |
-| C6 | Visual regression fixtures/checklist and three-viewport evidence | 50 |
-| C7 | Verification doc + screenshots + humanpending | N/A |
-| **Total** | Default code estimate | **1230** |
-
-Hard cap: `1500` changed code lines.
-
-Path A estimate: `2500-3500` changed lines and a new architecture plan.
-Path C only estimate: about `5` changed lines plus lockfile churn.
-
-## C1 Spike Design
-
-C1 is explicitly a spike gate, not production code.
-
-Tasks:
-
-1. Generate a synthetic schema with 20 / 50 / 100 / 500 / 1000 / 5000 fields.
-2. Measure current `SchemaRenderer` first render and one-field update cost.
-3. Install or temporarily link `@tanstack/react-virtual` in the working tree.
-4. Build a minimal local POC for top-level SchemaRenderer virtualization.
-5. Build a minimal local POC for dnd-kit + virtualized FieldList.
-6. Report the numbers and compatibility result.
-7. Revert throwaway spike code unless the user explicitly authorizes a committed
-   benchmark skeleton.
-
-Deliverable:
-
-- Chat report plus, if user approves, a small pre-estimate appendix update.
-- No production commit from C1 by default.
-
-Stop if:
-
-- dnd-kit + virtual list cannot preserve reorder semantics.
-- benchmark tooling requires a large dependency decision not covered by this
-  pre-estimate.
+- Any code file changes in C8.
+- Verification doc does not record the Path A adjudication trail and `76d61b2`
+  supersession.
 
 ## Risk Register
 
-| Risk | Resolution |
-|---|---|
-| Formily adoption looks tempting because the package already exists | Treat as Path A and re-estimate. Installed dependency alone is not architecture. |
-| `useSyncExternalStore` creates too much code complexity | Fall back to `useReducer` with memoized per-field props if the C2 spike fails. |
-| Field renderers memoize incorrectly because `field` objects are recreated | C2 must verify schema field object identity in parent flows; if identity is unstable, add per-field stable selectors keyed by `stableId`. |
-| Validation errors do not refresh after field-level subscription | Include error snapshot subscription or pass per-field error arrays with stable identity. |
-| Virtual rows have variable height due labels, errors, nested objects, warning text | Use measurement support; if unstable, virtualize only flat simple fields and record nested-object limitation. |
-| dnd-kit collision detection ignores off-screen virtual rows | C1 must prove or reject virtualized designer drag. If rejected, C4 does not force it. |
-| Benchmark runner is missing | Add minimal tooling only after adjudication; do not silently add Vitest just because the prompt mentioned it. |
-| Removing Formily changes lockfile significantly | Accept if user chooses B + C; record lockfile churn separately in C2 report. |
+| Risk | Cluster | Resolution |
+|---|---|---|
+| C1 PoC reveals fundamental Vite + TS + React 18 + Formily incompatibility | C1 | STOP, report, re-evaluate Path A feasibility with user. |
+| Nested object recursive mapping breaks AnswerPayload round-trip | C2 | C2 includes nested-object round-trip test before C2 commit. |
+| Formily reactive proxy leaks into emitted AnswerPayload | C2/C3 | Adapter MUST deep-clone or JSON-serialize at emit boundary; C2 + C3 each add anti-leakage tests. |
+| stableId path breaks for nested objects (e.g., parent.child notation) | C2 | C2 explicitly tests AI-findings + Quality-Ledger references against the new path notation. |
+| Formily validation diverges from `payloadValidation.ts` authority | C4 | C4 documents projection rules explicitly; round-trip test ensures Formily-validated values pass payloadValidation. |
+| dnd-kit designer + Formily preview synchronization drifts | C5 | C5 uses one-way subscription from designer state to preview; no preview-to-designer mutation. |
+| `@tanstack/react-virtual` + Formily field subscriptions cause double-render | C6 | C1 validates this combination; if it fails, virtualize row groups rather than individual fields. |
+| Benchmark numbers vary by hardware | C6 | Document test machine and record relative improvement, not absolute ms alone. |
+| C7 reveals visual regression in any of 5 page surfaces | C7 | Block consumer-page switch and create a Cluster 7b hot-fix cluster. |
+| Old `SchemaRenderer` must be kept beyond C7 | C7/C8 | Acceptable; humanpending entry `M7-P2 watch: SchemaRenderer retained pending [reason]`. |
 
 ## Stop Conditions
 
-- User has not adjudicated Path A/B/C.
-- C1 spike is inconclusive.
-- C2 cannot preserve external `SchemaRendererProps` compatibility.
-- C3 causes any visual delta for schemas under 50 fields.
-- C4 loses drag reorder correctness.
-- C5 cannot produce repeatable benchmark numbers.
-- Frontend build or typecheck fails.
-- Any backend/OpenAPI/migration file changes.
-- Cumulative code diff exceeds `1500` lines.
+- Any cluster exceeds estimate by 50%.
+- Cumulative diff exceeds 4000 lines hard cap.
+- C1 PoC reveals any of its three incompatibilities.
+- Backend test count changes from 408, meaning backend was accidentally touched.
+- OpenAPI MD5 changes from `b6a8344f2c7cc38db958eb333334ebd1`.
+- Migration count changes from 11.
+- `humanpending.md` changes before C8.
+- Any M6 closed contract appears silently broken.
+- Any consumer route switches to the new renderer before C7 parity confirmation.
 
 ## Verification Plan
 
-After each implementation cluster:
+Per cluster:
 
-- `pnpm --filter @labelhub/web typecheck`
-- `pnpm --filter @labelhub/web build`
-- OpenAPI MD5 check remains `b6a8344f2c7cc38db958eb333334ebd1`
-- Migration count remains `11`
-- `git diff <baseline>..HEAD --name-only | grep services/api` returns empty
+- `pnpm --filter @labelhub/web typecheck` exit 0.
+- `pnpm --filter @labelhub/web build` exit 0.
+- `bash scripts/check-protected-endpoints.sh` exit 0.
+- 3-viewport manual sanity per M7-P1 Cluster 5b lesson: 1440 / 1280 / 1024.
+- Backend tests not re-run unless backend was touched, which is forbidden.
 
-Manual frontend sanity:
+Additional gates:
 
-- 1440 / 1280 / 1024 viewport widths, following the M7-P1 Cluster 5b lesson.
-- Labeler session data entry.
-- Owner schema designer add/select/edit/delete/reorder.
-- Reviewer or owner read-only payload display.
+- After C2: round-trip equality tests pass for all 6 field types and nested
+  objects.
+- After C3: old/new renderer parity on a fixture form in read/write and
+  read-only modes.
+- After C4: Formily UI validation + submit-time `payloadValidation.ts` both
+  exercised.
+- After C6: benchmark numbers recorded.
+- After C7: five-page regression manual sanity passes before consumer switch.
+- After C8: verification doc, screenshots, and humanpending entry land.
 
-Benchmark verification:
+## User Adjudication Checklist Before C1
 
-- Baseline and optimized numbers stored with machine/browser metadata.
-- The 20/50-field cases do not regress.
-- The 500/1000/5000-field cases show the intended improvement or the phase
-  stops for re-estimate.
-
-## User Adjudication Checklist
-
-Before C1 starts, user must decide:
-
-1. Phantom dependency path: A, B, C, or B + C.
-2. Whether C1 spike remains throwaway-only.
-3. Whether `@tanstack/react-virtual` is acceptable as a new dependency if C1
-   confirms feasibility.
-4. Whether adding frontend benchmark tooling is acceptable if the current Vite
-   app cannot support reliable measurement without it.
-5. Whether the `1500` changed-line hard cap is acceptable given M7-P1's actual
-   overrun history.
+All five decisions are already resolved. No additional gates are expected before
+C1. If C1 PoC surfaces unforeseen incompatibility, the agent stops and reports.
