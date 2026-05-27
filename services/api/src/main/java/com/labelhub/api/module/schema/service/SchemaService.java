@@ -5,6 +5,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.generated.model.SchemaDocument;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.schema.entity.LabelSchemaEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +48,32 @@ public class SchemaService {
     private final ObjectMapper objectMapper;
     private final Canonicalizer canonicalizer;
     private final Clock clock;
+    private final AuditLogService auditLogService;
+
+    @Autowired
+    public SchemaService(
+        LabelSchemaMapper labelSchemaMapper,
+        SchemaVersionMapper schemaVersionMapper,
+        SubmissionMapper submissionMapper,
+        TaskMapper taskMapper,
+        SchemaValidator schemaValidator,
+        StableIdExtractor stableIdExtractor,
+        ObjectMapper objectMapper,
+        Canonicalizer canonicalizer,
+        Clock clock,
+        AuditLogService auditLogService
+    ) {
+        this.labelSchemaMapper = labelSchemaMapper;
+        this.schemaVersionMapper = schemaVersionMapper;
+        this.submissionMapper = submissionMapper;
+        this.taskMapper = taskMapper;
+        this.schemaValidator = schemaValidator;
+        this.stableIdExtractor = stableIdExtractor;
+        this.objectMapper = objectMapper;
+        this.canonicalizer = canonicalizer;
+        this.clock = clock;
+        this.auditLogService = auditLogService;
+    }
 
     public SchemaService(
         LabelSchemaMapper labelSchemaMapper,
@@ -56,15 +86,8 @@ public class SchemaService {
         Canonicalizer canonicalizer,
         Clock clock
     ) {
-        this.labelSchemaMapper = labelSchemaMapper;
-        this.schemaVersionMapper = schemaVersionMapper;
-        this.submissionMapper = submissionMapper;
-        this.taskMapper = taskMapper;
-        this.schemaValidator = schemaValidator;
-        this.stableIdExtractor = stableIdExtractor;
-        this.objectMapper = objectMapper;
-        this.canonicalizer = canonicalizer;
-        this.clock = clock;
+        this(labelSchemaMapper, schemaVersionMapper, submissionMapper, taskMapper, schemaValidator,
+            stableIdExtractor, objectMapper, canonicalizer, clock, AuditLogService.noop());
     }
 
     public LabelSchemaEntity create(Long taskId, String name, String description, Long ownerId) {
@@ -132,6 +155,15 @@ public class SchemaService {
         version.setOwnerId(parent.getOwnerId());
 
         requireOneRow(schemaVersionMapper.insert(version), "insert schema version");
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.SCHEMA_VERSION_CREATE)
+                .actorUser(ownerId)
+                .resource("schema_version", version.getId())
+                .payload("schemaId", schemaId)
+                .payload("schemaVersionId", version.getId())
+                .payload("versionNumber", nextVersionNumber)
+                .payload("contentHash", version.getContentHash())
+        );
         parent.setCurrentVersionId(version.getId());
         requireOneRow(labelSchemaMapper.updateById(parent), "update label schema current version");
         if (parent.getTaskId() != null) {
@@ -142,6 +174,15 @@ public class SchemaService {
                 requireOneRow(taskMapper.updateById(task), "update task current schema version");
             }
         }
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.SCHEMA_PUBLISH)
+                .actorUser(ownerId)
+                .resource("schema", schemaId)
+                .payload("schemaId", schemaId)
+                .payload("schemaVersionId", version.getId())
+                .payload("versionNumber", nextVersionNumber)
+                .payload("taskId", parent.getTaskId())
+        );
         return version;
     }
 

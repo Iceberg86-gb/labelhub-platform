@@ -4,11 +4,15 @@ import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
 import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +24,17 @@ public class FailedAiCallRecorder {
 
     private final AiCallMapper aiCallMapper;
     private final Clock clock;
+    private final AuditLogService auditLogService;
 
-    public FailedAiCallRecorder(AiCallMapper aiCallMapper, Clock clock) {
+    @Autowired
+    public FailedAiCallRecorder(AiCallMapper aiCallMapper, Clock clock, AuditLogService auditLogService) {
         this.aiCallMapper = aiCallMapper;
         this.clock = clock;
+        this.auditLogService = auditLogService;
+    }
+
+    public FailedAiCallRecorder(AiCallMapper aiCallMapper, Clock clock) {
+        this(aiCallMapper, clock, AuditLogService.noop());
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -62,6 +73,21 @@ public class FailedAiCallRecorder {
         failed.setCreatedAt(now);
         failed.setCompletedAt(now);
         aiCallMapper.insert(failed);
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.AI_REVIEW_RECORDED_FAILED_CALL)
+                .actorSystem()
+                .resource("ai_call", failed.getId())
+                .payload("aiCallId", failed.getId())
+                .payload("submissionId", submissionId)
+                .payload("attemptNumber", attemptNumber)
+                .payload("promptVersion", promptVersion)
+                .payload("provider", providerName)
+                .payload("model", modelName)
+                .payload("inputHash", inputHash)
+                .payload("idempotencyKey", failedAttemptKey)
+                .payload("status", AiCallStatusCodes.FAILED)
+                .payload("failure", failurePayload(exception))
+        );
     }
 
     private String failedAttemptKey(String canonicalIdempotencyKey, int attemptNumber) {

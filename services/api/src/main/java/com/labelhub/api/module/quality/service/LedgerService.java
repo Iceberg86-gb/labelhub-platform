@@ -1,6 +1,9 @@
 package com.labelhub.api.module.quality.service;
 
 import com.labelhub.api.module.ai.provider.FieldFinding;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.quality.exception.LedgerEntryPayloadInvalidException;
 import com.labelhub.api.module.quality.exception.LedgerEntryTypeNotSupportedException;
@@ -20,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +38,22 @@ public class LedgerService {
     private final TaskMapper taskMapper;
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper;
     private final Clock clock;
+    private final AuditLogService auditLogService;
+
+    @Autowired
+    public LedgerService(
+        SubmissionMapper submissionMapper,
+        TaskMapper taskMapper,
+        QualityLedgerEntryMapper qualityLedgerEntryMapper,
+        Clock clock,
+        AuditLogService auditLogService
+    ) {
+        this.submissionMapper = submissionMapper;
+        this.taskMapper = taskMapper;
+        this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
+        this.clock = clock;
+        this.auditLogService = auditLogService;
+    }
 
     public LedgerService(
         SubmissionMapper submissionMapper,
@@ -41,10 +61,7 @@ public class LedgerService {
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Clock clock
     ) {
-        this.submissionMapper = submissionMapper;
-        this.taskMapper = taskMapper;
-        this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
-        this.clock = clock;
+        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock, AuditLogService.noop());
     }
 
     @Transactional
@@ -78,6 +95,12 @@ public class LedgerService {
         entity.setPayload(payload);
         entity.setCreatedAt(LocalDateTime.now(clock));
         requireOneRow(qualityLedgerEntryMapper.insert(entity), "insert quality ledger entry");
+        String verdict = String.valueOf(payload.get("verdict"));
+        if ("approve".equals(verdict)) {
+            auditLogService.record(reviewAuditEvent(AuditActions.REVIEW_APPROVE, submission, entity, reviewerUserId, verdict));
+        } else {
+            auditLogService.record(reviewAuditEvent(AuditActions.REVIEW_REJECT, submission, entity, reviewerUserId, verdict));
+        }
         return entity;
     }
 
@@ -152,6 +175,23 @@ public class LedgerService {
 
     private boolean hasRole(Set<String> roles, String role) {
         return roles != null && (roles.contains(role) || roles.contains("ROLE_" + role));
+    }
+
+    private AuditEventBuilder reviewAuditEvent(
+        String action,
+        SubmissionEntity submission,
+        QualityLedgerEntryEntity entity,
+        Long reviewerUserId,
+        String verdict
+    ) {
+        return AuditEventBuilder.forAction(action)
+            .actorUser(reviewerUserId)
+            .resource("submission", submission.getId())
+            .payload("submissionId", submission.getId())
+            .payload("taskId", submission.getTaskId())
+            .payload("ledgerEntryId", entity.getId())
+            .payload("reviewerUserId", reviewerUserId)
+            .payload("verdict", verdict);
     }
 
     private void validateReviewerOverallVerdictPayload(Map<String, Object> payload) {

@@ -2,6 +2,9 @@ package com.labelhub.api.module.export.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.export.entity.ExportJobEntity;
 import com.labelhub.api.module.export.entity.ExportSnapshotEntity;
 import com.labelhub.api.module.export.exception.ExportFailureException;
@@ -24,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -42,13 +46,23 @@ public class ExportService {
     private final ObjectStorageWriter storageWriter;
     private final ObjectMapper objectMapper;
     private final Clock clock;
+    private final AuditLogService auditLogService;
+
+    @Autowired
+    public ExportService(TaskMapper taskMapper, ExportJobMapper exportJobMapper, ExportSnapshotMapper exportSnapshotMapper,
+                         ExportFactCollector factCollector, ExportArtifactBuilder artifactBuilder,
+                         ObjectStorageWriter storageWriter, ObjectMapper objectMapper, Clock clock,
+                         AuditLogService auditLogService) {
+        this.taskMapper = taskMapper; this.exportJobMapper = exportJobMapper; this.exportSnapshotMapper = exportSnapshotMapper;
+        this.factCollector = factCollector; this.artifactBuilder = artifactBuilder; this.storageWriter = storageWriter;
+        this.objectMapper = objectMapper; this.clock = clock; this.auditLogService = auditLogService;
+    }
 
     public ExportService(TaskMapper taskMapper, ExportJobMapper exportJobMapper, ExportSnapshotMapper exportSnapshotMapper,
                          ExportFactCollector factCollector, ExportArtifactBuilder artifactBuilder,
                          ObjectStorageWriter storageWriter, ObjectMapper objectMapper, Clock clock) {
-        this.taskMapper = taskMapper; this.exportJobMapper = exportJobMapper; this.exportSnapshotMapper = exportSnapshotMapper;
-        this.factCollector = factCollector; this.artifactBuilder = artifactBuilder; this.storageWriter = storageWriter;
-        this.objectMapper = objectMapper; this.clock = clock;
+        this(taskMapper, exportJobMapper, exportSnapshotMapper, factCollector, artifactBuilder, storageWriter, objectMapper,
+            clock, AuditLogService.noop());
     }
 
     @Transactional
@@ -99,6 +113,18 @@ public class ExportService {
             snapshot.setCanonicalizationVersion(artifact.canonicalizationVersion());
             snapshot.setGeneratedAt(now);
             requireOneRow(exportSnapshotMapper.insert(snapshot), "insert export snapshot");
+            auditLogService.record(
+                AuditEventBuilder.forAction(AuditActions.EXPORT_SNAPSHOT_CREATE)
+                    .actorUser(ownerUserId)
+                    .resource("export_snapshot", snapshot.getId())
+                    .payload("snapshotId", snapshot.getId())
+                    .payload("taskId", taskId)
+                    .payload("exportJobId", job.getId())
+                    .payload("fileHash", snapshot.getFileHash())
+                    .payload("manifestHash", snapshot.getManifestHash())
+                    .payload("sourceStateHash", snapshot.getSourceStateHash())
+                    .payload("objectKey", snapshot.getObjectKey())
+            );
             return snapshot;
         } catch (RuntimeException e) {
             cleanupBestEffort(writtenKeys);
