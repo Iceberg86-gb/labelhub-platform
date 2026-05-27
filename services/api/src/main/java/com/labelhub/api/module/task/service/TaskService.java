@@ -264,7 +264,7 @@ public class TaskService {
         // TODO M4: add adjudicationRuleId not null check.
     }
 
-    private Set<String> collectExportObjectKeys(Long taskId) {
+    Set<String> collectExportObjectKeys(Long taskId) {
         Set<String> objectKeys = new LinkedHashSet<>();
         for (ExportSnapshotEntity snapshot : exportSnapshotMapper.selectAllByTaskId(taskId)) {
             String objectKey = snapshot.getObjectKey();
@@ -274,8 +274,8 @@ public class TaskService {
             addIfNotBlank(objectKeys, objectKey + "manifest.json");
             for (Map<String, Object> file : fileEntries(snapshot.getFileManifest())) {
                 Object name = file.get("name");
-                if (name != null) {
-                    addIfNotBlank(objectKeys, objectKey + name);
+                if (name instanceof String s && !s.isBlank()) {
+                    addIfNotBlank(objectKeys, objectKey + s);
                 }
             }
         }
