@@ -14,6 +14,7 @@ tags:
   - name: AIReview
   - name: Reviews
   - name: Exports
+  - name: AuditLogs
   - name: Internal
 security:
   - bearerAuth: []
@@ -40,6 +41,123 @@ paths:
           $ref: '#/components/responses/ErrorBadRequest'
         '401':
           $ref: '#/components/responses/ErrorUnauthorized'
+  /audit-logs:
+    get:
+      tags: [AuditLogs]
+      operationId: listAuditLogs
+      summary: 查询审计日志
+      description: 查询 Owner 可见的审计日志。
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: actionTypes
+          in: query
+          description: Comma-separated audit action types.
+          schema:
+            type: string
+        - name: resourceTypes
+          in: query
+          description: Comma-separated resource types.
+          schema:
+            type: string
+        - name: actorUserId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: resourceId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Paginated audit logs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAuditLogs'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /audit-logs/export.csv:
+    get:
+      tags: [AuditLogs]
+      operationId: exportAuditLogs
+      summary: 导出审计日志 CSV
+      description: 导出 Owner 可见的审计日志 CSV。
+      parameters:
+        - name: actionTypes
+          in: query
+          description: Comma-separated audit action types.
+          schema:
+            type: string
+        - name: resourceTypes
+          in: query
+          description: Comma-separated resource types.
+          schema:
+            type: string
+        - name: actorUserId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: resourceId
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Audit log CSV export.
+          content:
+            text/csv; charset=utf-8:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '413':
+          $ref: '#/components/responses/ErrorPayloadTooLarge'
   /tasks:
     get:
       tags: [Tasks]
@@ -1114,7 +1232,65 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ApiError'
+    ErrorPayloadTooLarge:
+      description: Response would exceed the supported export limit.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
   schemas:
+    AuditLog:
+      type: object
+      required: [id, actorType, action, resourceType, payload, payloadHash, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        actorType:
+          type: string
+          enum: [user, system, ai]
+        actorId:
+          type: integer
+          format: int64
+          nullable: true
+        actorDisplayName:
+          type: string
+          nullable: true
+        action:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: integer
+          format: int64
+          nullable: true
+        payload:
+          type: object
+          additionalProperties: true
+        payloadHash:
+          type: string
+          minLength: 64
+          maxLength: 64
+        createdAt:
+          type: string
+          format: date-time
+    PagedAuditLogs:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
     LoginRequest:
       type: object
       required: [username, password]
