@@ -310,6 +310,171 @@ Additional gates:
 - After C7: five-page regression manual sanity passes before consumer switch.
 - After C8: verification doc, screenshots, and humanpending entry land.
 
+## C1 PoC Results
+
+Status: completed within the 4-hour time-box. PoC source was reverted; no
+production code, route, package, OpenAPI, migration, backend, or humanpending
+change remains.
+
+Test machine:
+
+- Model: MacBook Pro, Mac16,8
+- Chip: Apple M4 Pro, 12 cores (8 performance / 4 efficiency)
+- Memory: 24 GB
+- OS: Darwin 25.5.0 arm64
+- Node: `v26.0.0`
+
+### V1: Vite + TS + React 18 + Formily Compatibility
+
+Result: PASS.
+
+Evidence:
+
+- Temporary `FormilyCompileProbe.tsx` imported `createForm`, `FormProvider`,
+  `Field`, local Semi `Input`, and `useVirtualizer`.
+- `pnpm --filter @labelhub/web typecheck` exited 0.
+- `pnpm --filter @labelhub/web build` exited 0 with the existing Vite chunk
+  size warning only.
+- A React `StrictMode` + `FormProvider` + native `Field` SSR smoke script
+  preserved `form.values.strict_field === "ok"`.
+
+Finding: Formily React types resolve under the current React 18 + Vite 5 + TS 5
+stack. Local Semi x-components remain the correct binding strategy; no
+`@formily/semi` package was used.
+
+### V2: AnswerPayload Round-Trip Integrity
+
+Result: PASS.
+
+Fixed payload covered all current field value shapes:
+
+- text: `text_1`
+- number: `number_1`
+- single select: `single_1`
+- multi select: `multi_1`
+- date: `date_1`
+- file upload: `file_1`
+- nested object: `parent.child_a`, `parent.child_b`
+
+Round-trip sequence:
+
+1. `AnswerPayload -> Formily initialValues` via JSON deep clone.
+2. `form.setValuesIn("text_1", "hello changed")`.
+3. `form.setValuesIn("parent.child_a", "nested changed")`.
+4. `form.values -> AnswerPayload` via JSON deep clone.
+
+Observed result:
+
+- Only `text_1` and `parent.child_a` changed.
+- `number_1`, `single_1`, `multi_1`, `date_1`, `file_1`, and
+  `parent.child_b` stayed byte-for-byte equivalent under JSON comparison.
+- `JSON.stringify` and reparse succeeded with no Formily reactive proxy leakage.
+
+Adapter implication for C2: emit-boundary snapshot extraction can use a deep
+clone / JSON-serializable snapshot strategy. C2 still needs production-grade
+typed helpers and unknown-key pruning, but no fundamental proxy leak was found.
+
+### V3: stableId Path Preservation
+
+Result: PASS.
+
+Observed Formily nested path format: `parent.child_a`.
+
+Validation:
+
+- `form.setValuesIn("parent.child_a", "nested changed")` updated
+  `form.values.parent.child_a`.
+- Extracted `AnswerPayload.parent.child_a` matched the changed value.
+- Sibling `AnswerPayload.parent.child_b` remained unchanged.
+
+Compatibility implication: the existing M6-P3a / P3a-2 stableId reference model
+can be preserved with dot-joined nested paths. C2 must make this explicit in the
+adapter tests so AI findings and quality-ledger references continue to resolve.
+
+### V4: @tanstack/react-virtual + Formily Co-Existence
+
+Result: PASS with C1-scoped temporary dependency.
+
+Because `@tanstack/react-virtual` is not yet in project dependencies, C1 installed
+`@tanstack/react-virtual@3.13.26` into `/private/tmp/m7p2-react-virtual-poc`
+only, then symlinked it into `apps/web/node_modules` for the temporary compile
+probe. The symlink was removed before this doc commit; `package.json` and
+`pnpm-lock.yaml` were not changed.
+
+Validation:
+
+- Temporary compile probe using `useVirtualizer` + Formily passed typecheck and
+  production build.
+- Headless `Virtualizer` smoke with 200 synthetic Formily fields mounted 12 rows
+  at scroll offset 0 and 14 rows around offset 4000.
+- Formily retained off-screen state: `field_0`, `field_100`, and `field_199`
+  values survived virtual window movement and targeted updates.
+
+Observed virtual windows:
+
+| Scroll offset | Mounted row count | First index | Last index |
+|---:|---:|---:|---:|
+| 0 | 12 | 0 | 11 |
+| 4000 | 14 | 98 | 111 |
+
+Implication for C6: field-level virtualization remains viable. Row-group
+virtualization is still kept as a fallback if browser profiler results show
+double-render behavior, but C1 found no fundamental state-retention blocker.
+
+### V5: Baseline Benchmark Measurements (Current Renderer)
+
+Result: EXECUTED with tooling caveat.
+
+C1 discovered a planning mismatch: Vitest is not currently installed in the
+workspace and there is no existing `vitest.config.*` or web `test`/`bench`
+script. Therefore a real `vitest bench` run is not possible in C1 without adding
+a new dev dependency, which C1 explicitly forbids.
+
+Additional baseline harness note: a direct Vite SSR benchmark of the real
+`SchemaRenderer.tsx` failed because Semi's SSR ESM path imports extensionless
+`lodash/noop`, which Node 26 rejects. This is a benchmark-harness limitation,
+not a Formily or LabelHub source failure; normal Vite production build passes.
+
+To avoid changing dependencies in C1, baseline was captured with a Node
+`react-dom/server` proxy of the current `SchemaRenderer` map/closure behavior
+using lightweight field stubs. This proxy measures the core O(N) behavior:
+current `SchemaRenderer` maps every field on a parent value change and recreates
+a per-field `handleFieldChange` closure.
+
+| Field count | First render min ms | First render median ms | First render max ms | Field renderer invocations |
+|---:|---:|---:|---:|---:|
+| 100 | 0.222 | 0.295 | 2.229 | 100 |
+| 500 | 1.150 | 1.512 | 4.218 | 500 |
+| 1000 | 1.852 | 2.127 | 2.448 | 1000 |
+| 5000 | 9.480 | 10.265 | 12.853 | 5000 |
+
+Single-field-change proxy at 500 fields:
+
+| Scenario | Min ms | Median ms | Max ms | Field renderer invocations |
+|---|---:|---:|---:|---:|
+| Change one field in 500-field payload | 0.972 | 1.000 | 1.286 | 500 |
+
+Interpretation:
+
+- The absolute timings are proxy timings, not final browser profiler numbers.
+- The invocation count is the important baseline: a single-field change still
+  re-renders all 500 top-level field renderers in the current architecture.
+- C6 must install/enable Vitest bench or explicitly re-adjudicate benchmark
+  tooling. The earlier "Vitest already exists" assumption is false.
+
+### C1 Path Adjustments
+
+- C2 may proceed with Path A-II adapters; no Formily compatibility blocker was
+  found.
+- C2 must include dot-path nested stableId adapter tests for `parent.child`
+  notation.
+- C6 must add or otherwise explicitly enable Vitest benchmark tooling, because
+  it is not present today. This is a new C1 finding and should be recorded in
+  the C6 cluster prompt before implementation.
+- C6 should prefer browser/profiler or jsdom-based benchmark harnesses for real
+  Semi/Formily rendering. The C1 proxy numbers are baseline shape evidence, not
+  final performance evidence.
+
 ## User Adjudication Checklist Before C1
 
 All five decisions are already resolved. No additional gates are expected before
