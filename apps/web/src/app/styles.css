@@ -322,6 +322,34 @@ a {
   margin-top: 8px;
 }
 
+.login-demo-hint {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid #d8dee9;
+  background: #f8fafc;
+  font-size: 13px;
+}
+
+.login-demo-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login-demo-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: #6b7280;
+}
+
+.login-demo-list code {
+  color: #1f2937;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+}
+
 .tasks-page {
   display: flex;
   flex-direction: column;
