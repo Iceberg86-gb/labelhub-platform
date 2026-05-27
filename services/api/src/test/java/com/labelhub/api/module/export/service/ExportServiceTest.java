@@ -2,6 +2,10 @@ package com.labelhub.api.module.export.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEvent;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
@@ -69,6 +73,7 @@ class ExportServiceTest {
     );
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
+    private final AuditLogService auditLogService = mock(AuditLogService.class);
     private final MutableClock clock = new MutableClock(Instant.parse("2026-05-25T10:00:00Z"));
 
     private ExportService exportService;
@@ -84,7 +89,8 @@ class ExportServiceTest {
             new ExportArtifactBuilder(canonicalizer),
             storageWriter,
             objectMapper,
-            clock
+            clock,
+            auditLogService
         );
         baseBundle = bundleWithLedgerEntries(List.of(ledgerEntry(700L, "approve")));
         when(taskMapper.selectById(TASK_ID)).thenReturn(task(OWNER_ID));
@@ -106,6 +112,7 @@ class ExportServiceTest {
         assertThat(snap1.getManifestHash()).isEqualTo(snap2.getManifestHash());
         assertThat(snap1.getSourceStateHash()).isEqualTo(snap2.getSourceStateHash());
         assertThat(snap1.getFileHash()).isEqualTo(snap2.getFileHash());
+        assertAuditEvent(AuditActions.EXPORT_SNAPSHOT_CREATE, "user", "export_snapshot");
 
         verify(s3Client, times(22)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
@@ -514,6 +521,15 @@ class ExportServiceTest {
 
     private static String hash(String value) {
         return "0".repeat(64 - value.length()) + value;
+    }
+
+    private void assertAuditEvent(String action, String actorType, String resourceType) {
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService, times(2)).record(captor.capture());
+        AuditEvent event = captor.getAllValues().get(0).build();
+        assertThat(event.action()).isEqualTo(action);
+        assertThat(event.actorType()).isEqualTo(actorType);
+        assertThat(event.resourceType()).isEqualTo(resourceType);
     }
 
     private static final class MutableClock extends Clock {

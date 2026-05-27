@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.generated.model.TaskStatus;
+import com.labelhub.api.module.admin.audit.AuditActions;
 import com.labelhub.api.module.admin.entity.AuditLogEntity;
 import com.labelhub.api.module.admin.mapper.AuditLogMapper;
 import com.labelhub.api.module.dataset.entity.DatasetEntity;
@@ -215,6 +216,9 @@ class TaskServiceTest {
         verify(auditLogMapper).insert(auditCaptor.capture());
         AuditLogEntity audit = auditCaptor.getValue();
         Map<String, Object> payload = objectMapper.readValue(audit.getPayload(), new TypeReference<>() {});
+        assertThat(audit.getAction()).isEqualTo(AuditActions.TASK_TRANSITION);
+        assertThat(audit.getActorType()).isEqualTo("user");
+        assertThat(audit.getResourceType()).isEqualTo("task");
         assertThat(payload).containsEntry("from", "draft");
         assertThat(payload).containsEntry("to", "published");
         assertThat(payload).containsEntry("reason", "ready\nwith \"quote\"");

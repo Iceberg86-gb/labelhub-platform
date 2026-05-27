@@ -2,6 +2,10 @@ package com.labelhub.api.module.ai.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEvent;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
 import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
@@ -22,6 +26,7 @@ import com.labelhub.api.module.ai.service.view.AiReviewResultView;
 import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
+import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.quality.service.LedgerService;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
@@ -73,6 +78,7 @@ class AiReviewServiceTest {
     private final AiProvider aiProvider = mock(AiProvider.class);
     private final AiCallCostCalculator costCalculator = mock(AiCallCostCalculator.class);
     private final AiIdempotencyMetrics metrics = mock(AiIdempotencyMetrics.class);
+    private final AuditLogService auditLogService = mock(AuditLogService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
     private AiReviewService service;
@@ -107,7 +113,8 @@ class AiReviewServiceTest {
             costCalculator,
             metrics,
             retryPolicy,
-            failedRecorder
+            failedRecorder,
+            auditLogService
         );
         when(aiProvider.providerName()).thenReturn("mock");
         when(aiProvider.modelName()).thenReturn("mock-v1");
@@ -489,6 +496,8 @@ class AiReviewServiceTest {
             return 1;
         });
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+        when(ledgerService.appendAiFieldFindings(any(), any(), any(), any()))
+            .thenReturn(List.of(ledgerEntry(1000L), ledgerEntry(1001L)));
 
         AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
 
@@ -499,6 +508,25 @@ class AiReviewServiceTest {
             eq(900L),
             argThat(findings -> findings.size() == 2)
         );
+        AuditEvent event = capturedRecordEvent();
+        assertThat(event.action()).isEqualTo(AuditActions.AI_REVIEW_FIELD_ASSIST);
+        assertThat(event.actorType()).isEqualTo("ai");
+        assertThat(event.resourceType()).isEqualTo("submission");
+    }
+
+    @Test
+    void failed_review_writesRequiresNewAuditEvent() {
+        when(aiProvider.invokeWithUsage(any(AiCallRequest.class)))
+            .thenThrow(nonRetryableProviderException());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+            .isInstanceOf(AiProviderFailureException.class);
+
+        AuditEvent event = capturedRequiresNewEvent();
+        assertThat(event.action()).isEqualTo(AuditActions.AI_REVIEW_FAILED);
+        assertThat(event.actorType()).isEqualTo("system");
+        assertThat(event.resourceType()).isEqualTo("submission");
     }
 
     @Test
@@ -775,6 +803,24 @@ class AiReviewServiceTest {
         entity.setOrdinal(ordinal);
         entity.setCreatedAt(NOW);
         return entity;
+    }
+
+    private QualityLedgerEntryEntity ledgerEntry(Long id) {
+        QualityLedgerEntryEntity entity = new QualityLedgerEntryEntity();
+        entity.setId(id);
+        return entity;
+    }
+
+    private AuditEvent capturedRecordEvent() {
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService).record(captor.capture());
+        return captor.getValue().build();
+    }
+
+    private AuditEvent capturedRequiresNewEvent() {
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService).recordRequiresNew(captor.capture());
+        return captor.getValue().build();
     }
 
     private SubmissionEntity submission() {

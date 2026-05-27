@@ -3,6 +3,10 @@ package com.labelhub.api.module.session.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.labelhub.api.generated.model.TaskStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEvent;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
@@ -58,6 +62,7 @@ class SessionServiceTest {
     private final DraftMapper draftMapper = mock(DraftMapper.class);
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
     private final Canonicalizer canonicalizer = new Canonicalizer(new ObjectMapper());
+    private final AuditLogService auditLogService = mock(AuditLogService.class);
     private SessionService sessionService;
 
     @BeforeEach
@@ -71,7 +76,8 @@ class SessionServiceTest {
             draftMapper,
             submissionMapper,
             canonicalizer,
-            clock
+            clock,
+            auditLogService
         );
     }
 
@@ -422,6 +428,24 @@ class SessionServiceTest {
     }
 
     @Test
+    void submit_writesSubmissionCreateAuditEvent() {
+        when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(claimedSession(900L, 1002L));
+        when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
+            SubmissionEntity submission = invocation.getArgument(0);
+            submission.setId(1200L);
+            return 1;
+        });
+        when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
+
+        sessionService.submit(900L, 1002L, Map.of("field_0", "answer"));
+
+        AuditEvent event = capturedAuditEvent();
+        assertThat(event.action()).isEqualTo(AuditActions.SUBMISSION_CREATE);
+        assertThat(event.actorType()).isEqualTo("user");
+        assertThat(event.resourceType()).isEqualTo("submission");
+    }
+
+    @Test
     void submit_writes_session_status_submitted_independently_from_submission_status() {
         SessionEntity session = claimedSession(900L, 1002L);
         when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(session);
@@ -603,5 +627,11 @@ class SessionServiceTest {
         submission.setContentHash("hash");
         submission.setStatusCode("under_ai_review");
         return submission;
+    }
+
+    private AuditEvent capturedAuditEvent() {
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService).record(captor.capture());
+        return captor.getValue().build();
     }
 }

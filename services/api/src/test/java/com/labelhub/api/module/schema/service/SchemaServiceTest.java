@@ -7,6 +7,9 @@ import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldOption;
 import com.labelhub.api.generated.model.SchemaFieldType;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.schema.entity.LabelSchemaEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
@@ -59,6 +62,7 @@ class SchemaServiceTest {
     private final TaskMapper taskMapper = mock(TaskMapper.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
+    private final AuditLogService auditLogService = mock(AuditLogService.class);
     private SchemaService schemaService;
 
     @BeforeEach
@@ -73,7 +77,8 @@ class SchemaServiceTest {
                 new StableIdExtractor(),
                 objectMapper,
                 canonicalizer,
-                clock
+                clock,
+                auditLogService
         );
     }
 
@@ -218,6 +223,27 @@ class SchemaServiceTest {
         ArgumentCaptor<LabelSchemaEntity> parentCaptor = ArgumentCaptor.forClass(LabelSchemaEntity.class);
         verify(labelSchemaMapper).updateById(parentCaptor.capture());
         assertThat(parentCaptor.getValue().getCurrentVersionId()).isEqualTo(88L);
+    }
+
+    @Test
+    void publishVersion_writesVersionCreateAndPublishAuditEvents() {
+        when(labelSchemaMapper.selectByIdForUpdate(5L)).thenReturn(schema(5L, 10L, 1001L));
+        when(schemaVersionMapper.selectMaxVersionNumber(5L)).thenReturn(null);
+        doAnswer(invocation -> {
+            SchemaVersionEntity version = invocation.getArgument(0);
+            version.setId(88L);
+            return 1;
+        }).when(schemaVersionMapper).insert(any());
+        when(labelSchemaMapper.updateById(any(LabelSchemaEntity.class))).thenReturn(1);
+
+        schemaService.publishVersion(5L, simpleDocument(), 1001L);
+
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService, org.mockito.Mockito.times(2)).record(captor.capture());
+        assertThat(captor.getAllValues().stream().map(builder -> builder.build().action()))
+            .containsExactly(AuditActions.SCHEMA_VERSION_CREATE, AuditActions.SCHEMA_PUBLISH);
+        assertThat(captor.getAllValues().stream().map(builder -> builder.build().resourceType()))
+            .containsExactly("schema_version", "schema");
     }
 
     @Test
