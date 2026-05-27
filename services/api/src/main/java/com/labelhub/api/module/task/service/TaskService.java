@@ -11,30 +11,77 @@ import com.labelhub.api.module.dataset.entity.DatasetEntity;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetForTaskException;
 import com.labelhub.api.module.dataset.exception.TaskPublishedLockException;
 import com.labelhub.api.module.dataset.mapper.DatasetMapper;
+import com.labelhub.api.module.export.entity.ExportJobEntity;
+import com.labelhub.api.module.export.entity.ExportSnapshotEntity;
+import com.labelhub.api.module.export.mapper.ExportJobMapper;
+import com.labelhub.api.module.export.mapper.ExportSnapshotMapper;
+import com.labelhub.api.module.export.storage.ObjectStorageWriter;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.entity.TaskTransitionEntity;
+import com.labelhub.api.module.task.mapper.TaskDeletionMapper;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.module.task.mapper.TaskTransitionMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class TaskService {
 
+    private static final Logger log = LoggerFactory.getLogger(TaskService.class);
+
     private final TaskMapper taskMapper;
     private final TaskTransitionMapper taskTransitionMapper;
+    private final TaskDeletionMapper taskDeletionMapper;
     private final AuditLogMapper auditLogMapper;
     private final DatasetMapper datasetMapper;
+    private final ExportSnapshotMapper exportSnapshotMapper;
+    private final ExportJobMapper exportJobMapper;
+    private final ObjectStorageWriter objectStorageWriter;
     private final Clock clock;
     private final ObjectMapper objectMapper;
     private final Canonicalizer canonicalizer;
+
+    @Autowired
+    public TaskService(
+        TaskMapper taskMapper,
+        TaskTransitionMapper taskTransitionMapper,
+        TaskDeletionMapper taskDeletionMapper,
+        AuditLogMapper auditLogMapper,
+        DatasetMapper datasetMapper,
+        ExportSnapshotMapper exportSnapshotMapper,
+        ExportJobMapper exportJobMapper,
+        ObjectStorageWriter objectStorageWriter,
+        Clock clock,
+        ObjectMapper objectMapper,
+        Canonicalizer canonicalizer
+    ) {
+        this.taskMapper = taskMapper;
+        this.taskTransitionMapper = taskTransitionMapper;
+        this.taskDeletionMapper = taskDeletionMapper;
+        this.auditLogMapper = auditLogMapper;
+        this.datasetMapper = datasetMapper;
+        this.exportSnapshotMapper = exportSnapshotMapper;
+        this.exportJobMapper = exportJobMapper;
+        this.objectStorageWriter = objectStorageWriter;
+        this.clock = clock;
+        this.objectMapper = objectMapper;
+        this.canonicalizer = canonicalizer;
+    }
 
     public TaskService(
         TaskMapper taskMapper,
@@ -45,13 +92,7 @@ public class TaskService {
         ObjectMapper objectMapper,
         Canonicalizer canonicalizer
     ) {
-        this.taskMapper = taskMapper;
-        this.taskTransitionMapper = taskTransitionMapper;
-        this.auditLogMapper = auditLogMapper;
-        this.datasetMapper = datasetMapper;
-        this.clock = clock;
-        this.objectMapper = objectMapper;
-        this.canonicalizer = canonicalizer;
+        this(taskMapper, taskTransitionMapper, null, auditLogMapper, datasetMapper, null, null, null, clock, objectMapper, canonicalizer);
     }
 
     @Transactional
@@ -89,8 +130,61 @@ public class TaskService {
     }
 
     @Transactional
-    public void deleteTask(Long taskId) {
-        throw new UnsupportedOperationException("M6-P7 Cluster 2 pending: hard delete cascade not yet implemented");
+    public void deleteTask(Long taskId, Long ownerId) {
+        TaskEntity task = taskMapper.selectByIdForUpdate(taskId);
+        if (task == null) {
+            throw new TaskNotFoundException(taskId);
+        }
+        if (!Objects.equals(task.getOwnerId(), ownerId)) {
+            throw new TaskAccessDeniedException(taskId, ownerId);
+        }
+
+        Set<String> objectKeys = collectExportObjectKeys(taskId);
+
+        // Step 1: blocks fk_tasks_current_dataset before datasets delete.
+        taskDeletionMapper.clearTaskCurrentDataset(taskId);
+        // Step 2: blocks fk_tasks_schema_version before schema_versions delete.
+        taskDeletionMapper.clearTaskCurrentSchemaVersion(taskId);
+        // Step 3: blocks fk_label_schemas_current_version before schema_versions delete.
+        taskDeletionMapper.clearLabelSchemaCurrentVersions(taskId);
+        // Step 4: blocks fk_submissions_superseded_by self-reference before submissions delete.
+        taskDeletionMapper.clearSubmissionSupersededBy(taskId);
+        // Step 5: blocks fk_ai_calls_in_field_submission/call before submissions or ai_calls delete.
+        taskDeletionMapper.deleteAiCallsInField(taskId);
+        // Step 6: blocks fk_current_verdicts_* before submissions, tasks, rules, or ledger delete.
+        taskDeletionMapper.deleteCurrentVerdicts(taskId);
+        // Step 7: blocks fk_review_actions_submission/task before submissions or tasks delete.
+        taskDeletionMapper.deleteReviewActions(taskId);
+        // Step 8: blocks fk_export_snapshots_job/task/rule before export_jobs, tasks, or rules delete.
+        taskDeletionMapper.deleteExportSnapshots(taskId);
+        // Step 9: blocks fk_quality_ledger_submission/task/ai_call before submissions, tasks, or ai_calls delete.
+        taskDeletionMapper.deleteQualityLedgerEntries(taskId);
+        // Step 10: blocks fk_ai_calls_submission before submissions delete.
+        taskDeletionMapper.deleteAiCalls(taskId);
+        // Step 11: blocks fk_drafts_session before sessions delete.
+        taskDeletionMapper.deleteDrafts(taskId);
+        // Step 12: blocks fk_submissions_session/task/item/schema_version before parent deletes.
+        taskDeletionMapper.deleteSubmissions(taskId);
+        // Step 13: blocks fk_sessions_task/dataset_item/schema_version before parent deletes.
+        taskDeletionMapper.deleteSessions(taskId);
+        // Step 14: blocks fk_dataset_items_dataset/task before datasets or tasks delete.
+        taskDeletionMapper.deleteDatasetItems(taskId);
+        // Step 15: blocks fk_export_jobs_task before tasks delete.
+        taskDeletionMapper.deleteExportJobs(taskId);
+        // Step 16: blocks fk_adjudication_rules_task before tasks delete.
+        taskDeletionMapper.deleteAdjudicationRules(taskId);
+        // Step 17: blocks fk_datasets_task before tasks delete.
+        taskDeletionMapper.deleteDatasets(taskId);
+        // Step 18: blocks fk_schema_versions_schema before label_schemas delete.
+        taskDeletionMapper.deleteSchemaVersions(taskId);
+        // Step 19: blocks fk_label_schemas_task before tasks delete.
+        taskDeletionMapper.deleteLabelSchemas(taskId);
+        // Step 20: blocks fk_task_transitions_task before tasks delete.
+        taskDeletionMapper.deleteTaskTransitions(taskId);
+        // Step 21: all dependents cleared.
+        requireOneRow(taskDeletionMapper.deleteTask(taskId), "delete task");
+
+        registerAfterCommitCleanup(objectKeys);
     }
 
     public List<TaskTransitionEntity> listTransitions(Long taskId, Long ownerId) {
@@ -168,6 +262,74 @@ public class TaskService {
             throw new TaskPublishGuardException("current_dataset_id");
         }
         // TODO M4: add adjudicationRuleId not null check.
+    }
+
+    private Set<String> collectExportObjectKeys(Long taskId) {
+        Set<String> objectKeys = new LinkedHashSet<>();
+        for (ExportSnapshotEntity snapshot : exportSnapshotMapper.selectAllByTaskId(taskId)) {
+            String objectKey = snapshot.getObjectKey();
+            if (isBlank(objectKey)) {
+                continue;
+            }
+            addIfNotBlank(objectKeys, objectKey + "manifest.json");
+            for (Map<String, Object> file : fileEntries(snapshot.getFileManifest())) {
+                Object name = file.get("name");
+                if (name != null) {
+                    addIfNotBlank(objectKeys, objectKey + name);
+                }
+            }
+        }
+        for (ExportJobEntity job : exportJobMapper.selectAllByTaskId(taskId)) {
+            addIfNotBlank(objectKeys, job.getFileKey());
+        }
+        return objectKeys;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> fileEntries(Map<String, Object> manifest) {
+        if (manifest == null || !(manifest.get("files") instanceof List<?> rawFiles)) {
+            return List.of();
+        }
+        List<Map<String, Object>> entries = new ArrayList<>();
+        for (Object rawFile : rawFiles) {
+            if (rawFile instanceof Map<?, ?> rawMap) {
+                entries.add((Map<String, Object>) rawMap);
+            }
+        }
+        return entries;
+    }
+
+    private void addIfNotBlank(Set<String> objectKeys, String objectKey) {
+        if (!isBlank(objectKey)) {
+            objectKeys.add(objectKey);
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private void registerAfterCommitCleanup(Set<String> objectKeys) {
+        if (objectKeys.isEmpty()) {
+            return;
+        }
+        List<String> cleanupKeys = List.copyOf(objectKeys);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                cleanupS3Objects(cleanupKeys);
+            }
+        });
+    }
+
+    private void cleanupS3Objects(List<String> objectKeys) {
+        for (String objectKey : objectKeys) {
+            try {
+                objectStorageWriter.deleteObject(objectKey);
+            } catch (RuntimeException exception) {
+                log.warn("M6-P7 best-effort S3 cleanup failed for key={}", objectKey, exception);
+            }
+        }
     }
 
     private TaskTransitionEntity transitionRecord(
