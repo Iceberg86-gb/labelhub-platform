@@ -6,6 +6,8 @@ import com.labelhub.api.module.admin.entity.AuditLogEntity;
 import com.labelhub.api.module.admin.mapper.AuditLogMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuditLogServiceImpl implements AuditLogService {
@@ -46,6 +48,12 @@ public class AuditLogServiceImpl implements AuditLogService {
         if (inserted != 1) {
             throw new IllegalStateException("Expected one row for insert audit log but got " + inserted);
         }
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordRequiresNew(AuditEventBuilder builder) {
+        record(builder);
     }
 
     private String writeJson(Object payload) {

@@ -1,6 +1,9 @@
 package com.labelhub.api.module.session.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
@@ -31,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +54,30 @@ public class SessionService {
     private final SubmissionMapper submissionMapper;
     private final Canonicalizer canonicalizer;
     private final Clock clock;
+    private final AuditLogService auditLogService;
+
+    @Autowired
+    public SessionService(
+        TaskMapper taskMapper,
+        DatasetItemMapper datasetItemMapper,
+        SessionMapper sessionMapper,
+        SchemaVersionMapper schemaVersionMapper,
+        DraftMapper draftMapper,
+        SubmissionMapper submissionMapper,
+        Canonicalizer canonicalizer,
+        Clock clock,
+        AuditLogService auditLogService
+    ) {
+        this.taskMapper = taskMapper;
+        this.datasetItemMapper = datasetItemMapper;
+        this.sessionMapper = sessionMapper;
+        this.schemaVersionMapper = schemaVersionMapper;
+        this.draftMapper = draftMapper;
+        this.submissionMapper = submissionMapper;
+        this.canonicalizer = canonicalizer;
+        this.clock = clock;
+        this.auditLogService = auditLogService;
+    }
 
     public SessionService(
         TaskMapper taskMapper,
@@ -61,14 +89,8 @@ public class SessionService {
         Canonicalizer canonicalizer,
         Clock clock
     ) {
-        this.taskMapper = taskMapper;
-        this.datasetItemMapper = datasetItemMapper;
-        this.sessionMapper = sessionMapper;
-        this.schemaVersionMapper = schemaVersionMapper;
-        this.draftMapper = draftMapper;
-        this.submissionMapper = submissionMapper;
-        this.canonicalizer = canonicalizer;
-        this.clock = clock;
+        this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper,
+            canonicalizer, clock, AuditLogService.noop());
     }
 
     public Page<MarketplaceTaskView> listMarketplace(Long labelerId, long page, long size) {
@@ -198,6 +220,17 @@ public class SessionService {
         session.setStatus(SESSION_SUBMITTED);
         session.setSubmittedAt(LocalDateTime.now(clock));
         requireOneRow(sessionMapper.updateById(session), "update session status");
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.SUBMISSION_CREATE)
+                .actorUser(labelerId)
+                .resource("submission", submission.getId())
+                .payload("submissionId", submission.getId())
+                .payload("sessionId", sessionId)
+                .payload("taskId", submission.getTaskId())
+                .payload("datasetItemId", submission.getDatasetItemId())
+                .payload("schemaVersionId", submission.getSchemaVersionId())
+                .payload("contentHash", submission.getContentHash())
+        );
         return submission;
     }
 

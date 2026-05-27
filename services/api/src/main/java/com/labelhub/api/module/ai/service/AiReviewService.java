@@ -3,6 +3,9 @@ package com.labelhub.api.module.ai.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
 import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
@@ -23,6 +26,7 @@ import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.quality.service.LedgerService;
+import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
@@ -40,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,6 +66,44 @@ public class AiReviewService {
     private final AiIdempotencyMetrics metrics;
     private final AiRetryPolicy retryPolicy;
     private final FailedAiCallRecorder failedCallRecorder;
+    private final AuditLogService auditLogService;
+
+    @Autowired
+    public AiReviewService(
+        SubmissionMapper submissionMapper,
+        SchemaVersionMapper schemaVersionMapper,
+        DatasetItemMapper datasetItemMapper,
+        TaskMapper taskMapper,
+        AiCallMapper aiCallMapper,
+        AiCallInFieldMapper aiCallInFieldMapper,
+        LedgerService ledgerService,
+        Canonicalizer canonicalizer,
+        ObjectMapper objectMapper,
+        Clock clock,
+        AiProvider aiProvider,
+        AiCallCostCalculator costCalculator,
+        AiIdempotencyMetrics metrics,
+        AiRetryPolicy retryPolicy,
+        FailedAiCallRecorder failedCallRecorder,
+        AuditLogService auditLogService
+    ) {
+        this.submissionMapper = submissionMapper;
+        this.schemaVersionMapper = schemaVersionMapper;
+        this.datasetItemMapper = datasetItemMapper;
+        this.taskMapper = taskMapper;
+        this.aiCallMapper = aiCallMapper;
+        this.aiCallInFieldMapper = aiCallInFieldMapper;
+        this.ledgerService = ledgerService;
+        this.canonicalizer = canonicalizer;
+        this.objectMapper = objectMapper;
+        this.clock = clock;
+        this.aiProvider = aiProvider;
+        this.costCalculator = costCalculator;
+        this.metrics = metrics;
+        this.retryPolicy = retryPolicy;
+        this.failedCallRecorder = failedCallRecorder;
+        this.auditLogService = auditLogService;
+    }
 
     public AiReviewService(
         SubmissionMapper submissionMapper,
@@ -79,21 +122,9 @@ public class AiReviewService {
         AiRetryPolicy retryPolicy,
         FailedAiCallRecorder failedCallRecorder
     ) {
-        this.submissionMapper = submissionMapper;
-        this.schemaVersionMapper = schemaVersionMapper;
-        this.datasetItemMapper = datasetItemMapper;
-        this.taskMapper = taskMapper;
-        this.aiCallMapper = aiCallMapper;
-        this.aiCallInFieldMapper = aiCallInFieldMapper;
-        this.ledgerService = ledgerService;
-        this.canonicalizer = canonicalizer;
-        this.objectMapper = objectMapper;
-        this.clock = clock;
-        this.aiProvider = aiProvider;
-        this.costCalculator = costCalculator;
-        this.metrics = metrics;
-        this.retryPolicy = retryPolicy;
-        this.failedCallRecorder = failedCallRecorder;
+        this(submissionMapper, schemaVersionMapper, datasetItemMapper, taskMapper, aiCallMapper,
+            aiCallInFieldMapper, ledgerService, canonicalizer, objectMapper, clock, aiProvider,
+            costCalculator, metrics, retryPolicy, failedCallRecorder, AuditLogService.noop());
     }
 
     @Transactional
@@ -127,7 +158,26 @@ public class AiReviewService {
         }
 
         metrics.recordMiss(aiProvider.providerName());
-        ProviderInvocationResult invocation = invokeProvider(submissionId, promptVersion, input, inputHash, idempotencyKey);
+        ProviderInvocationResult invocation;
+        try {
+            invocation = invokeProvider(submissionId, promptVersion, input, inputHash, idempotencyKey);
+        } catch (AiProviderFailureException exception) {
+            auditLogService.recordRequiresNew(
+                AuditEventBuilder.forAction(AuditActions.AI_REVIEW_FAILED)
+                    .actorSystem()
+                    .resource("submission", submissionId)
+                    .payload("submissionId", submissionId)
+                    .payload("taskId", submission.getTaskId())
+                    .payload("promptVersion", promptVersion)
+                    .payload("provider", aiProvider.providerName())
+                    .payload("model", aiProvider.modelName())
+                    .payload("inputHash", inputHash)
+                    .payload("idempotencyKey", idempotencyKey)
+                    .payload("error", exception.getMessage())
+                    .payload("providerError", providerError(exception))
+            );
+            throw exception;
+        }
         AiCallResult result = invocation.result();
         AiCallUsage usage = invocation.usage();
         Map<String, Object> responsePayload = persistedJsonShape(result.output());
@@ -164,7 +214,22 @@ public class AiReviewService {
             rows.add(row);
         }
         if (!fieldFindings.isEmpty()) {
-            ledgerService.appendAiFieldFindings(submissionId, submission.getTaskId(), aiCall.getId(), fieldFindings);
+            List<QualityLedgerEntryEntity> ledgerEntries =
+                ledgerService.appendAiFieldFindings(submissionId, submission.getTaskId(), aiCall.getId(), fieldFindings);
+            auditLogService.record(
+                AuditEventBuilder.forAction(AuditActions.AI_REVIEW_FIELD_ASSIST)
+                    .actorAi()
+                    .resource("submission", submissionId)
+                    .payload("submissionId", submissionId)
+                    .payload("taskId", submission.getTaskId())
+                    .payload("aiCallId", aiCall.getId())
+                    .payload("fieldFindingCount", fieldFindings.size())
+                    .payload("ledgerEntryIds", ledgerEntries.stream().map(QualityLedgerEntryEntity::getId).toList())
+                    .payload("promptVersion", promptVersion)
+                    .payload("provider", aiProvider.providerName())
+                    .payload("model", aiProvider.modelName())
+                    .payload("idempotencyKey", idempotencyKey)
+            );
         }
         aiCall.setOutputHash(outputHash);
         return new AiReviewResultView(aiCall, result, rows, false);
@@ -231,6 +296,17 @@ public class AiReviewService {
         if (willRetry) {
             metrics.recordRetryAttempt(aiProvider.providerName());
         }
+    }
+
+    private Map<String, Object> providerError(AiProviderFailureException exception) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("message", exception.getMessage());
+        if (exception.getCause() instanceof AiProviderException cause) {
+            payload.put("providerCode", cause.getProviderCode());
+            payload.put("statusCode", cause.getStatusCode());
+            payload.put("retryable", cause.isRetryable());
+        }
+        return payload;
     }
 
     private Map<String, Object> buildInput(

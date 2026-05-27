@@ -2,10 +2,12 @@ package com.labelhub.api.module.task.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.generated.model.TaskStatus;
-import com.labelhub.api.module.admin.entity.AuditLogEntity;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
+import com.labelhub.api.module.admin.audit.AuditLogServiceImpl;
 import com.labelhub.api.module.admin.mapper.AuditLogMapper;
 import com.labelhub.api.module.dataset.entity.DatasetEntity;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetForTaskException;
@@ -27,7 +29,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -47,16 +48,36 @@ public class TaskService {
     private final TaskMapper taskMapper;
     private final TaskTransitionMapper taskTransitionMapper;
     private final TaskDeletionMapper taskDeletionMapper;
-    private final AuditLogMapper auditLogMapper;
+    private final AuditLogService auditLogService;
     private final DatasetMapper datasetMapper;
     private final ExportSnapshotMapper exportSnapshotMapper;
     private final ExportJobMapper exportJobMapper;
     private final ObjectStorageWriter objectStorageWriter;
     private final Clock clock;
-    private final ObjectMapper objectMapper;
-    private final Canonicalizer canonicalizer;
 
     @Autowired
+    public TaskService(
+        TaskMapper taskMapper,
+        TaskTransitionMapper taskTransitionMapper,
+        TaskDeletionMapper taskDeletionMapper,
+        AuditLogService auditLogService,
+        DatasetMapper datasetMapper,
+        ExportSnapshotMapper exportSnapshotMapper,
+        ExportJobMapper exportJobMapper,
+        ObjectStorageWriter objectStorageWriter,
+        Clock clock
+    ) {
+        this.taskMapper = taskMapper;
+        this.taskTransitionMapper = taskTransitionMapper;
+        this.taskDeletionMapper = taskDeletionMapper;
+        this.auditLogService = auditLogService;
+        this.datasetMapper = datasetMapper;
+        this.exportSnapshotMapper = exportSnapshotMapper;
+        this.exportJobMapper = exportJobMapper;
+        this.objectStorageWriter = objectStorageWriter;
+        this.clock = clock;
+    }
+
     public TaskService(
         TaskMapper taskMapper,
         TaskTransitionMapper taskTransitionMapper,
@@ -70,17 +91,8 @@ public class TaskService {
         ObjectMapper objectMapper,
         Canonicalizer canonicalizer
     ) {
-        this.taskMapper = taskMapper;
-        this.taskTransitionMapper = taskTransitionMapper;
-        this.taskDeletionMapper = taskDeletionMapper;
-        this.auditLogMapper = auditLogMapper;
-        this.datasetMapper = datasetMapper;
-        this.exportSnapshotMapper = exportSnapshotMapper;
-        this.exportJobMapper = exportJobMapper;
-        this.objectStorageWriter = objectStorageWriter;
-        this.clock = clock;
-        this.objectMapper = objectMapper;
-        this.canonicalizer = canonicalizer;
+        this(taskMapper, taskTransitionMapper, taskDeletionMapper, AuditLogService.noop(), datasetMapper,
+            exportSnapshotMapper, exportJobMapper, objectStorageWriter, clock);
     }
 
     public TaskService(
@@ -92,7 +104,8 @@ public class TaskService {
         ObjectMapper objectMapper,
         Canonicalizer canonicalizer
     ) {
-        this(taskMapper, taskTransitionMapper, null, auditLogMapper, datasetMapper, null, null, null, clock, objectMapper, canonicalizer);
+        this(taskMapper, taskTransitionMapper, null, new AuditLogServiceImpl(auditLogMapper, canonicalizer, objectMapper),
+            datasetMapper, null, null, null, clock);
     }
 
     @Transactional
@@ -140,6 +153,15 @@ public class TaskService {
         }
 
         Set<String> objectKeys = collectExportObjectKeys(taskId);
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.TASK_DELETE)
+                .actorUser(ownerId)
+                .resource("task", taskId)
+                .payload("taskId", taskId)
+                .payload("ownerId", task.getOwnerId())
+                .payload("status", task.getStatus().getValue())
+                .payload("title", task.getTitle())
+        );
 
         // Step 1: blocks fk_tasks_current_dataset before datasets delete.
         taskDeletionMapper.clearTaskCurrentDataset(taskId);
@@ -210,7 +232,14 @@ public class TaskService {
         }
 
         requireOneRow(taskTransitionMapper.insert(transitionRecord(task, fromStatus, targetStatus, reason, actorId)), "insert task transition");
-        requireOneRow(auditLogMapper.insert(auditRecord(taskId, fromStatus, targetStatus, reason, actorId)), "insert audit log");
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.TASK_TRANSITION)
+                .actorUser(actorId)
+                .resource("task", taskId)
+                .payload("from", fromStatus.getValue())
+                .payload("to", targetStatus.getValue())
+                .payload("reason", reason == null ? "" : reason)
+        );
 
         task.setStatus(targetStatus);
         task.setUpdatedAt(LocalDateTime.now(clock));
@@ -346,30 +375,6 @@ public class TaskService {
         transition.setActorId(actorId);
         transition.setReason(reason);
         return transition;
-    }
-
-    private AuditLogEntity auditRecord(Long taskId, TaskStatus fromStatus, TaskStatus targetStatus, String reason, Long actorId) {
-        AuditLogEntity audit = new AuditLogEntity();
-        audit.setActorType("user");
-        audit.setActorId(actorId);
-        audit.setAction("task.transition");
-        audit.setResourceType("task");
-        audit.setResourceId(taskId);
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("from", fromStatus.getValue());
-        payload.put("to", targetStatus.getValue());
-        payload.put("reason", reason == null ? "" : reason);
-        audit.setPayload(writeJson(payload));
-        audit.setPayloadHash(canonicalizer.sha256Hex(canonicalizer.canonicalJson(payload)));
-        return audit;
-    }
-
-    private String writeJson(Map<String, Object> payload) {
-        try {
-            return objectMapper.writeValueAsString(payload);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("Unable to write audit payload JSON", e);
-        }
     }
 
     private void requireOneRow(int affectedRows, String action) {
