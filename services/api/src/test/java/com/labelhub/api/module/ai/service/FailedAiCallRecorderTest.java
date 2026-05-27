@@ -1,5 +1,9 @@
 package com.labelhub.api.module.ai.service;
 
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEvent;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
 import com.labelhub.api.module.ai.exception.AiProviderException;
@@ -23,9 +27,11 @@ class FailedAiCallRecorderTest {
     private static final LocalDateTime NOW = LocalDateTime.parse("2026-05-25T12:00:00");
 
     private final AiCallMapper aiCallMapper = mock(AiCallMapper.class);
+    private final AuditLogService auditLogService = mock(AuditLogService.class);
     private final FailedAiCallRecorder recorder = new FailedAiCallRecorder(
         aiCallMapper,
-        Clock.fixed(Instant.parse("2026-05-25T12:00:00Z"), ZoneOffset.UTC)
+        Clock.fixed(Instant.parse("2026-05-25T12:00:00Z"), ZoneOffset.UTC),
+        auditLogService
     );
 
     @Test
@@ -69,6 +75,10 @@ class FailedAiCallRecorderTest {
         assertThat(row.getCacheHitTokens()).isNull();
         assertThat(row.getCreatedAt()).isEqualTo(NOW);
         assertThat(row.getCompletedAt()).isEqualTo(NOW);
+        AuditEvent event = capturedAuditEvent();
+        assertThat(event.action()).isEqualTo(AuditActions.AI_REVIEW_RECORDED_FAILED_CALL);
+        assertThat(event.actorType()).isEqualTo("system");
+        assertThat(event.resourceType()).isEqualTo("ai_call");
     }
 
     @Test
@@ -93,5 +103,11 @@ class FailedAiCallRecorderTest {
 
     private static AiProviderException retryable(String providerCode) {
         return new AiProviderException("temporary", true, providerCode, 503);
+    }
+
+    private AuditEvent capturedAuditEvent() {
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService).record(captor.capture());
+        return captor.getValue().build();
     }
 }

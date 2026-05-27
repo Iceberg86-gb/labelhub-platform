@@ -1,8 +1,10 @@
 package com.labelhub.api.module.task.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.generated.model.TaskStatus;
-import com.labelhub.api.module.admin.mapper.AuditLogMapper;
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEvent;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.dataset.mapper.DatasetMapper;
 import com.labelhub.api.module.export.entity.ExportJobEntity;
 import com.labelhub.api.module.export.entity.ExportSnapshotEntity;
@@ -13,13 +15,13 @@ import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskDeletionMapper;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.module.task.mapper.TaskTransitionMapper;
-import com.labelhub.api.shared.canonical.Canonicalizer;
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -48,6 +50,7 @@ class TaskServiceDeleteTest {
     private ExportSnapshotMapper exportSnapshotMapper;
     private ExportJobMapper exportJobMapper;
     private ObjectStorageWriter objectStorageWriter;
+    private AuditLogService auditLogService;
     private TaskService taskService;
 
     @BeforeEach
@@ -55,24 +58,22 @@ class TaskServiceDeleteTest {
         taskMapper = mock(TaskMapper.class);
         TaskTransitionMapper taskTransitionMapper = mock(TaskTransitionMapper.class);
         taskDeletionMapper = mock(TaskDeletionMapper.class);
-        AuditLogMapper auditLogMapper = mock(AuditLogMapper.class);
         DatasetMapper datasetMapper = mock(DatasetMapper.class);
         exportSnapshotMapper = mock(ExportSnapshotMapper.class);
         exportJobMapper = mock(ExportJobMapper.class);
         objectStorageWriter = mock(ObjectStorageWriter.class);
+        auditLogService = mock(AuditLogService.class);
 
         taskService = new TaskService(
                 taskMapper,
                 taskTransitionMapper,
                 taskDeletionMapper,
-                auditLogMapper,
+                auditLogService,
                 datasetMapper,
                 exportSnapshotMapper,
                 exportJobMapper,
                 objectStorageWriter,
-                Clock.systemUTC(),
-                new ObjectMapper(),
-                new Canonicalizer(new ObjectMapper()));
+                Clock.systemUTC());
     }
 
     @AfterEach
@@ -92,6 +93,7 @@ class TaskServiceDeleteTest {
         taskService.deleteTask(TASK_ID, OWNER_ID);
 
         verifyFullCascadeOrder();
+        assertAuditEvent(AuditActions.TASK_DELETE, "user", "task");
         assertThat(TransactionSynchronizationManager.getSynchronizations()).hasSize(1);
 
         runAfterCommit();
@@ -243,5 +245,14 @@ class TaskServiceDeleteTest {
         order.verify(taskDeletionMapper).deleteTaskTransitions(TASK_ID);
         order.verify(taskDeletionMapper).deleteTask(TASK_ID);
         order.verifyNoMoreInteractions();
+    }
+
+    private void assertAuditEvent(String action, String actorType, String resourceType) {
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService).record(captor.capture());
+        AuditEvent event = captor.getValue().build();
+        assertThat(event.action()).isEqualTo(action);
+        assertThat(event.actorType()).isEqualTo(actorType);
+        assertThat(event.resourceType()).isEqualTo(resourceType);
     }
 }

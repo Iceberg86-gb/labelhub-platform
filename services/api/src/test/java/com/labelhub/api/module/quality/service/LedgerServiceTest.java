@@ -1,5 +1,9 @@
 package com.labelhub.api.module.quality.service;
 
+import com.labelhub.api.module.admin.audit.AuditActions;
+import com.labelhub.api.module.admin.audit.AuditEvent;
+import com.labelhub.api.module.admin.audit.AuditEventBuilder;
+import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.ai.provider.FieldFinding;
 import com.labelhub.api.module.quality.exception.LedgerEntryPayloadInvalidException;
@@ -47,12 +51,13 @@ class LedgerServiceTest {
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
     private final TaskMapper taskMapper = mock(TaskMapper.class);
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper = mock(QualityLedgerEntryMapper.class);
+    private final AuditLogService auditLogService = mock(AuditLogService.class);
     private LedgerService ledgerService;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-05-25T09:30:00Z"), ZoneOffset.UTC);
-        ledgerService = new LedgerService(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock);
+        ledgerService = new LedgerService(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock, auditLogService);
     }
 
     @Test
@@ -81,6 +86,7 @@ class LedgerServiceTest {
         assertThat(entry.getPayload()).containsEntry("verdict", "approve");
         assertThat(entry.getCreatedAt()).isEqualTo(NOW);
         verify(qualityLedgerEntryMapper).insert(any(QualityLedgerEntryEntity.class));
+        assertAuditEvent(AuditActions.REVIEW_APPROVE, "user", "submission");
     }
 
     @Test
@@ -93,6 +99,7 @@ class LedgerServiceTest {
         ArgumentCaptor<QualityLedgerEntryEntity> captor = ArgumentCaptor.forClass(QualityLedgerEntryEntity.class);
         verify(qualityLedgerEntryMapper).insert(captor.capture());
         assertThat(captor.getValue().getTaskId()).isEqualTo(TASK_ID);
+        assertAuditEvent(AuditActions.REVIEW_REJECT, "user", "submission");
     }
 
     @Test
@@ -298,5 +305,14 @@ class LedgerServiceTest {
         entry.setPayload(Map.of("verdict", verdict));
         entry.setCreatedAt(NOW);
         return entry;
+    }
+
+    private void assertAuditEvent(String action, String actorType, String resourceType) {
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService).record(captor.capture());
+        AuditEvent event = captor.getValue().build();
+        assertThat(event.action()).isEqualTo(action);
+        assertThat(event.actorType()).isEqualTo(actorType);
+        assertThat(event.resourceType()).isEqualTo(resourceType);
     }
 }
