@@ -276,18 +276,29 @@ a {
   border: 1px solid #d8dee9;
 }
 
-.login-shell {
+.public-shell {
   display: grid;
-  min-height: calc(100vh - 120px);
-  place-items: center;
+  min-height: 100vh;
+  grid-template-rows: auto 1fr;
+  background: #eef3f9;
 }
 
-.login-panel {
-  width: min(420px, 100%);
+.public-brand {
+  padding: 24px 32px;
+}
+
+.public-card {
+  width: min(480px, calc(100vw - 40px));
+  align-self: center;
+  justify-self: center;
   padding: 32px;
   border: 1px solid #d8dee9;
   background: #ffffff;
   box-sizing: border-box;
+}
+
+.login-shell {
+  display: block;
 }
 
 .login-copy {
