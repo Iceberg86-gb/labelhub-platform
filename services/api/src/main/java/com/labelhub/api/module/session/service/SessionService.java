@@ -1,6 +1,8 @@
 package com.labelhub.api.module.session.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.module.admin.audit.AuditActions;
 import com.labelhub.api.module.admin.audit.AuditEventBuilder;
 import com.labelhub.api.module.admin.audit.AuditLogService;
@@ -8,6 +10,7 @@ import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
+import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
@@ -26,12 +29,16 @@ import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
 import com.labelhub.api.module.session.service.view.SessionDetailView;
 import com.labelhub.api.module.submission.SubmissionStatusCodes;
+import com.labelhub.api.module.submission.validation.AnswerPayloadValidator;
+import com.labelhub.api.module.submission.validation.AnswerValidationError;
+import com.labelhub.api.module.submission.validation.AnswerValidationException;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +62,8 @@ public class SessionService {
     private final Canonicalizer canonicalizer;
     private final Clock clock;
     private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
+    private final AnswerPayloadValidator answerPayloadValidator;
 
     @Autowired
     public SessionService(
@@ -66,7 +75,9 @@ public class SessionService {
         SubmissionMapper submissionMapper,
         Canonicalizer canonicalizer,
         Clock clock,
-        AuditLogService auditLogService
+        AuditLogService auditLogService,
+        ObjectMapper objectMapper,
+        AnswerPayloadValidator answerPayloadValidator
     ) {
         this.taskMapper = taskMapper;
         this.datasetItemMapper = datasetItemMapper;
@@ -77,6 +88,23 @@ public class SessionService {
         this.canonicalizer = canonicalizer;
         this.clock = clock;
         this.auditLogService = auditLogService;
+        this.objectMapper = objectMapper;
+        this.answerPayloadValidator = answerPayloadValidator;
+    }
+
+    public SessionService(
+        TaskMapper taskMapper,
+        DatasetItemMapper datasetItemMapper,
+        SessionMapper sessionMapper,
+        SchemaVersionMapper schemaVersionMapper,
+        DraftMapper draftMapper,
+        SubmissionMapper submissionMapper,
+        Canonicalizer canonicalizer,
+        Clock clock,
+        AuditLogService auditLogService
+    ) {
+        this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper,
+            canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator());
     }
 
     public SessionService(
@@ -203,6 +231,7 @@ public class SessionService {
         if (answerPayload == null) {
             throw new InvalidSubmissionPayloadException("answerPayload is required");
         }
+        validateAnswerPayload(session, answerPayload);
 
         SubmissionEntity submission = new SubmissionEntity();
         submission.setSessionId(sessionId);
@@ -232,6 +261,18 @@ public class SessionService {
                 .payload("contentHash", submission.getContentHash())
         );
         return submission;
+    }
+
+    private void validateAnswerPayload(SessionEntity session, Map<String, Object> answerPayload) {
+        SchemaVersionEntity schemaVersion = schemaVersionMapper.selectById(session.getSchemaVersionId());
+        if (schemaVersion == null) {
+            throw new SchemaVersionNotFoundException(session.getSchemaVersionId());
+        }
+        SchemaDocument schemaDocument = objectMapper.convertValue(schemaVersion.getSchemaJson(), SchemaDocument.class);
+        List<AnswerValidationError> errors = answerPayloadValidator.validate(schemaDocument, answerPayload);
+        if (!errors.isEmpty()) {
+            throw new AnswerValidationException(errors);
+        }
     }
 
     public SubmissionEntity getSubmissionForLabeler(Long submissionId, Long labelerId) {
