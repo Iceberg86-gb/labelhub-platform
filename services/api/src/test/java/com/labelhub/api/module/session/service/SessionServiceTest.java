@@ -79,6 +79,7 @@ class SessionServiceTest {
             clock,
             auditLogService
         );
+        when(schemaVersionMapper.selectById(300L)).thenReturn(schemaVersion(300L));
     }
 
     @Test
@@ -586,8 +587,12 @@ class SessionServiceTest {
         version.setId(id);
         version.setSchemaId(50L);
         version.setVersionNumber(1);
-        version.setSchemaJson(Map.of("fields", List.of()));
-        version.setFieldStableIds(List.of());
+        version.setSchemaJson(Map.of("fields", List.of(Map.of(
+            "stableId", "field_0",
+            "label", "Field 0",
+            "type", "text"
+        ))));
+        version.setFieldStableIds(List.of("field_0"));
         version.setContentHash("hash");
         version.setStatusCode("published");
         version.setPublishedAt(NOW);
