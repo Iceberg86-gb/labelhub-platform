@@ -16,9 +16,11 @@ class AiCallPromptVersionAdditiveContractTest {
 
         entity.setPromptVersionId(12L);
         entity.setProviderAdapterVersion("agent-default-v1");
+        entity.setAiReviewRuleId(19L);
 
         assertThat(entity.getPromptVersionId()).isEqualTo(12L);
         assertThat(entity.getProviderAdapterVersion()).isEqualTo("agent-default-v1");
+        assertThat(entity.getAiReviewRuleId()).isEqualTo(19L);
     }
 
     @Test
@@ -29,8 +31,10 @@ class AiCallPromptVersionAdditiveContractTest {
         assertThat(insertSql)
             .contains("INSERT INTO ai_calls")
             .contains("prompt_version_id")
+            .contains("ai_review_rule_id")
             .contains("provider_adapter_version")
             .contains("#{promptVersionId}")
+            .contains("#{aiReviewRuleId}")
             .contains("#{providerAdapterVersion}");
     }
 
@@ -50,6 +54,7 @@ class AiCallPromptVersionAdditiveContractTest {
 
         assertThat(sql)
             .contains("prompt_version_id")
+            .contains("ai_review_rule_id")
             .contains("provider_adapter_version");
     }
 }

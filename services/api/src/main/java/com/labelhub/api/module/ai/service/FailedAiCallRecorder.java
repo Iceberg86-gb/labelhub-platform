@@ -44,6 +44,7 @@ public class FailedAiCallRecorder {
         int attemptNumber,
         String promptVersion,
         Long promptVersionId,
+        Long aiReviewRuleId,
         String providerAdapterVersion,
         String providerName,
         String modelName,
@@ -58,6 +59,7 @@ public class FailedAiCallRecorder {
         failed.setPurpose("submission_review");
         failed.setPromptVersion(promptVersion);
         failed.setPromptVersionId(promptVersionId);
+        failed.setAiReviewRuleId(aiReviewRuleId);
         failed.setProviderAdapterVersion(providerAdapterVersion);
         failed.setModelProvider(providerName);
         failed.setModelName(modelName);
@@ -86,6 +88,7 @@ public class FailedAiCallRecorder {
                 .payload("attemptNumber", attemptNumber)
                 .payload("promptVersion", promptVersion)
                 .payload("promptVersionId", promptVersionId)
+                .payload("aiReviewRuleId", aiReviewRuleId)
                 .payload("providerAdapterVersion", providerAdapterVersion)
                 .payload("provider", providerName)
                 .payload("model", modelName)

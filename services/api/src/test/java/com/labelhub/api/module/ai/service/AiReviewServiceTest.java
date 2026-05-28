@@ -9,12 +9,15 @@ import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
 import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
+import com.labelhub.api.module.ai.entity.AiReviewRuleEntity;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
+import com.labelhub.api.module.ai.exception.AiReviewRuleNotFoundException;
 import com.labelhub.api.module.ai.exception.PromptVersionNotFoundException;
 import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
+import com.labelhub.api.module.ai.mapper.AiReviewRuleMapper;
 import com.labelhub.api.module.ai.entity.PromptVersionEntity;
 import com.labelhub.api.module.ai.observability.AiIdempotencyMetrics;
 import com.labelhub.api.module.ai.provider.AiCallRequest;
@@ -75,6 +78,7 @@ class AiReviewServiceTest {
     private final DatasetItemMapper datasetItemMapper = mock(DatasetItemMapper.class);
     private final TaskMapper taskMapper = mock(TaskMapper.class);
     private final AiCallMapper aiCallMapper = mock(AiCallMapper.class);
+    private final AiReviewRuleMapper aiReviewRuleMapper = mock(AiReviewRuleMapper.class);
     private final AiCallInFieldMapper aiCallInFieldMapper = mock(AiCallInFieldMapper.class);
     private final LedgerService ledgerService = mock(LedgerService.class);
     private final PromptVersionService promptVersionService = mock(PromptVersionService.class);
@@ -107,6 +111,7 @@ class AiReviewServiceTest {
             datasetItemMapper,
             taskMapper,
             aiCallMapper,
+            aiReviewRuleMapper,
             aiCallInFieldMapper,
             ledgerService,
             promptVersionService,
@@ -124,6 +129,7 @@ class AiReviewServiceTest {
         when(aiProvider.modelName()).thenReturn("mock-v1");
         when(aiProvider.timeout()).thenReturn(Duration.ofSeconds(30));
         when(promptVersionService.findById(1L)).thenReturn(defaultPromptVersion());
+        when(promptVersionService.findById(7L)).thenReturn(rulePromptVersion());
         when(aiProvider.invokeWithUsage(any(AiCallRequest.class))).thenAnswer(invocation ->
             new ProviderInvocationResult(aiProvider.invoke(invocation.getArgument(0)), null)
         );
@@ -153,6 +159,7 @@ class AiReviewServiceTest {
         assertThat(inserted.getStatus()).isEqualTo(AiCallStatusCodes.COMPLETED);
         assertThat(inserted.getPromptVersion()).isEqualTo("promptVersion#1");
         assertThat(inserted.getPromptVersionId()).isEqualTo(1L);
+        assertThat(inserted.getAiReviewRuleId()).isNull();
         assertThat(inserted.getProviderAdapterVersion()).isEqualTo("agent-default-v1");
         assertThat(inserted.getIdempotencyKey()).isEqualTo(
             "submission:300:provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
@@ -162,6 +169,50 @@ class AiReviewServiceTest {
         assertThat(inserted.getResponsePayload()).containsEntry("overallSuggestion", "looks_good");
         assertThat(result.idempotencyHit()).isFalse();
         assertThat(result.aiCall().getOutputHash()).hasSize(64);
+    }
+
+    @Test
+    void active_task_rule_overrides_request_prompt_and_binds_rule_evidence() {
+        TaskEntity task = task(10L, 1001L);
+        task.setCurrentAiReviewRuleId(19L);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(aiReviewRuleMapper.selectById(19L)).thenReturn(activeRule(19L, 10L, 7L));
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, 1L);
+
+        ArgumentCaptor<AiCallRequest> requestCaptor = ArgumentCaptor.forClass(AiCallRequest.class);
+        verify(aiProvider).invokeWithUsage(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().promptVersion()).isEqualTo("promptVersion#2");
+
+        ArgumentCaptor<AiCallEntity> rowCaptor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(rowCaptor.capture());
+        AiCallEntity row = rowCaptor.getValue();
+        assertThat(row.getPromptVersion()).isEqualTo("promptVersion#2");
+        assertThat(row.getPromptVersionId()).isEqualTo(7L);
+        assertThat(row.getAiReviewRuleId()).isEqualTo(19L);
+        assertThat(row.getIdempotencyKey()).isEqualTo(
+            "submission:300:provider:mock:model:mock-v1:promptVersionId:7:adapter:agent-default-v1:ruleVersionId:19"
+        );
+        assertThat(row.getIdempotencyKey().length()).isLessThanOrEqualTo(160);
+    }
+
+    @Test
+    void active_task_rule_missing_fails_without_falling_back_to_request_prompt() {
+        TaskEntity task = task(10L, 1001L);
+        task.setCurrentAiReviewRuleId(404L);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(aiReviewRuleMapper.selectById(404L)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
+            .isInstanceOf(AiReviewRuleNotFoundException.class)
+            .hasMessageContaining("404");
+
+        verify(promptVersionService, never()).findById(1L);
+        verify(aiProvider, never()).invoke(any());
+        verify(aiCallMapper, never()).insert(any());
     }
 
     @Test
@@ -726,6 +777,29 @@ class AiReviewServiceTest {
         entity.setContent("m3-owner-review-v1");
         entity.setContentHash("fa76977fd0bdc3f0cc7336855006669f2950381f1a0dc4f0803458bb6f06d456");
         entity.setStatusCode("published");
+        return entity;
+    }
+
+    private PromptVersionEntity rulePromptVersion() {
+        PromptVersionEntity entity = new PromptVersionEntity();
+        entity.setId(7L);
+        entity.setVersionNumber(2);
+        entity.setContent("task specific prompt");
+        entity.setContentHash("b".repeat(64));
+        entity.setStatusCode("published");
+        return entity;
+    }
+
+    private AiReviewRuleEntity activeRule(Long id, Long taskId, Long promptVersionId) {
+        AiReviewRuleEntity entity = new AiReviewRuleEntity();
+        entity.setId(id);
+        entity.setTaskId(taskId);
+        entity.setVersionNumber(3);
+        entity.setCurrentPromptVersionId(promptVersionId);
+        entity.setDimensionsJson("[\"quality\"]");
+        entity.setThreshold(new BigDecimal("0.80"));
+        entity.setStatusCode("published");
+        entity.setCreatedBy(1001L);
         return entity;
     }
 

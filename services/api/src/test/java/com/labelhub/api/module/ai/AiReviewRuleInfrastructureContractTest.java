@@ -53,6 +53,21 @@ class AiReviewRuleInfrastructureContractTest {
         assertThat(openApi).doesNotContain("conclusionStrategy");
     }
 
+    @Test
+    void ai_calls_migration_and_openapi_expose_ai_review_rule_evidence_binding() throws IOException {
+        String migrations = migrationsText();
+        String openApi = Files.readString(Path.of("../../packages/contracts/openapi/labelhub.yaml"));
+
+        assertThat(migrations)
+            .contains("ADD COLUMN ai_review_rule_id BIGINT NULL")
+            .contains("idx_ai_calls_ai_review_rule")
+            .contains("FOREIGN KEY (ai_review_rule_id) REFERENCES ai_review_rules(id)");
+
+        assertThat(openApi)
+            .contains("AiCall:\n      type: object")
+            .contains("aiReviewRuleId:");
+    }
+
     private String migrationsText() throws IOException {
         return Files.list(Path.of("src/main/resources/db/migration"))
             .sorted(Comparator.comparing(Path::getFileName))

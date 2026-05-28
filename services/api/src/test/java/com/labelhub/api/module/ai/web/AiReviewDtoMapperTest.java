@@ -37,6 +37,7 @@ class AiReviewDtoMapperTest {
         assertThat(result.getConfidence()).isEqualByComparingTo("0.90");
         assertThat(result.getAiCall().getProviderName()).isEqualTo("mock");
         assertThat(result.getAiCall().getPromptVersionId()).isEqualTo(700L);
+        assertThat(result.getAiCall().getAiReviewRuleId()).isEqualTo(19L);
         assertThat(result.getAiCall().getProviderAdapterVersion()).isEqualTo("agent-default-v1");
         assertThat(result.getAiCall().getStatus()).isEqualTo(AiCallStatus.COMPLETED);
         assertThat(result.getAiCall().getCost()).isEqualByComparingTo("0.000100");
@@ -63,6 +64,7 @@ class AiReviewDtoMapperTest {
             .satisfies(aiCall -> {
                 assertThat(aiCall.getProviderName()).isEqualTo("mock");
                 assertThat(aiCall.getPromptVersionId()).isEqualTo(700L);
+                assertThat(aiCall.getAiReviewRuleId()).isEqualTo(19L);
                 assertThat(aiCall.getProviderAdapterVersion()).isEqualTo("agent-default-v1");
                 assertThat(aiCall.getOutputHash()).hasSize(64);
             });
@@ -124,6 +126,7 @@ class AiReviewDtoMapperTest {
         entity.setPurpose("submission_review");
         entity.setPromptVersion("promptVersion#1");
         entity.setPromptVersionId(700L);
+        entity.setAiReviewRuleId(19L);
         entity.setProviderAdapterVersion("agent-default-v1");
         entity.setModelProvider("mock");
         entity.setModelName("mock-v1");

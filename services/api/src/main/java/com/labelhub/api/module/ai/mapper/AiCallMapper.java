@@ -17,13 +17,13 @@ public interface AiCallMapper {
 
     @Insert("""
         INSERT INTO ai_calls
-        (submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+        (submission_id, field_path, purpose, prompt_version, prompt_version_id, ai_review_rule_id, provider_adapter_version,
          model_provider, model_name,
          input_hash, request_payload, response_payload, scores, verdict, token_input,
          token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
          latency_ms, status, idempotency_key, created_at, completed_at)
         VALUES
-        (#{submissionId}, #{fieldPath}, #{purpose}, #{promptVersion}, #{promptVersionId}, #{providerAdapterVersion},
+        (#{submissionId}, #{fieldPath}, #{purpose}, #{promptVersion}, #{promptVersionId}, #{aiReviewRuleId}, #{providerAdapterVersion},
          #{modelProvider}, #{modelName},
          #{inputHash}, #{requestPayload, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
          #{responsePayload, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
@@ -36,7 +36,7 @@ public interface AiCallMapper {
     int insert(AiCallEntity entity);
 
     @Select("""
-        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, ai_review_rule_id, provider_adapter_version,
                model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
                token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
@@ -49,6 +49,7 @@ public interface AiCallMapper {
         @Result(column = "field_path", property = "fieldPath"),
         @Result(column = "prompt_version", property = "promptVersion"),
         @Result(column = "prompt_version_id", property = "promptVersionId"),
+        @Result(column = "ai_review_rule_id", property = "aiReviewRuleId"),
         @Result(column = "provider_adapter_version", property = "providerAdapterVersion"),
         @Result(column = "model_provider", property = "modelProvider"),
         @Result(column = "model_name", property = "modelName"),
@@ -71,7 +72,7 @@ public interface AiCallMapper {
     AiCallEntity selectById(@Param("id") Long id);
 
     @Select("""
-        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, ai_review_rule_id, provider_adapter_version,
                model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
                token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
@@ -83,7 +84,7 @@ public interface AiCallMapper {
     AiCallEntity selectByIdempotencyKey(@Param("idempotencyKey") String idempotencyKey);
 
     @Select("""
-        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, ai_review_rule_id, provider_adapter_version,
                model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
                token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
@@ -97,7 +98,7 @@ public interface AiCallMapper {
 
     @Select("""
         <script>
-        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, ai_review_rule_id, provider_adapter_version,
                model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
                token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
