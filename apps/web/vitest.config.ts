@@ -12,7 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    include: ['src/features/labeling/formily/__tests__/**/*.test.{ts,tsx}', 'src/entities/labeling/**/*.test.ts'],
+    include: ['src/features/labeling/**/*.test.{ts,tsx}', 'src/entities/labeling/**/*.test.ts'],
     benchmark: {
       include: ['src/features/labeling/__benchmarks__/**/*.bench.tsx'],
       time: 100,
