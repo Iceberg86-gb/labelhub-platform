@@ -12,6 +12,7 @@ tags:
   - name: Schemas
   - name: Sessions
   - name: AIReview
+  - name: PromptVersions
   - name: Reviews
   - name: Exports
   - name: AuditLogs
@@ -949,6 +950,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubmissionAiProvenance'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /prompt-versions/default:
+    get:
+      tags: [PromptVersions]
+      operationId: getDefaultPromptVersion
+      responses:
+        '200':
+          description: Default prompt version used by AI review trigger defaults.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PromptVersion'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
   /submissions/{submissionId}/ai-trace:

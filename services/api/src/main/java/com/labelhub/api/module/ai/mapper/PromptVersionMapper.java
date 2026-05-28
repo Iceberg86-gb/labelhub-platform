@@ -50,4 +50,24 @@ public interface PromptVersionMapper {
         @Result(column = "created_at", property = "createdAt")
     })
     PromptVersionEntity selectByContentHash(@Param("contentHash") String contentHash);
+
+    @Select("SELECT COALESCE(MAX(version_no), 0) FROM prompt_versions")
+    Integer selectMaxVersionNumber();
+
+    @Select("""
+        SELECT id, version_no, content, content_hash, status, owner_id, published_at, created_at
+        FROM prompt_versions
+        WHERE status = 'published'
+        ORDER BY version_no DESC
+        LIMIT 1
+        """)
+    @Results(id = "latestPublishedPromptVersionResultMap", value = {
+        @Result(column = "version_no", property = "versionNumber"),
+        @Result(column = "content_hash", property = "contentHash"),
+        @Result(column = "status", property = "statusCode"),
+        @Result(column = "owner_id", property = "ownerId"),
+        @Result(column = "published_at", property = "publishedAt"),
+        @Result(column = "created_at", property = "createdAt")
+    })
+    PromptVersionEntity selectLatestPublished();
 }
