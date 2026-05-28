@@ -183,6 +183,46 @@ class AiReviewIntegrationTest {
             .isEqualTo(2);
     }
 
+    @Test
+    void legacy_prompt_version_ai_call_is_not_reused_by_new_prompt_version_id_key() throws Exception {
+        long submissionId = submissionFixture("ai-review-legacy-key");
+        String legacyKey = legacyIdempotencyKey(submissionId);
+        Long legacyAiCallId = insertLegacyAiCall(submissionId, legacyKey);
+
+        triggerReview(submissionId, 1L)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.idempotencyHit").value(false))
+            .andExpect(jsonPath("$.aiCall.promptVersionId").value(1))
+            .andExpect(jsonPath("$.aiCall.providerAdapterVersion").value("agent-default-v1"))
+            .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
+                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
+            ));
+
+        assertThat(mockAiProvider.getCallCount()).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ai_calls WHERE submission_id=?", Integer.class, submissionId))
+            .isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT prompt_version_id FROM ai_calls WHERE id=?",
+            Long.class,
+            legacyAiCallId
+        )).isNull();
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT idempotency_key FROM ai_calls WHERE id=?",
+            String.class,
+            legacyAiCallId
+        )).isEqualTo(legacyKey);
+
+        mockMvc.perform(get("/submissions/{submissionId}/ai-review", submissionId)
+                .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.aiCalls", hasSize(2)))
+            .andExpect(jsonPath("$.aiCalls[0].promptVersion").value("m3-owner-review-v1"))
+            .andExpect(jsonPath("$.aiCalls[0].promptVersionId").doesNotExist())
+            .andExpect(jsonPath("$.aiCalls[0].providerAdapterVersion").value("agent-default-v1"))
+            .andExpect(jsonPath("$.aiCalls[1].promptVersionId").value(1))
+            .andExpect(jsonPath("$.aiCalls[1].providerAdapterVersion").value("agent-default-v1"));
+    }
+
     private org.springframework.test.web.servlet.ResultActions triggerReview(long submissionId, Long promptVersionId) throws Exception {
         return mockMvc.perform(post("/submissions/{submissionId}/ai-review", submissionId)
             .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
@@ -201,6 +241,22 @@ class AiReviewIntegrationTest {
             INSERT INTO prompt_versions(version_no, content, content_hash, status, owner_id, published_at, created_at)
             VALUES (?, ?, ?, 'published', 1001, NOW(3), NOW(3))
             """, versionNumber, content, fixedHash("prompt-version-" + versionNumber));
+    }
+
+    private Long insertLegacyAiCall(long submissionId, String idempotencyKey) {
+        return insertAndReturnId("""
+            INSERT INTO ai_calls(submission_id, purpose, prompt_version, model_provider, model_name,
+                                 input_hash, request_payload, response_payload, token_input, token_output,
+                                 cost_decimal, latency_ms, status, idempotency_key, created_at, completed_at)
+            VALUES (?, 'submission_review', 'm3-owner-review-v1', 'mock', 'mock-v1',
+                    ?, JSON_OBJECT('legacy', true), JSON_OBJECT('legacy', true), 0, 0,
+                    0, 1, 'completed', ?, DATE_SUB(NOW(3), INTERVAL 1 SECOND),
+                    DATE_SUB(NOW(3), INTERVAL 1 SECOND))
+            """, submissionId, fixedHash("legacy-input-" + submissionId), idempotencyKey);
+    }
+
+    private String legacyIdempotencyKey(long submissionId) {
+        return "submission:" + submissionId + ":provider:mock:model:mock-v1:prompt:prompt-v1";
     }
 
     private long submissionFixture(String seed) {
