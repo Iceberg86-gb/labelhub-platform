@@ -1,6 +1,7 @@
 import type { ISchema } from '@formily/react';
 import type { SchemaField, SchemaFieldOption, SchemaFieldValidation } from '../../../../entities/schema/schemaTypes';
 import { LABEL_HUB_COMPONENTS } from './componentRegistry';
+import { schemaToFormilyValidators } from './schemaToFormilyValidators';
 
 export function schemaToFormilyISchema(fields: SchemaField[]): ISchema {
   return {
@@ -21,6 +22,7 @@ function fieldToSchema(field: SchemaField): ISchema {
     description: field.help,
     enum: fieldOptions(field.options),
     ...validationSchema(field.validation),
+    'x-validator': schemaToFormilyValidators(field),
     'x-decorator': 'FieldFrame',
     'x-decorator-props': { field },
     'x-component': LABEL_HUB_COMPONENTS[field.type],
