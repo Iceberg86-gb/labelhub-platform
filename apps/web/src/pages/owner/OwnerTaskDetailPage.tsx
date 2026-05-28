@@ -1,10 +1,13 @@
-import { Button, Card, Empty, Spin, Timeline, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Empty, Spin, Timeline, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconRefresh } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { TaskStatusBadge } from '../../entities/task/TaskStatusBadge';
 import { DatasetUploadSection } from '../../features/dataset/DatasetUploadSection';
 import { TrustedExportCard } from '../../features/export/TrustedExportCard';
+import { buildTaskSchemaDraft, findSchemaForTask } from '../../features/schema-design/taskSchemaNavigation';
+import { useCreateSchemaMutation } from '../../features/schema-design/useCreateSchemaMutation';
+import { useSchemasQuery } from '../../features/schema-design/useSchemasQuery';
 import { OwnerTaskSubmissionsSection } from '../../features/submission/OwnerTaskSubmissionsSection';
 import type { TaskStatus } from '../../features/task/list-tasks/useTasksQuery';
 import { TaskNextStepGuidance } from '../../features/task/task-detail/TaskNextStepGuidance';
@@ -74,12 +77,40 @@ export function OwnerTaskDetailPage() {
   const [targetStatus, setTargetStatus] = useState<TaskStatus | null>(null);
   const taskQuery = useTaskDetailQuery(taskId ?? 0);
   const transitionsQuery = useTaskTransitionsQuery(taskId ?? 0);
+  const schemasQuery = useSchemasQuery({ page: 1, size: 100 });
+  const createSchemaMutation = useCreateSchemaMutation();
   const task = taskQuery.data;
 
   const tags = useMemo(() => task?.tags?.filter(Boolean) ?? [], [task?.tags]);
+  const taskSchema = useMemo(
+    () => (task ? findSchemaForTask(schemasQuery.data?.items ?? [], task.id) : undefined),
+    [schemasQuery.data?.items, task],
+  );
 
   const scrollToDataset = () => {
     document.querySelector('.detail-dataset-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const openTaskSchemaDesigner = async () => {
+    if (!task) {
+      return;
+    }
+
+    if (taskSchema) {
+      navigate(`/owner/schemas/${taskSchema.id}/design`);
+      return;
+    }
+
+    try {
+      const created = await createSchemaMutation.mutateAsync(buildTaskSchemaDraft(task));
+      Toast.success('已创建任务 Schema。');
+      navigate(`/owner/schemas/${created.id}/design`);
+    } catch (error) {
+      const message = typeof error === 'object' && error && 'message' in error
+        ? String((error as { message?: unknown }).message)
+        : 'Schema 创建失败。';
+      Toast.error(message);
+    }
   };
 
   if (!taskId) {
@@ -174,9 +205,11 @@ export function OwnerTaskDetailPage() {
           <Card className="task-setup-guidance-card">
             <TaskNextStepGuidance
               task={task}
-              onNavigateToSchema={() => navigate('/owner/schemas')}
+              onNavigateToSchema={openTaskSchemaDesigner}
               onScrollToDataset={scrollToDataset}
               onPublish={() => setTargetStatus('published')}
+              schemaActionLoading={createSchemaMutation.isPending || schemasQuery.isLoading}
+              schemaActionDisabled={schemasQuery.isError}
             />
           </Card>
         ) : null}

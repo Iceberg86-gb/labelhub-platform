@@ -1631,7 +1631,7 @@ components:
           format: int64
     CreateSchemaRequest:
       type: object
-      required: [name]
+      required: [taskId, name]
       properties:
         taskId:
           type: integer
