@@ -998,6 +998,8 @@ export interface components {
             /** Format: int64 */
             supersededById?: number | null;
         };
+        /** @enum {string} */
+        AiReviewRuleStatus: "draft" | "published";
         AiReviewRuleRequest: {
             /** Format: int64 */
             taskId: number;
@@ -1005,9 +1007,22 @@ export interface components {
             dimensions: string[];
             threshold: number;
         };
-        AiReviewRule: components["schemas"]["AiReviewRuleRequest"] & {
+        AiReviewRule: {
             /** Format: int64 */
             id: number;
+            /** Format: int64 */
+            taskId: number;
+            versionNo: number;
+            /** Format: int64 */
+            promptVersionId: number;
+            promptTemplate: string;
+            dimensions: string[];
+            threshold: number;
+            status: components["schemas"]["AiReviewRuleStatus"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            activatedAt?: string | null;
         };
         /** @enum {string} */
         PromptVersionStatus: "draft" | "published";

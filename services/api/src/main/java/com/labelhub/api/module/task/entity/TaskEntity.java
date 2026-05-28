@@ -30,6 +30,7 @@ public class TaskEntity {
     private Long ownerId;
     private Long currentSchemaVersionId;
     private Long currentDatasetId;
+    private Long currentAiReviewRuleId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -61,6 +62,8 @@ public class TaskEntity {
     public void setCurrentSchemaVersionId(Long currentSchemaVersionId) { this.currentSchemaVersionId = currentSchemaVersionId; }
     public Long getCurrentDatasetId() { return currentDatasetId; }
     public void setCurrentDatasetId(Long currentDatasetId) { this.currentDatasetId = currentDatasetId; }
+    public Long getCurrentAiReviewRuleId() { return currentAiReviewRuleId; }
+    public void setCurrentAiReviewRuleId(Long currentAiReviewRuleId) { this.currentAiReviewRuleId = currentAiReviewRuleId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -18,7 +18,8 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
     @Select("""
         SELECT id, title, description, instruction_rich_text, tags, reward_rule,
                deadline_at, quota_total, quota_claimed, status, owner_id,
-               current_schema_version_id, current_dataset_id, created_at, updated_at
+               current_schema_version_id, current_dataset_id, current_ai_review_rule_id,
+               created_at, updated_at
         FROM tasks
         WHERE status = 'published'
           AND current_dataset_id IS NOT NULL
@@ -48,6 +49,7 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
         @Result(column = "owner_id", property = "ownerId"),
         @Result(column = "current_schema_version_id", property = "currentSchemaVersionId"),
         @Result(column = "current_dataset_id", property = "currentDatasetId"),
+        @Result(column = "current_ai_review_rule_id", property = "currentAiReviewRuleId"),
         @Result(column = "created_at", property = "createdAt"),
         @Result(column = "updated_at", property = "updatedAt")
     })
@@ -56,7 +58,8 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
     @Select("""
         SELECT id, title, description, instruction_rich_text, tags, reward_rule,
                deadline_at, quota_total, quota_claimed, status, owner_id,
-               current_schema_version_id, current_dataset_id, created_at, updated_at
+               current_schema_version_id, current_dataset_id, current_ai_review_rule_id,
+               created_at, updated_at
         FROM tasks
         WHERE id = #{taskId}
         FOR UPDATE
