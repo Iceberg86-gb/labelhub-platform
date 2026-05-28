@@ -39,6 +39,8 @@ class AiReviewRuleInfrastructureContractTest {
         String openApi = Files.readString(Path.of("../../packages/contracts/openapi/labelhub.yaml"));
 
         assertThat(openApi)
+            .contains("/ai-review/rules/{ruleId}/publish:")
+            .contains("operationId: publishAiReviewRule")
             .contains("AiReviewRuleRequest:\n      type: object\n      required: [taskId, promptTemplate, dimensions, threshold]")
             .contains("AiReviewRuleStatus:")
             .contains("enum: [draft, published]")

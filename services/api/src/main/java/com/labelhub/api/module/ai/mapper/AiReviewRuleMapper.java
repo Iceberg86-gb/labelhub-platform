@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface AiReviewRuleMapper {
@@ -65,4 +66,12 @@ public interface AiReviewRuleMapper {
         WHERE task_id = #{taskId}
         """)
     Integer selectMaxVersionByTaskId(@Param("taskId") Long taskId);
+
+    @Update("""
+        UPDATE ai_review_rules
+        SET status = 'published',
+            activated_at = COALESCE(activated_at, NOW(3))
+        WHERE id = #{id}
+        """)
+    int markPublished(@Param("id") Long id);
 }

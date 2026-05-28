@@ -1,17 +1,26 @@
 package com.labelhub.api.module.ai.web;
 
 import com.labelhub.api.generated.model.SubmissionAiProvenance;
+import com.labelhub.api.generated.model.AiReviewRule;
+import com.labelhub.api.generated.model.AiReviewRuleRequest;
+import com.labelhub.api.module.ai.entity.AiReviewRuleEntity;
+import com.labelhub.api.module.ai.entity.PromptVersionEntity;
 import com.labelhub.api.module.ai.service.AiReviewService;
+import com.labelhub.api.module.ai.service.AiReviewRuleService;
+import com.labelhub.api.module.ai.service.view.AiReviewRuleView;
 import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
 import com.labelhub.api.security.JwtPrincipal;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,8 +28,15 @@ import static org.mockito.Mockito.when;
 class AiReviewControllerTest {
 
     private final AiReviewService aiReviewService = mock(AiReviewService.class);
+    private final AiReviewRuleService aiReviewRuleService = mock(AiReviewRuleService.class);
     private final AiReviewDtoMapper aiReviewDtoMapper = mock(AiReviewDtoMapper.class);
-    private final AiReviewController controller = new AiReviewController(aiReviewService, aiReviewDtoMapper);
+    private final AiReviewRuleDtoMapper aiReviewRuleDtoMapper = mock(AiReviewRuleDtoMapper.class);
+    private final AiReviewController controller = new AiReviewController(
+        aiReviewService,
+        aiReviewDtoMapper,
+        aiReviewRuleService,
+        aiReviewRuleDtoMapper
+    );
 
     @AfterEach
     void clearSecurityContext() {
@@ -41,5 +57,52 @@ class AiReviewControllerTest {
         controller.getSubmissionAiProvenance(44L);
 
         verify(aiReviewService).getProvenance(44L, 3003L, Set.of("REVIEWER"));
+    }
+
+    @Test
+    void saveAiReviewRule_delegates_to_service_with_current_owner() {
+        AiReviewRuleRequest request = new AiReviewRuleRequest(44L, "Review prompt", List.of("accuracy"), new BigDecimal("0.8"));
+        AiReviewRuleView view = view();
+        AiReviewRule dto = new AiReviewRule();
+        when(aiReviewRuleService.saveRule(request, 1001L)).thenReturn(view);
+        when(aiReviewRuleDtoMapper.toRule(view)).thenReturn(dto);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+            new JwtPrincipal(1001L, "owner_demo", List.of("OWNER")),
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_OWNER"))
+        ));
+
+        var response = controller.saveAiReviewRule(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isSameAs(dto);
+        verify(aiReviewRuleService).saveRule(request, 1001L);
+    }
+
+    @Test
+    void publishAiReviewRule_delegates_to_service_with_current_owner() {
+        AiReviewRuleView view = view();
+        AiReviewRule dto = new AiReviewRule();
+        when(aiReviewRuleService.publishRule(19L, 1001L)).thenReturn(view);
+        when(aiReviewRuleDtoMapper.toRule(view)).thenReturn(dto);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+            new JwtPrincipal(1001L, "owner_demo", List.of("OWNER")),
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_OWNER"))
+        ));
+
+        var response = controller.publishAiReviewRule(19L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(dto);
+        verify(aiReviewRuleService).publishRule(19L, 1001L);
+    }
+
+    private AiReviewRuleView view() {
+        AiReviewRuleEntity rule = new AiReviewRuleEntity();
+        rule.setId(19L);
+        PromptVersionEntity promptVersion = new PromptVersionEntity();
+        promptVersion.setId(7L);
+        return new AiReviewRuleView(rule, promptVersion);
     }
 }
