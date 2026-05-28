@@ -994,6 +994,22 @@ export interface components {
             id: number;
         };
         /** @enum {string} */
+        PromptVersionStatus: "draft" | "published";
+        PromptVersion: {
+            /** Format: int64 */
+            id: number;
+            versionNo: number;
+            contentHash: string;
+            content: string;
+            status: components["schemas"]["PromptVersionStatus"];
+            /** Format: int64 */
+            ownerId?: number | null;
+            /** Format: date-time */
+            publishedAt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @enum {string} */
         AiCallStatus: "completed" | "failed";
         AiCall: {
             /** Format: int64 */
@@ -1003,6 +1019,9 @@ export interface components {
             fieldPath?: string | null;
             purpose: string;
             promptVersion: string;
+            /** Format: int64 */
+            promptVersionId?: number | null;
+            providerAdapterVersion: string;
             providerName: string;
             modelName: string;
             inputHash: string;

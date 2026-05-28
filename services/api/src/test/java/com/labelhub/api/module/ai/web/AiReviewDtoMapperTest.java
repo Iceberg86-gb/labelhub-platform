@@ -36,6 +36,8 @@ class AiReviewDtoMapperTest {
         assertThat(result.getOverallSuggestion()).isEqualTo(AiReviewResult.OverallSuggestionEnum.LOOKS_GOOD);
         assertThat(result.getConfidence()).isEqualByComparingTo("0.90");
         assertThat(result.getAiCall().getProviderName()).isEqualTo("mock");
+        assertThat(result.getAiCall().getPromptVersionId()).isEqualTo(700L);
+        assertThat(result.getAiCall().getProviderAdapterVersion()).isEqualTo("agent-default-v1");
         assertThat(result.getAiCall().getStatus()).isEqualTo(AiCallStatus.COMPLETED);
         assertThat(result.getAiCall().getCost()).isEqualByComparingTo("0.000100");
         assertThat(result.getAiCall().getCreatedAt()).isEqualTo(OffsetDateTime.of(2026, 5, 25, 12, 0, 0, 0, ZoneOffset.UTC));
@@ -60,6 +62,8 @@ class AiReviewDtoMapperTest {
         assertThat(result.getAiCalls()).singleElement()
             .satisfies(aiCall -> {
                 assertThat(aiCall.getProviderName()).isEqualTo("mock");
+                assertThat(aiCall.getPromptVersionId()).isEqualTo(700L);
+                assertThat(aiCall.getProviderAdapterVersion()).isEqualTo("agent-default-v1");
                 assertThat(aiCall.getOutputHash()).hasSize(64);
             });
         assertThat(result.getFieldFindings()).singleElement()
@@ -67,6 +71,14 @@ class AiReviewDtoMapperTest {
                 assertThat(row.getFieldPath()).isEqualTo("field-title");
                 assertThat(row.getAccepted()).isFalse();
             });
+    }
+
+    @Test
+    void toAiCall_uses_adapter_placeholder_for_legacy_rows_without_backfilled_value() {
+        AiCallEntity entity = aiCall();
+        entity.setProviderAdapterVersion(null);
+
+        assertThat(mapper.toAiCall(entity).getProviderAdapterVersion()).isEqualTo("agent-default-v1");
     }
 
     private AiCallResult providerResult() {
@@ -111,6 +123,8 @@ class AiReviewDtoMapperTest {
         entity.setSubmissionId(300L);
         entity.setPurpose("submission_review");
         entity.setPromptVersion("prompt-v1");
+        entity.setPromptVersionId(700L);
+        entity.setProviderAdapterVersion("agent-default-v1");
         entity.setModelProvider("mock");
         entity.setModelName("mock-v1");
         entity.setInputHash("a".repeat(64));
