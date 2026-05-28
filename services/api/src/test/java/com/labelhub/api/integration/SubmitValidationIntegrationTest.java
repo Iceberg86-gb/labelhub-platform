@@ -103,6 +103,26 @@ class SubmitValidationIntegrationTest {
             .isZero();
     }
 
+    @Test
+    void submit_linkage_validation_uses_schema_json_round_trip_from_published_version() throws Exception {
+        String labelerToken = login("labeler_demo", "demo1234");
+        Fixture fixture = publishedLinkageTaskFixture("submit-linkage-validation");
+        long sessionId = claimSession(labelerToken, fixture);
+
+        mockMvc.perform(post("/sessions/{sessionId}/submit", sessionId)
+                .header("Authorization", bearer(labelerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"answerPayload\":{\"type\":\"other\",\"hidden\":\"\"}}"))
+            .andExpect(status().isUnprocessableEntity())
+            .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+            .andExpect(jsonPath("$.fieldErrors.length()").value(1))
+            .andExpect(jsonPath("$.fieldErrors[0].field").value("details"))
+            .andExpect(jsonPath("$.fieldErrors[0].message").value("此字段必填"));
+
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM submissions WHERE session_id=?", Integer.class, sessionId))
+            .isZero();
+    }
+
     private String login(String username, String password) throws Exception {
         String body = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -147,6 +167,28 @@ class SubmitValidationIntegrationTest {
         return new Fixture(taskId, schemaId, schemaVersionId);
     }
 
+    private Fixture publishedLinkageTaskFixture(String title) {
+        Long taskId = insertAndReturnId("""
+            INSERT INTO tasks(title, description, instruction_rich_text, deadline_at, quota_total, quota_claimed, status, owner_id)
+            VALUES (?, 'Submit linkage validation integration', '<p>Submit linkage validation</p>', ?, 5, 0, 'published', 1001)
+            """, title, LocalDateTime.parse("2030-01-01T00:00:00"));
+        Long schemaId = insertAndReturnId(
+            "INSERT INTO label_schemas(task_id, name, description, owner_id) VALUES (?, ?, 'Submit linkage schema', 1001)",
+            taskId, title + " schema");
+        Long schemaVersionId = insertLinkageSchemaVersion(schemaId, title + "-linkage-schema-v1");
+        Long datasetId = insertAndReturnId(
+            "INSERT INTO datasets(task_id, source_type, item_count, import_status) VALUES (?, 'json', 1, 'imported')",
+            taskId);
+        jdbcTemplate.update("UPDATE tasks SET current_schema_version_id=?, current_dataset_id=? WHERE id=?",
+            schemaVersionId, datasetId, taskId);
+        jdbcTemplate.update("UPDATE label_schemas SET current_version_id=? WHERE id=?", schemaVersionId, schemaId);
+        insertAndReturnId("""
+            INSERT INTO dataset_items(dataset_id, task_id, ordinal, item_payload, item_hash)
+            VALUES (?, ?, 0, JSON_OBJECT('row', 0), ?)
+            """, datasetId, taskId, fixedHash(title + "-item-0"));
+        return new Fixture(taskId, schemaId, schemaVersionId);
+    }
+
     private long publishNextSchemaVersion(Fixture fixture, int minLength, int versionNo) {
         long schemaVersionId = insertSchemaVersion(fixture.schemaId(), versionNo, minLength, "schema-v" + versionNo);
         jdbcTemplate.update("UPDATE tasks SET current_schema_version_id=? WHERE id=?", schemaVersionId, fixture.taskId());
@@ -165,6 +207,33 @@ class SubmitValidationIntegrationTest {
                 ))),
                 JSON_ARRAY('field_0'), ?, 'published', NOW(3), NOW(3))
             """, schemaId, versionNo, minLength, fixedHash(seed));
+    }
+
+    private Long insertLinkageSchemaVersion(long schemaId, String seed) {
+        String schemaJson = """
+            {
+              "fields": [
+                { "stableId": "type", "label": "Type", "type": "text" },
+                {
+                  "stableId": "details",
+                  "label": "Details",
+                  "type": "text",
+                  "requiredWhen": { "field": "type", "op": "eq", "value": "other" }
+                },
+                {
+                  "stableId": "hidden",
+                  "label": "Hidden",
+                  "type": "text",
+                  "validation": { "required": true },
+                  "visibleWhen": { "field": "type", "op": "eq", "value": "show" }
+                }
+              ]
+            }
+            """;
+        return insertAndReturnId("""
+            INSERT INTO schema_versions(schema_id, version_no, schema_json, field_stable_ids, content_hash, status, published_at, created_at)
+            VALUES (?, 1, ?, JSON_ARRAY('type', 'details', 'hidden'), ?, 'published', NOW(3), NOW(3))
+            """, schemaId, schemaJson, fixedHash(seed));
     }
 
     private Long insertAndReturnId(String sql, Object... args) {
