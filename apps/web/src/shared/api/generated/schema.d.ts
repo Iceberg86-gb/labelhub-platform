@@ -2145,6 +2145,19 @@ export interface operations {
             403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
             409: components["responses"]["ErrorStateConflict"];
+            /**
+             * @description Answer payload failed field-level validation against the session's bound schema version.
+             *     The response reuses ApiError.fieldErrors; each fieldErrors[].field is the SchemaField stableId
+             *     and fieldErrors[].message is the validation reason.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
         };
     };
     saveAiReviewRule: {
