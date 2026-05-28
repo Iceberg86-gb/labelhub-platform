@@ -1981,6 +1981,9 @@ components:
           type: integer
           format: int64
           nullable: true
+    AiReviewRuleStatus:
+      type: string
+      enum: [draft, published]
     AiReviewRuleRequest:
       type: object
       required: [taskId, promptTemplate, dimensions, threshold]
@@ -1997,14 +2000,37 @@ components:
         threshold:
           type: number
     AiReviewRule:
-      allOf:
-        - $ref: '#/components/schemas/AiReviewRuleRequest'
-        - type: object
-          required: [id]
-          properties:
-            id:
-              type: integer
-              format: int64
+      type: object
+      required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        versionNo:
+          type: integer
+        promptVersionId:
+          type: integer
+          format: int64
+        promptTemplate:
+          type: string
+        dimensions:
+          type: array
+          items:
+            type: string
+        threshold:
+          type: number
+        status:
+          $ref: '#/components/schemas/AiReviewRuleStatus'
+        createdAt:
+          type: string
+          format: date-time
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
     PromptVersionStatus:
       type: string
       enum: [draft, published]
