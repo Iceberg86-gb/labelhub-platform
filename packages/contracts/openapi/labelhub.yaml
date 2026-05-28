@@ -2110,6 +2110,10 @@ components:
           type: integer
           format: int64
           nullable: true
+        aiReviewRuleId:
+          type: integer
+          format: int64
+          nullable: true
         providerAdapterVersion:
           type: string
         providerName:

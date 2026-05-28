@@ -50,6 +50,7 @@ public class AiReviewDtoMapper {
         dto.setPurpose(entity.getPurpose());
         dto.setPromptVersion(entity.getPromptVersion());
         dto.setPromptVersionId(entity.getPromptVersionId());
+        dto.setAiReviewRuleId(entity.getAiReviewRuleId());
         dto.setProviderAdapterVersion(providerAdapterVersion(entity));
         dto.setProviderName(entity.getModelProvider());
         dto.setModelName(entity.getModelName());

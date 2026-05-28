@@ -44,6 +44,7 @@ class FailedAiCallRecorderTest {
             2,
             "promptVersion#1",
             1L,
+            null,
             "agent-default-v1",
             "mock",
             "mock-v1",
@@ -59,6 +60,7 @@ class FailedAiCallRecorderTest {
         assertThat(row.getPurpose()).isEqualTo("submission_review");
         assertThat(row.getPromptVersion()).isEqualTo("promptVersion#1");
         assertThat(row.getPromptVersionId()).isEqualTo(1L);
+        assertThat(row.getAiReviewRuleId()).isNull();
         assertThat(row.getProviderAdapterVersion()).isEqualTo("agent-default-v1");
         assertThat(row.getModelProvider()).isEqualTo("mock");
         assertThat(row.getModelName()).isEqualTo("mock-v1");
@@ -95,6 +97,7 @@ class FailedAiCallRecorderTest {
             1,
             "promptVersion#1",
             1L,
+            null,
             "agent-default-v1",
             "mock",
             "mock-v1",

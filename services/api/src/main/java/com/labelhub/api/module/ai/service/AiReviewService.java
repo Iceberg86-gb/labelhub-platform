@@ -9,13 +9,16 @@ import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
 import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
+import com.labelhub.api.module.ai.entity.AiReviewRuleEntity;
 import com.labelhub.api.module.ai.entity.PromptVersionEntity;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
+import com.labelhub.api.module.ai.exception.AiReviewRuleNotFoundException;
 import com.labelhub.api.module.ai.exception.PromptVersionNotFoundException;
 import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
+import com.labelhub.api.module.ai.mapper.AiReviewRuleMapper;
 import com.labelhub.api.module.ai.observability.AiIdempotencyMetrics;
 import com.labelhub.api.module.ai.provider.AiCallRequest;
 import com.labelhub.api.module.ai.provider.AiCallResult;
@@ -61,6 +64,7 @@ public class AiReviewService {
     private final DatasetItemMapper datasetItemMapper;
     private final TaskMapper taskMapper;
     private final AiCallMapper aiCallMapper;
+    private final AiReviewRuleMapper aiReviewRuleMapper;
     private final AiCallInFieldMapper aiCallInFieldMapper;
     private final LedgerService ledgerService;
     private final PromptVersionService promptVersionService;
@@ -81,6 +85,7 @@ public class AiReviewService {
         DatasetItemMapper datasetItemMapper,
         TaskMapper taskMapper,
         AiCallMapper aiCallMapper,
+        AiReviewRuleMapper aiReviewRuleMapper,
         AiCallInFieldMapper aiCallInFieldMapper,
         LedgerService ledgerService,
         PromptVersionService promptVersionService,
@@ -99,6 +104,7 @@ public class AiReviewService {
         this.datasetItemMapper = datasetItemMapper;
         this.taskMapper = taskMapper;
         this.aiCallMapper = aiCallMapper;
+        this.aiReviewRuleMapper = aiReviewRuleMapper;
         this.aiCallInFieldMapper = aiCallInFieldMapper;
         this.ledgerService = ledgerService;
         this.promptVersionService = promptVersionService;
@@ -119,6 +125,7 @@ public class AiReviewService {
         DatasetItemMapper datasetItemMapper,
         TaskMapper taskMapper,
         AiCallMapper aiCallMapper,
+        AiReviewRuleMapper aiReviewRuleMapper,
         AiCallInFieldMapper aiCallInFieldMapper,
         LedgerService ledgerService,
         PromptVersionService promptVersionService,
@@ -131,7 +138,7 @@ public class AiReviewService {
         AiRetryPolicy retryPolicy,
         FailedAiCallRecorder failedCallRecorder
     ) {
-        this(submissionMapper, schemaVersionMapper, datasetItemMapper, taskMapper, aiCallMapper,
+        this(submissionMapper, schemaVersionMapper, datasetItemMapper, taskMapper, aiCallMapper, aiReviewRuleMapper,
             aiCallInFieldMapper, ledgerService, promptVersionService, canonicalizer, objectMapper, clock, aiProvider,
             costCalculator, metrics, retryPolicy, failedCallRecorder, AuditLogService.noop());
     }
@@ -149,15 +156,18 @@ public class AiReviewService {
 
         SchemaVersionEntity schemaVersion = schemaVersionMapper.selectById(submission.getSchemaVersionId());
         DatasetItemEntity datasetItem = datasetItemMapper.selectById(submission.getDatasetItemId());
-        PromptVersionEntity promptVersion = promptVersionService.findById(promptVersionId);
+        AiReviewRuleEntity activeRule = activeReviewRule(task);
+        Long aiReviewRuleId = activeRule == null ? null : activeRule.getId();
+        Long effectivePromptVersionId = activeRule == null ? promptVersionId : activeRule.getCurrentPromptVersionId();
+        PromptVersionEntity promptVersion = promptVersionService.findById(effectivePromptVersionId);
         if (promptVersion == null) {
-            throw new PromptVersionNotFoundException(promptVersionId);
+            throw new PromptVersionNotFoundException(effectivePromptVersionId);
         }
         String promptVersionLabel = promptVersionLabel(promptVersion);
         String providerAdapterVersion = PROVIDER_ADAPTER_VERSION;
         Map<String, Object> input = buildInput(submission, schemaVersion, datasetItem, task);
         String inputHash = hash(input);
-        String idempotencyKey = idempotencyKey(submissionId, promptVersion.getId(), providerAdapterVersion);
+        String idempotencyKey = idempotencyKey(submissionId, promptVersion.getId(), providerAdapterVersion, aiReviewRuleId);
 
         AiCallEntity existing = aiCallMapper.selectByIdempotencyKey(idempotencyKey);
         if (existing != null) {
@@ -179,6 +189,7 @@ public class AiReviewService {
                 submissionId,
                 promptVersionLabel,
                 promptVersion.getId(),
+                aiReviewRuleId,
                 providerAdapterVersion,
                 input,
                 inputHash,
@@ -193,6 +204,7 @@ public class AiReviewService {
                     .payload("taskId", submission.getTaskId())
                     .payload("promptVersion", promptVersionLabel)
                     .payload("promptVersionId", promptVersion.getId())
+                    .payload("aiReviewRuleId", aiReviewRuleId)
                     .payload("providerAdapterVersion", providerAdapterVersion)
                     .payload("provider", aiProvider.providerName())
                     .payload("model", aiProvider.modelName())
@@ -213,6 +225,7 @@ public class AiReviewService {
         aiCall.setPurpose("submission_review");
         aiCall.setPromptVersion(promptVersionLabel);
         aiCall.setPromptVersionId(promptVersion.getId());
+        aiCall.setAiReviewRuleId(aiReviewRuleId);
         aiCall.setProviderAdapterVersion(providerAdapterVersion);
         aiCall.setModelProvider(aiProvider.providerName());
         aiCall.setModelName(aiProvider.modelName());
@@ -254,6 +267,7 @@ public class AiReviewService {
                     .payload("ledgerEntryIds", ledgerEntries.stream().map(QualityLedgerEntryEntity::getId).toList())
                     .payload("promptVersion", promptVersionLabel)
                     .payload("promptVersionId", promptVersion.getId())
+                    .payload("aiReviewRuleId", aiReviewRuleId)
                     .payload("providerAdapterVersion", providerAdapterVersion)
                     .payload("provider", aiProvider.providerName())
                     .payload("model", aiProvider.modelName())
@@ -295,6 +309,7 @@ public class AiReviewService {
         Long submissionId,
         String promptVersionLabel,
         Long promptVersionId,
+        Long aiReviewRuleId,
         String providerAdapterVersion,
         Map<String, Object> input,
         String inputHash,
@@ -310,6 +325,7 @@ public class AiReviewService {
                         attemptNumber,
                         promptVersionLabel,
                         promptVersionId,
+                        aiReviewRuleId,
                         providerAdapterVersion,
                         aiProvider.providerName(),
                         aiProvider.modelName(),
@@ -422,7 +438,7 @@ public class AiReviewService {
         return findings;
     }
 
-    private String idempotencyKey(Long submissionId, Long promptVersionId, String providerAdapterVersion) {
+    private String idempotencyKey(Long submissionId, Long promptVersionId, String providerAdapterVersion, Long aiReviewRuleId) {
         String key = "submission:%d:provider:%s:model:%s:promptVersionId:%d:adapter:%s".formatted(
             submissionId,
             aiProvider.providerName(),
@@ -430,12 +446,27 @@ public class AiReviewService {
             promptVersionId,
             providerAdapterVersion
         );
+        if (aiReviewRuleId != null) {
+            key = key + ":ruleVersionId:" + aiReviewRuleId;
+        }
         if (key.length() > IDEMPOTENCY_KEY_MAX_LENGTH) {
             throw new IllegalArgumentException(
                 "ai_calls.idempotency_key would exceed " + IDEMPOTENCY_KEY_MAX_LENGTH + " characters"
             );
         }
         return key;
+    }
+
+    private AiReviewRuleEntity activeReviewRule(TaskEntity task) {
+        Long ruleId = task.getCurrentAiReviewRuleId();
+        if (ruleId == null) {
+            return null;
+        }
+        AiReviewRuleEntity rule = aiReviewRuleMapper.selectById(ruleId);
+        if (rule == null || !Objects.equals(rule.getTaskId(), task.getId())) {
+            throw new AiReviewRuleNotFoundException(ruleId);
+        }
+        return rule;
     }
 
     private String promptVersionLabel(PromptVersionEntity promptVersion) {

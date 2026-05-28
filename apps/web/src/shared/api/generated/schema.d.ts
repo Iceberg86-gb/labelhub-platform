@@ -1068,6 +1068,8 @@ export interface components {
             promptVersion: string;
             /** Format: int64 */
             promptVersionId?: number | null;
+            /** Format: int64 */
+            aiReviewRuleId?: number | null;
             providerAdapterVersion: string;
             providerName: string;
             modelName: string;
