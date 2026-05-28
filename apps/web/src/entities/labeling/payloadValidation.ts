@@ -1,6 +1,8 @@
 import type { SchemaField } from '../schema/schemaTypes';
 import type { AnswerPayload } from '../submission/answerPayload';
 import { getFieldValue, isAnswerPayload } from '../submission/answerPayload';
+import { buildFlatValueIndex, isFieldConditionallyRequired, isFieldVisible, type FlatValueIndex } from './linkageEvaluator';
+import { isPayloadValueEmpty } from './payloadValueSemantics';
 
 export interface PayloadValidationError {
   stableId: string;
@@ -9,20 +11,19 @@ export interface PayloadValidationError {
 
 export function validatePayload(fields: SchemaField[], payload: AnswerPayload): PayloadValidationError[] {
   const errors: PayloadValidationError[] = [];
+  const flatValues = buildFlatValueIndex(fields, payload);
   fields.forEach((field) => {
-    validateField(field, getFieldValue(payload, field.stableId), errors);
+    validateField(field, getFieldValue(payload, field.stableId), errors, flatValues);
   });
   return errors;
 }
 
-function validateField(field: SchemaField, value: unknown, errors: PayloadValidationError[]) {
-  const required = field.validation?.required ?? false;
-  const isEmpty =
-    value === null ||
-    value === undefined ||
-    value === '' ||
-    (Array.isArray(value) && value.length === 0) ||
-    (isAnswerPayload(value) && Object.keys(value).length === 0);
+function validateField(field: SchemaField, value: unknown, errors: PayloadValidationError[], flatValues: FlatValueIndex) {
+  if (!isFieldVisible(field, flatValues)) {
+    return;
+  }
+  const required = (field.validation?.required ?? false) || isFieldConditionallyRequired(field, flatValues);
+  const isEmpty = isPayloadValueEmpty(value);
 
   if (required && isEmpty) {
     errors.push({ stableId: field.stableId, reason: '此字段必填' });
@@ -61,7 +62,7 @@ function validateField(field: SchemaField, value: unknown, errors: PayloadValida
       }
       {
         const childPayload = value;
-        field.children?.forEach((child) => validateField(child, childPayload[child.stableId], errors));
+        field.children?.forEach((child) => validateField(child, childPayload[child.stableId], errors, flatValues));
       }
       return;
     default: {

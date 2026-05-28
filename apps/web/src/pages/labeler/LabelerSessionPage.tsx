@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD, type AnswerPayload } from '../../entities/submission/answerPayload';
 import { errorsByStableId, validatePayload } from '../../entities/labeling/payloadValidation';
+import { createVisibleSchemaFieldsSelector } from '../../entities/labeling/visibleSchemaFields';
 import { AutosaveStatusTag } from '../../features/labeling/AutosaveStatusTag';
 import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { SubmitConfirmModal } from '../../features/labeling/SubmitConfirmModal';
@@ -33,6 +34,7 @@ export function LabelerSessionPage() {
   const [serverErrors, setServerErrors] = useState<Map<string, string[]> | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const visibleFieldsSelector = useMemo(() => createVisibleSchemaFieldsSelector(), []);
   const detail = detailQuery.data;
   const isClaimed = detail?.session.status === 'claimed';
   const fields = detail?.schemaVersion.schemaJson.fields ?? [];
@@ -61,6 +63,10 @@ export function LabelerSessionPage() {
   const visibleFieldErrors = useMemo(
     () => selectVisibleFieldErrors(fieldErrors, serverErrors),
     [fieldErrors, serverErrors],
+  );
+  const visibleFields = useMemo(
+    () => visibleFieldsSelector(fields, answerPayload ?? EMPTY_ANSWER_PAYLOAD),
+    [answerPayload, fields, visibleFieldsSelector],
   );
 
   const handleAnswerPayloadChange = useCallback((next: AnswerPayload) => {
@@ -142,7 +148,7 @@ export function LabelerSessionPage() {
 
       <Card className="labeler-session-card" bodyStyle={{ padding: 24 }}>
         <SchemaFormilyRenderer
-          schemaFields={fields}
+          schemaFields={visibleFields}
           value={answerPayload}
           onChange={handleAnswerPayloadChange}
           readOnly={!isClaimed}
@@ -152,7 +158,7 @@ export function LabelerSessionPage() {
 
       <SubmitConfirmModal
         visible={submitModalOpen}
-        fields={fields}
+        fields={visibleFields}
         payload={answerPayload}
         loading={submitMutation.isPending}
         onClose={() => setSubmitModalOpen(false)}

@@ -108,7 +108,10 @@ The C3 visibility layer should therefore compute:
 (schemaFields, answerPayload) -> visibleSchemaFields
 ```
 
-and pass `visibleSchemaFields` into `SchemaFormilyRenderer`.
+and pass `visibleSchemaFields` into both `SchemaFormilyRenderer` and
+`SubmitConfirmModal`. The modal remains unchanged internally; it receives the
+same outer filtered schema tree as the renderer so the confirmation summary
+does not resurface fields hidden on the answer page.
 
 ### Recursive Tree Filtering
 
@@ -126,8 +129,9 @@ This satisfies nested visibility without touching renderer internals.
 
 ### Hidden Values
 
-Hidden values remain in `AnswerPayload`. C3 only changes rendering and
-validation participation. It must not strip values from payload state.
+Hidden values remain in `AnswerPayload`. C3 only changes rendering,
+confirmation-summary display, and validation participation. It must not strip
+values from payload state.
 
 ## Form Rebuild And Value Retention
 
