@@ -1709,6 +1709,36 @@ components:
           type: string
         value:
           type: string
+    LinkageConditionOp:
+      type: string
+      enum: [eq, neq, in, notIn, gt, gte, lt, lte, empty, notEmpty]
+    LinkageConditionValue:
+      description: Runtime condition value. Shape is constrained by op at publish-time validation (scalar for eq/neq/comparison, array for in/notIn, absent for empty/notEmpty). Typed as an open value because OpenAPI cannot express op-dependent value shape.
+    LinkageAtomicCondition:
+      type: object
+      required: [field, op]
+      properties:
+        field:
+          type: string
+        op:
+          $ref: '#/components/schemas/LinkageConditionOp'
+        value:
+          $ref: '#/components/schemas/LinkageConditionValue'
+    LinkageConditionGroup:
+      type: object
+      properties:
+        allOf:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinkageAtomicCondition'
+        anyOf:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinkageAtomicCondition'
+    LinkageCondition:
+      oneOf:
+        - $ref: '#/components/schemas/LinkageAtomicCondition'
+        - $ref: '#/components/schemas/LinkageConditionGroup'
     SchemaField:
       type: object
       required: [stableId, label, type]
@@ -1733,6 +1763,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SchemaField'
+        visibleWhen:
+          $ref: '#/components/schemas/LinkageCondition'
+        requiredWhen:
+          $ref: '#/components/schemas/LinkageCondition'
     SchemaDocument:
       type: object
       required: [fields]

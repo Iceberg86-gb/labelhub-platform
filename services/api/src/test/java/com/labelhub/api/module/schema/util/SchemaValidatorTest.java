@@ -4,7 +4,11 @@ import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldOption;
 import com.labelhub.api.generated.model.SchemaFieldType;
+import com.labelhub.api.generated.model.LinkageAtomicCondition;
+import com.labelhub.api.generated.model.LinkageConditionGroup;
+import com.labelhub.api.generated.model.LinkageConditionOp;
 import com.labelhub.api.module.schema.exception.InvalidSchemaDocumentException;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -131,10 +135,153 @@ class SchemaValidatorTest {
                         .isEqualTo("fields[1].children[0].stableId"));
     }
 
+    @Test
+    void validate_accepts_valid_linkage_conditions() {
+        SchemaField driver = field("type", SchemaFieldType.SINGLE_SELECT);
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(groupAnyOf(atomic("type", LinkageConditionOp.EQ, "other")));
+        details.setRequiredWhen(atomic("type", LinkageConditionOp.IN, List.of("other", "manual")));
+
+        validator.validate(document(driver, details));
+    }
+
+    @Test
+    void validate_rejects_linkage_reference_to_missing_field() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(atomic("missing", LinkageConditionOp.EQ, "x"));
+
+        assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
+                "fields[1].visibleWhen.field",
+                "联动条件引用的字段不存在");
+    }
+
+    @Test
+    void validate_rejects_linkage_self_reference() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setRequiredWhen(atomic("details", LinkageConditionOp.NOTEMPTY, null));
+
+        assertInvalid(document(details),
+                "fields[0].requiredWhen.field",
+                "联动条件不能引用自身");
+    }
+
+    @Test
+    void validate_rejects_linkage_cycle() {
+        SchemaField a = field("a", SchemaFieldType.TEXT);
+        SchemaField b = field("b", SchemaFieldType.TEXT);
+        a.setVisibleWhen(atomic("b", LinkageConditionOp.EQ, "yes"));
+        b.setRequiredWhen(atomic("a", LinkageConditionOp.EQ, "yes"));
+
+        assertInvalid(document(a, b),
+                "fields[0].visibleWhen",
+                "联动条件存在循环依赖");
+    }
+
+    @Test
+    void validate_rejects_empty_linkage_group() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(groupAnyOf(List.of()));
+
+        assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
+                "fields[1].visibleWhen.anyOf",
+                "联动条件分组至少需要一个条件");
+    }
+
+    @Test
+    void validate_rejects_linkage_group_with_both_allOf_and_anyOf() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        LinkageConditionGroup group = new LinkageConditionGroup();
+        group.setAllOf(new ArrayList<>(List.of(atomic("type", LinkageConditionOp.EQ, "a"))));
+        group.setAnyOf(new ArrayList<>(List.of(atomic("type", LinkageConditionOp.EQ, "b"))));
+        details.setVisibleWhen(group);
+
+        assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
+                "fields[1].visibleWhen",
+                "联动条件分组必须且只能设置 allOf 或 anyOf");
+    }
+
+    @Test
+    void validate_rejects_linkage_atomic_condition_without_field_or_op() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(atomic("", null, "x"));
+
+        assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
+                "fields[1].visibleWhen",
+                "联动条件必须包含 field 和 op");
+    }
+
+    @Test
+    void validate_rejects_empty_operator_with_value() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(atomic("type", LinkageConditionOp.EMPTY, "x"));
+
+        assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
+                "fields[1].visibleWhen.value",
+                "empty/notEmpty 不应设置 value");
+    }
+
+    @Test
+    void validate_rejects_scalar_operator_without_scalar_value() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(atomic("type", LinkageConditionOp.EQ, List.of("x")));
+
+        assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
+                "fields[1].visibleWhen.value",
+                "联动操作符需要标量 value");
+    }
+
+    @Test
+    void validate_rejects_membership_operator_without_array_value() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(atomic("type", LinkageConditionOp.IN, "x"));
+
+        assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
+                "fields[1].visibleWhen.value",
+                "联动操作符需要数组 value");
+    }
+
+    @Test
+    void validate_rejects_numeric_comparison_against_non_number_field() {
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(atomic("type", LinkageConditionOp.GT, 5));
+
+        assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
+                "fields[1].visibleWhen.field",
+                "数值比较只能引用数字字段");
+    }
+
     private static SchemaDocument document(SchemaField... fields) {
         SchemaDocument document = new SchemaDocument();
         document.setFields(List.of(fields));
         return document;
+    }
+
+    private static LinkageAtomicCondition atomic(String field, LinkageConditionOp op, Object value) {
+        LinkageAtomicCondition condition = new LinkageAtomicCondition();
+        condition.setField(field);
+        condition.setOp(op);
+        condition.setValue(value);
+        return condition;
+    }
+
+    private static LinkageConditionGroup groupAnyOf(LinkageAtomicCondition condition) {
+        return groupAnyOf(List.of(condition));
+    }
+
+    private static LinkageConditionGroup groupAnyOf(List<LinkageAtomicCondition> conditions) {
+        LinkageConditionGroup group = new LinkageConditionGroup();
+        group.setAnyOf(new ArrayList<>(conditions));
+        return group;
+    }
+
+    private void assertInvalid(SchemaDocument document, String fieldPath, String reason) {
+        assertThatThrownBy(() -> validator.validate(document))
+                .isInstanceOf(InvalidSchemaDocumentException.class)
+                .satisfies(error -> {
+                    InvalidSchemaDocumentException exception = (InvalidSchemaDocumentException) error;
+                    assertThat(exception.getField()).isEqualTo(fieldPath);
+                    assertThat(exception.getReason()).isEqualTo(reason);
+                });
     }
 
     private static SchemaField field(String stableId, SchemaFieldType type) {

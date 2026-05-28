@@ -833,6 +833,20 @@ export interface components {
             label: string;
             value: string;
         };
+        /** @enum {string} */
+        LinkageConditionOp: "eq" | "neq" | "in" | "notIn" | "gt" | "gte" | "lt" | "lte" | "empty" | "notEmpty";
+        /** @description Runtime condition value. Shape is constrained by op at publish-time validation (scalar for eq/neq/comparison, array for in/notIn, absent for empty/notEmpty). Typed as an open value because OpenAPI cannot express op-dependent value shape. */
+        LinkageConditionValue: unknown;
+        LinkageAtomicCondition: {
+            field: string;
+            op: components["schemas"]["LinkageConditionOp"];
+            value?: components["schemas"]["LinkageConditionValue"];
+        };
+        LinkageConditionGroup: {
+            allOf?: components["schemas"]["LinkageAtomicCondition"][];
+            anyOf?: components["schemas"]["LinkageAtomicCondition"][];
+        };
+        LinkageCondition: components["schemas"]["LinkageAtomicCondition"] | components["schemas"]["LinkageConditionGroup"];
         SchemaField: {
             stableId: string;
             label: string;
@@ -842,6 +856,8 @@ export interface components {
             validation?: components["schemas"]["SchemaFieldValidation"];
             options?: components["schemas"]["SchemaFieldOption"][];
             children?: components["schemas"]["SchemaField"][];
+            visibleWhen?: components["schemas"]["LinkageCondition"];
+            requiredWhen?: components["schemas"]["LinkageCondition"];
         };
         SchemaDocument: {
             fields: components["schemas"]["SchemaField"][];
