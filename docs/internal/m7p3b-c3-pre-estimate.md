@@ -215,9 +215,13 @@ In `LabelerSessionPage.tsx`:
 - pass `visibleFields` to `SchemaFormilyRenderer`;
 - keep validation against the original schema `fields`, because
   `validatePayload()` itself now knows how to skip hidden fields;
-- keep `SubmitConfirmModal` on original `fields` unless later UX adjudication
-  says the confirmation modal should mirror visibility. C3 should not broaden
-  modal behavior unless the implementation discovers it is necessary.
+- pass the same `visibleFields` to `SubmitConfirmModal` for UI consistency.
+  The modal stays unchanged internally; it simply receives the same outer
+  filtered schema tree as the renderer.
+
+Hidden values remain in `answerPayload`. Passing `visibleFields` to the modal
+only controls what the confirmation summary displays; it does not delete or
+rewrite hidden payload values before submit.
 
 ### 7. Form Rebuild Mitigation
 
@@ -358,6 +362,7 @@ Expected verification:
 2. Approve shared empty helper extraction from `payloadValidation.ts`.
 3. Approve JS finite-number comparison as the C3 mirror of backend BigDecimal
    for JSON-safe values, with C4 corpus owning precision edge discovery.
-4. Approve keeping `SubmitConfirmModal` on original schema fields for C3,
-   while validation itself skips hidden fields.
+4. Approve the minimal-B modal behavior: `SubmitConfirmModal` receives the
+   same `visibleFields` as `SchemaFormilyRenderer`, while validation still
+   uses original `fields` and payload values are not stripped.
 5. Approve C3 cap: soft `700`, hard `900`.
