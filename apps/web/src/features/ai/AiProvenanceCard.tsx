@@ -56,6 +56,12 @@ function AiCallItem({ call }: { call: AiCall }) {
         <Tag color={call.status === 'completed' ? 'green' : 'red'}>{call.status}</Tag>
       </div>
       <Typography.Text type="tertiary">Prompt: {call.promptVersion}</Typography.Text>
+      {call.promptVersionId != null ? (
+        <Typography.Text type="tertiary">Prompt ID: #{call.promptVersionId}</Typography.Text>
+      ) : null}
+      {call.providerAdapterVersion ? (
+        <Typography.Text type="tertiary">Adapter: {call.providerAdapterVersion}</Typography.Text>
+      ) : null}
       <div className="ai-call-stat-grid">
         <AiCallStat label="Cost" value={`${call.cost ?? '-'} USD`} />
         <AiCallStat label="Latency" value={call.latencyMs != null ? `${call.latencyMs} ms` : '-'} />
