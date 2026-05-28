@@ -6,7 +6,7 @@ import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD, type AnswerPayload } from '../../entities/submission/answerPayload';
 import { errorsByStableId, validatePayload } from '../../entities/labeling/payloadValidation';
 import { AutosaveStatusTag } from '../../features/labeling/AutosaveStatusTag';
-import { SchemaRenderer } from '../../features/labeling/SchemaRenderer';
+import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { SubmitConfirmModal } from '../../features/labeling/SubmitConfirmModal';
 import { useAutosave } from '../../features/labeling/useAutosave';
 import { useLatestDraftQuery } from '../../features/labeling/useLatestDraftQuery';
@@ -125,8 +125,8 @@ export function LabelerSessionPage() {
       </div>
 
       <Card className="labeler-session-card" bodyStyle={{ padding: 24 }}>
-        <SchemaRenderer
-          fields={fields}
+        <SchemaFormilyRenderer
+          schemaFields={fields}
           value={answerPayload}
           onChange={setAnswerPayload}
           readOnly={!isClaimed}

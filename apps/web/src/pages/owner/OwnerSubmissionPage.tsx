@@ -7,7 +7,7 @@ import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submis
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
 import { AiReviewDrawer } from '../../features/ai/AiReviewDrawer';
 import { TriggerAiReviewFailure, useTriggerAiReviewMutation } from '../../features/ai/useTriggerAiReviewMutation';
-import { SchemaRenderer } from '../../features/labeling/SchemaRenderer';
+import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { useSubmissionRenderSchemaQuery } from '../../features/labeling/useSubmissionRenderSchemaQuery';
 import type { AiReviewResult } from '../../entities/ai/aiTypes';
 
@@ -87,8 +87,8 @@ export function OwnerSubmissionPage() {
 
       <div className="owner-submission-grid">
         <Card className="owner-submission-render-card" title="历史 Schema 作答" bordered={false}>
-          <SchemaRenderer
-            fields={schemaVersion.schemaJson.fields}
+          <SchemaFormilyRenderer
+            schemaFields={schemaVersion.schemaJson.fields}
             value={answerPayload}
             onChange={() => {}}
             readOnly

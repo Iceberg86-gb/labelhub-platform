@@ -8,6 +8,7 @@ import { NumberFieldRenderer } from './field-renderers/NumberFieldRenderer';
 import { SelectFieldRenderer } from './field-renderers/SelectFieldRenderer';
 import { TextFieldRenderer } from './field-renderers/TextFieldRenderer';
 
+// M7-P2 C7: retained as fallback and benchmark baseline while SchemaFormilyRenderer proves stable in production paths.
 export interface SchemaRendererProps {
   fields: SchemaField[];
   value: AnswerPayload;

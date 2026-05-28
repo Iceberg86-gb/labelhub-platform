@@ -410,3 +410,4 @@
 - 已解决: Demo user seed IDs: use fixed ids `1001/1002/1003` with `INSERT IGNORE` and role-code subqueries.
 - 已解决: `humanpending.md` location: root `humanpending.md` remains authoritative; `coderules.md` wording is deferred to a separate protected-file revision.
 - 已解决: Testcontainers dependency timing: add Testcontainers only in Phase 4 with controller/security integration tests.
+- [M7-P2 watch] SchemaRenderer + field-renderers retained as fallback and benchmark baseline after C7 consumer page swap; remove in a future cleanup phase once Formily renderer has seeded browser regression evidence across labeler, owner, reviewer, and designer surfaces.

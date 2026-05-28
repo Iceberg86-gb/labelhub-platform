@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
-import { SchemaRenderer } from '../../features/labeling/SchemaRenderer';
+import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { SubmissionDetailFailure, useSubmissionDetailQuery } from '../../features/labeling/useSubmissionDetailQuery';
 import { useSubmissionRenderSchemaQuery } from '../../features/labeling/useSubmissionRenderSchemaQuery';
 
@@ -86,8 +86,8 @@ export function LabelerSubmissionPage() {
           fullMode={false}
           type="info"
         />
-        <SchemaRenderer
-          fields={schemaVersion.schemaJson.fields}
+        <SchemaFormilyRenderer
+          schemaFields={schemaVersion.schemaJson.fields}
           value={answerPayload}
           onChange={() => {}}
           readOnly
