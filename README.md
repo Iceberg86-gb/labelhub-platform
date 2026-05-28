@@ -53,9 +53,25 @@ M4 亮点 2 验收清单见 `docs/m4-acceptance-checklist.md`。M4 已完成 Rev
 ## 技术栈
 
 - 后端：Java 17、Spring Boot 3.2、MyBatis-Plus、Flyway、OpenAPI Generator。
-- 前端：React 18、TypeScript、Vite、Semi Design、TanStack Query、dnd-kit。
+- 前端：React 18、TypeScript、Vite、Semi Design、TanStack Query、dnd-kit、Formily、TanStack Virtual。
 - DB/Infra：MySQL 8、Redis 7、MinIO。本地 M2 主要使用 MySQL；Redis/MinIO 为后续阶段保留。
 - 契约：`packages/contracts/openapi/labelhub.yaml` 是 API 源头；生成代码不作为源头修改。
+
+## M7-P2 表单性能基准
+
+命令：`pnpm --filter @labelhub/web bench`
+
+机器：Node `v26.0.0` / darwin arm64 / jsdom 29.1.1。
+
+| 场景 | Legacy SchemaRenderer | Formily + virtualization |
+|------|-----------------------|--------------------------|
+| 首屏渲染 100 fields | 0.82 ms | 4.17 ms |
+| 首屏渲染 500 fields | 4.12 ms | 12.79 ms |
+| 首屏渲染 1000 fields | 8.44 ms | 25.47 ms |
+| 首屏渲染 5000 fields | 51.79 ms | 96.29 ms |
+| 单字段变更 500 fields | 500 renderer invocations / 4.14 ms | 1 renderer invocation / 11.92 ms |
+
+关键证据：500 字段表单中单字段变更只触发 Formily 路径 1 次变更回调；legacy renderer 仍会重跑 500 个字段分支。
 
 ## 开发与本地启动
 

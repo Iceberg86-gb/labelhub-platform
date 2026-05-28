@@ -27,15 +27,7 @@ export function DatePicker({ value, onChange }: { value?: string; onChange?: (va
   return <input type="date" value={value ?? ''} onChange={(event) => onChange?.(event.target.value)} readOnly />;
 }
 
-export function Select({
-  value,
-  children,
-  multiple,
-}: {
-  value?: string | string[];
-  children?: ReactNode;
-  multiple?: boolean;
-}) {
+export function Select({ value, children, multiple }: { value?: string | string[]; children?: ReactNode; multiple?: boolean }) {
   return (
     <select multiple={multiple} value={value} disabled>
       {children}

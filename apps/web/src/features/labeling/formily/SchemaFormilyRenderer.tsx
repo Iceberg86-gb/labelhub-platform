@@ -1,6 +1,7 @@
 import { createForm, onFormValuesChange, type Form } from '@formily/core';
-import { createSchemaField, FormProvider } from '@formily/react';
-import { useEffect, useMemo } from 'react';
+import { createSchemaField, FormProvider, type ISchema } from '@formily/react';
+import { useEffect, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { SchemaField } from '../../../entities/schema/schemaTypes';
 import type { AnswerPayload } from '../../../entities/submission/answerPayload';
 import { answerPayloadToFormilyValues } from './adapters/answerPayloadToFormilyValues';
@@ -9,6 +10,7 @@ import { schemaToFormilyISchema } from './adapters/schemaToFormilyISchema';
 import { componentsMap } from './components';
 
 const FormilySchemaField = createSchemaField({ components: componentsMap });
+export const FORMILY_VIRTUALIZATION_THRESHOLD = 50;
 
 export interface SchemaFormilyRendererProps {
   schemaFields: SchemaField[];
@@ -42,10 +44,18 @@ export function SchemaFormilyRenderer({
   return (
     <div className="schema-renderer schema-renderer--formily">
       <FormProvider form={form}>
-        <FormilySchemaField schema={schema} />
+        {shouldVirtualizeSchemaFields(schemaFields.length) ? (
+          <VirtualizedFormilyFields schema={schema} schemaFields={schemaFields} />
+        ) : (
+          <FormilySchemaField schema={schema} />
+        )}
       </FormProvider>
     </div>
   );
+}
+
+export function shouldVirtualizeSchemaFields(fieldCount: number): boolean {
+  return fieldCount > FORMILY_VIRTUALIZATION_THRESHOLD;
 }
 
 export function createSchemaFormilyForm({
@@ -63,6 +73,56 @@ export function createSchemaFormilyForm({
       });
     },
   });
+}
+
+function VirtualizedFormilyFields({ schema, schemaFields }: { schema: ISchema; schemaFields: SchemaField[] }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const virtualizer = useVirtualizer({
+    count: schemaFields.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 112,
+    overscan: 6,
+    initialRect: { width: 800, height: 720 },
+  });
+  const properties = (schema.properties ?? {}) as Record<string, ISchema>;
+
+  return (
+    <div
+      ref={scrollRef}
+      className="schema-formily-virtual-scroll"
+      style={{ maxHeight: 720, overflow: 'auto', contain: 'strict' }}
+    >
+      <div
+        className="schema-formily-virtual-inner"
+        style={{ height: virtualizer.getTotalSize(), position: 'relative' }}
+      >
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const schemaField = schemaFields[virtualRow.index];
+          const fieldSchema = schemaField ? properties[schemaField.stableId] : undefined;
+          if (!schemaField || !fieldSchema) {
+            return null;
+          }
+          return (
+            <div
+              key={schemaField.stableId}
+              ref={virtualizer.measureElement}
+              data-index={virtualRow.index}
+              className="schema-formily-virtual-row"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              <FormilySchemaField schema={{ type: 'object', properties: { [schemaField.stableId]: fieldSchema } }} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function applyExternalErrorsToForm(
