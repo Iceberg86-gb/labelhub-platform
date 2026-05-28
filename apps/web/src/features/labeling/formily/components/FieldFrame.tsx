@@ -57,3 +57,8 @@ function formilyErrors(field: GeneralField): string[] {
 function fieldFromPropsOrState(field: SchemaField | undefined, formilyField: GeneralField): SchemaField | undefined {
   return field ?? (formilyField.componentProps?.field as SchemaField | undefined);
 }
+
+export function ReadOnlyValue({ value, empty = '(未填)' }: { value: ReactNode; empty?: string }) {
+  const hasValue = value !== null && value !== undefined && value !== '';
+  return <div className="labeling-field__readonly">{hasValue ? value : empty}</div>;
+}
