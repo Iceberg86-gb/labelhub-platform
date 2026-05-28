@@ -5,6 +5,11 @@ export type SchemaField = components['schemas']['SchemaField'];
 export type SchemaFieldType = components['schemas']['SchemaFieldType'];
 export type SchemaFieldOption = components['schemas']['SchemaFieldOption'];
 export type SchemaFieldValidation = components['schemas']['SchemaFieldValidation'];
+export type LinkageAtomicCondition = components['schemas']['LinkageAtomicCondition'];
+export type LinkageCondition = components['schemas']['LinkageCondition'];
+export type LinkageConditionGroup = components['schemas']['LinkageConditionGroup'];
+export type LinkageConditionOp = components['schemas']['LinkageConditionOp'];
+export type LinkageConditionValue = components['schemas']['LinkageConditionValue'];
 export type LabelSchema = components['schemas']['LabelSchema'];
 export type SchemaVersion = components['schemas']['SchemaVersion'];
 
