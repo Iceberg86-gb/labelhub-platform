@@ -1991,12 +1991,43 @@ components:
             id:
               type: integer
               format: int64
+    PromptVersionStatus:
+      type: string
+      enum: [draft, published]
+    PromptVersion:
+      type: object
+      required: [id, versionNo, contentHash, content, status, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        versionNo:
+          type: integer
+        contentHash:
+          type: string
+          minLength: 64
+          maxLength: 64
+        content:
+          type: string
+        status:
+          $ref: '#/components/schemas/PromptVersionStatus'
+        ownerId:
+          type: integer
+          format: int64
+          nullable: true
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
     AiCallStatus:
       type: string
       enum: [completed, failed]
     AiCall:
       type: object
-      required: [id, submissionId, purpose, promptVersion, providerName, modelName, inputHash, status, idempotencyKey, createdAt]
+      required: [id, submissionId, purpose, promptVersion, providerAdapterVersion, providerName, modelName, inputHash, status, idempotencyKey, createdAt]
       properties:
         id:
           type: integer
@@ -2010,6 +2041,12 @@ components:
         purpose:
           type: string
         promptVersion:
+          type: string
+        promptVersionId:
+          type: integer
+          format: int64
+          nullable: true
+        providerAdapterVersion:
           type: string
         providerName:
           type: string

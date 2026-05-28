@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class AiReviewDtoMapper {
+    private static final String DEFAULT_PROVIDER_ADAPTER_VERSION = "agent-default-v1";
 
     public AiReviewResult toResult(AiReviewResultView view) {
         AiCallResult providerResult = view.providerResult();
@@ -48,6 +49,8 @@ public class AiReviewDtoMapper {
         dto.setFieldPath(entity.getFieldPath());
         dto.setPurpose(entity.getPurpose());
         dto.setPromptVersion(entity.getPromptVersion());
+        dto.setPromptVersionId(entity.getPromptVersionId());
+        dto.setProviderAdapterVersion(providerAdapterVersion(entity));
         dto.setProviderName(entity.getModelProvider());
         dto.setModelName(entity.getModelName());
         dto.setInputHash(entity.getInputHash());
@@ -76,6 +79,12 @@ public class AiReviewDtoMapper {
         usage.setTotalTokens(entity.getTotalTokens());
         usage.setCacheHitTokens(entity.getCacheHitTokens());
         return usage;
+    }
+
+    private String providerAdapterVersion(AiCallEntity entity) {
+        return entity.getProviderAdapterVersion() == null
+            ? DEFAULT_PROVIDER_ADAPTER_VERSION
+            : entity.getProviderAdapterVersion();
     }
 
     public AiCallInField toAiCallInField(AiCallInFieldEntity entity) {

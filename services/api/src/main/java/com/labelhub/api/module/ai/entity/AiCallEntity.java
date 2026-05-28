@@ -18,6 +18,8 @@ public class AiCallEntity {
     private String fieldPath;
     private String purpose;
     private String promptVersion;
+    private Long promptVersionId;
+    private String providerAdapterVersion;
     @TableField("model_provider")
     private String modelProvider;
     private String modelName;
@@ -54,6 +56,10 @@ public class AiCallEntity {
     public void setPurpose(String purpose) { this.purpose = purpose; }
     public String getPromptVersion() { return promptVersion; }
     public void setPromptVersion(String promptVersion) { this.promptVersion = promptVersion; }
+    public Long getPromptVersionId() { return promptVersionId; }
+    public void setPromptVersionId(Long promptVersionId) { this.promptVersionId = promptVersionId; }
+    public String getProviderAdapterVersion() { return providerAdapterVersion; }
+    public void setProviderAdapterVersion(String providerAdapterVersion) { this.providerAdapterVersion = providerAdapterVersion; }
     public String getModelProvider() { return modelProvider; }
     public void setModelProvider(String modelProvider) { this.modelProvider = modelProvider; }
     public String getModelName() { return modelName; }

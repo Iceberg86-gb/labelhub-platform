@@ -34,7 +34,8 @@ public interface AiCallMapper {
     int insert(AiCallEntity entity);
 
     @Select("""
-        SELECT id, submission_id, field_path, purpose, prompt_version, model_provider, model_name,
+        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+               model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
                token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
                latency_ms, status, idempotency_key, created_at, completed_at
@@ -45,6 +46,8 @@ public interface AiCallMapper {
         @Result(column = "submission_id", property = "submissionId"),
         @Result(column = "field_path", property = "fieldPath"),
         @Result(column = "prompt_version", property = "promptVersion"),
+        @Result(column = "prompt_version_id", property = "promptVersionId"),
+        @Result(column = "provider_adapter_version", property = "providerAdapterVersion"),
         @Result(column = "model_provider", property = "modelProvider"),
         @Result(column = "model_name", property = "modelName"),
         @Result(column = "input_hash", property = "inputHash"),
@@ -66,7 +69,8 @@ public interface AiCallMapper {
     AiCallEntity selectById(@Param("id") Long id);
 
     @Select("""
-        SELECT id, submission_id, field_path, purpose, prompt_version, model_provider, model_name,
+        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+               model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
                token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
                latency_ms, status, idempotency_key, created_at, completed_at
@@ -77,7 +81,8 @@ public interface AiCallMapper {
     AiCallEntity selectByIdempotencyKey(@Param("idempotencyKey") String idempotencyKey);
 
     @Select("""
-        SELECT id, submission_id, field_path, purpose, prompt_version, model_provider, model_name,
+        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+               model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
                token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
                latency_ms, status, idempotency_key, created_at, completed_at
@@ -90,7 +95,8 @@ public interface AiCallMapper {
 
     @Select("""
         <script>
-        SELECT id, submission_id, field_path, purpose, prompt_version, model_provider, model_name,
+        SELECT id, submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+               model_provider, model_name,
                input_hash, request_payload, response_payload, scores, verdict, token_input,
                token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
                latency_ms, status, idempotency_key, created_at, completed_at
