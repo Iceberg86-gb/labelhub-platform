@@ -1,0 +1,192 @@
+[
+  {
+    "caseId": "valid-all-field-types",
+    "description": "Valid values across all static field types, including nested children.",
+    "schema": {
+      "fields": [
+        { "stableId": "text_value", "label": "Text", "type": "text", "validation": { "required": true, "minLength": 2, "maxLength": 20, "pattern": "^[a-z ]+$" } },
+        { "stableId": "number_value", "label": "Number", "type": "number", "validation": { "min": 0, "max": 100 } },
+        { "stableId": "single_value", "label": "Single", "type": "single_select", "options": [{ "label": "Alpha", "value": "a" }, { "label": "Beta", "value": "b" }] },
+        { "stableId": "multi_value", "label": "Multi", "type": "multi_select", "options": [{ "label": "X", "value": "x" }, { "label": "Y", "value": "y" }] },
+        { "stableId": "date_value", "label": "Date", "type": "date" },
+        { "stableId": "file_value", "label": "File", "type": "file_upload" },
+        { "stableId": "parent", "label": "Parent", "type": "nested_object", "children": [{ "stableId": "child_text", "label": "Child Text", "type": "text" }, { "stableId": "child_number", "label": "Child Number", "type": "number" }] }
+      ]
+    },
+    "payload": {
+      "text_value": "hello world",
+      "number_value": 42,
+      "single_value": "a",
+      "multi_value": ["x", "y"],
+      "date_value": "2026-05-28",
+      "file_value": "s3://bucket/key",
+      "parent": { "child_text": "nested", "child_number": 7 }
+    },
+    "expectedErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "required-missing-and-empty-values",
+    "description": "Required missing, empty string, empty array, and empty object all map to 此字段必填.",
+    "schema": {
+      "fields": [
+        { "stableId": "missing_text", "label": "Missing Text", "type": "text", "validation": { "required": true } },
+        { "stableId": "empty_text", "label": "Empty Text", "type": "text", "validation": { "required": true } },
+        { "stableId": "empty_multi", "label": "Empty Multi", "type": "multi_select", "validation": { "required": true }, "options": [{ "label": "X", "value": "x" }] },
+        { "stableId": "empty_parent", "label": "Empty Parent", "type": "nested_object", "validation": { "required": true }, "children": [{ "stableId": "child", "label": "Child", "type": "text" }] }
+      ]
+    },
+    "payload": { "empty_text": "", "empty_multi": [], "empty_parent": {} },
+    "expectedErrors": [
+      { "stableId": "missing_text", "reason": "此字段必填" },
+      { "stableId": "empty_text", "reason": "此字段必填" },
+      { "stableId": "empty_multi", "reason": "此字段必填" },
+      { "stableId": "empty_parent", "reason": "此字段必填" }
+    ],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "text-non-string",
+    "description": "Text fields reject non-string values.",
+    "schema": { "fields": [{ "stableId": "text_value", "label": "Text", "type": "text" }] },
+    "payload": { "text_value": 12 },
+    "expectedErrors": [{ "stableId": "text_value", "reason": "必须是文本" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "number-non-number",
+    "description": "Number fields reject string numbers.",
+    "schema": { "fields": [{ "stableId": "score", "label": "Score", "type": "number" }] },
+    "payload": { "score": "12" },
+    "expectedErrors": [{ "stableId": "score", "reason": "必须是数字" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "single-select-invalid-option",
+    "description": "Single select value must be one of options[].value.",
+    "schema": { "fields": [{ "stableId": "status", "label": "Status", "type": "single_select", "options": [{ "label": "Open", "value": "open" }] }] },
+    "payload": { "status": "closed" },
+    "expectedErrors": [{ "stableId": "status", "reason": "请从选项中选择" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "multi-select-invalid-option",
+    "description": "Multi select rejects any non-option item.",
+    "schema": { "fields": [{ "stableId": "tags", "label": "Tags", "type": "multi_select", "options": [{ "label": "A", "value": "a" }, { "label": "B", "value": "b" }] }] },
+    "payload": { "tags": ["a", "z"] },
+    "expectedErrors": [{ "stableId": "tags", "reason": "请从选项中选择" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "nested-object-non-object",
+    "description": "Nested object fields reject primitive values.",
+    "schema": { "fields": [{ "stableId": "parent", "label": "Parent", "type": "nested_object", "children": [{ "stableId": "child", "label": "Child", "type": "text" }] }] },
+    "payload": { "parent": "not an object" },
+    "expectedErrors": [{ "stableId": "parent", "reason": "必须是对象" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "text-min-length",
+    "description": "Text minLength failure mirrors 最少 N 字.",
+    "schema": { "fields": [{ "stableId": "name", "label": "Name", "type": "text", "validation": { "minLength": 3 } }] },
+    "payload": { "name": "ab" },
+    "expectedErrors": [{ "stableId": "name", "reason": "最少 3 字" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "text-max-length",
+    "description": "Text maxLength failure mirrors 最多 N 字.",
+    "schema": { "fields": [{ "stableId": "title", "label": "Title", "type": "text", "validation": { "maxLength": 4 } }] },
+    "payload": { "title": "abcde" },
+    "expectedErrors": [{ "stableId": "title", "reason": "最多 4 字" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "number-min-ordinary",
+    "description": "Ordinary number min failure remains byte-symmetric.",
+    "schema": { "fields": [{ "stableId": "score", "label": "Score", "type": "number", "validation": { "min": 10 } }] },
+    "payload": { "score": 5 },
+    "expectedErrors": [{ "stableId": "score", "reason": "不能小于 10" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "number-max-ordinary",
+    "description": "Ordinary number max failure remains byte-symmetric.",
+    "schema": { "fields": [{ "stableId": "score", "label": "Score", "type": "number", "validation": { "max": 100 } }] },
+    "payload": { "score": 101 },
+    "expectedErrors": [{ "stableId": "score", "reason": "不能大于 100" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "nested-child-flat-stable-id",
+    "description": "Nested child validation reports the flat child stableId, not a dot path.",
+    "schema": { "fields": [{ "stableId": "parent", "label": "Parent", "type": "nested_object", "children": [{ "stableId": "child_score", "label": "Child Score", "type": "number", "validation": { "min": 2 } }] }] },
+    "payload": { "parent": { "child_score": 1 } },
+    "expectedErrors": [{ "stableId": "child_score", "reason": "不能小于 2" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "regex-partial-match-pass",
+    "description": "Pattern uses partial find/test semantics; abc123def passes \\d+.",
+    "schema": { "fields": [{ "stableId": "code", "label": "Code", "type": "text", "validation": { "pattern": "\\d+" } }] },
+    "payload": { "code": "abc123def" },
+    "expectedErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "regex-partial-match-fail",
+    "description": "Pattern with no partial match returns 格式不正确.",
+    "schema": { "fields": [{ "stableId": "code", "label": "Code", "type": "text", "validation": { "pattern": "\\d+" } }] },
+    "payload": { "code": "abcdef" },
+    "expectedErrors": [{ "stableId": "code", "reason": "格式不正确" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "invalid-regex",
+    "description": "Invalid regex patterns return 正则表达式无效.",
+    "schema": { "fields": [{ "stableId": "code", "label": "Code", "type": "text", "validation": { "pattern": "[" } }] },
+    "payload": { "code": "abc" },
+    "expectedErrors": [{ "stableId": "code", "reason": "正则表达式无效" }],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "required-whitespace-passes",
+    "description": "Whitespace-only string is non-empty; protects against String.isBlank() drift.",
+    "schema": { "fields": [{ "stableId": "name", "label": "Name", "type": "text", "validation": { "required": true } }] },
+    "payload": { "name": "   " },
+    "expectedErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "date-non-iso-passes",
+    "description": "Date validates string shape only; non-ISO strings are accepted in P3a.",
+    "schema": { "fields": [{ "stableId": "date_value", "label": "Date", "type": "date" }] },
+    "payload": { "date_value": "not-a-date" },
+    "expectedErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "file-upload-string-passes",
+    "description": "File upload validates string shape only.",
+    "schema": { "fields": [{ "stableId": "file_value", "label": "File", "type": "file_upload" }] },
+    "payload": { "file_value": "pending-upload-key" },
+    "expectedErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "caseId": "number-min-scientific-known-asymmetry",
+    "description": "Known C2 residual: backend formats min=0.0000001 as 0.0000001 while frontend JavaScript string interpolation formats it as 1e-7. C4 exposes this asymmetry and does not fix it.",
+    "schema": { "fields": [{ "stableId": "score", "label": "Score", "type": "number", "validation": { "min": 0.0000001 } }] },
+    "payload": { "score": 0.00000005 },
+    "expectedErrors": [{ "stableId": "score", "reason": "不能小于 0.0000001" }],
+    "expectSymmetry": false
+  },
+  {
+    "caseId": "number-min-small-decimal-symmetric-control",
+    "description": "Small ordinary decimal that does not trigger JS scientific notation remains byte-symmetric.",
+    "schema": { "fields": [{ "stableId": "score", "label": "Score", "type": "number", "validation": { "min": 0.001 } }] },
+    "payload": { "score": 0.0005 },
+    "expectedErrors": [{ "stableId": "score", "reason": "不能小于 0.001" }],
+    "expectSymmetry": true
+  }
+]
