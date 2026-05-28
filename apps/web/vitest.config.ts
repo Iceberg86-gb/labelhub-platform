@@ -12,7 +12,12 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    include: ['src/features/labeling/**/*.test.{ts,tsx}', 'src/entities/labeling/**/*.test.ts', 'src/entities/schema/**/*.test.ts'],
+    include: [
+      'src/features/labeling/**/*.test.{ts,tsx}',
+      'src/features/schema-design/**/*.test.{ts,tsx}',
+      'src/entities/labeling/**/*.test.ts',
+      'src/entities/schema/**/*.test.ts',
+    ],
     benchmark: {
       include: ['src/features/labeling/__benchmarks__/**/*.bench.tsx'],
       time: 100,

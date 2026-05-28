@@ -5,8 +5,22 @@ import { NestedObjectFieldEditor } from './NestedObjectFieldEditor';
 import { NumberFieldEditor } from './NumberFieldEditor';
 import { SelectFieldEditor } from './SelectFieldEditor';
 import { TextFieldEditor } from './TextFieldEditor';
+import { LinkageJsonEditor } from './LinkageJsonEditor';
 
 export function FieldEditor(props: FieldEditorProps) {
+  const editor = renderConcreteFieldEditor(props);
+
+  if (!editor) return null;
+
+  return (
+    <div className="field-editor">
+      {editor}
+      <LinkageJsonEditor field={props.field} onChange={props.onChange} />
+    </div>
+  );
+}
+
+function renderConcreteFieldEditor(props: FieldEditorProps) {
   switch (props.field.type) {
     case 'text':
       return <TextFieldEditor {...props} />;
