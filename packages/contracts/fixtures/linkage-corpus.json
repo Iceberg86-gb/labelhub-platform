@@ -1,0 +1,427 @@
+[
+  {
+    "kind": "runtime",
+    "caseId": "runtime-no-visibleWhen-default-visible",
+    "description": "Fields without visibleWhen remain visible and preserve P3a required validation.",
+    "schema": { "fields": [
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true } }
+    ] },
+    "payload": {},
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-atomic-eq-visible",
+    "description": "Atomic eq true makes a visible required field report its static required error.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "type", "op": "eq", "value": "other" } }
+    ] },
+    "payload": { "type": "other" },
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-atomic-eq-hidden-skips-static-required",
+    "description": "Atomic eq false hides a statically required field and skips its required validation.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "type", "op": "eq", "value": "other" } }
+    ] },
+    "payload": { "type": "standard" },
+    "expectedErrors": [],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-neq-visible-without-coercion",
+    "description": "neq is true for same-family unequal scalar values without string/number coercion.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "type", "op": "neq", "value": "standard" } }
+    ] },
+    "payload": { "type": "other" },
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-in-scalar-visible",
+    "description": "in supports scalar driver values.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "type", "op": "in", "value": ["other", "manual"] } }
+    ] },
+    "payload": { "type": "manual" },
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-notIn-scalar-hidden",
+    "description": "notIn false hides a field when the scalar driver is included in the condition array.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "type", "op": "notIn", "value": ["standard"] } }
+    ] },
+    "payload": { "type": "standard" },
+    "expectedErrors": [],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-in-collection-intersection-visible",
+    "description": "in supports collection driver values through intersection.",
+    "schema": { "fields": [
+      { "stableId": "tags", "label": "Tags", "type": "multi_select", "options": [{ "label": "Alpha", "value": "alpha" }, { "label": "Beta", "value": "beta" }] },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "tags", "op": "in", "value": ["alpha", "gamma"] } }
+    ] },
+    "payload": { "tags": ["alpha"] },
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-notIn-collection-intersection-hidden",
+    "description": "notIn is false for a collection driver when any selected value intersects the condition array.",
+    "schema": { "fields": [
+      { "stableId": "tags", "label": "Tags", "type": "multi_select", "options": [{ "label": "Alpha", "value": "alpha" }, { "label": "Beta", "value": "beta" }] },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "tags", "op": "notIn", "value": ["alpha"] } }
+    ] },
+    "payload": { "tags": ["alpha", "beta"] },
+    "expectedErrors": [],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-empty-driver-neq-notIn-false",
+    "description": "Empty driver values make neq and notIn false for UI-safety.",
+    "schema": { "fields": [
+      { "stableId": "missing_driver", "label": "Missing", "type": "text" },
+      { "stableId": "empty_tags", "label": "Empty Tags", "type": "multi_select", "options": [{ "label": "A", "value": "a" }] },
+      { "stableId": "neq_target", "label": "Neq Target", "type": "text", "requiredWhen": { "field": "missing_driver", "op": "neq", "value": "x" } },
+      { "stableId": "notIn_target", "label": "NotIn Target", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "empty_tags", "op": "notIn", "value": ["x"] } }
+    ] },
+    "payload": { "empty_tags": [] },
+    "expectedErrors": [],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-numeric-comparison-visible",
+    "description": "Numeric comparison uses finite numeric values.",
+    "schema": { "fields": [
+      { "stableId": "score", "label": "Score", "type": "number" },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "score", "op": "gte", "value": 10 } }
+    ] },
+    "payload": { "score": 10 },
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-numeric-comparison-hidden",
+    "description": "Numeric comparison false hides static required fields.",
+    "schema": { "fields": [
+      { "stableId": "score", "label": "Score", "type": "number" },
+      { "stableId": "details", "label": "Details", "type": "text", "validation": { "required": true }, "visibleWhen": { "field": "score", "op": "lt", "value": 5 } }
+    ] },
+    "payload": { "score": 7 },
+    "expectedErrors": [],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-empty-and-notEmpty-whitespace",
+    "description": "empty/notEmpty reuse P3a empty semantics; whitespace-only strings are not empty.",
+    "schema": { "fields": [
+      { "stableId": "note", "label": "Note", "type": "text" },
+      { "stableId": "empty_target", "label": "Empty Target", "type": "text", "validation": { "required": true }, "requiredWhen": { "field": "note", "op": "empty" } },
+      { "stableId": "space_driver", "label": "Space Driver", "type": "text" },
+      { "stableId": "space_target", "label": "Space Target", "type": "text", "validation": { "required": true }, "requiredWhen": { "field": "space_driver", "op": "notEmpty" } }
+    ] },
+    "payload": { "note": "", "space_driver": "   " },
+    "expectedErrors": [
+      { "stableId": "empty_target", "reason": "此字段必填" },
+      { "stableId": "space_target", "reason": "此字段必填" }
+    ],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-allOf-true-anyOf-false",
+    "description": "Group allOf true and anyOf false produce final validation errors only for the true group.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "score", "label": "Score", "type": "number" },
+      { "stableId": "all_target", "label": "All Target", "type": "text", "requiredWhen": { "allOf": [
+        { "field": "type", "op": "eq", "value": "other" },
+        { "field": "score", "op": "gt", "value": 5 }
+      ] } },
+      { "stableId": "any_target", "label": "Any Target", "type": "text", "requiredWhen": { "anyOf": [
+        { "field": "type", "op": "eq", "value": "manual" },
+        { "field": "score", "op": "lt", "value": 5 }
+      ] } }
+    ] },
+    "payload": { "type": "other", "score": 6 },
+    "expectedErrors": [{ "stableId": "all_target", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-anyOf-true",
+    "description": "Group anyOf true makes an optional field conditionally required.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "score", "label": "Score", "type": "number" },
+      { "stableId": "target", "label": "Target", "type": "text", "requiredWhen": { "anyOf": [
+        { "field": "type", "op": "eq", "value": "manual" },
+        { "field": "score", "op": "lt", "value": 5 }
+      ] } }
+    ] },
+    "payload": { "type": "standard", "score": 4 },
+    "expectedErrors": [{ "stableId": "target", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-hidden-skips-requiredWhen-and-type-validation",
+    "description": "Hidden fields skip static required, requiredWhen, and type/rule validation.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "score", "label": "Score", "type": "number", "validation": { "min": 10 }, "visibleWhen": { "field": "type", "op": "eq", "value": "other" }, "requiredWhen": { "field": "type", "op": "neq", "value": "never" } }
+    ] },
+    "payload": { "type": "standard", "score": "not-a-number" },
+    "expectedErrors": [],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-visible-requiredWhen-false-keeps-optional",
+    "description": "A visible optional field stays optional when requiredWhen is false.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "requiredWhen": { "field": "type", "op": "eq", "value": "other" } }
+    ] },
+    "payload": { "type": "standard" },
+    "expectedErrors": [],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-nested-child-requiredWhen-flat-stableId",
+    "description": "Nested child conditions use flat stableId lookup against the root payload snapshot.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "profile", "label": "Profile", "type": "nested_object", "children": [
+        { "stableId": "city", "label": "City", "type": "text", "requiredWhen": { "field": "type", "op": "eq", "value": "other" } },
+        { "stableId": "note", "label": "Note", "type": "text" }
+      ] }
+    ] },
+    "payload": { "type": "other", "profile": { "note": "present" } },
+    "expectedErrors": [{ "stableId": "city", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-hidden-nested-parent-skips-child",
+    "description": "Hidden nested_object parents skip child validation.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "profile", "label": "Profile", "type": "nested_object", "visibleWhen": { "field": "type", "op": "eq", "value": "other" }, "children": [
+        { "stableId": "city", "label": "City", "type": "text", "validation": { "required": true } }
+      ] }
+    ] },
+    "payload": { "type": "standard", "profile": {} },
+    "expectedErrors": [],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-number-one-equals-one-point-zero",
+    "description": "Numeric eq treats 1 and 1.0 as equal.",
+    "schema": { "fields": [
+      { "stableId": "score", "label": "Score", "type": "number" },
+      { "stableId": "details", "label": "Details", "type": "text", "requiredWhen": { "field": "score", "op": "eq", "value": 1.0 } }
+    ] },
+    "payload": { "score": 1 },
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-number-max-safe-integer-boundary",
+    "description": "JSON-safe large integers compare symmetrically across Java BigDecimal and JavaScript number.",
+    "schema": { "fields": [
+      { "stableId": "score", "label": "Score", "type": "number" },
+      { "stableId": "details", "label": "Details", "type": "text", "requiredWhen": { "field": "score", "op": "gte", "value": 9007199254740991 } }
+    ] },
+    "payload": { "score": 9007199254740991 },
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "runtime",
+    "caseId": "runtime-number-high-precision-decimal-boundary",
+    "description": "High precision JSON decimals compare by the parsed numeric value without message formatting.",
+    "schema": { "fields": [
+      { "stableId": "score", "label": "Score", "type": "number" },
+      { "stableId": "details", "label": "Details", "type": "text", "requiredWhen": { "field": "score", "op": "gt", "value": 0.1234567890123456 } }
+    ] },
+    "payload": { "score": 0.1234567890123457 },
+    "expectedErrors": [{ "stableId": "details", "reason": "此字段必填" }],
+    "expectedPublishErrors": [],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-missing-reference",
+    "description": "Publish validation rejects references to unknown stableIds.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "visibleWhen": { "field": "missing", "op": "eq", "value": "x" } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[1].visibleWhen.field", "reason": "联动条件引用的字段不存在" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-self-reference",
+    "description": "Publish validation rejects self-references.",
+    "schema": { "fields": [
+      { "stableId": "details", "label": "Details", "type": "text", "requiredWhen": { "field": "details", "op": "notEmpty" } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[0].requiredWhen.field", "reason": "联动条件不能引用自身" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-cycle",
+    "description": "Publish validation rejects dependency cycles.",
+    "schema": { "fields": [
+      { "stableId": "a", "label": "A", "type": "text", "visibleWhen": { "field": "b", "op": "eq", "value": "yes" } },
+      { "stableId": "b", "label": "B", "type": "text", "requiredWhen": { "field": "a", "op": "eq", "value": "yes" } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[0].visibleWhen", "reason": "联动条件存在循环依赖" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-empty-group",
+    "description": "Publish validation rejects empty groups.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "visibleWhen": { "anyOf": [] } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[1].visibleWhen.anyOf", "reason": "联动条件分组至少需要一个条件" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-group-both-allOf-anyOf",
+    "description": "Publish validation rejects groups that set both allOf and anyOf.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "visibleWhen": { "allOf": [{ "field": "type", "op": "eq", "value": "a" }], "anyOf": [{ "field": "type", "op": "eq", "value": "b" }] } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[1].visibleWhen", "reason": "联动条件分组必须且只能设置 allOf 或 anyOf" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-atomic-shape",
+    "description": "Publish validation rejects atomic conditions without field or op.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "visibleWhen": { "field": "", "op": null, "value": "x" } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[1].visibleWhen", "reason": "联动条件必须包含 field 和 op" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-empty-op-with-value",
+    "description": "Publish validation rejects value on empty/notEmpty.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "visibleWhen": { "field": "type", "op": "empty", "value": "x" } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[1].visibleWhen.value", "reason": "empty/notEmpty 不应设置 value" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-scalar-op-with-array-value",
+    "description": "Publish validation rejects array values for scalar operators.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "visibleWhen": { "field": "type", "op": "eq", "value": ["x"] } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[1].visibleWhen.value", "reason": "联动操作符需要标量 value" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-membership-op-with-scalar-value",
+    "description": "Publish validation rejects scalar values for in/notIn.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "visibleWhen": { "field": "type", "op": "in", "value": "x" } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[1].visibleWhen.value", "reason": "联动操作符需要数组 value" }],
+    "expectSymmetry": true
+  },
+  {
+    "kind": "publish",
+    "caseId": "publish-numeric-op-against-non-number-field",
+    "description": "Publish validation rejects numeric comparison against non-number fields.",
+    "schema": { "fields": [
+      { "stableId": "type", "label": "Type", "type": "text" },
+      { "stableId": "details", "label": "Details", "type": "text", "visibleWhen": { "field": "type", "op": "gt", "value": 5 } }
+    ] },
+    "payload": {},
+    "expectedErrors": [],
+    "expectedPublishErrors": [{ "fieldPath": "fields[1].visibleWhen.field", "reason": "数值比较只能引用数字字段" }],
+    "expectSymmetry": true
+  }
+]
