@@ -9,6 +9,7 @@ import com.labelhub.api.generated.model.SubmissionAiProvenance;
 import com.labelhub.api.generated.model.TriggerAiReviewRequest;
 import com.labelhub.api.generated.web.AiReviewApi;
 import com.labelhub.api.module.ai.service.AiReviewService;
+import com.labelhub.api.module.ai.service.AiReviewRuleService;
 import com.labelhub.api.security.JwtPrincipal;
 import jakarta.validation.Valid;
 import java.util.Set;
@@ -26,10 +27,19 @@ public class AiReviewController implements AiReviewApi {
 
     private final AiReviewService aiReviewService;
     private final AiReviewDtoMapper aiReviewDtoMapper;
+    private final AiReviewRuleService aiReviewRuleService;
+    private final AiReviewRuleDtoMapper aiReviewRuleDtoMapper;
 
-    public AiReviewController(AiReviewService aiReviewService, AiReviewDtoMapper aiReviewDtoMapper) {
+    public AiReviewController(
+        AiReviewService aiReviewService,
+        AiReviewDtoMapper aiReviewDtoMapper,
+        AiReviewRuleService aiReviewRuleService,
+        AiReviewRuleDtoMapper aiReviewRuleDtoMapper
+    ) {
         this.aiReviewService = aiReviewService;
         this.aiReviewDtoMapper = aiReviewDtoMapper;
+        this.aiReviewRuleService = aiReviewRuleService;
+        this.aiReviewRuleDtoMapper = aiReviewRuleDtoMapper;
     }
 
     @Override
@@ -69,7 +79,13 @@ public class AiReviewController implements AiReviewApi {
     public ResponseEntity<AiReviewRule> saveAiReviewRule(
         @Valid @RequestBody AiReviewRuleRequest aiReviewRuleRequest
     ) {
-        throw notImplemented();
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(aiReviewRuleDtoMapper.toRule(aiReviewRuleService.saveRule(aiReviewRuleRequest, currentUserId())));
+    }
+
+    @Override
+    public ResponseEntity<AiReviewRule> publishAiReviewRule(@PathVariable("ruleId") Long ruleId) {
+        return ResponseEntity.ok(aiReviewRuleDtoMapper.toRule(aiReviewRuleService.publishRule(ruleId, currentUserId())));
     }
 
     private ResponseStatusException notImplemented() {

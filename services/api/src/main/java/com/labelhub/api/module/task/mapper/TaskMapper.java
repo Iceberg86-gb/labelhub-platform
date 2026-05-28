@@ -80,4 +80,12 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
         """)
     int incrementQuotaClaimedIfAvailable(@Param("taskId") Long taskId);
 
+    @Update("""
+        UPDATE tasks
+        SET current_ai_review_rule_id = #{ruleId},
+            updated_at = NOW(3)
+        WHERE id = #{taskId}
+        """)
+    int updateCurrentAiReviewRuleId(@Param("taskId") Long taskId, @Param("ruleId") Long ruleId);
+
 }

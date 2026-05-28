@@ -5,6 +5,8 @@ import com.labelhub.api.generated.model.ApiFieldError;
 import com.labelhub.api.module.admin.exception.PayloadTooLargeException;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
+import com.labelhub.api.module.ai.exception.AiReviewRuleNotFoundException;
+import com.labelhub.api.module.ai.exception.InvalidAiReviewRuleException;
 import com.labelhub.api.module.ai.exception.PromptVersionNotFoundException;
 import com.labelhub.api.module.dataset.exception.EmptyDatasetException;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetFileException;
@@ -142,6 +144,15 @@ public class GlobalExceptionHandler {
             .body(error("AI_PROVIDER_INPUT_HASH_MISMATCH", "Cannot reuse AI result, input changed"));
     }
 
+    @ExceptionHandler(InvalidAiReviewRuleException.class)
+    ResponseEntity<ApiError> invalidAiReviewRule(InvalidAiReviewRuleException exception) {
+        ApiFieldError fieldError = new ApiFieldError();
+        fieldError.setField(exception.getField());
+        fieldError.setMessage(exception.getReason());
+        return ResponseEntity.badRequest()
+            .body(error("INVALID_AI_REVIEW_RULE", "AI review rule is invalid", List.of(fieldError)));
+    }
+
     @ExceptionHandler(SelfReviewNotAllowedException.class)
     ResponseEntity<ApiError> selfReviewNotAllowed(SelfReviewNotAllowedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -214,7 +225,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({TaskNotFoundException.class, SchemaNotFoundException.class, SchemaVersionNotFoundException.class,
         SchemaAccessDeniedException.class, SubmissionNotFoundException.class, SessionNotFoundException.class,
-        SessionAccessDeniedException.class, PromptVersionNotFoundException.class, NoResourceFoundException.class})
+        SessionAccessDeniedException.class, PromptVersionNotFoundException.class, AiReviewRuleNotFoundException.class,
+        NoResourceFoundException.class})
     ResponseEntity<ApiError> notFound(Exception exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("NOT_FOUND", exception.getMessage()));
     }

@@ -892,6 +892,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AiReviewRule'
+  /ai-review/rules/{ruleId}/publish:
+    post:
+      tags: [AIReview]
+      operationId: publishAiReviewRule
+      parameters:
+        - in: path
+          name: ruleId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: AI review rule published and activated for the task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiReviewRule'
+        '404':
+          description: Requested resource does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /ai-review/field-assist:
     post:
       tags: [AIReview]
