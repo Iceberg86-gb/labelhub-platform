@@ -1,6 +1,6 @@
 import { Button, Card, Empty, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconSend } from '@douyinfe/semi-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD, type AnswerPayload } from '../../entities/submission/answerPayload';
@@ -8,11 +8,12 @@ import { errorsByStableId, validatePayload } from '../../entities/labeling/paylo
 import { AutosaveStatusTag } from '../../features/labeling/AutosaveStatusTag';
 import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { SubmitConfirmModal } from '../../features/labeling/SubmitConfirmModal';
+import { fieldErrorsToStableIdMap, selectVisibleFieldErrors } from '../../features/labeling/serverValidationErrors';
 import { useAutosave } from '../../features/labeling/useAutosave';
 import { useLatestDraftQuery } from '../../features/labeling/useLatestDraftQuery';
 import { useSaveDraftMutation } from '../../features/labeling/useSaveDraftMutation';
 import { useSessionDetailQuery } from '../../features/labeling/useSessionDetailQuery';
-import { useSubmitMutation } from '../../features/labeling/useSubmitMutation';
+import { SubmitValidationError, useSubmitMutation } from '../../features/labeling/useSubmitMutation';
 
 function parseId(value?: string) {
   const parsed = Number(value);
@@ -29,6 +30,7 @@ export function LabelerSessionPage() {
   const submitMutation = useSubmitMutation();
 
   const [answerPayload, setAnswerPayload] = useState<AnswerPayload | null>(null);
+  const [serverErrors, setServerErrors] = useState<Map<string, string[]> | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
   const detail = detailQuery.data;
@@ -56,6 +58,15 @@ export function LabelerSessionPage() {
     [answerPayload, detail, fields],
   );
   const fieldErrors = useMemo(() => errorsByStableId(validationErrors), [validationErrors]);
+  const visibleFieldErrors = useMemo(
+    () => selectVisibleFieldErrors(fieldErrors, serverErrors),
+    [fieldErrors, serverErrors],
+  );
+
+  const handleAnswerPayloadChange = useCallback((next: AnswerPayload) => {
+    setServerErrors(null);
+    setAnswerPayload(next);
+  }, []);
 
   const handleSubmitClick = () => {
     if (validationErrors.length > 0) {
@@ -76,7 +87,12 @@ export function LabelerSessionPage() {
       });
       Toast.success(`已提交 submission #${submission.id}`);
       navigate(`/labeler/submissions/${submission.id}`);
-    } catch {
+    } catch (error) {
+      if (error instanceof SubmitValidationError) {
+        setServerErrors(fieldErrorsToStableIdMap(error.fieldErrors));
+        Toast.error(error.message);
+        return;
+      }
       Toast.error('提交失败,请稍后重试');
     }
   };
@@ -128,9 +144,9 @@ export function LabelerSessionPage() {
         <SchemaFormilyRenderer
           schemaFields={fields}
           value={answerPayload}
-          onChange={setAnswerPayload}
+          onChange={handleAnswerPayloadChange}
           readOnly={!isClaimed}
-          errors={fieldErrors}
+          errors={visibleFieldErrors}
         />
       </Card>
 
