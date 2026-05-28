@@ -39,6 +39,17 @@ class PromptVersionMigrationContractTest {
     }
 
     @Test
+    void seed_migration_inserts_published_default_prompt_version() throws IOException {
+        String migrationText = migrationsText();
+
+        assertThat(migrationText)
+            .contains("INSERT INTO prompt_versions")
+            .contains("m3-owner-review-v1")
+            .contains("fa76977fd0bdc3f0cc7336855006669f2950381f1a0dc4f0803458bb6f06d456")
+            .contains("'published'");
+    }
+
+    @Test
     void trigger_request_contract_stays_on_legacy_prompt_version_for_c1() throws IOException {
         String openApi = Files.readString(Path.of("../../packages/contracts/openapi/labelhub.yaml"));
 

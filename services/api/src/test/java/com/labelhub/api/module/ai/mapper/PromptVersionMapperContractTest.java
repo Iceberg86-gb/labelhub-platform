@@ -49,10 +49,14 @@ class PromptVersionMapperContractTest {
         Method insert = PromptVersionMapper.class.getDeclaredMethod("insert", PromptVersionEntity.class);
         Method selectById = PromptVersionMapper.class.getDeclaredMethod("selectById", Long.class);
         Method selectByContentHash = PromptVersionMapper.class.getDeclaredMethod("selectByContentHash", String.class);
+        Method selectMaxVersionNumber = PromptVersionMapper.class.getDeclaredMethod("selectMaxVersionNumber");
+        Method selectLatestPublished = PromptVersionMapper.class.getDeclaredMethod("selectLatestPublished");
 
         String insertSql = String.join(" ", insert.getAnnotation(Insert.class).value());
         String selectByIdSql = String.join(" ", selectById.getAnnotation(Select.class).value());
         String selectByHashSql = String.join(" ", selectByContentHash.getAnnotation(Select.class).value());
+        String selectMaxSql = String.join(" ", selectMaxVersionNumber.getAnnotation(Select.class).value());
+        String selectLatestPublishedSql = String.join(" ", selectLatestPublished.getAnnotation(Select.class).value());
 
         assertThat(insertSql)
             .contains("INSERT INTO prompt_versions")
@@ -61,5 +65,11 @@ class PromptVersionMapperContractTest {
             .contains("content");
         assertThat(selectByIdSql).contains("FROM prompt_versions").contains("WHERE id = #{id}");
         assertThat(selectByHashSql).contains("FROM prompt_versions").contains("WHERE content_hash = #{contentHash}");
+        assertThat(selectMaxSql).contains("MAX(version_no)").contains("FROM prompt_versions");
+        assertThat(selectLatestPublishedSql)
+            .contains("FROM prompt_versions")
+            .contains("status = 'published'")
+            .contains("ORDER BY version_no DESC")
+            .contains("LIMIT 1");
     }
 }

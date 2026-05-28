@@ -57,6 +57,7 @@ public class SecurityConfig {
                 .requestMatchers("/my/sessions").hasRole("LABELER")
                 .requestMatchers(HttpMethod.POST, "/submissions/*/ai-review").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/submissions/*/ai-review").authenticated()
+                .requestMatchers(HttpMethod.GET, "/prompt-versions/default").authenticated()
                 .requestMatchers(HttpMethod.GET, "/reviewer/submissions").hasRole("REVIEWER")
                 .requestMatchers(HttpMethod.POST, "/submissions/*/ledger-entries").hasRole("REVIEWER")
                 .requestMatchers(HttpMethod.GET, "/submissions/*/ledger-entries").authenticated()
