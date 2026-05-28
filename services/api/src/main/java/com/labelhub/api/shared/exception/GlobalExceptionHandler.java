@@ -27,6 +27,7 @@ import com.labelhub.api.module.session.exception.SessionAlreadySubmittedExceptio
 import com.labelhub.api.module.session.exception.SessionNotEditableException;
 import com.labelhub.api.module.session.exception.SessionNotFoundException;
 import com.labelhub.api.module.session.exception.TaskNotAvailableException;
+import com.labelhub.api.module.submission.validation.AnswerValidationException;
 import com.labelhub.api.module.task.service.IllegalStateTransitionException;
 import com.labelhub.api.module.task.service.TaskAccessDeniedException;
 import com.labelhub.api.module.task.service.TaskNotFoundException;
@@ -91,6 +92,20 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidSubmissionPayloadException.class)
     ResponseEntity<ApiError> invalidSubmissionPayload(InvalidSubmissionPayloadException exception) {
         return ResponseEntity.badRequest().body(error("INVALID_SUBMISSION_PAYLOAD", exception.getMessage()));
+    }
+
+    @ExceptionHandler(AnswerValidationException.class)
+    ResponseEntity<ApiError> answerValidation(AnswerValidationException exception) {
+        List<ApiFieldError> fields = exception.getErrors().stream()
+            .map(error -> {
+                ApiFieldError field = new ApiFieldError();
+                field.setField(error.stableId());
+                field.setMessage(error.reason());
+                return field;
+            })
+            .toList();
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+            .body(error("VALIDATION_FAILED", "Answer payload validation failed", fields));
     }
 
     @ExceptionHandler(InvalidDatasetFileException.class)
