@@ -160,7 +160,8 @@ public class ExportArtifactBuilder {
 
     private Map<String, Object> aiCallToCanonical(AiCallEntity call) {
         return map("id", call.getId(), "submissionId", call.getSubmissionId(), "fieldPath", call.getFieldPath(), "purpose", call.getPurpose(),
-            "promptVersion", call.getPromptVersion(), "modelProvider", call.getModelProvider(), "modelName", call.getModelName(),
+            "promptVersion", call.getPromptVersion(), "promptVersionId", call.getPromptVersionId(),
+            "providerAdapterVersion", call.getProviderAdapterVersion(), "modelProvider", call.getModelProvider(), "modelName", call.getModelName(),
             "inputHash", call.getInputHash(), "responsePayload", call.getResponsePayload(), "scores", call.getScores(), "verdict", call.getVerdict(),
             "tokenInput", call.getTokenInput(), "tokenOutput", call.getTokenOutput(), "costDecimal", call.getCostDecimal(), "latencyMs", call.getLatencyMs(),
             "status", call.getStatus(), "idempotencyKey", call.getIdempotencyKey(), "createdAt", asString(call.getCreatedAt()), "completedAt", asString(call.getCompletedAt()));

@@ -15,30 +15,32 @@ export class TriggerAiReviewFailure extends Error {
 
 type TriggerAiReviewVariables = {
   submissionId: number;
-  promptVersion: string;
+  promptVersionId: number;
 };
+
+export async function triggerAiReview({ submissionId, promptVersionId }: TriggerAiReviewVariables): Promise<AiReviewResult> {
+  const { data, error, response } = await apiClient.POST('/submissions/{submissionId}/ai-review', {
+    params: { path: { submissionId } },
+    body: { promptVersionId },
+  });
+
+  if (error || !data) {
+    const body = error as { code?: string; message?: string } | undefined;
+    throw new TriggerAiReviewFailure(
+      response.status,
+      body?.code,
+      mapTriggerErrorMessage(response.status, body?.code, body?.message),
+    );
+  }
+
+  return data;
+}
 
 export function useTriggerAiReviewMutation() {
   const queryClient = useQueryClient();
 
   return useMutation<AiReviewResult, TriggerAiReviewFailure, TriggerAiReviewVariables>({
-    mutationFn: async ({ submissionId, promptVersion }) => {
-      const { data, error, response } = await apiClient.POST('/submissions/{submissionId}/ai-review', {
-        params: { path: { submissionId } },
-        body: { promptVersion },
-      });
-
-      if (error || !data) {
-        const body = error as { code?: string; message?: string } | undefined;
-        throw new TriggerAiReviewFailure(
-          response.status,
-          body?.code,
-          mapTriggerErrorMessage(response.status, body?.code, body?.message),
-        );
-      }
-
-      return data;
-    },
+    mutationFn: triggerAiReview,
     onSuccess: async (_data, variables) => {
       await queryClient.invalidateQueries({ queryKey: aiProvenanceQueryKey(variables.submissionId) });
     },

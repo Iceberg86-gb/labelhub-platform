@@ -2184,10 +2184,11 @@ components:
           $ref: '#/components/schemas/AiCallUsage'
     TriggerAiReviewRequest:
       type: object
-      required: [promptVersion]
+      required: [promptVersionId]
       properties:
-        promptVersion:
-          type: string
+        promptVersionId:
+          type: integer
+          format: int64
     FieldAssistRequest:
       type: object
       required: [sessionId, fieldPath, input]

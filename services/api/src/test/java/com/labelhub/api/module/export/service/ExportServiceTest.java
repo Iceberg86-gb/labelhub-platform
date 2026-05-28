@@ -461,7 +461,9 @@ class ExportServiceTest {
         call.setId(600L);
         call.setSubmissionId(SUBMISSION_ID);
         call.setPurpose("owner_review");
-        call.setPromptVersion("m3-owner-review-v1");
+        call.setPromptVersion("promptVersion#1");
+        call.setPromptVersionId(1L);
+        call.setProviderAdapterVersion("agent-default-v1");
         call.setModelProvider("mock");
         call.setModelName("mock-reviewer");
         call.setInputHash("input-hash");

@@ -1098,7 +1098,8 @@ export interface components {
             usage?: components["schemas"]["AiCallUsage"];
         };
         TriggerAiReviewRequest: {
-            promptVersion: string;
+            /** Format: int64 */
+            promptVersionId: number;
         };
         FieldAssistRequest: {
             /** Format: int64 */

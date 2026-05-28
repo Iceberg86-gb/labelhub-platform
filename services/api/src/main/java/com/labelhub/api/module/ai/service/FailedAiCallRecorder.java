@@ -43,6 +43,8 @@ public class FailedAiCallRecorder {
         String canonicalIdempotencyKey,
         int attemptNumber,
         String promptVersion,
+        Long promptVersionId,
+        String providerAdapterVersion,
         String providerName,
         String modelName,
         String inputHash,
@@ -55,6 +57,8 @@ public class FailedAiCallRecorder {
         failed.setSubmissionId(submissionId);
         failed.setPurpose("submission_review");
         failed.setPromptVersion(promptVersion);
+        failed.setPromptVersionId(promptVersionId);
+        failed.setProviderAdapterVersion(providerAdapterVersion);
         failed.setModelProvider(providerName);
         failed.setModelName(modelName);
         failed.setInputHash(inputHash);
@@ -81,6 +85,8 @@ public class FailedAiCallRecorder {
                 .payload("submissionId", submissionId)
                 .payload("attemptNumber", attemptNumber)
                 .payload("promptVersion", promptVersion)
+                .payload("promptVersionId", promptVersionId)
+                .payload("providerAdapterVersion", providerAdapterVersion)
                 .payload("provider", providerName)
                 .payload("model", modelName)
                 .payload("inputHash", inputHash)

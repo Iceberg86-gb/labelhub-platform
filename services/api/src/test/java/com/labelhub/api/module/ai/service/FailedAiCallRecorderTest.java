@@ -36,13 +36,15 @@ class FailedAiCallRecorderTest {
 
     @Test
     void recordFailedAttempt_persists_failed_ai_call_with_attempt_suffix_key() {
-        String canonicalKey = "submission:300:provider:mock:model:mock-v1:prompt:prompt-v1";
+        String canonicalKey = "submission:300:provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1";
 
         recorder.recordFailedAttempt(
             300L,
             canonicalKey,
             2,
-            "prompt-v1",
+            "promptVersion#1",
+            1L,
+            "agent-default-v1",
             "mock",
             "mock-v1",
             "input-hash",
@@ -55,7 +57,9 @@ class FailedAiCallRecorderTest {
         AiCallEntity row = captor.getValue();
         assertThat(row.getSubmissionId()).isEqualTo(300L);
         assertThat(row.getPurpose()).isEqualTo("submission_review");
-        assertThat(row.getPromptVersion()).isEqualTo("prompt-v1");
+        assertThat(row.getPromptVersion()).isEqualTo("promptVersion#1");
+        assertThat(row.getPromptVersionId()).isEqualTo(1L);
+        assertThat(row.getProviderAdapterVersion()).isEqualTo("agent-default-v1");
         assertThat(row.getModelProvider()).isEqualTo("mock");
         assertThat(row.getModelName()).isEqualTo("mock-v1");
         assertThat(row.getInputHash()).isEqualTo("input-hash");
@@ -89,7 +93,9 @@ class FailedAiCallRecorderTest {
             300L,
             canonicalKey,
             1,
-            "prompt-v1",
+            "promptVersion#1",
+            1L,
+            "agent-default-v1",
             "mock",
             "mock-v1",
             "input-hash",
