@@ -5,6 +5,7 @@ import com.labelhub.api.generated.model.ApiFieldError;
 import com.labelhub.api.module.admin.exception.PayloadTooLargeException;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
+import com.labelhub.api.module.ai.exception.PromptVersionNotFoundException;
 import com.labelhub.api.module.dataset.exception.EmptyDatasetException;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetFileException;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetForTaskException;
@@ -213,7 +214,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({TaskNotFoundException.class, SchemaNotFoundException.class, SchemaVersionNotFoundException.class,
         SchemaAccessDeniedException.class, SubmissionNotFoundException.class, SessionNotFoundException.class,
-        SessionAccessDeniedException.class, NoResourceFoundException.class})
+        SessionAccessDeniedException.class, PromptVersionNotFoundException.class, NoResourceFoundException.class})
     ResponseEntity<ApiError> notFound(Exception exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("NOT_FOUND", exception.getMessage()));
     }

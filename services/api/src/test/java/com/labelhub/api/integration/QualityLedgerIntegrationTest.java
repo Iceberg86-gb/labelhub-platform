@@ -281,7 +281,7 @@ class QualityLedgerIntegrationTest {
         mockMvc.perform(post("/submissions/{submissionId}/ai-review", fixture.submissionId())
                 .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"promptVersion\":\"prompt-v1\"}"))
+                .content("{\"promptVersionId\":1}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(false))
             .andExpect(jsonPath("$.fieldFindings", hasSize(1)));
@@ -303,12 +303,12 @@ class QualityLedgerIntegrationTest {
     void repeat_ai_review_does_not_duplicate_ledger_entries() throws Exception {
         Fixture fixture = submissionFixture("ledger-ai-review-idempotency", 1001L, 1002L, "under_ai_review");
 
-        triggerAiReview(fixture.submissionId(), "prompt-v1")
+        triggerAiReview(fixture.submissionId(), 1L)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(false));
         assertThat(ledgerEntryCount(fixture.submissionId())).isEqualTo(1);
 
-        triggerAiReview(fixture.submissionId(), "prompt-v1")
+        triggerAiReview(fixture.submissionId(), 1L)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(true));
 
@@ -356,16 +356,16 @@ class QualityLedgerIntegrationTest {
             .andExpect(status().isNotFound());
     }
 
-    private org.springframework.test.web.servlet.ResultActions triggerAiReview(Long submissionId, String promptVersion) throws Exception {
+    private org.springframework.test.web.servlet.ResultActions triggerAiReview(Long submissionId, Long promptVersionId) throws Exception {
         return mockMvc.perform(post("/submissions/{submissionId}/ai-review", submissionId)
             .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"promptVersion\":\"" + promptVersion + "\"}"));
+            .content("{\"promptVersionId\":" + promptVersionId + "}"));
     }
 
     private Fixture submissionWithAiReview(String seed) throws Exception {
         Fixture fixture = submissionFixture(seed, 1001L, 1002L, "under_ai_review");
-        triggerAiReview(fixture.submissionId(), "prompt-v1").andExpect(status().isCreated());
+        triggerAiReview(fixture.submissionId(), 1L).andExpect(status().isCreated());
         assertThat(ledgerEntryCount(fixture.submissionId())).isEqualTo(1);
         return fixture;
     }

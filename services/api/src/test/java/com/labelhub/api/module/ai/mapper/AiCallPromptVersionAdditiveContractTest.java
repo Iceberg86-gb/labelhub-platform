@@ -22,14 +22,16 @@ class AiCallPromptVersionAdditiveContractTest {
     }
 
     @Test
-    void ai_call_insert_omits_new_columns_so_legacy_service_path_uses_db_defaults() throws Exception {
+    void ai_call_insert_writes_prompt_version_fk_and_adapter_after_c3_hard_switch() throws Exception {
         Method insert = AiCallMapper.class.getDeclaredMethod("insert", AiCallEntity.class);
         String insertSql = String.join(" ", insert.getAnnotation(Insert.class).value());
 
         assertThat(insertSql)
             .contains("INSERT INTO ai_calls")
-            .doesNotContain("prompt_version_id")
-            .doesNotContain("provider_adapter_version");
+            .contains("prompt_version_id")
+            .contains("provider_adapter_version")
+            .contains("#{promptVersionId}")
+            .contains("#{providerAdapterVersion}");
     }
 
     @Test

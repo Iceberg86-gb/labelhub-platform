@@ -9,9 +9,11 @@ import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.ai.entity.AiCallEntity;
 import com.labelhub.api.module.ai.entity.AiCallInFieldEntity;
 import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
+import com.labelhub.api.module.ai.entity.PromptVersionEntity;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
+import com.labelhub.api.module.ai.exception.PromptVersionNotFoundException;
 import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
 import com.labelhub.api.module.ai.observability.AiIdempotencyMetrics;
@@ -51,6 +53,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AiReviewService {
 
+    static final String PROVIDER_ADAPTER_VERSION = "agent-default-v1";
+    private static final int IDEMPOTENCY_KEY_MAX_LENGTH = 160;
+
     private final SubmissionMapper submissionMapper;
     private final SchemaVersionMapper schemaVersionMapper;
     private final DatasetItemMapper datasetItemMapper;
@@ -58,6 +63,7 @@ public class AiReviewService {
     private final AiCallMapper aiCallMapper;
     private final AiCallInFieldMapper aiCallInFieldMapper;
     private final LedgerService ledgerService;
+    private final PromptVersionService promptVersionService;
     private final Canonicalizer canonicalizer;
     private final ObjectMapper objectMapper;
     private final Clock clock;
@@ -77,6 +83,7 @@ public class AiReviewService {
         AiCallMapper aiCallMapper,
         AiCallInFieldMapper aiCallInFieldMapper,
         LedgerService ledgerService,
+        PromptVersionService promptVersionService,
         Canonicalizer canonicalizer,
         ObjectMapper objectMapper,
         Clock clock,
@@ -94,6 +101,7 @@ public class AiReviewService {
         this.aiCallMapper = aiCallMapper;
         this.aiCallInFieldMapper = aiCallInFieldMapper;
         this.ledgerService = ledgerService;
+        this.promptVersionService = promptVersionService;
         this.canonicalizer = canonicalizer;
         this.objectMapper = objectMapper;
         this.clock = clock;
@@ -113,6 +121,7 @@ public class AiReviewService {
         AiCallMapper aiCallMapper,
         AiCallInFieldMapper aiCallInFieldMapper,
         LedgerService ledgerService,
+        PromptVersionService promptVersionService,
         Canonicalizer canonicalizer,
         ObjectMapper objectMapper,
         Clock clock,
@@ -123,12 +132,12 @@ public class AiReviewService {
         FailedAiCallRecorder failedCallRecorder
     ) {
         this(submissionMapper, schemaVersionMapper, datasetItemMapper, taskMapper, aiCallMapper,
-            aiCallInFieldMapper, ledgerService, canonicalizer, objectMapper, clock, aiProvider,
+            aiCallInFieldMapper, ledgerService, promptVersionService, canonicalizer, objectMapper, clock, aiProvider,
             costCalculator, metrics, retryPolicy, failedCallRecorder, AuditLogService.noop());
     }
 
     @Transactional
-    public AiReviewResultView review(Long submissionId, Long ownerId, String promptVersion) {
+    public AiReviewResultView review(Long submissionId, Long ownerId, Long promptVersionId) {
         SubmissionEntity submission = submissionMapper.selectById(submissionId);
         if (submission == null) {
             throw new SubmissionNotFoundException(submissionId);
@@ -140,9 +149,15 @@ public class AiReviewService {
 
         SchemaVersionEntity schemaVersion = schemaVersionMapper.selectById(submission.getSchemaVersionId());
         DatasetItemEntity datasetItem = datasetItemMapper.selectById(submission.getDatasetItemId());
+        PromptVersionEntity promptVersion = promptVersionService.findById(promptVersionId);
+        if (promptVersion == null) {
+            throw new PromptVersionNotFoundException(promptVersionId);
+        }
+        String promptVersionLabel = promptVersionLabel(promptVersion);
+        String providerAdapterVersion = PROVIDER_ADAPTER_VERSION;
         Map<String, Object> input = buildInput(submission, schemaVersion, datasetItem, task);
         String inputHash = hash(input);
-        String idempotencyKey = idempotencyKey(submissionId, promptVersion);
+        String idempotencyKey = idempotencyKey(submissionId, promptVersion.getId(), providerAdapterVersion);
 
         AiCallEntity existing = aiCallMapper.selectByIdempotencyKey(idempotencyKey);
         if (existing != null) {
@@ -160,7 +175,15 @@ public class AiReviewService {
         metrics.recordMiss(aiProvider.providerName());
         ProviderInvocationResult invocation;
         try {
-            invocation = invokeProvider(submissionId, promptVersion, input, inputHash, idempotencyKey);
+            invocation = invokeProvider(
+                submissionId,
+                promptVersionLabel,
+                promptVersion.getId(),
+                providerAdapterVersion,
+                input,
+                inputHash,
+                idempotencyKey
+            );
         } catch (AiProviderFailureException exception) {
             auditLogService.recordRequiresNew(
                 AuditEventBuilder.forAction(AuditActions.AI_REVIEW_FAILED)
@@ -168,7 +191,9 @@ public class AiReviewService {
                     .resource("submission", submissionId)
                     .payload("submissionId", submissionId)
                     .payload("taskId", submission.getTaskId())
-                    .payload("promptVersion", promptVersion)
+                    .payload("promptVersion", promptVersionLabel)
+                    .payload("promptVersionId", promptVersion.getId())
+                    .payload("providerAdapterVersion", providerAdapterVersion)
                     .payload("provider", aiProvider.providerName())
                     .payload("model", aiProvider.modelName())
                     .payload("inputHash", inputHash)
@@ -186,7 +211,9 @@ public class AiReviewService {
         AiCallEntity aiCall = new AiCallEntity();
         aiCall.setSubmissionId(submissionId);
         aiCall.setPurpose("submission_review");
-        aiCall.setPromptVersion(promptVersion);
+        aiCall.setPromptVersion(promptVersionLabel);
+        aiCall.setPromptVersionId(promptVersion.getId());
+        aiCall.setProviderAdapterVersion(providerAdapterVersion);
         aiCall.setModelProvider(aiProvider.providerName());
         aiCall.setModelName(aiProvider.modelName());
         aiCall.setInputHash(inputHash);
@@ -225,7 +252,9 @@ public class AiReviewService {
                     .payload("aiCallId", aiCall.getId())
                     .payload("fieldFindingCount", fieldFindings.size())
                     .payload("ledgerEntryIds", ledgerEntries.stream().map(QualityLedgerEntryEntity::getId).toList())
-                    .payload("promptVersion", promptVersion)
+                    .payload("promptVersion", promptVersionLabel)
+                    .payload("promptVersionId", promptVersion.getId())
+                    .payload("providerAdapterVersion", providerAdapterVersion)
                     .payload("provider", aiProvider.providerName())
                     .payload("model", aiProvider.modelName())
                     .payload("idempotencyKey", idempotencyKey)
@@ -264,20 +293,24 @@ public class AiReviewService {
 
     private ProviderInvocationResult invokeProvider(
         Long submissionId,
-        String promptVersion,
+        String promptVersionLabel,
+        Long promptVersionId,
+        String providerAdapterVersion,
         Map<String, Object> input,
         String inputHash,
         String idempotencyKey
     ) {
         try {
             return retryPolicy.invokeWithRetry(
-                () -> aiProvider.invokeWithUsage(new AiCallRequest(promptVersion, input, aiProvider.timeout())),
+                () -> aiProvider.invokeWithUsage(new AiCallRequest(promptVersionLabel, input, aiProvider.timeout())),
                 (attemptNumber, exception, willRetry) -> {
                     failedCallRecorder.recordFailedAttempt(
                         submissionId,
                         idempotencyKey,
                         attemptNumber,
-                        promptVersion,
+                        promptVersionLabel,
+                        promptVersionId,
+                        providerAdapterVersion,
                         aiProvider.providerName(),
                         aiProvider.modelName(),
                         inputHash,
@@ -389,13 +422,24 @@ public class AiReviewService {
         return findings;
     }
 
-    private String idempotencyKey(Long submissionId, String promptVersion) {
-        return "submission:%d:provider:%s:model:%s:prompt:%s".formatted(
+    private String idempotencyKey(Long submissionId, Long promptVersionId, String providerAdapterVersion) {
+        String key = "submission:%d:provider:%s:model:%s:promptVersionId:%d:adapter:%s".formatted(
             submissionId,
             aiProvider.providerName(),
             aiProvider.modelName(),
-            promptVersion
+            promptVersionId,
+            providerAdapterVersion
         );
+        if (key.length() > IDEMPOTENCY_KEY_MAX_LENGTH) {
+            throw new IllegalArgumentException(
+                "ai_calls.idempotency_key would exceed " + IDEMPOTENCY_KEY_MAX_LENGTH + " characters"
+            );
+        }
+        return key;
+    }
+
+    private String promptVersionLabel(PromptVersionEntity promptVersion) {
+        return "promptVersion#" + promptVersion.getVersionNumber();
     }
 
     private String hash(Object value) {

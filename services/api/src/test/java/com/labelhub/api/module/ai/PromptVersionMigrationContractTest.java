@@ -50,12 +50,13 @@ class PromptVersionMigrationContractTest {
     }
 
     @Test
-    void trigger_request_contract_stays_on_legacy_prompt_version_for_c1() throws IOException {
+    void trigger_request_contract_hard_switches_to_prompt_version_id_for_c3() throws IOException {
         String openApi = Files.readString(Path.of("../../packages/contracts/openapi/labelhub.yaml"));
 
         assertThat(openApi)
-            .contains("TriggerAiReviewRequest:\n      type: object\n      required: [promptVersion]")
-            .doesNotContain("required: [promptVersionId]");
+            .contains("TriggerAiReviewRequest:\n      type: object\n      required: [promptVersionId]")
+            .contains("promptVersionId:")
+            .doesNotContain("required: [promptVersion]");
     }
 
     private String migrationsText() throws IOException {

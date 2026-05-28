@@ -17,12 +17,14 @@ public interface AiCallMapper {
 
     @Insert("""
         INSERT INTO ai_calls
-        (submission_id, field_path, purpose, prompt_version, model_provider, model_name,
+        (submission_id, field_path, purpose, prompt_version, prompt_version_id, provider_adapter_version,
+         model_provider, model_name,
          input_hash, request_payload, response_payload, scores, verdict, token_input,
          token_output, cost_decimal, prompt_tokens, completion_tokens, total_tokens, cache_hit_tokens,
          latency_ms, status, idempotency_key, created_at, completed_at)
         VALUES
-        (#{submissionId}, #{fieldPath}, #{purpose}, #{promptVersion}, #{modelProvider}, #{modelName},
+        (#{submissionId}, #{fieldPath}, #{purpose}, #{promptVersion}, #{promptVersionId}, #{providerAdapterVersion},
+         #{modelProvider}, #{modelName},
          #{inputHash}, #{requestPayload, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
          #{responsePayload, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
          #{scores, typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},

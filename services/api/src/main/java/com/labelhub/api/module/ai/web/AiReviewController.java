@@ -38,7 +38,7 @@ public class AiReviewController implements AiReviewApi {
         @Valid @RequestBody TriggerAiReviewRequest triggerAiReviewRequest
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(aiReviewDtoMapper.toResult(
-            aiReviewService.review(submissionId, currentUserId(), triggerAiReviewRequest.getPromptVersion())
+            aiReviewService.review(submissionId, currentUserId(), triggerAiReviewRequest.getPromptVersionId())
         ));
     }
 

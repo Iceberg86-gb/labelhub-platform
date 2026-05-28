@@ -6,12 +6,12 @@ import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
 import { AiReviewDrawer } from '../../features/ai/AiReviewDrawer';
+import { useDefaultPromptVersionQuery } from '../../features/ai/useDefaultPromptVersionQuery';
 import { TriggerAiReviewFailure, useTriggerAiReviewMutation } from '../../features/ai/useTriggerAiReviewMutation';
 import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { useSubmissionRenderSchemaQuery } from '../../features/labeling/useSubmissionRenderSchemaQuery';
 import type { AiReviewResult } from '../../entities/ai/aiTypes';
 
-const DEFAULT_PROMPT_VERSION = 'm3-owner-review-v1';
 function parseId(value?: string) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -23,6 +23,7 @@ export function OwnerSubmissionPage() {
   const taskId = parseId(rawTaskId);
   const submissionId = parseId(rawSubmissionId);
   const renderSchemaQuery = useSubmissionRenderSchemaQuery(submissionId ?? 0, { enabled: Boolean(submissionId) });
+  const defaultPromptVersionQuery = useDefaultPromptVersionQuery(Boolean(submissionId));
   const triggerAiReview = useTriggerAiReviewMutation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [latestResult, setLatestResult] = useState<AiReviewResult | null>(null);
@@ -54,9 +55,16 @@ export function OwnerSubmissionPage() {
 
   async function runAiReview() {
     if (!submissionId) return;
+    if (!defaultPromptVersionQuery.data?.id) {
+      Toast.error('默认 Prompt 版本不可用,请稍后重试');
+      return;
+    }
     setDrawerOpen(true);
     try {
-      const result = await triggerAiReview.mutateAsync({ submissionId, promptVersion: DEFAULT_PROMPT_VERSION });
+      const result = await triggerAiReview.mutateAsync({
+        submissionId,
+        promptVersionId: defaultPromptVersionQuery.data.id,
+      });
       setLatestResult(result);
       Toast.success(result.idempotencyHit ? '已复用历史 AI 检查结果' : 'AI 检查完成');
     } catch (error) {
@@ -80,7 +88,14 @@ export function OwnerSubmissionPage() {
             <Tag color="blue">Task #{taskId}</Tag>
           </Space>
         </div>
-        <Button icon={<IconBolt />} theme="solid" type="primary" loading={triggerAiReview.isPending} onClick={runAiReview}>
+        <Button
+          icon={<IconBolt />}
+          theme="solid"
+          type="primary"
+          loading={triggerAiReview.isPending || defaultPromptVersionQuery.isLoading}
+          disabled={defaultPromptVersionQuery.isError}
+          onClick={runAiReview}
+        >
           AI 检查
         </Button>
       </div>

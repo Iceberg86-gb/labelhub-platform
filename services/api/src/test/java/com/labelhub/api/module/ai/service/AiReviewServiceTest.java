@@ -12,8 +12,10 @@ import com.labelhub.api.module.ai.entity.AiCallStatusCodes;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
+import com.labelhub.api.module.ai.exception.PromptVersionNotFoundException;
 import com.labelhub.api.module.ai.mapper.AiCallInFieldMapper;
 import com.labelhub.api.module.ai.mapper.AiCallMapper;
+import com.labelhub.api.module.ai.entity.PromptVersionEntity;
 import com.labelhub.api.module.ai.observability.AiIdempotencyMetrics;
 import com.labelhub.api.module.ai.provider.AiCallRequest;
 import com.labelhub.api.module.ai.provider.AiCallResult;
@@ -75,6 +77,7 @@ class AiReviewServiceTest {
     private final AiCallMapper aiCallMapper = mock(AiCallMapper.class);
     private final AiCallInFieldMapper aiCallInFieldMapper = mock(AiCallInFieldMapper.class);
     private final LedgerService ledgerService = mock(LedgerService.class);
+    private final PromptVersionService promptVersionService = mock(PromptVersionService.class);
     private final AiProvider aiProvider = mock(AiProvider.class);
     private final AiCallCostCalculator costCalculator = mock(AiCallCostCalculator.class);
     private final AiIdempotencyMetrics metrics = mock(AiIdempotencyMetrics.class);
@@ -106,6 +109,7 @@ class AiReviewServiceTest {
             aiCallMapper,
             aiCallInFieldMapper,
             ledgerService,
+            promptVersionService,
             canonicalizer,
             objectMapper,
             clock,
@@ -119,6 +123,7 @@ class AiReviewServiceTest {
         when(aiProvider.providerName()).thenReturn("mock");
         when(aiProvider.modelName()).thenReturn("mock-v1");
         when(aiProvider.timeout()).thenReturn(Duration.ofSeconds(30));
+        when(promptVersionService.findById(1L)).thenReturn(defaultPromptVersion());
         when(aiProvider.invokeWithUsage(any(AiCallRequest.class))).thenAnswer(invocation ->
             new ProviderInvocationResult(aiProvider.invoke(invocation.getArgument(0)), null)
         );
@@ -136,7 +141,7 @@ class AiReviewServiceTest {
         });
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+        AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
@@ -146,7 +151,13 @@ class AiReviewServiceTest {
         assertThat(inserted.getModelProvider()).isEqualTo("mock");
         assertThat(inserted.getModelName()).isEqualTo("mock-v1");
         assertThat(inserted.getStatus()).isEqualTo(AiCallStatusCodes.COMPLETED);
-        assertThat(inserted.getIdempotencyKey()).isEqualTo("submission:300:provider:mock:model:mock-v1:prompt:prompt-v1");
+        assertThat(inserted.getPromptVersion()).isEqualTo("promptVersion#1");
+        assertThat(inserted.getPromptVersionId()).isEqualTo(1L);
+        assertThat(inserted.getProviderAdapterVersion()).isEqualTo("agent-default-v1");
+        assertThat(inserted.getIdempotencyKey()).isEqualTo(
+            "submission:300:provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
+        );
+        assertThat(inserted.getIdempotencyKey().length()).isLessThanOrEqualTo(160);
         assertThat(inserted.getRequestPayload()).doesNotContainKey("labelerId");
         assertThat(inserted.getResponsePayload()).containsEntry("overallSuggestion", "looks_good");
         assertThat(result.idempotencyHit()).isFalse();
@@ -163,7 +174,7 @@ class AiReviewServiceTest {
         });
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         InOrder inOrder = inOrder(aiCallMapper, aiCallInFieldMapper);
         inOrder.verify(aiCallMapper).insert(any(AiCallEntity.class));
@@ -180,7 +191,7 @@ class AiReviewServiceTest {
         });
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+        AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallInFieldEntity> captor = ArgumentCaptor.forClass(AiCallInFieldEntity.class);
         verify(aiCallInFieldMapper).insert(captor.capture());
@@ -199,7 +210,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
@@ -212,7 +223,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+        AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         assertThat(result.aiCall().getOutputHash())
             .isEqualTo(canonicalizer.sha256Hex(canonicalizer.canonicalJson(jsonRoundTrip(providerResult().output()))));
@@ -224,7 +235,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+        AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         Map<String, Object> persistedShape = jsonRoundTrip(result.aiCall().getResponsePayload());
         assertThat(result.aiCall().getOutputHash())
@@ -242,7 +253,7 @@ class AiReviewServiceTest {
         when(aiCallInFieldMapper.selectMaxOrdinal(300L, "field-title")).thenReturn(null);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallInFieldEntity> captor = ArgumentCaptor.forClass(AiCallInFieldEntity.class);
         verify(aiCallInFieldMapper).insert(captor.capture());
@@ -260,7 +271,7 @@ class AiReviewServiceTest {
         when(aiCallInFieldMapper.selectMaxOrdinal(300L, "field-title")).thenReturn(2);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallInFieldEntity> captor = ArgumentCaptor.forClass(AiCallInFieldEntity.class);
         verify(aiCallInFieldMapper).insert(captor.capture());
@@ -273,7 +284,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
@@ -289,7 +300,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
@@ -307,7 +318,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
@@ -327,7 +338,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
@@ -344,7 +355,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
@@ -359,7 +370,7 @@ class AiReviewServiceTest {
             .thenThrow(retryableProviderException("timeout"));
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(AiProviderFailureException.class)
             .hasCauseInstanceOf(AiProviderException.class);
 
@@ -384,7 +395,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper).insert(captor.capture());
@@ -401,7 +412,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
         verify(aiCallMapper, times(2)).insert(captor.capture());
@@ -421,7 +432,7 @@ class AiReviewServiceTest {
             .thenThrow(retryableProviderException("rate_limit"));
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(AiProviderFailureException.class);
 
         verify(aiProvider, times(3)).invokeWithUsage(any(AiCallRequest.class));
@@ -433,7 +444,7 @@ class AiReviewServiceTest {
             .thenThrow(nonRetryableProviderException());
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(AiProviderFailureException.class);
 
         verify(aiProvider, times(1)).invokeWithUsage(any(AiCallRequest.class));
@@ -453,7 +464,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         verify(metrics, times(1)).recordMiss("mock");
         verify(metrics, never()).recordHit(any());
@@ -468,7 +479,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         verify(metrics).recordRetryAttempt("mock");
         verify(metrics).recordMiss("mock");
@@ -480,7 +491,7 @@ class AiReviewServiceTest {
         when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(emptyProviderResult());
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
 
-        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+        AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         assertThat(result.fieldRows()).isEmpty();
         verify(aiCallInFieldMapper, never()).insert(any());
@@ -499,7 +510,7 @@ class AiReviewServiceTest {
         when(ledgerService.appendAiFieldFindings(any(), any(), any(), any()))
             .thenReturn(List.of(ledgerEntry(1000L), ledgerEntry(1001L)));
 
-        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+        AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         assertThat(result.idempotencyHit()).isFalse();
         verify(ledgerService).appendAiFieldFindings(
@@ -520,7 +531,7 @@ class AiReviewServiceTest {
             .thenThrow(nonRetryableProviderException());
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(AiProviderFailureException.class);
 
         AuditEvent event = capturedRequiresNewEvent();
@@ -542,7 +553,7 @@ class AiReviewServiceTest {
         });
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         assertThat(submission.getStatusCode()).isEqualTo("submitted");
     }
@@ -554,7 +565,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
         when(aiCallInFieldMapper.selectBySubmissionAndAiCall(300L, 900L)).thenReturn(List.of(fieldRow(300L, 900L, "field-title", 1)));
 
-        AiReviewResultView result = service.review(300L, 1001L, "prompt-v1");
+        AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         assertThat(result.idempotencyHit()).isTrue();
         assertThat(result.providerResult().overallSuggestion()).isEqualTo("looks_good");
@@ -572,7 +583,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
         when(aiCallInFieldMapper.selectBySubmissionAndAiCall(300L, 900L)).thenReturn(List.of(fieldRow(300L, 900L, "field-title", 1)));
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         verify(metrics).recordHit("mock");
         verify(metrics, never()).recordMiss(any());
@@ -585,7 +596,7 @@ class AiReviewServiceTest {
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenReturn(1);
         when(aiCallInFieldMapper.insert(any())).thenReturn(1);
 
-        service.review(300L, 1001L, "prompt-v1");
+        service.review(300L, 1001L, 1L);
 
         verify(metrics).recordMiss("mock");
         verify(metrics, never()).recordHit(any());
@@ -597,7 +608,7 @@ class AiReviewServiceTest {
         AiCallEntity existing = persistedAiCall("different-input-hash");
         when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(AiInputHashMismatchException.class);
 
         verify(aiProvider, never()).invoke(any());
@@ -608,7 +619,7 @@ class AiReviewServiceTest {
         AiCallEntity existing = persistedAiCall("different-input-hash");
         when(aiCallMapper.selectByIdempotencyKey(existing.getIdempotencyKey())).thenReturn(existing);
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(AiInputHashMismatchException.class);
 
         verify(metrics).recordMismatch("mock");
@@ -646,10 +657,22 @@ class AiReviewServiceTest {
     void review_throws_submission_not_found_when_submission_missing() {
         when(submissionMapper.selectById(300L)).thenReturn(null);
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(SubmissionNotFoundException.class);
 
         verify(aiProvider, never()).invoke(any());
+    }
+
+    @Test
+    void review_throws_prompt_version_not_found_when_prompt_version_id_is_unknown() {
+        when(promptVersionService.findById(99L)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.review(300L, 1001L, 99L))
+            .isInstanceOf(PromptVersionNotFoundException.class)
+            .hasMessageContaining("99");
+
+        verify(aiProvider, never()).invoke(any());
+        verify(aiCallMapper, never()).insert(any());
     }
 
     @Test
@@ -657,7 +680,7 @@ class AiReviewServiceTest {
         when(aiProvider.invokeWithUsage(any())).thenThrow(new AiProviderException("rate limited", true, "rate_limit", 429));
         when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(assignAiCallIds());
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(AiProviderFailureException.class)
             .hasCauseInstanceOf(AiProviderException.class);
 
@@ -670,7 +693,7 @@ class AiReviewServiceTest {
         TaskEntity task = task(10L, 2002L);
         when(taskMapper.selectById(10L)).thenReturn(task);
 
-        assertThatThrownBy(() -> service.review(300L, 1001L, "prompt-v1"))
+        assertThatThrownBy(() -> service.review(300L, 1001L, 1L))
             .isInstanceOf(SubmissionNotFoundException.class);
 
         verify(aiProvider, never()).invoke(any());
@@ -693,7 +716,17 @@ class AiReviewServiceTest {
     }
 
     private String canonicalKey() {
-        return "submission:300:provider:mock:model:mock-v1:prompt:prompt-v1";
+        return "submission:300:provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1";
+    }
+
+    private PromptVersionEntity defaultPromptVersion() {
+        PromptVersionEntity entity = new PromptVersionEntity();
+        entity.setId(1L);
+        entity.setVersionNumber(1);
+        entity.setContent("m3-owner-review-v1");
+        entity.setContentHash("fa76977fd0bdc3f0cc7336855006669f2950381f1a0dc4f0803458bb6f06d456");
+        entity.setStatusCode("published");
+        return entity;
     }
 
     private AiProviderException retryableProviderException(String providerCode) {
@@ -777,7 +810,9 @@ class AiReviewServiceTest {
         entity.setId(900L);
         entity.setSubmissionId(300L);
         entity.setPurpose("submission_review");
-        entity.setPromptVersion("prompt-v1");
+        entity.setPromptVersion("promptVersion#1");
+        entity.setPromptVersionId(1L);
+        entity.setProviderAdapterVersion("agent-default-v1");
         entity.setModelProvider("mock");
         entity.setModelName("mock-v1");
         entity.setInputHash(inputHash);
@@ -787,7 +822,7 @@ class AiReviewServiceTest {
         entity.setCostDecimal(new BigDecimal("0.000100"));
         entity.setLatencyMs(100);
         entity.setStatus(AiCallStatusCodes.COMPLETED);
-        entity.setIdempotencyKey("submission:300:provider:mock:model:mock-v1:prompt:prompt-v1");
+        entity.setIdempotencyKey(canonicalKey());
         entity.setCreatedAt(NOW);
         entity.setCompletedAt(NOW);
         return entity;

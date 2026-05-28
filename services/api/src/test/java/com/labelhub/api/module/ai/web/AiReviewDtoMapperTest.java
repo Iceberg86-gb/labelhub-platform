@@ -122,7 +122,7 @@ class AiReviewDtoMapperTest {
         entity.setId(900L);
         entity.setSubmissionId(300L);
         entity.setPurpose("submission_review");
-        entity.setPromptVersion("prompt-v1");
+        entity.setPromptVersion("promptVersion#1");
         entity.setPromptVersionId(700L);
         entity.setProviderAdapterVersion("agent-default-v1");
         entity.setModelProvider("mock");
@@ -134,7 +134,7 @@ class AiReviewDtoMapperTest {
         entity.setCostDecimal(new BigDecimal("0.000100"));
         entity.setLatencyMs(100);
         entity.setStatus("completed");
-        entity.setIdempotencyKey("submission:300:provider:mock:model:mock-v1:prompt:prompt-v1");
+        entity.setIdempotencyKey("submission:300:provider:mock:model:mock-v1:promptVersionId:700:adapter:agent-default-v1");
         entity.setCreatedAt(LocalDateTime.parse("2026-05-25T12:00:00"));
         entity.setCompletedAt(LocalDateTime.parse("2026-05-25T12:00:00"));
         entity.setRequestPayload(Map.of("secret", "not exposed"));

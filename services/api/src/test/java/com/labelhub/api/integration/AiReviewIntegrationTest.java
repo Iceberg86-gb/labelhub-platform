@@ -86,7 +86,7 @@ class AiReviewIntegrationTest {
         mockMvc.perform(post("/submissions/{submissionId}/ai-review", submissionId)
                 .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"promptVersion\":\"prompt-v1\"}"))
+                .content("{\"promptVersionId\":1}"))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(false))
             .andExpect(jsonPath("$.aiCall.providerName").value("mock"))
@@ -106,7 +106,7 @@ class AiReviewIntegrationTest {
         mockMvc.perform(post("/submissions/{submissionId}/ai-review", submissionId)
                 .header("Authorization", bearer(tokenForUser(1002L, "labeler_demo", "LABELER")))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"promptVersion\":\"prompt-v1\"}"))
+                .content("{\"promptVersionId\":1}"))
             .andExpect(status().isForbidden());
     }
 
@@ -117,7 +117,7 @@ class AiReviewIntegrationTest {
         mockMvc.perform(post("/submissions/{submissionId}/ai-review", submissionId)
                 .header("Authorization", bearer(tokenForUser(2001L, "other_owner", "OWNER")))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"promptVersion\":\"prompt-v1\"}"))
+                .content("{\"promptVersionId\":1}"))
             .andExpect(status().isNotFound());
     }
 
@@ -157,10 +157,10 @@ class AiReviewIntegrationTest {
     void second_trigger_with_same_prompt_returns_idempotency_hit_without_invoking_provider() throws Exception {
         long submissionId = submissionFixture("ai-review-idempotency");
 
-        triggerReview(submissionId, "prompt-v1")
+        triggerReview(submissionId, 1L)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(false));
-        triggerReview(submissionId, "prompt-v1")
+        triggerReview(submissionId, 1L)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(true));
 
@@ -172,9 +172,10 @@ class AiReviewIntegrationTest {
     @Test
     void trigger_with_different_prompt_creates_new_ai_call() throws Exception {
         long submissionId = submissionFixture("ai-review-new-prompt");
+        long secondPromptVersionId = insertPromptVersion(2, "m3-owner-review-v2");
 
-        triggerReview(submissionId, "prompt-v1").andExpect(status().isCreated());
-        triggerReview(submissionId, "prompt-v2")
+        triggerReview(submissionId, 1L).andExpect(status().isCreated());
+        triggerReview(submissionId, secondPromptVersionId)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(false));
 
@@ -182,17 +183,24 @@ class AiReviewIntegrationTest {
             .isEqualTo(2);
     }
 
-    private org.springframework.test.web.servlet.ResultActions triggerReview(long submissionId, String promptVersion) throws Exception {
+    private org.springframework.test.web.servlet.ResultActions triggerReview(long submissionId, Long promptVersionId) throws Exception {
         return mockMvc.perform(post("/submissions/{submissionId}/ai-review", submissionId)
             .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"promptVersion\":\"" + promptVersion + "\"}"));
+            .content("{\"promptVersionId\":" + promptVersionId + "}"));
     }
 
     private long reviewedSubmission(String seed) throws Exception {
         long submissionId = submissionFixture(seed);
-        triggerReview(submissionId, "prompt-v1").andExpect(status().isCreated());
+        triggerReview(submissionId, 1L).andExpect(status().isCreated());
         return submissionId;
+    }
+
+    private long insertPromptVersion(int versionNumber, String content) {
+        return insertAndReturnId("""
+            INSERT INTO prompt_versions(version_no, content, content_hash, status, owner_id, published_at, created_at)
+            VALUES (?, ?, ?, 'published', 1001, NOW(3), NOW(3))
+            """, versionNumber, content, fixedHash("prompt-version-" + versionNumber));
     }
 
     private long submissionFixture(String seed) {
