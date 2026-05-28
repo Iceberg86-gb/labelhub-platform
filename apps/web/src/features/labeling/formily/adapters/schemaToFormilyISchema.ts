@@ -27,6 +27,7 @@ function fieldToSchema(field: SchemaField): ISchema {
     'x-component-props': {
       field,
       placeholder: field.placeholder,
+      mode: field.type === 'multi_select' ? 'multiple' : undefined,
     },
   };
 
@@ -86,4 +87,3 @@ function requiredFieldIds(fields: SchemaField[]): string[] {
 function removeUndefined<T extends Record<string, unknown>>(value: T): T {
   return Object.fromEntries(Object.entries(value).filter(([, entryValue]) => entryValue !== undefined)) as T;
 }
-
