@@ -784,7 +784,7 @@ a {
 
 .schema-designer-grid {
   display: grid;
-  grid-template-columns: 420px minmax(620px, 1fr);
+  grid-template-columns: minmax(340px, 0.85fr) minmax(430px, 1.1fr) minmax(320px, 0.85fr);
   gap: 24px;
   align-items: start;
 }
@@ -815,6 +815,96 @@ a {
   padding: 16px;
   border: 1px dashed #cbd5e1;
   background: #f8fafc;
+}
+
+.designer-preview-panel {
+  display: flex;
+  min-height: 440px;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #d8dee9;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.designer-preview-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.designer-preview-panel__header h3 {
+  margin: 0 0 4px;
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.designer-preview-panel__header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.designer-preview-panel__reset {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.designer-preview-panel__reset:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.designer-preview-panel__body {
+  min-height: 0;
+  padding: 14px;
+  border: 1px solid #e5eaf1;
+  background: #f8fafc;
+}
+
+@media (max-width: 1280px) {
+  .schema-designer-grid {
+    grid-template-columns: minmax(320px, 0.9fr) minmax(430px, 1.1fr);
+  }
+
+  .designer-preview-panel {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1024px) {
+  .schema-designer-page {
+    --schema-designer-canvas-min-width: 0px;
+    overflow-x: visible;
+  }
+
+  .schema-designer-canvas {
+    min-width: 0;
+  }
+
+  .schema-designer-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .schema-designer-header,
+  .schema-designer-panel__header,
+  .designer-preview-panel__header {
+    flex-direction: column;
+  }
+
+  .schema-designer-actions {
+    justify-content: flex-start;
+  }
 }
 
 .schema-json-preview {

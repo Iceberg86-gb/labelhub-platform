@@ -21,6 +21,7 @@ import { PublishSchemaModal } from '../../features/schema-design/PublishSchemaMo
 import { VersionHistoryDrawer } from '../../features/schema-design/VersionHistoryDrawer';
 import { FieldEditor } from '../../features/schema-design/field-editors/FieldEditor';
 import { useSchemaCurrentVersionQuery } from '../../features/schema-design/useSchemaCurrentVersionQuery';
+import { SchemaFormilyPreviewPanel } from '../../features/labeling/formily/preview/SchemaFormilyPreviewPanel';
 
 function parseSchemaId(raw?: string) {
   const schemaId = Number(raw);
@@ -252,6 +253,8 @@ export function OwnerSchemaDesignerPage() {
               <pre className="schema-json-preview">{jsonPreview}</pre>
             </details>
           </Card>
+
+          <SchemaFormilyPreviewPanel schemaFields={draftDocument.fields ?? []} />
         </div>
 
         <PublishSchemaModal
