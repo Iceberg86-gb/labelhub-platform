@@ -865,6 +865,15 @@ paths:
           $ref: '#/components/responses/ErrorNotFound'
         '409':
           $ref: '#/components/responses/ErrorStateConflict'
+        '422':
+          description: |
+            Answer payload failed field-level validation against the session's bound schema version.
+            The response reuses ApiError.fieldErrors; each fieldErrors[].field is the SchemaField stableId
+            and fieldErrors[].message is the validation reason.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /ai-review/rules:
     post:
       tags: [AIReview]
