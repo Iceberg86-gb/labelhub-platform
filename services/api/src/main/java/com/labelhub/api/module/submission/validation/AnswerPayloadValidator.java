@@ -9,10 +9,12 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,19 +28,34 @@ public class AnswerPayloadValidator {
     private static final String FORMAT_INVALID = "格式不正确";
     private static final String REGEX_INVALID = "正则表达式无效";
 
+    private final LinkageEvaluator linkageEvaluator;
+
+    public AnswerPayloadValidator() {
+        this(new LinkageEvaluator());
+    }
+
+    @Autowired
+    public AnswerPayloadValidator(LinkageEvaluator linkageEvaluator) {
+        this.linkageEvaluator = linkageEvaluator;
+    }
+
     public List<AnswerValidationError> validate(SchemaDocument schema, Map<String, Object> answerPayload) {
         List<SchemaField> fields = schema == null || schema.getFields() == null ? List.of() : schema.getFields();
         Map<String, Object> payload = answerPayload == null ? Map.of() : answerPayload;
+        Map<String, Object> flatValues = buildFlatValueIndex(fields, payload);
         return fields.stream()
-            .flatMap(field -> validateField(field, payload.get(field.getStableId())).stream())
+            .flatMap(field -> validateField(field, payload.get(field.getStableId()), flatValues).stream())
             .toList();
     }
 
-    private List<AnswerValidationError> validateField(SchemaField field, Object value) {
+    private List<AnswerValidationError> validateField(SchemaField field, Object value, Map<String, Object> flatValues) {
         if (field == null) {
             return List.of();
         }
-        boolean required = isRequired(field);
+        if (!isVisible(field, flatValues)) {
+            return List.of();
+        }
+        boolean required = isRequired(field) || isConditionallyRequired(field, flatValues);
         boolean empty = isEmpty(value);
 
         if (required && empty) {
@@ -59,7 +76,7 @@ public class AnswerPayloadValidator {
             case SINGLE_SELECT -> validateSingleSelect(field, value);
             case MULTI_SELECT -> validateMultiSelect(field, value);
             case DATE, FILE_UPLOAD -> validateStringShape(field, value);
-            case NESTED_OBJECT -> validateNestedObject(field, value);
+            case NESTED_OBJECT -> validateNestedObject(field, value, flatValues);
         };
     }
 
@@ -135,18 +152,43 @@ public class AnswerPayloadValidator {
         return List.of();
     }
 
-    private List<AnswerValidationError> validateNestedObject(SchemaField field, Object value) {
+    private List<AnswerValidationError> validateNestedObject(SchemaField field, Object value, Map<String, Object> flatValues) {
         if (!(value instanceof Map<?, ?> nested)) {
             return List.of(error(field, OBJECT_REQUIRED));
         }
         List<SchemaField> children = field.getChildren() == null ? List.of() : field.getChildren();
         return children.stream()
-            .flatMap(child -> validateField(child, nested.get(child.getStableId())).stream())
+            .flatMap(child -> validateField(child, nested.get(child.getStableId()), flatValues).stream())
             .toList();
+    }
+
+    private Map<String, Object> buildFlatValueIndex(List<SchemaField> fields, Map<String, Object> payload) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        indexFieldValues(fields, payload, values);
+        return values;
+    }
+
+    private void indexFieldValues(List<SchemaField> fields, Map<?, ?> source, Map<String, Object> values) {
+        for (SchemaField field : fields == null ? List.<SchemaField>of() : fields) {
+            Object value = source == null ? null : source.get(field.getStableId());
+            values.put(field.getStableId(), value);
+            if (field.getType() == SchemaFieldType.NESTED_OBJECT) {
+                Map<?, ?> nestedSource = value instanceof Map<?, ?> nested ? nested : null;
+                indexFieldValues(field.getChildren(), nestedSource, values);
+            }
+        }
     }
 
     private boolean isRequired(SchemaField field) {
         return field.getValidation() != null && Boolean.TRUE.equals(field.getValidation().getRequired());
+    }
+
+    private boolean isVisible(SchemaField field, Map<String, Object> flatValues) {
+        return field.getVisibleWhen() == null || linkageEvaluator.evaluate(field.getVisibleWhen(), flatValues);
+    }
+
+    private boolean isConditionallyRequired(SchemaField field, Map<String, Object> flatValues) {
+        return field.getRequiredWhen() != null && linkageEvaluator.evaluate(field.getRequiredWhen(), flatValues);
     }
 
     private boolean isEmpty(Object value) {
