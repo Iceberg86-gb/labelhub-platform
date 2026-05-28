@@ -17,6 +17,8 @@ type TaskNextStepGuidanceProps = {
   onNavigateToSchema: () => void;
   onScrollToDataset: () => void;
   onPublish: () => void;
+  schemaActionLoading?: boolean;
+  schemaActionDisabled?: boolean;
 };
 
 function statusTag(status: SetupStep['status']) {
@@ -31,7 +33,14 @@ function statusTag(status: SetupStep['status']) {
   return <Tag color="blue">待处理</Tag>;
 }
 
-export function TaskNextStepGuidance({ task, onNavigateToSchema, onScrollToDataset, onPublish }: TaskNextStepGuidanceProps) {
+export function TaskNextStepGuidance({
+  task,
+  onNavigateToSchema,
+  onScrollToDataset,
+  onPublish,
+  schemaActionLoading = false,
+  schemaActionDisabled = false,
+}: TaskNextStepGuidanceProps) {
   const schemaReady = task.currentSchemaVersionId != null;
   const datasetReady = task.currentDatasetId != null;
   const publishReady = schemaReady && datasetReady;
@@ -85,7 +94,14 @@ export function TaskNextStepGuidance({ task, onNavigateToSchema, onScrollToDatas
               {step.helpText}
             </Typography.Text>
             <div className="task-setup-step__actions">
-              <Button disabled={step.disabled} size="small" theme={step.id === 'publish' ? 'solid' : 'light'} type={step.id === 'publish' ? 'primary' : 'tertiary'} onClick={step.onClick}>
+              <Button
+                disabled={step.disabled || (step.id === 'schema' && schemaActionDisabled)}
+                loading={step.id === 'schema' ? schemaActionLoading : false}
+                size="small"
+                theme={step.id === 'publish' ? 'solid' : 'light'}
+                type={step.id === 'publish' ? 'primary' : 'tertiary'}
+                onClick={step.onClick}
+              >
                 {step.ctaLabel}
               </Button>
             </div>

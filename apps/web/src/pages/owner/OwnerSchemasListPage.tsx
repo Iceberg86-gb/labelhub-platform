@@ -153,7 +153,7 @@ export function OwnerSchemasListPage() {
 
         {isEmpty ? (
           <div className="task-state-panel">
-            <Empty title="暂无 Schema" description="Schema 创建入口将在后续阶段接入任务详情页。" />
+            <Empty title="暂无 Schema" description="请先进入任务详情页，点击“去设计”创建并绑定 Schema。" />
           </div>
         ) : null}
 
@@ -164,4 +164,3 @@ export function OwnerSchemasListPage() {
     </section>
   );
 }
-

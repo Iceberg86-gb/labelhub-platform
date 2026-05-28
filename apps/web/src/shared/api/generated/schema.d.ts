@@ -792,7 +792,7 @@ export interface components {
         };
         CreateSchemaRequest: {
             /** Format: int64 */
-            taskId?: number;
+            taskId: number;
             name: string;
             description?: string;
         };
