@@ -13,7 +13,7 @@ import {
   type VerdictStatus,
 } from '../../entities/quality/qualityTypes';
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
-import { SchemaRenderer } from '../../features/labeling/SchemaRenderer';
+import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { useSubmissionRenderSchemaQuery } from '../../features/labeling/useSubmissionRenderSchemaQuery';
 import { CreateLedgerEntryFailure, useCreateLedgerEntryMutation } from '../../features/quality/useCreateLedgerEntryMutation';
 import { useLedgerEntriesQuery } from '../../features/quality/useLedgerEntriesQuery';
@@ -105,7 +105,7 @@ export function ReviewerSubmissionPage() {
 
       <div className="reviewer-submission-grid">
         <Card className="reviewer-render-card" title="历史 Schema 作答" bordered={false}>
-          <SchemaRenderer fields={schemaVersion.schemaJson.fields} value={answerPayload} onChange={() => {}} readOnly />
+          <SchemaFormilyRenderer schemaFields={schemaVersion.schemaJson.fields} value={answerPayload} onChange={() => {}} readOnly />
         </Card>
 
         <div className="reviewer-side-stack">
