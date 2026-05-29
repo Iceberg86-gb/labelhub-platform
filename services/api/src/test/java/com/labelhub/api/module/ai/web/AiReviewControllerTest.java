@@ -98,11 +98,30 @@ class AiReviewControllerTest {
         verify(aiReviewRuleService).publishRule(19L, 1001L);
     }
 
+    @Test
+    void listAiReviewRules_delegates_to_service_with_current_owner() {
+        AiReviewRuleView view = view();
+        AiReviewRule dto = new AiReviewRule();
+        when(aiReviewRuleService.listRules(44L, 1001L)).thenReturn(List.of(view));
+        when(aiReviewRuleDtoMapper.toRule(view)).thenReturn(dto);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+            new JwtPrincipal(1001L, "owner_demo", List.of("OWNER")),
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_OWNER"))
+        ));
+
+        var response = controller.listAiReviewRules(44L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsExactly(dto);
+        verify(aiReviewRuleService).listRules(44L, 1001L);
+    }
+
     private AiReviewRuleView view() {
         AiReviewRuleEntity rule = new AiReviewRuleEntity();
         rule.setId(19L);
         PromptVersionEntity promptVersion = new PromptVersionEntity();
         promptVersion.setId(7L);
-        return new AiReviewRuleView(rule, promptVersion);
+        return new AiReviewRuleView(rule, promptVersion, false);
     }
 }

@@ -45,12 +45,42 @@ class AiReviewRuleInfrastructureContractTest {
             .contains("AiReviewRuleStatus:")
             .contains("enum: [draft, published]")
             .contains("AiReviewRule:\n      type: object")
-            .contains("required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, status, createdAt]")
+            .contains("required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, status, isCurrent, createdAt]")
             .contains("promptVersionId:")
             .contains("versionNo:")
+            .contains("isCurrent:")
             .contains("activatedAt:");
 
         assertThat(openApi).doesNotContain("conclusionStrategy");
+    }
+
+    @Test
+    void ai_review_rule_read_contract_lists_rules_with_shared_errors() throws IOException {
+        String openApi = Files.readString(Path.of("../../packages/contracts/openapi/labelhub.yaml"));
+
+        assertThat(openApi)
+            .contains("/ai-review/rules:")
+            .contains("operationId: listAiReviewRules")
+            .contains("name: taskId")
+            .contains("required: true")
+            .contains("$ref: '#/components/schemas/AiReviewRule'")
+            .contains("$ref: '#/components/responses/ErrorBadRequest'")
+            .contains("$ref: '#/components/responses/ErrorUnauthorized'")
+            .contains("$ref: '#/components/responses/ErrorForbidden'")
+            .contains("$ref: '#/components/responses/ErrorNotFound'");
+    }
+
+    @Test
+    void ai_review_rule_write_contract_documents_expected_error_responses() throws IOException {
+        String openApi = Files.readString(Path.of("../../packages/contracts/openapi/labelhub.yaml"));
+
+        assertThat(openApi)
+            .contains("operationId: saveAiReviewRule")
+            .contains("operationId: publishAiReviewRule")
+            .contains("$ref: '#/components/responses/ErrorBadRequest'")
+            .contains("$ref: '#/components/responses/ErrorUnauthorized'")
+            .contains("$ref: '#/components/responses/ErrorForbidden'")
+            .contains("$ref: '#/components/responses/ErrorNotFound'");
     }
 
     @Test

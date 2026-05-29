@@ -5,6 +5,7 @@ import com.labelhub.api.module.ai.entity.PromptVersionEntity;
 
 public record AiReviewRuleView(
     AiReviewRuleEntity rule,
-    PromptVersionEntity promptVersion
+    PromptVersionEntity promptVersion,
+    boolean isCurrent
 ) {
 }

@@ -32,6 +32,7 @@ public class AiReviewRuleDtoMapper {
         dto.setDimensions(readDimensions(view.rule().getDimensionsJson()));
         dto.setThreshold(view.rule().getThreshold());
         dto.setStatus(AiReviewRuleStatus.fromValue(view.rule().getStatusCode()));
+        dto.setIsCurrent(view.isCurrent());
         dto.setCreatedAt(offset(view.rule().getCreatedAt()));
         dto.setActivatedAt(offset(view.rule().getActivatedAt()));
         return dto;

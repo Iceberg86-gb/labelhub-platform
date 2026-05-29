@@ -64,7 +64,7 @@ public class AiReviewRuleService {
         entity.setCreatedBy(ownerId);
 
         insertWithVersionRetry(entity);
-        return new AiReviewRuleView(entity, promptVersion);
+        return new AiReviewRuleView(entity, promptVersion, false);
     }
 
     @Transactional
@@ -86,7 +86,19 @@ public class AiReviewRuleService {
         if (promptVersion == null) {
             throw new PromptVersionNotFoundException(rule.getCurrentPromptVersionId());
         }
-        return new AiReviewRuleView(rule, promptVersion);
+        return new AiReviewRuleView(rule, promptVersion, true);
+    }
+
+    public List<AiReviewRuleView> listRules(Long taskId, Long ownerId) {
+        TaskEntity task = requireOwnedTask(taskId, ownerId);
+        Long currentRuleId = task.getCurrentAiReviewRuleId();
+        return aiReviewRuleMapper.selectByTaskIdOrderByVersionAsc(task.getId()).stream()
+            .map(rule -> new AiReviewRuleView(
+                rule,
+                requirePromptVersion(rule.getCurrentPromptVersionId()),
+                Objects.equals(rule.getId(), currentRuleId)
+            ))
+            .toList();
     }
 
     private void insertWithVersionRetry(AiReviewRuleEntity entity) {
@@ -117,6 +129,14 @@ public class AiReviewRuleService {
         if (task == null || !Objects.equals(task.getOwnerId(), ownerId)) {
             throw new AiReviewRuleNotFoundException(rule.getId());
         }
+    }
+
+    private PromptVersionEntity requirePromptVersion(Long promptVersionId) {
+        PromptVersionEntity promptVersion = promptVersionService.findById(promptVersionId);
+        if (promptVersion == null) {
+            throw new PromptVersionNotFoundException(promptVersionId);
+        }
+        return promptVersion;
     }
 
     private void validatePromptTemplate(String promptTemplate) {

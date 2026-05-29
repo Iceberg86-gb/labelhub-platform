@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -59,6 +60,16 @@ public interface AiReviewRuleMapper {
         @Result(column = "activated_at", property = "activatedAt")
     })
     List<AiReviewRuleEntity> selectByTaskId(@Param("taskId") Long taskId);
+
+    @Select("""
+        SELECT id, task_id, version_no, current_prompt_version_id, dimensions_json,
+               threshold, status, created_by, created_at, activated_at
+        FROM ai_review_rules
+        WHERE task_id = #{taskId}
+        ORDER BY version_no ASC
+        """)
+    @ResultMap("aiReviewRulesByTaskResultMap")
+    List<AiReviewRuleEntity> selectByTaskIdOrderByVersionAsc(@Param("taskId") Long taskId);
 
     @Select("""
         SELECT COALESCE(MAX(version_no), 0)

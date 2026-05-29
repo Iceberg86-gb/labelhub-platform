@@ -5,6 +5,7 @@ import com.labelhub.api.generated.model.AiReviewRuleRequest;
 import com.labelhub.api.module.ai.entity.AiReviewRuleEntity;
 import com.labelhub.api.module.ai.entity.PromptVersionEntity;
 import com.labelhub.api.module.ai.exception.InvalidAiReviewRuleException;
+import com.labelhub.api.module.ai.exception.PromptVersionNotFoundException;
 import com.labelhub.api.module.ai.mapper.AiReviewRuleMapper;
 import com.labelhub.api.module.ai.service.view.AiReviewRuleView;
 import com.labelhub.api.module.task.entity.TaskEntity;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class AiReviewRuleServiceTest {
@@ -57,6 +59,7 @@ class AiReviewRuleServiceTest {
         assertThat(result.rule().getThreshold()).isEqualByComparingTo("0.8000");
         assertThat(result.rule().getStatusCode()).isEqualTo("draft");
         assertThat(result.rule().getCreatedBy()).isEqualTo(1001L);
+        assertThat(result.isCurrent()).isFalse();
     }
 
     @Test
@@ -136,6 +139,71 @@ class AiReviewRuleServiceTest {
         verify(taskMapper).updateCurrentAiReviewRuleId(44L, 19L);
         assertThat(result.rule().getStatusCode()).isEqualTo("published");
         assertThat(result.promptVersion()).isSameAs(promptVersion);
+        assertThat(result.isCurrent()).isTrue();
+    }
+
+    @Test
+    void listRules_returns_empty_list_for_owned_task_without_rules() {
+        when(taskMapper.selectById(44L)).thenReturn(task(44L, 1001L, null));
+        when(aiReviewRuleMapper.selectByTaskIdOrderByVersionAsc(44L)).thenReturn(List.of());
+
+        List<AiReviewRuleView> result = service.listRules(44L, 1001L);
+
+        assertThat(result).isEmpty();
+        verify(promptVersionService, never()).findById(any());
+    }
+
+    @Test
+    void listRules_returns_version_asc_and_marks_only_task_pointer_as_current() {
+        when(taskMapper.selectById(44L)).thenReturn(task(44L, 1001L, 20L));
+        AiReviewRuleEntity v1 = draftRule(19L, 44L, 7L, "published");
+        v1.setVersionNumber(1);
+        AiReviewRuleEntity v2 = draftRule(20L, 44L, 8L, "published");
+        v2.setVersionNumber(2);
+        when(aiReviewRuleMapper.selectByTaskIdOrderByVersionAsc(44L)).thenReturn(List.of(v1, v2));
+        PromptVersionEntity promptV1 = promptVersion(7L, "Review prompt v1");
+        PromptVersionEntity promptV2 = promptVersion(8L, "Review prompt v2");
+        when(promptVersionService.findById(7L)).thenReturn(promptV1);
+        when(promptVersionService.findById(8L)).thenReturn(promptV2);
+
+        List<AiReviewRuleView> result = service.listRules(44L, 1001L);
+
+        assertThat(result).extracting(view -> view.rule().getVersionNumber()).containsExactly(1, 2);
+        assertThat(result).extracting(AiReviewRuleView::isCurrent).containsExactly(false, true);
+        assertThat(result).extracting(AiReviewRuleView::promptVersion).containsExactly(promptV1, promptV2);
+    }
+
+    @Test
+    void listRules_marks_all_rules_non_current_when_task_pointer_is_null() {
+        when(taskMapper.selectById(44L)).thenReturn(task(44L, 1001L, null));
+        AiReviewRuleEntity v1 = draftRule(19L, 44L, 7L, "published");
+        when(aiReviewRuleMapper.selectByTaskIdOrderByVersionAsc(44L)).thenReturn(List.of(v1));
+        when(promptVersionService.findById(7L)).thenReturn(promptVersion(7L, "Review prompt"));
+
+        List<AiReviewRuleView> result = service.listRules(44L, 1001L);
+
+        assertThat(result).extracting(AiReviewRuleView::isCurrent).containsExactly(false);
+    }
+
+    @Test
+    void listRules_returns_not_found_for_missing_or_cross_owner_task() {
+        when(taskMapper.selectById(44L)).thenReturn(task(44L, 2002L));
+
+        assertThatThrownBy(() -> service.listRules(44L, 1001L))
+            .isInstanceOf(TaskNotFoundException.class)
+            .hasMessageContaining("Task not found");
+    }
+
+    @Test
+    void listRules_returns_prompt_version_not_found_when_rule_points_to_missing_prompt() {
+        when(taskMapper.selectById(44L)).thenReturn(task(44L, 1001L, 19L));
+        AiReviewRuleEntity rule = draftRule(19L, 44L, 7L, "published");
+        when(aiReviewRuleMapper.selectByTaskIdOrderByVersionAsc(44L)).thenReturn(List.of(rule));
+        when(promptVersionService.findById(7L)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.listRules(44L, 1001L))
+            .isInstanceOf(PromptVersionNotFoundException.class)
+            .hasMessageContaining("Prompt version not found");
     }
 
     private AiReviewRuleRequest request(Long taskId, String prompt, List<String> dimensions, String threshold) {
@@ -143,9 +211,14 @@ class AiReviewRuleServiceTest {
     }
 
     private TaskEntity task(Long taskId, Long ownerId) {
+        return task(taskId, ownerId, null);
+    }
+
+    private TaskEntity task(Long taskId, Long ownerId, Long currentAiReviewRuleId) {
         TaskEntity entity = new TaskEntity();
         entity.setId(taskId);
         entity.setOwnerId(ownerId);
+        entity.setCurrentAiReviewRuleId(currentAiReviewRuleId);
         return entity;
     }
 

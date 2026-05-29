@@ -12,6 +12,7 @@ import com.labelhub.api.module.ai.service.AiReviewService;
 import com.labelhub.api.module.ai.service.AiReviewRuleService;
 import com.labelhub.api.security.JwtPrincipal;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -86,6 +88,13 @@ public class AiReviewController implements AiReviewApi {
     @Override
     public ResponseEntity<AiReviewRule> publishAiReviewRule(@PathVariable("ruleId") Long ruleId) {
         return ResponseEntity.ok(aiReviewRuleDtoMapper.toRule(aiReviewRuleService.publishRule(ruleId, currentUserId())));
+    }
+
+    @Override
+    public ResponseEntity<List<AiReviewRule>> listAiReviewRules(@RequestParam("taskId") Long taskId) {
+        return ResponseEntity.ok(aiReviewRuleService.listRules(taskId, currentUserId()).stream()
+            .map(aiReviewRuleDtoMapper::toRule)
+            .toList());
     }
 
     private ResponseStatusException notImplemented() {
