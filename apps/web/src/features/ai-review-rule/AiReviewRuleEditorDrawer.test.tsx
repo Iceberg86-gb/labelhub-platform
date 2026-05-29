@@ -51,6 +51,16 @@ vi.mock('./useSaveAiReviewRuleMutation', async () => {
   };
 });
 
+vi.mock('./AiReviewRuleHistoryPanel', () => ({
+  AiReviewRuleHistoryPanel: () => (
+    <section data-testid="ai-review-rule-history-section">
+      <h2>版本历史</h2>
+      <button>发布</button>
+      <span>当前生效</span>
+    </section>
+  ),
+}));
+
 describe('aiReviewRuleFormModel', () => {
   it('validates backend-aligned required and duplicate messages', () => {
     expect(validateAiReviewRuleForm({ promptTemplate: ' ', dimensions: ['准确性'], threshold: '0.8' }).promptTemplate)
@@ -114,17 +124,19 @@ describe('aiReviewRuleFormModel', () => {
 });
 
 describe('AiReviewRuleEditorDrawer', () => {
-  it('renders the editor form body without publish, history, or current-state controls', () => {
+  it('keeps publish, history, and current-state controls outside the save form body', () => {
     const html = renderToString(<AiReviewRuleEditorDrawer taskId={22} open onClose={() => {}} />);
+    const formHtml = extractBetween(html, 'data-testid="ai-review-rule-save-form"', 'data-testid="ai-review-rule-history-section"');
 
     expect(html).toContain('AI 审核规则配置');
-    expect(html).toContain('Prompt 模板');
-    expect(html).toContain('评分维度');
-    expect(html).toContain('阈值');
-    expect(html).toContain('保存草稿');
-    expect(html).not.toContain('发布');
-    expect(html).not.toContain('版本历史');
-    expect(html).not.toContain('当前生效');
+    expect(formHtml).toContain('Prompt 模板');
+    expect(formHtml).toContain('评分维度');
+    expect(formHtml).toContain('阈值');
+    expect(formHtml).toContain('保存草稿');
+    expect(formHtml).not.toContain('发布');
+    expect(formHtml).not.toContain('版本历史');
+    expect(formHtml).not.toContain('当前生效');
+    expect(html).toContain('data-testid="ai-review-rule-history-section"');
   });
 });
 
@@ -143,4 +155,12 @@ function makeRule(overrides: Partial<AiReviewRule> = {}): AiReviewRule {
     activatedAt: null,
     ...overrides,
   };
+}
+
+function extractBetween(value: string, start: string, end: string): string {
+  const startIndex = value.indexOf(start);
+  const endIndex = value.indexOf(end);
+  expect(startIndex).toBeGreaterThanOrEqual(0);
+  expect(endIndex).toBeGreaterThan(startIndex);
+  return value.slice(startIndex, endIndex);
 }

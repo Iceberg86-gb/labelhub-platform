@@ -590,6 +590,12 @@ a {
   gap: 18px;
 }
 
+.ai-review-rule-save-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .ai-review-rule-editor__intro {
   display: flex;
   flex-direction: column;
@@ -633,6 +639,45 @@ a {
   justify-content: flex-end;
 }
 
+.ai-review-rule-history {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.ai-review-rule-history__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-review-rule-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-review-rule-history__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  box-sizing: border-box;
+}
+
+.ai-review-rule-history__meta {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+}
+
 @media (max-width: 900px) {
   .task-setup-guidance__steps {
     grid-template-columns: 1fr;
@@ -644,6 +689,11 @@ a {
 
   .ai-review-rule-dimension-row {
     align-items: stretch;
+  }
+
+  .ai-review-rule-history__item {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 
