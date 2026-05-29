@@ -28,6 +28,7 @@ vi.mock('@douyinfe/semi-ui', () => ({
   Tag: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
   Tooltip: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
   Typography: {
+    Paragraph: ({ children }: { children?: ReactNode }) => <p>{children}</p>,
     Text: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
   },
 }));
@@ -63,6 +64,29 @@ describe('AiProvenanceCard prompt evidence', () => {
     expect(html).not.toContain('Prompt ID:');
     expect(html).not.toContain('#null');
     expect(html).toContain('Adapter: <!-- -->agent-default-v1');
+  });
+
+  it('renders raw prompt traces when the API exposes them', () => {
+    provenanceQueryMock.mockReturnValueOnce(queryWithCall(makeAiCall({
+      businessPrompt: 'Score the answer against the owner rubric.',
+      renderedPrompt: 'Task 12 / Submission 100 / Rubric v7',
+    })));
+
+    const html = renderToString(<AiProvenanceCard submissionId={100} />);
+
+    expect(html).toContain('Business Prompt');
+    expect(html).toContain('Score the answer against the owner rubric.');
+    expect(html).toContain('Rendered Prompt');
+    expect(html).toContain('Task 12 / Submission 100 / Rubric v7');
+  });
+
+  it('does not render raw prompt sections when the API withholds them', () => {
+    provenanceQueryMock.mockReturnValueOnce(queryWithCall(makeAiCall()));
+
+    const html = renderToString(<AiProvenanceCard submissionId={100} />);
+
+    expect(html).not.toContain('Business Prompt');
+    expect(html).not.toContain('Rendered Prompt');
   });
 });
 

@@ -33,7 +33,7 @@ class AiReviewDtoMapperTest {
         ));
 
         assertThat(result.getIdempotencyHit()).isTrue();
-        assertThat(result.getOverallSuggestion()).isEqualTo(AiReviewResult.OverallSuggestionEnum.LOOKS_GOOD);
+        assertThat(result.getOverallSuggestion()).isEqualTo(AiReviewResult.OverallSuggestionEnum.PASS);
         assertThat(result.getConfidence()).isEqualByComparingTo("0.90");
         assertThat(result.getAiCall().getProviderName()).isEqualTo("mock");
         assertThat(result.getAiCall().getPromptVersionId()).isEqualTo(700L);
@@ -95,9 +95,10 @@ class AiReviewDtoMapperTest {
             );
         return new AiCallResult(
             Map.of(
-                "overallSuggestion", "looks_good",
+                "overallSuggestion", "pass",
                 "confidence", new BigDecimal("0.90"),
                 "summary", "summary",
+                "dimensionScores", List.of(Map.of("dimension", "quality", "score", new BigDecimal("0.90"))),
                 "fieldFindings", List.of(Map.of(
                     "fieldPath", "field-title",
                     "stableId", "field-title",
@@ -107,7 +108,7 @@ class AiReviewDtoMapperTest {
                     "confidence", new BigDecimal("0.90")
                 ))
             ),
-            "looks_good",
+            "pass",
             new BigDecimal("0.90"),
             "summary",
             List.of(finding),

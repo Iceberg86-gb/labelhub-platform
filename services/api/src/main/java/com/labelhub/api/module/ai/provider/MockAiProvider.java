@@ -34,13 +34,18 @@ public class MockAiProvider implements AiProvider {
         List<FieldFinding> findings = generateFindings(schemaFieldsOf(request.input()), "");
         String summary = "Mock 模式生成的字段级反馈,字段数 = " + findings.size();
         Map<String, Object> output = new LinkedHashMap<>();
-        output.put("overallSuggestion", "looks_good");
+        output.put("overallSuggestion", "pass");
         output.put("confidence", CONFIDENCE);
         output.put("summary", summary);
+        output.put("dimensionScores", List.of(Map.of(
+            "dimension", "overall",
+            "score", CONFIDENCE,
+            "reason", "mock provider deterministic pass"
+        )));
         output.put("fieldFindings", findings.stream().map(this::toMap).toList());
         return new AiCallResult(
             output,
-            "looks_good",
+            "pass",
             CONFIDENCE,
             summary,
             findings,

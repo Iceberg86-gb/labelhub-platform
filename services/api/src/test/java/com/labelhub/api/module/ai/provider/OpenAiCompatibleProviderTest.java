@@ -43,6 +43,7 @@ class OpenAiCompatibleProviderTest {
         assertThat(body).containsEntry("model", "test-model");
         assertThat(body).containsEntry("temperature", 0);
         assertThat(body.get("messages")).asList().hasSize(1);
+        assertThat(body).containsKeys("tools", "tool_choice");
     }
 
     @Test
@@ -52,7 +53,7 @@ class OpenAiCompatibleProviderTest {
 
         AiCallResult result = provider.invoke(request());
 
-        assertThat(result.overallSuggestion()).isEqualTo("needs_review");
+        assertThat(result.overallSuggestion()).isEqualTo("manual_review");
         assertThat(result.summary()).isEqualTo("Check title");
         assertThat(result.fieldFindings()).extracting(FieldFinding::fieldPath).containsExactly("field-title");
         assertThat(result.tokenInput()).isEqualTo(11);
@@ -74,7 +75,7 @@ class OpenAiCompatibleProviderTest {
 
         ProviderInvocationResult result = provider.invokeWithUsage(request());
 
-        assertThat(result.result().overallSuggestion()).isEqualTo("needs_review");
+        assertThat(result.result().overallSuggestion()).isEqualTo("manual_review");
         assertThat(result.usage()).isEqualTo(new AiCallUsage(100, 50, 150, 30));
     }
 
@@ -85,7 +86,7 @@ class OpenAiCompatibleProviderTest {
 
         ProviderInvocationResult result = provider.invokeWithUsage(request());
 
-        assertThat(result.result().overallSuggestion()).isEqualTo("needs_review");
+        assertThat(result.result().overallSuggestion()).isEqualTo("manual_review");
         assertThat(result.usage()).isNull();
     }
 
@@ -210,7 +211,7 @@ class OpenAiCompatibleProviderTest {
 
     private static String contentJson() {
         return """
-            {"overallSuggestion":"needs_review","confidence":0.82,"summary":"Check title","fieldFindings":[{"fieldPath":"field-title","stableId":"field-title","label":"Title","severity":"warning","finding":"Needs review","confidence":0.72}]}\
+            {"overallSuggestion":"manual_review","confidence":0.82,"summary":"Check title","dimensionScores":[{"dimension":"quality","score":0.82,"reason":"Needs review"}],"fieldFindings":[{"fieldPath":"field-title","stableId":"field-title","label":"Title","severity":"warning","finding":"Needs review","confidence":0.72}]}\
             """;
     }
 
@@ -220,14 +221,28 @@ class OpenAiCompatibleProviderTest {
 
     private String successResponse(String content, Map<String, Object> usage) throws Exception {
         return objectMapper.writeValueAsString(Map.of(
-            "choices", List.of(Map.of("message", Map.of("content", content))),
+            "choices", List.of(Map.of("message", Map.of(
+                "tool_calls", List.of(Map.of(
+                    "function", Map.of(
+                        "name", "record_ai_review",
+                        "arguments", content
+                    )
+                ))
+            ))),
             "usage", usage
         ));
     }
 
     private String successResponseWithoutUsage(String content) throws Exception {
         return objectMapper.writeValueAsString(Map.of(
-            "choices", List.of(Map.of("message", Map.of("content", content)))
+            "choices", List.of(Map.of("message", Map.of(
+                "tool_calls", List.of(Map.of(
+                    "function", Map.of(
+                        "name", "record_ai_review",
+                        "arguments", content
+                    )
+                ))
+            )))
         ));
     }
 

@@ -135,7 +135,7 @@ class M1ApiIntegrationTest {
             .andExpect(status().isUnauthorized());
 
         mockMvc.perform(post("/internal/ai-review/results").header("X-Internal-Token", INTERNAL_TOKEN))
-            .andExpect(status().isNotFound());
+            .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -45,13 +45,16 @@ public class AiReviewController implements AiReviewApi {
     }
 
     @Override
+    @Deprecated(since = "P-A", forRemoval = false)
     public ResponseEntity<AiReviewResult> triggerSubmissionAiReview(
         @PathVariable("submissionId") Long submissionId,
         @Valid @RequestBody TriggerAiReviewRequest triggerAiReviewRequest
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(aiReviewDtoMapper.toResult(
-            aiReviewService.review(submissionId, currentUserId(), triggerAiReviewRequest.getPromptVersionId())
-        ));
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .header("X-LabelHub-Debug-Only", "manual-ai-review")
+            .body(aiReviewDtoMapper.toResult(
+                aiReviewService.review(submissionId, currentUserId(), triggerAiReviewRequest.getPromptVersionId())
+            ));
     }
 
     @Override

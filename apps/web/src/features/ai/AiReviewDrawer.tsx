@@ -1,7 +1,12 @@
 import { Banner, Empty, SideSheet, Spin, Tag, Typography } from '@douyinfe/semi-ui';
 import type { ReactNode } from 'react';
 import type { AiReviewResult, FieldFinding } from '../../entities/ai/aiTypes';
-import { OVERALL_SUGGESTION_LABELS, SEVERITY_COLORS, SEVERITY_LABELS } from '../../entities/ai/aiTypes';
+import {
+  OVERALL_SUGGESTION_COLORS,
+  OVERALL_SUGGESTION_LABELS,
+  SEVERITY_COLORS,
+  SEVERITY_LABELS,
+} from '../../entities/ai/aiTypes';
 import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 
 type AiReviewDrawerProps = {
@@ -68,7 +73,14 @@ function AiReviewResultPanel({ result }: { result: AiReviewResult }) {
       </div>
 
       <div className="ai-review-meta-grid">
-        <MetaItem label="AI 建议" value={<Tag color="green">{OVERALL_SUGGESTION_LABELS[result.overallSuggestion]}</Tag>} />
+        <MetaItem
+          label="AI 建议"
+          value={
+            <Tag color={OVERALL_SUGGESTION_COLORS[result.overallSuggestion]}>
+              {OVERALL_SUGGESTION_LABELS[result.overallSuggestion]}
+            </Tag>
+          }
+        />
         <MetaItem label="Provider" value={`${aiCall.providerName} / ${aiCall.modelName}`} />
         <MetaItem label="Prompt" value={aiCall.promptVersion} />
         {aiCall.promptVersionId != null ? <MetaItem label="Prompt ID" value={`#${aiCall.promptVersionId}`} /> : null}

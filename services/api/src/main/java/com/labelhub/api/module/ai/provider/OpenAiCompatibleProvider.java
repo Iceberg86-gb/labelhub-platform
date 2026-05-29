@@ -105,9 +105,21 @@ public class OpenAiCompatibleProvider implements AiProvider {
         body.put("model", props.modelName());
         body.put("messages", List.of(Map.of(
             "role", "user",
-            "content", PromptTemplate.build(request.input(), objectMapper)
+            "content", PromptTemplate.build(request.businessPrompt(), request.input(), objectMapper)
         )));
         body.put("temperature", 0);
+        body.put("tools", List.of(Map.of(
+            "type", "function",
+            "function", Map.of(
+                "name", "record_ai_review",
+                "description", "Return one structured AI review result for the submitted labeling payload.",
+                "parameters", aiReviewToolSchema()
+            )
+        )));
+        body.put("tool_choice", Map.of(
+            "type", "function",
+            "function", Map.of("name", "record_ai_review")
+        ));
         return body;
     }
 
@@ -121,11 +133,11 @@ public class OpenAiCompatibleProvider implements AiProvider {
 
     private ProviderInvocationResult invocationResultFromResponse(String responseBody, long latencyMs) {
         Map<String, Object> response = parseJsonObject(responseBody, "AI provider response is not valid JSON");
-        String content = extractContent(response);
-        Map<String, Object> output = parseJsonObject(content, "AI response is not valid JSON");
+        String arguments = extractToolArguments(response);
+        Map<String, Object> output = parseJsonObject(arguments, "AI tool arguments are not valid JSON");
         AiCallResult result = new AiCallResult(
             output,
-            stringOrDefault(output.get("overallSuggestion"), "needs_review"),
+            stringOrDefault(output.get("overallSuggestion"), "manual_review"),
             decimalValue(output.get("confidence")),
             stringValue(output.get("summary")),
             fieldFindings(output.get("fieldFindings")),
@@ -133,12 +145,12 @@ public class OpenAiCompatibleProvider implements AiProvider {
             intPath(response, "usage", "completion_tokens"),
             props.resolvedEstimatedCostPerCall(),
             latencyMs,
-            content
+            arguments
         );
         return new ProviderInvocationResult(result, usageFromResponse(response));
     }
 
-    private String extractContent(Map<String, Object> response) {
+    private String extractToolArguments(Map<String, Object> response) {
         Object choicesValue = response.get("choices");
         if (!(choicesValue instanceof List<?> choices) || choices.isEmpty()) {
             throw new AiProviderException("AI provider response missing choices", false, "missing_choices", null);
@@ -151,11 +163,63 @@ public class OpenAiCompatibleProvider implements AiProvider {
         if (!(messageValue instanceof Map<?, ?> message)) {
             throw new AiProviderException("AI provider response missing message", false, "missing_message", null);
         }
-        Object content = message.get("content");
-        if (content == null || String.valueOf(content).isBlank()) {
-            throw new AiProviderException("AI provider response missing content", false, "missing_content", null);
+        Object toolCallsValue = message.get("tool_calls");
+        if (!(toolCallsValue instanceof List<?> toolCalls) || toolCalls.isEmpty()) {
+            throw new AiProviderException("AI provider response missing function tool call", false, "missing_tool_call", null);
         }
-        return String.valueOf(content);
+        Object firstToolCall = toolCalls.get(0);
+        if (!(firstToolCall instanceof Map<?, ?> toolCall)) {
+            throw new AiProviderException("AI provider response tool call is invalid", false, "invalid_tool_call", null);
+        }
+        Object functionValue = toolCall.get("function");
+        if (!(functionValue instanceof Map<?, ?> function)) {
+            throw new AiProviderException("AI provider response missing function payload", false, "missing_function", null);
+        }
+        Object name = function.get("name");
+        if (!"record_ai_review".equals(name)) {
+            throw new AiProviderException("AI provider response used unexpected function", false, "unexpected_function", null);
+        }
+        Object arguments = function.get("arguments");
+        if (arguments == null || String.valueOf(arguments).isBlank()) {
+            throw new AiProviderException("AI provider response missing function arguments", false, "missing_arguments", null);
+        }
+        return String.valueOf(arguments);
+    }
+
+    private Map<String, Object> aiReviewToolSchema() {
+        Map<String, Object> dimensionScore = Map.of(
+            "type", "object",
+            "required", List.of("dimension", "score"),
+            "properties", Map.of(
+                "dimension", Map.of("type", "string"),
+                "score", Map.of("type", "number", "minimum", 0, "maximum", 1),
+                "reason", Map.of("type", "string")
+            )
+        );
+        Map<String, Object> fieldFinding = Map.of(
+            "type", "object",
+            "required", List.of("fieldPath", "severity", "finding"),
+            "properties", Map.of(
+                "fieldPath", Map.of("type", "string"),
+                "stableId", Map.of("type", "string"),
+                "label", Map.of("type", "string"),
+                "severity", Map.of("type", "string", "enum", List.of("info", "warning", "error")),
+                "finding", Map.of("type", "string"),
+                "confidence", Map.of("type", "number", "minimum", 0, "maximum", 1)
+            )
+        );
+        return Map.of(
+            "type", "object",
+            "required", List.of("overallSuggestion", "confidence", "summary", "dimensionScores", "fieldFindings"),
+            "additionalProperties", false,
+            "properties", Map.of(
+                "overallSuggestion", Map.of("type", "string", "enum", List.of("pass", "reject", "manual_review")),
+                "confidence", Map.of("type", "number", "minimum", 0, "maximum", 1),
+                "summary", Map.of("type", "string"),
+                "dimensionScores", Map.of("type", "array", "items", dimensionScore),
+                "fieldFindings", Map.of("type", "array", "items", fieldFinding)
+            )
+        );
     }
 
     private List<FieldFinding> fieldFindings(Object value) {

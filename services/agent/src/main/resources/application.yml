@@ -13,8 +13,16 @@ management:
 
 labelhub:
   api:
-    base-url: ${LABELHUB_API_BASE_URL:http://localhost:8080}
+    base-url: ${LABELHUB_API_BASE_URL:http://localhost:8080/api}
     internal-token: ${LABELHUB_INTERNAL_TOKEN:dev-internal-token}
+  agent:
+    outbox:
+      worker-id: ${LABELHUB_AGENT_WORKER_ID:agent-local}
+      poll-delay-ms: ${LABELHUB_AGENT_OUTBOX_POLL_DELAY_MS:5000}
+      batch-size: ${LABELHUB_AGENT_OUTBOX_BATCH_SIZE:10}
+      max-attempts: ${LABELHUB_AGENT_OUTBOX_MAX_ATTEMPTS:3}
+      base-delay-ms: ${LABELHUB_AGENT_OUTBOX_BASE_DELAY_MS:1000}
+      lease-seconds: ${LABELHUB_AGENT_OUTBOX_LEASE_SECONDS:60}
   llm:
     primary-provider: ${LLM_PRIMARY_PROVIDER:doubao}
     doubao:

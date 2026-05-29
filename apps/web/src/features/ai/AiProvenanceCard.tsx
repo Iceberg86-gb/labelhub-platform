@@ -75,7 +75,21 @@ function AiCallItem({ call }: { call: AiCall }) {
           output <TruncatedHash value={call.outputHash} ariaLabel={`AI call ${call.id} output hash`} />
         </span>
       </div>
+      <PromptTrace title="Business Prompt" value={call.businessPrompt} />
+      <PromptTrace title="Rendered Prompt" value={call.renderedPrompt} />
     </div>
+  );
+}
+
+function PromptTrace({ title, value }: { title: string; value?: string | null }) {
+  if (!value) {
+    return null;
+  }
+  return (
+    <section className="ai-review-summary">
+      <Typography.Text type="tertiary">{title}</Typography.Text>
+      <Typography.Paragraph className="mono-value">{value}</Typography.Paragraph>
+    </section>
   );
 }
 

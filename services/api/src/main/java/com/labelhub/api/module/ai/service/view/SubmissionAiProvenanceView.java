@@ -7,5 +7,14 @@ import java.util.List;
 public record SubmissionAiProvenanceView(
     Long submissionId,
     List<AiCallEntity> aiCalls,
-    List<AiCallInFieldEntity> fieldRows
-) {}
+    List<AiCallInFieldEntity> fieldRows,
+    boolean exposeRawPrompt
+) {
+    public SubmissionAiProvenanceView(
+        Long submissionId,
+        List<AiCallEntity> aiCalls,
+        List<AiCallInFieldEntity> fieldRows
+    ) {
+        this(submissionId, aiCalls, fieldRows, false);
+    }
+}

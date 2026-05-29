@@ -68,7 +68,7 @@ function makeResult(aiCall: AiCall): AiReviewResult {
   return {
     aiCall,
     fieldFindings: [],
-    overallSuggestion: 'looks_good',
+    overallSuggestion: 'pass',
     summary: 'ok',
     idempotencyHit: false,
   };

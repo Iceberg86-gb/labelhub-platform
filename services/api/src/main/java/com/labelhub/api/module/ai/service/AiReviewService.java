@@ -25,8 +25,10 @@ import com.labelhub.api.module.ai.provider.AiCallResult;
 import com.labelhub.api.module.ai.provider.AiCallUsage;
 import com.labelhub.api.module.ai.provider.AiProvider;
 import com.labelhub.api.module.ai.provider.FieldFinding;
+import com.labelhub.api.module.ai.provider.PromptTemplate;
 import com.labelhub.api.module.ai.provider.ProviderInvocationResult;
 import com.labelhub.api.module.ai.service.view.AiReviewResultView;
+import com.labelhub.api.module.ai.service.view.InternalAiReviewContextView;
 import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
@@ -77,6 +79,7 @@ public class AiReviewService {
     private final AiRetryPolicy retryPolicy;
     private final FailedAiCallRecorder failedCallRecorder;
     private final AuditLogService auditLogService;
+    private final AiReviewScoringPolicy scoringPolicy;
 
     @Autowired
     public AiReviewService(
@@ -97,7 +100,8 @@ public class AiReviewService {
         AiIdempotencyMetrics metrics,
         AiRetryPolicy retryPolicy,
         FailedAiCallRecorder failedCallRecorder,
-        AuditLogService auditLogService
+        AuditLogService auditLogService,
+        AiReviewScoringPolicy scoringPolicy
     ) {
         this.submissionMapper = submissionMapper;
         this.schemaVersionMapper = schemaVersionMapper;
@@ -117,6 +121,33 @@ public class AiReviewService {
         this.retryPolicy = retryPolicy;
         this.failedCallRecorder = failedCallRecorder;
         this.auditLogService = auditLogService;
+        this.scoringPolicy = scoringPolicy;
+    }
+
+    public AiReviewService(
+        SubmissionMapper submissionMapper,
+        SchemaVersionMapper schemaVersionMapper,
+        DatasetItemMapper datasetItemMapper,
+        TaskMapper taskMapper,
+        AiCallMapper aiCallMapper,
+        AiReviewRuleMapper aiReviewRuleMapper,
+        AiCallInFieldMapper aiCallInFieldMapper,
+        LedgerService ledgerService,
+        PromptVersionService promptVersionService,
+        Canonicalizer canonicalizer,
+        ObjectMapper objectMapper,
+        Clock clock,
+        AiProvider aiProvider,
+        AiCallCostCalculator costCalculator,
+        AiIdempotencyMetrics metrics,
+        AiRetryPolicy retryPolicy,
+        FailedAiCallRecorder failedCallRecorder,
+        AuditLogService auditLogService
+    ) {
+        this(submissionMapper, schemaVersionMapper, datasetItemMapper, taskMapper, aiCallMapper, aiReviewRuleMapper,
+            aiCallInFieldMapper, ledgerService, promptVersionService, canonicalizer, objectMapper, clock, aiProvider,
+            costCalculator, metrics, retryPolicy, failedCallRecorder, auditLogService,
+            new AiReviewScoringPolicy(new AiReviewScoringProperties()));
     }
 
     public AiReviewService(
@@ -140,7 +171,8 @@ public class AiReviewService {
     ) {
         this(submissionMapper, schemaVersionMapper, datasetItemMapper, taskMapper, aiCallMapper, aiReviewRuleMapper,
             aiCallInFieldMapper, ledgerService, promptVersionService, canonicalizer, objectMapper, clock, aiProvider,
-            costCalculator, metrics, retryPolicy, failedCallRecorder, AuditLogService.noop());
+            costCalculator, metrics, retryPolicy, failedCallRecorder, AuditLogService.noop(),
+            new AiReviewScoringPolicy(new AiReviewScoringProperties()));
     }
 
     @Transactional
@@ -164,6 +196,7 @@ public class AiReviewService {
             throw new PromptVersionNotFoundException(effectivePromptVersionId);
         }
         String promptVersionLabel = promptVersionLabel(promptVersion);
+        String businessPrompt = promptVersion.getContent();
         String providerAdapterVersion = PROVIDER_ADAPTER_VERSION;
         Map<String, Object> input = buildInput(submission, schemaVersion, datasetItem, task);
         String inputHash = hash(input);
@@ -188,6 +221,7 @@ public class AiReviewService {
             invocation = invokeProvider(
                 submissionId,
                 promptVersionLabel,
+                businessPrompt,
                 promptVersion.getId(),
                 aiReviewRuleId,
                 providerAdapterVersion,
@@ -215,10 +249,12 @@ public class AiReviewService {
             );
             throw exception;
         }
-        AiCallResult result = invocation.result();
+        AiCallResult result = normalizedResult(invocation.result(), activeRule);
         AiCallUsage usage = invocation.usage();
         Map<String, Object> responsePayload = persistedJsonShape(result.output());
         String outputHash = hash(responsePayload);
+        Map<String, Object> requestPayload =
+            aiRequestPayload(businessPrompt, PromptTemplate.build(businessPrompt, input, objectMapper), input, result.output());
         LocalDateTime now = LocalDateTime.now(clock);
         AiCallEntity aiCall = new AiCallEntity();
         aiCall.setSubmissionId(submissionId);
@@ -230,8 +266,13 @@ public class AiReviewService {
         aiCall.setModelProvider(aiProvider.providerName());
         aiCall.setModelName(aiProvider.modelName());
         aiCall.setInputHash(inputHash);
-        aiCall.setRequestPayload(input);
+        aiCall.setRequestPayload(requestPayload);
         aiCall.setResponsePayload(responsePayload);
+        aiCall.setScores(Map.of(
+            "finalScore", result.confidence(),
+            "dimensionScores", result.output().getOrDefault("dimensionScores", List.of())
+        ));
+        aiCall.setVerdict(result.overallSuggestion());
         aiCall.setTokenInput(result.tokenInput());
         aiCall.setTokenOutput(result.tokenOutput());
         aiCall.setCostDecimal(costCalculator.computeCost(aiProvider.modelName(), usage));
@@ -274,6 +315,12 @@ public class AiReviewService {
                     .payload("idempotencyKey", idempotencyKey)
             );
         }
+        ledgerService.appendAiOverallRecommendation(
+            submissionId,
+            submission.getTaskId(),
+            aiCall.getId(),
+            aiOverallRecommendationPayload(result)
+        );
         aiCall.setOutputHash(outputHash);
         return new AiReviewResultView(aiCall, result, rows, false);
     }
@@ -301,13 +348,131 @@ public class AiReviewService {
         return new SubmissionAiProvenanceView(
             submissionId,
             aiCalls,
-            aiCallInFieldMapper.selectBySubmissionId(submissionId)
+            aiCallInFieldMapper.selectBySubmissionId(submissionId),
+            isOwner || isReviewer
         );
+    }
+
+    public InternalAiReviewContextView getInternalContext(Long submissionId) {
+        SubmissionEntity submission = submissionMapper.selectById(submissionId);
+        if (submission == null) {
+            throw new SubmissionNotFoundException(submissionId);
+        }
+        TaskEntity task = taskMapper.selectById(submission.getTaskId());
+        if (task == null) {
+            throw new SubmissionNotFoundException(submissionId);
+        }
+        SchemaVersionEntity schemaVersion = schemaVersionMapper.selectById(submission.getSchemaVersionId());
+        DatasetItemEntity datasetItem = datasetItemMapper.selectById(submission.getDatasetItemId());
+        AiReviewRuleEntity activeRule = activeReviewRule(task);
+        Long aiReviewRuleId = activeRule == null ? null : activeRule.getId();
+        PromptVersionEntity promptVersion = activeRule == null
+            ? promptVersionService.resolveDefault()
+            : promptVersionService.findById(activeRule.getCurrentPromptVersionId());
+        if (promptVersion == null) {
+            throw new PromptVersionNotFoundException(activeRule == null ? null : activeRule.getCurrentPromptVersionId());
+        }
+        Map<String, Object> input = buildInput(submission, schemaVersion, datasetItem, task);
+        String businessPrompt = promptVersion.getContent();
+        List<String> dimensions = dimensionsOf(activeRule);
+        BigDecimal threshold = thresholdOf(activeRule);
+        return new InternalAiReviewContextView(
+            submissionId,
+            internalIdempotencyKey(submissionId, promptVersion.getId(), aiReviewRuleId),
+            promptVersionLabel(promptVersion),
+            promptVersion.getId(),
+            aiReviewRuleId,
+            PROVIDER_ADAPTER_VERSION,
+            input,
+            hash(input),
+            dimensions,
+            threshold,
+            scoringPolicy.score(emptyResult(input), dimensions, threshold).rejectFloor(),
+            scoringPolicy.score(emptyResult(input), dimensions, threshold).scoringRuleVersion(),
+            businessPrompt,
+            PromptTemplate.build(businessPrompt, input, objectMapper)
+        );
+    }
+
+    @Transactional
+    public AiReviewResultView recordInternalResult(InternalAiReviewResultCommand command) {
+        SubmissionEntity submission = submissionMapper.selectById(command.submissionId());
+        if (submission == null) {
+            throw new SubmissionNotFoundException(command.submissionId());
+        }
+        TaskEntity task = taskMapper.selectById(submission.getTaskId());
+        if (task == null) {
+            throw new SubmissionNotFoundException(command.submissionId());
+        }
+        SchemaVersionEntity schemaVersion = schemaVersionMapper.selectById(submission.getSchemaVersionId());
+        DatasetItemEntity datasetItem = datasetItemMapper.selectById(submission.getDatasetItemId());
+        AiReviewRuleEntity activeRule = activeReviewRule(task);
+        Long aiReviewRuleId = activeRule == null ? null : activeRule.getId();
+        PromptVersionEntity promptVersion = activeRule == null
+            ? promptVersionService.resolveDefault()
+            : promptVersionService.findById(activeRule.getCurrentPromptVersionId());
+        if (promptVersion == null) {
+            throw new PromptVersionNotFoundException(activeRule == null ? null : activeRule.getCurrentPromptVersionId());
+        }
+        Map<String, Object> input = buildInput(submission, schemaVersion, datasetItem, task);
+        String inputHash = hash(input);
+        AiCallEntity existing = aiCallMapper.selectByIdempotencyKey(command.idempotencyKey());
+        if (existing != null) {
+            if (Objects.equals(existing.getInputHash(), inputHash)) {
+                existing.setOutputHash(hash(existing.getResponsePayload()));
+                List<AiCallInFieldEntity> rows =
+                    aiCallInFieldMapper.selectBySubmissionAndAiCall(command.submissionId(), existing.getId());
+                return new AiReviewResultView(existing, reconstructResult(existing), rows, true);
+            }
+            throw new AiInputHashMismatchException(command.submissionId(), command.idempotencyKey());
+        }
+
+        String businessPrompt = promptVersion.getContent();
+        AiCallResult result = internalCommandResult(command);
+        Map<String, Object> responsePayload = persistedJsonShape(result.output());
+        LocalDateTime now = LocalDateTime.now(clock);
+        AiCallEntity aiCall = new AiCallEntity();
+        aiCall.setSubmissionId(command.submissionId());
+        aiCall.setPurpose("submission_review");
+        aiCall.setPromptVersion(promptVersionLabel(promptVersion));
+        aiCall.setPromptVersionId(promptVersion.getId());
+        aiCall.setAiReviewRuleId(aiReviewRuleId);
+        aiCall.setProviderAdapterVersion(PROVIDER_ADAPTER_VERSION);
+        aiCall.setModelProvider(command.modelProvider() == null ? "agent" : command.modelProvider());
+        aiCall.setModelName(command.modelName() == null ? "unreported" : command.modelName());
+        aiCall.setInputHash(inputHash);
+        aiCall.setRequestPayload(aiRequestPayload(
+            businessPrompt,
+            PromptTemplate.build(businessPrompt, input, objectMapper),
+            input,
+            result.output()
+        ));
+        aiCall.setResponsePayload(responsePayload);
+        aiCall.setScores(scoreMap(command.dimensionScores(), command.finalScore()));
+        aiCall.setVerdict(command.recommendation());
+        aiCall.setTokenInput(command.tokenInput() == null ? 0 : command.tokenInput());
+        aiCall.setTokenOutput(command.tokenOutput() == null ? 0 : command.tokenOutput());
+        aiCall.setCostDecimal(costCalculator.computeCost(aiCall.getModelName(), command.usage()));
+        aiCall.setPromptTokens(command.usage() == null ? null : command.usage().promptTokens());
+        aiCall.setCompletionTokens(command.usage() == null ? null : command.usage().completionTokens());
+        aiCall.setTotalTokens(command.usage() == null ? null : command.usage().totalTokens());
+        aiCall.setCacheHitTokens(command.usage() == null ? null : command.usage().cacheHitTokens());
+        aiCall.setLatencyMs(command.latencyMs() == null ? 0 : command.latencyMs());
+        aiCall.setStatus(AiCallStatusCodes.COMPLETED);
+        aiCall.setIdempotencyKey(command.idempotencyKey());
+        aiCall.setCreatedAt(now);
+        aiCall.setCompletedAt(now);
+        requireOneRow(aiCallMapper.insert(aiCall), "insert ai_call");
+        List<AiCallInFieldEntity> rows = appendFieldRows(command.submissionId(), aiCall.getId(), result.fieldFindings(), now);
+        appendAiEvidenceLedger(command.submissionId(), submission.getTaskId(), aiCall.getId(), result);
+        aiCall.setOutputHash(hash(responsePayload));
+        return new AiReviewResultView(aiCall, result, rows, false);
     }
 
     private ProviderInvocationResult invokeProvider(
         Long submissionId,
         String promptVersionLabel,
+        String businessPrompt,
         Long promptVersionId,
         Long aiReviewRuleId,
         String providerAdapterVersion,
@@ -317,7 +482,9 @@ public class AiReviewService {
     ) {
         try {
             return retryPolicy.invokeWithRetry(
-                () -> aiProvider.invokeWithUsage(new AiCallRequest(promptVersionLabel, input, aiProvider.timeout())),
+                () -> aiProvider.invokeWithUsage(
+                    new AiCallRequest(promptVersionLabel, businessPrompt, input, aiProvider.timeout())
+                ),
                 (attemptNumber, exception, willRetry) -> {
                     failedCallRecorder.recordFailedAttempt(
                         submissionId,
@@ -339,6 +506,144 @@ public class AiReviewService {
         } catch (AiProviderException exception) {
             throw new AiProviderFailureException("AI provider invocation failed", exception);
         }
+    }
+
+    private AiCallResult normalizedResult(AiCallResult result, AiReviewRuleEntity activeRule) {
+        List<String> dimensions = dimensionsOf(activeRule);
+        ScoredAiReview score = scoringPolicy.score(result, dimensions, thresholdOf(activeRule));
+        Map<String, Object> output = new LinkedHashMap<>(result.output());
+        output.put("overallSuggestion", score.recommendation());
+        output.put("confidence", score.finalScore());
+        output.put("finalScore", score.finalScore());
+        output.put("dimensionScores", dimensionScoreMaps(score.dimensionScores()));
+        output.put("threshold", score.threshold());
+        output.put("rejectFloor", score.rejectFloor());
+        output.put("scoringRuleVersion", score.scoringRuleVersion());
+        return new AiCallResult(
+            output,
+            score.recommendation(),
+            score.finalScore(),
+            result.summary(),
+            result.fieldFindings(),
+            result.tokenInput(),
+            result.tokenOutput(),
+            result.cost(),
+            result.latencyMs(),
+            result.rawResponse()
+        );
+    }
+
+    private AiCallResult internalCommandResult(InternalAiReviewResultCommand command) {
+        List<FieldFinding> findings = command.fieldFindings() == null ? List.of() : command.fieldFindings();
+        Map<String, Object> output = command.responsePayload() == null
+            ? new LinkedHashMap<>()
+            : new LinkedHashMap<>(command.responsePayload());
+        output.put("overallSuggestion", command.recommendation());
+        output.put("confidence", command.finalScore());
+        output.put("finalScore", command.finalScore());
+        output.put("summary", command.summary());
+        output.put("dimensionScores", dimensionScoreMaps(command.dimensionScores()));
+        output.put("fieldFindings", findings.stream().map(this::fieldFindingMap).toList());
+        return new AiCallResult(
+            output,
+            command.recommendation(),
+            command.finalScore(),
+            command.summary(),
+            findings,
+            command.tokenInput() == null ? 0 : command.tokenInput(),
+            command.tokenOutput() == null ? 0 : command.tokenOutput(),
+            BigDecimal.ZERO,
+            command.latencyMs() == null ? 0 : command.latencyMs(),
+            command.rawResponse()
+        );
+    }
+
+    private Map<String, Object> aiRequestPayload(
+        String businessPrompt,
+        String renderedPrompt,
+        Map<String, Object> input,
+        Map<String, Object> normalizedOutput
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("businessPrompt", businessPrompt);
+        payload.put("renderedPrompt", renderedPrompt);
+        payload.put("input", input);
+        payload.put("normalizedOutputShape", normalizedOutput);
+        return payload;
+    }
+
+    private Map<String, Object> aiOverallRecommendationPayload(AiCallResult result) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("recommendation", result.overallSuggestion());
+        payload.put("finalScore", result.confidence());
+        payload.put("threshold", result.output().get("threshold"));
+        payload.put("rejectFloor", result.output().get("rejectFloor"));
+        payload.put("scoringRuleVersion", result.output().get("scoringRuleVersion"));
+        payload.put("dimensionScores", result.output().getOrDefault("dimensionScores", List.of()));
+        payload.put("summary", result.summary());
+        return payload;
+    }
+
+    private void appendAiEvidenceLedger(Long submissionId, Long taskId, Long aiCallId, AiCallResult result) {
+        List<FieldFinding> fieldFindings = result.fieldFindings() == null ? List.of() : result.fieldFindings();
+        if (!fieldFindings.isEmpty()) {
+            ledgerService.appendAiFieldFindings(submissionId, taskId, aiCallId, fieldFindings);
+        }
+        ledgerService.appendAiOverallRecommendation(submissionId, taskId, aiCallId, aiOverallRecommendationPayload(result));
+    }
+
+    private List<AiCallInFieldEntity> appendFieldRows(
+        Long submissionId,
+        Long aiCallId,
+        List<FieldFinding> fieldFindings,
+        LocalDateTime now
+    ) {
+        List<AiCallInFieldEntity> rows = new ArrayList<>();
+        for (FieldFinding finding : fieldFindings == null ? List.<FieldFinding>of() : fieldFindings) {
+            AiCallInFieldEntity row = fieldRow(submissionId, aiCallId, finding.fieldPath(), now);
+            requireOneRow(aiCallInFieldMapper.insert(row), "insert ai_call_in_field");
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    private Map<String, Object> scoreMap(List<DimensionScoreValue> dimensionScores, BigDecimal finalScore) {
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("finalScore", finalScore);
+        scores.put("dimensionScores", dimensionScoreMaps(dimensionScores));
+        return scores;
+    }
+
+    private List<Map<String, Object>> dimensionScoreMaps(List<DimensionScoreValue> values) {
+        if (values == null) {
+            return List.of();
+        }
+        return values.stream().map(value -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("dimension", value.dimension());
+            map.put("score", value.score());
+            if (value.reason() != null) {
+                map.put("reason", value.reason());
+            }
+            return map;
+        }).toList();
+    }
+
+    private Map<String, Object> fieldFindingMap(FieldFinding finding) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("fieldPath", finding.fieldPath());
+        if (finding.stableId() != null) {
+            map.put("stableId", finding.stableId());
+        }
+        if (finding.label() != null) {
+            map.put("label", finding.label());
+        }
+        map.put("severity", finding.severity());
+        map.put("finding", finding.finding());
+        if (finding.confidence() != null) {
+            map.put("confidence", finding.confidence());
+        }
+        return map;
     }
 
     private void recordRetryAttempt(boolean willRetry) {
@@ -467,6 +772,61 @@ public class AiReviewService {
             throw new AiReviewRuleNotFoundException(ruleId);
         }
         return rule;
+    }
+
+    private List<String> dimensionsOf(AiReviewRuleEntity rule) {
+        if (rule == null || rule.getDimensionsJson() == null || rule.getDimensionsJson().isBlank()) {
+            return List.of("overall");
+        }
+        try {
+            List<?> raw = objectMapper.readValue(rule.getDimensionsJson(), List.class);
+            List<String> dimensions = raw.stream()
+                .map(String::valueOf)
+                .filter(value -> !value.isBlank())
+                .toList();
+            return dimensions.isEmpty() ? List.of("overall") : dimensions;
+        } catch (JsonProcessingException exception) {
+            throw new IllegalArgumentException("Unable to parse AI review dimensions", exception);
+        }
+    }
+
+    private BigDecimal thresholdOf(AiReviewRuleEntity rule) {
+        if (rule == null || rule.getThreshold() == null) {
+            return scoringPolicy.score(emptyResult(Map.of()), List.of("overall"), null).threshold();
+        }
+        return rule.getThreshold();
+    }
+
+    private String internalIdempotencyKey(Long submissionId, Long promptVersionId, Long aiReviewRuleId) {
+        String key = "submission:%d:ai_review:promptVersionId:%d:adapter:%s".formatted(
+            submissionId,
+            promptVersionId,
+            PROVIDER_ADAPTER_VERSION
+        );
+        if (aiReviewRuleId != null) {
+            key = key + ":ruleVersionId:" + aiReviewRuleId;
+        }
+        if (key.length() > IDEMPOTENCY_KEY_MAX_LENGTH) {
+            throw new IllegalArgumentException(
+                "ai_calls.idempotency_key would exceed " + IDEMPOTENCY_KEY_MAX_LENGTH + " characters"
+            );
+        }
+        return key;
+    }
+
+    private AiCallResult emptyResult(Map<String, Object> input) {
+        return new AiCallResult(
+            Map.of("inputHash", hash(input)),
+            "manual_review",
+            BigDecimal.ZERO,
+            "",
+            List.of(),
+            0,
+            0,
+            BigDecimal.ZERO,
+            0,
+            null
+        );
     }
 
     private String promptVersionLabel(PromptVersionEntity promptVersion) {

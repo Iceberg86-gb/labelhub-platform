@@ -1,6 +1,8 @@
 package com.labelhub.api.module.quality.web;
 
 import com.labelhub.api.generated.model.AiFieldFindingPayload;
+import com.labelhub.api.generated.model.AiOverallRecommendationPayload;
+import com.labelhub.api.generated.model.DimensionScore;
 import com.labelhub.api.generated.model.PagedQualityLedgerEntries;
 import com.labelhub.api.generated.model.PagedReviewerSubmissions;
 import com.labelhub.api.generated.model.QualityLedgerEntry;
@@ -12,6 +14,7 @@ import com.labelhub.api.generated.model.Verdict;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.quality.mapper.ReviewerSubmissionQueueRow;
 import com.labelhub.api.module.quality.service.view.VerdictView;
+import java.math.BigDecimal;
 import com.labelhub.api.module.task.service.PagedResult;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -60,6 +63,9 @@ public class QualityDtoMapper {
         if ("ai_field_finding".equals(entryType)) {
             return toAiFieldFindingPayload(raw);
         }
+        if ("ai_overall_recommendation".equals(entryType)) {
+            return toAiOverallRecommendationPayload(raw);
+        }
         return toReviewerOverallVerdictPayload(raw);
     }
 
@@ -74,6 +80,69 @@ public class QualityDtoMapper {
             dto.setReason(String.valueOf(reason));
         }
         return dto;
+    }
+
+    private AiOverallRecommendationPayload toAiOverallRecommendationPayload(Map<String, Object> raw) {
+        AiOverallRecommendationPayload dto = new AiOverallRecommendationPayload();
+        Object recommendation = raw.get("recommendation");
+        if (recommendation != null) {
+            dto.setRecommendation(AiOverallRecommendationPayload.RecommendationEnum.fromValue(String.valueOf(recommendation)));
+        }
+        Object finalScore = raw.get("finalScore");
+        if (finalScore != null) {
+            dto.setFinalScore(decimalValue(finalScore));
+        }
+        Object threshold = raw.get("threshold");
+        if (threshold != null) {
+            dto.setThreshold(decimalValue(threshold));
+        }
+        Object rejectFloor = raw.get("rejectFloor");
+        if (rejectFloor != null) {
+            dto.setRejectFloor(decimalValue(rejectFloor));
+        }
+        Object scoringRuleVersion = raw.get("scoringRuleVersion");
+        if (scoringRuleVersion != null) {
+            dto.setScoringRuleVersion(String.valueOf(scoringRuleVersion));
+        }
+        Object summary = raw.get("summary");
+        if (summary != null) {
+            dto.setSummary(String.valueOf(summary));
+        }
+        if (raw.get("dimensionScores") instanceof java.util.List<?> rows) {
+            dto.setDimensionScores(rows.stream()
+                .filter(java.util.Map.class::isInstance)
+                .map(java.util.Map.class::cast)
+                .map(this::toDimensionScore)
+                .toList());
+        }
+        return dto;
+    }
+
+    private DimensionScore toDimensionScore(Map<?, ?> raw) {
+        DimensionScore dto = new DimensionScore();
+        Object dimension = raw.get("dimension");
+        if (dimension != null) {
+            dto.setDimension(String.valueOf(dimension));
+        }
+        Object score = raw.get("score");
+        if (score != null) {
+            dto.setScore(decimalValue(score));
+        }
+        Object reason = raw.get("reason");
+        if (reason != null) {
+            dto.setReason(String.valueOf(reason));
+        }
+        return dto;
+    }
+
+    private BigDecimal decimalValue(Object value) {
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        if (value instanceof Number number) {
+            return new BigDecimal(number.toString());
+        }
+        return new BigDecimal(String.valueOf(value));
     }
 
     private AiFieldFindingPayload toAiFieldFindingPayload(Map<String, Object> raw) {
@@ -154,6 +223,9 @@ public class QualityDtoMapper {
             row.getDerivedFromEntryId(),
             LocalDateTime.now(clock)
         )));
+        if (row.getAiRecommendation() != null) {
+            dto.setAiRecommendation(ReviewerSubmissionSummary.AiRecommendationEnum.fromValue(row.getAiRecommendation()));
+        }
         return dto;
     }
 

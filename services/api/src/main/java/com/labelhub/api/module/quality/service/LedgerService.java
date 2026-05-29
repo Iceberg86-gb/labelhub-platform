@@ -33,6 +33,7 @@ public class LedgerService {
 
     static final String REVIEWER_OVERALL_VERDICT = "reviewer_overall_verdict";
     static final String AI_FIELD_FINDING = "ai_field_finding";
+    static final String AI_OVERALL_RECOMMENDATION = "ai_overall_recommendation";
 
     private final SubmissionMapper submissionMapper;
     private final TaskMapper taskMapper;
@@ -151,6 +152,31 @@ public class LedgerService {
         return entries;
     }
 
+    @Transactional(propagation = Propagation.REQUIRED)
+    public QualityLedgerEntryEntity appendAiOverallRecommendation(
+        Long submissionId,
+        Long taskId,
+        Long aiCallId,
+        Map<String, Object> payload
+    ) {
+        Objects.requireNonNull(submissionId, "submissionId");
+        Objects.requireNonNull(taskId, "taskId");
+        Objects.requireNonNull(aiCallId, "aiCallId");
+        validateAiOverallRecommendationPayload(payload);
+
+        QualityLedgerEntryEntity entity = new QualityLedgerEntryEntity();
+        entity.setSubmissionId(submissionId);
+        entity.setTaskId(taskId);
+        entity.setEvidenceType(AI_OVERALL_RECOMMENDATION);
+        entity.setActorType("ai");
+        entity.setActorId(null);
+        entity.setAiCallId(aiCallId);
+        entity.setPayload(payload);
+        entity.setCreatedAt(LocalDateTime.now(clock));
+        requireOneRow(qualityLedgerEntryMapper.insert(entity), "insert ai overall recommendation ledger entry");
+        return entity;
+    }
+
     private SubmissionEntity requireReadableSubmission(Long submissionId, Long requesterUserId, Set<String> requesterRoles) {
         SubmissionEntity submission = submissionMapper.selectById(submissionId);
         if (submission == null) {
@@ -201,6 +227,24 @@ public class LedgerService {
         Object verdict = payload.get("verdict");
         if (!"approve".equals(verdict) && !"reject".equals(verdict)) {
             throw new LedgerEntryPayloadInvalidException("payload.verdict must be 'approve' or 'reject'");
+        }
+    }
+
+    private void validateAiOverallRecommendationPayload(Map<String, Object> payload) {
+        if (payload == null) {
+            throw new LedgerEntryPayloadInvalidException("payload is required");
+        }
+        Object recommendation = payload.get("recommendation");
+        if (!"pass".equals(recommendation) && !"reject".equals(recommendation) && !"manual_review".equals(recommendation)) {
+            throw new LedgerEntryPayloadInvalidException(
+                "payload.recommendation must be 'pass', 'reject', or 'manual_review'"
+            );
+        }
+        if (payload.get("finalScore") == null) {
+            throw new LedgerEntryPayloadInvalidException("payload.finalScore is required");
+        }
+        if (payload.get("scoringRuleVersion") == null) {
+            throw new LedgerEntryPayloadInvalidException("payload.scoringRuleVersion is required");
         }
     }
 
