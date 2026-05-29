@@ -18,6 +18,7 @@ export interface SchemaFormilyRendererProps {
   onChange: (value: AnswerPayload) => void;
   readOnly?: boolean;
   errors?: Map<string, string[]>;
+  onFormReady?: (form: Form<Record<string, unknown>>) => void;
 }
 
 export function SchemaFormilyRenderer({
@@ -26,12 +27,17 @@ export function SchemaFormilyRenderer({
   onChange,
   readOnly = false,
   errors,
+  onFormReady,
 }: SchemaFormilyRendererProps) {
   const form = useMemo(
     () => createSchemaFormilyForm({ schemaFields, value, onChange, readOnly }),
     [schemaFields, value, onChange, readOnly],
   );
   const schema = useMemo(() => schemaToFormilyISchema(schemaFields), [schemaFields]);
+
+  useEffect(() => {
+    onFormReady?.(form);
+  }, [form, onFormReady]);
 
   useEffect(() => {
     applyExternalErrorsToForm(form, schemaFields, errors);

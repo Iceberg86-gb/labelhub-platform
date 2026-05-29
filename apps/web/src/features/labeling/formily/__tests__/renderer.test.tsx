@@ -1,11 +1,11 @@
 import { createForm } from '@formily/core';
-import { renderToString } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 import type { AnswerPayload } from '../../../../entities/submission/answerPayload';
 import { formilyValuesToAnswerPayload } from '../adapters/formilyValuesToAnswerPayload';
 import { schemaToFormilyISchema } from '../adapters/schemaToFormilyISchema';
 import { createSchemaFormilyForm, SchemaFormilyRenderer } from '../SchemaFormilyRenderer';
+import { renderClient } from './renderClient';
 
 const schemaFields: SchemaField[] = [
   { stableId: 'title', label: 'Title', type: 'text', validation: { required: true } },
@@ -50,11 +50,12 @@ const payload: AnswerPayload = {
 
 describe('SchemaFormilyRenderer', () => {
   it('mounts without throwing for a 7-type schema', () => {
-    const html = renderToString(
+    const view = renderClient(
       <SchemaFormilyRenderer schemaFields={schemaFields} value={payload} readOnly={false} onChange={() => {}} />,
     );
-    expect(html).toContain('Title');
-    expect(html).toContain('Meta');
+    expect(view.text()).toContain('Title');
+    expect(view.text()).toContain('Meta');
+    view.unmount();
   });
 
   it('emits sanitized AnswerPayload on Formily field update', () => {
@@ -75,6 +76,24 @@ describe('SchemaFormilyRenderer', () => {
   it('creates a readPretty Formily form in readOnly mode', () => {
     const form = createSchemaFormilyForm({ schemaFields, value: payload, readOnly: true, onChange: () => {} });
     expect(form.readPretty).toBe(true);
+  });
+
+  it('exposes the internal Formily form through onFormReady', () => {
+    const onFormReady = vi.fn();
+    const view = renderClient(
+      <SchemaFormilyRenderer
+        schemaFields={schemaFields}
+        value={payload}
+        readOnly={false}
+        onChange={() => {}}
+        onFormReady={onFormReady}
+      />,
+    );
+
+    const form = onFormReady.mock.calls.at(-1)?.[0];
+    expect(form?.values.title).toBe('Existing');
+    expect(form?.values.meta).toEqual({ note: 'nested' });
+    view.unmount();
   });
 
   it('supports external errors through Formily field state', () => {

@@ -1,4 +1,3 @@
-import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import labelerSessionSource from '../../../../pages/labeler/LabelerSessionPage.tsx?raw';
 import labelerSubmissionSource from '../../../../pages/labeler/LabelerSubmissionPage.tsx?raw';
@@ -9,6 +8,7 @@ import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 import type { AnswerPayload } from '../../../../entities/submission/answerPayload';
 import { createEmptyPreviewPayload, SchemaFormilyPreviewPanel } from '../preview/SchemaFormilyPreviewPanel';
 import { applyExternalErrorsToForm, createSchemaFormilyForm, SchemaFormilyRenderer } from '../SchemaFormilyRenderer';
+import { renderClient } from './renderClient';
 
 function field(overrides: Partial<SchemaField> & Pick<SchemaField, 'stableId' | 'type'>): SchemaField {
   return {
@@ -61,12 +61,13 @@ describe('M7-P2 Formily consumer integration', () => {
   });
 
   it('supports LabelerSubmitted read-only rendering', () => {
-    const html = renderToString(
+    const view = renderClient(
       <SchemaFormilyRenderer schemaFields={basicFields} value={{ field_X: 'submitted' }} readOnly onChange={() => {}} />,
     );
 
-    expect(html).toContain('证据字段');
-    expect(html).toContain('submitted');
+    expect(view.text()).toContain('证据字段');
+    expect(view.text()).toContain('submitted');
+    view.unmount();
   });
 
   it('keeps owner AI review stableId targets compatible with the Formily render path', () => {
@@ -78,13 +79,14 @@ describe('M7-P2 Formily consumer integration', () => {
       confidence: '0.91',
     };
 
-    const html = renderToString(
+    const view = renderClient(
       <SchemaFormilyRenderer schemaFields={basicFields} value={{ field_X: 'owner value' }} readOnly onChange={() => {}} />,
     );
 
-    expect(html).toContain('证据字段');
+    expect(view.text()).toContain('证据字段');
     expect(finding.fieldPath).toBe('field_X');
     expect(finding.label).toBe('证据字段');
+    view.unmount();
   });
 
   it('supports reviewer read-only external field errors', () => {
@@ -106,8 +108,12 @@ describe('M7-P2 Formily consumer integration', () => {
   });
 
   it('keeps designer preview one-way and reactive to field additions', () => {
-    const first = renderToString(<SchemaFormilyPreviewPanel schemaFields={[field({ stableId: 'title', type: 'text', label: '标题' })]} />);
-    const second = renderToString(
+    const view = renderClient(<SchemaFormilyPreviewPanel schemaFields={[field({ stableId: 'title', type: 'text', label: '标题' })]} />);
+
+    expect(view.text()).toContain('标题');
+    expect(view.text()).not.toContain('分数');
+
+    view.rerender(
       <SchemaFormilyPreviewPanel
         schemaFields={[
           field({ stableId: 'title', type: 'text', label: '标题' }),
@@ -116,9 +122,8 @@ describe('M7-P2 Formily consumer integration', () => {
       />,
     );
 
-    expect(first).toContain('标题');
-    expect(first).not.toContain('分数');
-    expect(second).toContain('分数');
+    expect(view.text()).toContain('分数');
     expect(createEmptyPreviewPayload()).toEqual({});
+    view.unmount();
   });
 });

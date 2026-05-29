@@ -1,20 +1,31 @@
 import { Button, Card, Empty, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconSend } from '@douyinfe/semi-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Form } from '@formily/core';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
+import type { SchemaField } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD, type AnswerPayload } from '../../entities/submission/answerPayload';
-import { errorsByStableId, validatePayload } from '../../entities/labeling/payloadValidation';
+import { errorsByStableId, validatePayload, type PayloadValidationError } from '../../entities/labeling/payloadValidation';
 import { createVisibleSchemaFieldsSelector } from '../../entities/labeling/visibleSchemaFields';
 import { AutosaveStatusTag } from '../../features/labeling/AutosaveStatusTag';
+import { DatasetItemContextCard, selectDatasetItemPayload } from '../../features/labeling/DatasetItemContextCard';
 import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { SubmitConfirmModal } from '../../features/labeling/SubmitConfirmModal';
 import { fieldErrorsToStableIdMap, selectVisibleFieldErrors } from '../../features/labeling/serverValidationErrors';
 import { useAutosave } from '../../features/labeling/useAutosave';
+import {
+  applyOfflineDraftHydrationResult,
+  createOfflineDraftHydrationGuard,
+  useOfflineDraftBuffer,
+} from '../../features/labeling/useOfflineDraftBuffer';
+import { useOfflineDraftSync } from '../../features/labeling/useOfflineDraftSync';
 import { useLatestDraftQuery } from '../../features/labeling/useLatestDraftQuery';
 import { useSaveDraftMutation } from '../../features/labeling/useSaveDraftMutation';
 import { useSessionDetailQuery } from '../../features/labeling/useSessionDetailQuery';
 import { SubmitValidationError, useSubmitMutation } from '../../features/labeling/useSubmitMutation';
+import { getUser } from '../../shared/api/auth-storage';
+import { runLabelerSubmitWithOfflineDraft } from './labelerSubmitOfflineDraftFlow';
 
 function parseId(value?: string) {
   const parsed = Number(value);
@@ -34,24 +45,85 @@ export function LabelerSessionPage() {
   const [serverErrors, setServerErrors] = useState<Map<string, string[]> | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const formRef = useRef<Form<Record<string, unknown>> | null>(null);
   const visibleFieldsSelector = useMemo(() => createVisibleSchemaFieldsSelector(), []);
+  const userId = getUser()?.id ?? null;
+  const {
+    hydrate: hydrateOfflineDraftBuffer,
+    bufferPending: bufferPendingOfflineDraft,
+    status: offlineDraftStatus,
+  } = useOfflineDraftBuffer();
+  const {
+    status: offlineDraftSyncStatus,
+    retryPending: retryOfflineDraftSync,
+    syncPendingForSubmit,
+    discardPending: discardOfflineDraft,
+  } = useOfflineDraftSync({
+    enabled: Boolean(userId && sessionId),
+    sessionId,
+  });
   const detail = detailQuery.data;
   const isClaimed = detail?.session.status === 'claimed';
   const fields = detail?.schemaVersion.schemaJson.fields ?? [];
+  const datasetItemContext = useMemo(
+    () =>
+      detail
+        ? selectDatasetItemPayload({
+            claimSnapshot: detail.session.claimSnapshot,
+            datasetItemPayload: detail.datasetItem.itemPayload,
+          })
+        : { payload: null, source: 'none' as const },
+    [detail],
+  );
 
   useEffect(() => {
-    if (!hasInitialized && detailQuery.isSuccess && !draftQuery.isLoading) {
-      setAnswerPayload(coerceAnswerPayload(draftQuery.data?.payload ?? detail?.latestDraft?.payload ?? EMPTY_ANSWER_PAYLOAD));
-      setHasInitialized(true);
+    const hydrationGuard = createOfflineDraftHydrationGuard();
+
+    if (!hasInitialized && sessionId && detail && detailQuery.isSuccess && !draftQuery.isLoading) {
+      const serverPayload = coerceAnswerPayload(draftQuery.data?.payload ?? detail.latestDraft?.payload ?? EMPTY_ANSWER_PAYLOAD);
+      void hydrateOfflineDraftBuffer({
+        userId,
+        sessionId,
+        schemaVersionId: detail.schemaVersion.id,
+        serverPayload,
+      }).then((result) => {
+        applyOfflineDraftHydrationResult(result, hydrationGuard, (payload) => {
+          setAnswerPayload(coerceAnswerPayload(payload));
+          setHasInitialized(true);
+        });
+      });
     }
-  }, [detail?.latestDraft?.payload, detailQuery.isSuccess, draftQuery.data, draftQuery.isLoading, hasInitialized]);
+
+    return () => {
+      hydrationGuard.cancel();
+    };
+  }, [
+    detail,
+    detailQuery.isSuccess,
+    draftQuery.data,
+    draftQuery.isLoading,
+    hasInitialized,
+    hydrateOfflineDraftBuffer,
+    sessionId,
+    userId,
+  ]);
 
   const autosave = useAutosave({
     value: answerPayload ?? EMPTY_ANSWER_PAYLOAD,
     enabled: hasInitialized && isClaimed,
     onSave: async (payload) => {
-      if (!sessionId) return;
-      await saveDraftMutation.mutateAsync({ sessionId, payload });
+      if (!sessionId || !detail) return;
+      try {
+        await saveDraftMutation.mutateAsync({ sessionId, payload });
+      } catch (error) {
+        await bufferPendingOfflineDraft({
+          userId,
+          sessionId,
+          schemaVersionId: detail.schemaVersion.id,
+          payload,
+        });
+        throw error;
+      }
     },
   });
 
@@ -74,9 +146,12 @@ export function LabelerSessionPage() {
     setAnswerPayload(next);
   }, []);
 
+  const handleFormReady = useCallback((form: Form<Record<string, unknown>>) => {
+    formRef.current = form;
+  }, []);
+
   const handleSubmitClick = () => {
-    if (validationErrors.length > 0) {
-      Toast.warning('请先修复字段错误再提交');
+    if (triggerSubmitValidationFeedback({ validationErrors, fields, form: formRef.current })) {
       return;
     }
     setSubmitModalOpen(true);
@@ -84,23 +159,33 @@ export function LabelerSessionPage() {
 
   const handleConfirmSubmit = async () => {
     if (!sessionId) return;
-    await autosave.flush();
-    autosave.disable();
-    try {
-      const submission = await submitMutation.mutateAsync({
-        sessionId,
-        answerPayload: answerPayload ?? EMPTY_ANSWER_PAYLOAD,
-      });
-      Toast.success(`已提交 submission #${submission.id}`);
-      navigate(`/labeler/submissions/${submission.id}`);
-    } catch (error) {
-      if (error instanceof SubmitValidationError) {
+    const finalPayload = answerPayload ?? EMPTY_ANSWER_PAYLOAD;
+    await runLabelerSubmitWithOfflineDraft({
+      sessionId,
+      userId,
+      schemaVersionId: detail?.schemaVersion.id ?? null,
+      finalPayload,
+      flush: autosave.flush,
+      disable: autosave.disable,
+      bufferPending: bufferPendingOfflineDraft,
+      preSync: syncPendingForSubmit,
+      submit: (payload) => submitMutation.mutateAsync({ sessionId, answerPayload: payload }),
+      clearPending: discardOfflineDraft,
+      onSuccess: (submission) => {
+        Toast.success(`已提交 submission #${submission.id}`);
+        navigate(`/labeler/submissions/${submission.id}`);
+      },
+      onBlocked: (message) => {
+        Toast.error(message);
+      },
+      onValidationError: (error: SubmitValidationError) => {
         setServerErrors(fieldErrorsToStableIdMap(error.fieldErrors));
         Toast.error(error.message);
-        return;
-      }
-      Toast.error('提交失败,请稍后重试');
-    }
+      },
+      onGenericError: () => {
+        Toast.error('提交失败,请稍后重试');
+      },
+    });
   };
 
   if (!sessionId) {
@@ -133,7 +218,12 @@ export function LabelerSessionPage() {
           </Space>
         </div>
         <div className="labeler-session-actions">
-          <AutosaveStatusTag autosave={autosave} />
+          <AutosaveStatusTag
+            autosave={autosave}
+            offlineDraft={offlineDraftStatus}
+            offlineSync={offlineDraftSyncStatus}
+            onRetryOfflineDraftSync={sessionId ? () => void retryOfflineDraftSync(sessionId) : undefined}
+          />
           <Button
             icon={<IconSend />}
             type="primary"
@@ -146,6 +236,8 @@ export function LabelerSessionPage() {
         </div>
       </div>
 
+      <DatasetItemContextCard itemPayload={datasetItemContext.payload} sourceLabel={datasetItemContext.source} />
+
       <Card className="labeler-session-card" bodyStyle={{ padding: 24 }}>
         <SchemaFormilyRenderer
           schemaFields={visibleFields}
@@ -153,6 +245,7 @@ export function LabelerSessionPage() {
           onChange={handleAnswerPayloadChange}
           readOnly={!isClaimed}
           errors={visibleFieldErrors}
+          onFormReady={handleFormReady}
         />
       </Card>
 
@@ -166,4 +259,66 @@ export function LabelerSessionPage() {
       />
     </section>
   );
+}
+
+interface SubmitValidationFeedbackOptions {
+  validationErrors: PayloadValidationError[];
+  fields: SchemaField[];
+  form: Pick<Form<Record<string, unknown>>, 'validate'> | null;
+  showWarning?: (message: string) => void;
+  root?: ParentNode;
+}
+
+export function triggerSubmitValidationFeedback({
+  validationErrors,
+  fields,
+  form,
+  showWarning = Toast.warning,
+  root = document,
+}: SubmitValidationFeedbackOptions): boolean {
+  const firstError = validationErrors[0];
+  if (!firstError) {
+    return false;
+  }
+
+  void form?.validate().catch(() => undefined);
+  showWarning(`${fieldLabelForError(fields, firstError.stableId)}: ${firstError.reason}`);
+  scrollToFieldError(firstError.stableId, root);
+  return true;
+}
+
+function fieldLabelForError(fields: SchemaField[], stableId: string): string {
+  return findFieldLabel(fields, stableId) ?? (stableId ? stableId : '字段');
+}
+
+function findFieldLabel(fields: SchemaField[], stableId: string): string | null {
+  for (const field of fields) {
+    if (field.stableId === stableId) {
+      return field.label || field.stableId;
+    }
+    if (field.type === 'nested_object') {
+      const childLabel = findFieldLabel(field.children ?? [], stableId);
+      if (childLabel) {
+        return childLabel;
+      }
+    }
+  }
+  return null;
+}
+
+function scrollToFieldError(stableId: string, root: ParentNode) {
+  const target = root.querySelector<HTMLElement>(`[data-labeling-field-id="${escapeAttributeValue(stableId)}"]`);
+  if (!target) {
+    return;
+  }
+
+  target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  target.querySelector<HTMLElement>('input, textarea, button, [role="combobox"], [tabindex]:not([tabindex="-1"])')?.focus();
+}
+
+function escapeAttributeValue(value: string): string {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(value);
+  }
+  return value.replace(/["\\]/g, '\\$&');
 }

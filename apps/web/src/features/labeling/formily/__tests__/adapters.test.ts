@@ -108,12 +108,26 @@ describe('Formily adapters', () => {
     expect(properties.parent?.properties?.child_a?.['x-component']).toBe('LabelHubTextField');
     expect(properties.text_1?.title).toBe('Text');
     expect(properties.text_1?.description).toBe('Text help');
-    expect(properties.text_1?.['x-component-props']?.placeholder).toBe('Enter text');
+    expect(properties.text_1?.['x-component-props']?.placeholder).toBe('Enter text（至少2字符）');
     expect(schema.required).toEqual(['text_1']);
     expect(properties.single_1?.enum).toEqual([
       { label: 'Alpha', value: 'a' },
       { label: 'Beta', value: 'b' },
     ]);
+  });
+
+  it('adds the text minLength reminder to placeholders', () => {
+    const schema = schemaToFormilyISchema([
+      field({
+        stableId: 'detailed_comment',
+        type: 'text',
+        placeholder: '说明评分依据、主要风险和建议',
+        validation: { minLength: 5 },
+      }),
+    ]);
+    const properties = schema.properties as Record<string, any>;
+
+    expect(properties.detailed_comment?.['x-component-props']?.placeholder).toBe('说明评分依据、主要风险和建议（至少5字符）');
   });
 
   it('preserves historical payload keys on outbound load', () => {

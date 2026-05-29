@@ -17,7 +17,7 @@ export function FieldFrame({ field, children, externalErrors, showRequiredMarker
   const schemaField = fieldFromPropsOrState(field, formilyField);
 
   return (
-    <div className={['labeling-field', errors.length ? 'labeling-field--error' : ''].join(' ')}>
+    <div className={['labeling-field', errors.length ? 'labeling-field--error' : ''].join(' ')} data-labeling-field-id={schemaField?.stableId}>
       <div className="labeling-field__header">
         <Typography.Text strong>{schemaField?.label || formilyField.title || '未命名字段'}</Typography.Text>
         {showRequiredMarker && schemaField?.validation?.required ? (
