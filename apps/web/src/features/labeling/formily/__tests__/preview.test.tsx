@@ -1,7 +1,7 @@
-import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 import { createEmptyPreviewPayload, SchemaFormilyPreviewPanel } from '../preview/SchemaFormilyPreviewPanel';
+import { renderClient } from './renderClient';
 
 function field(overrides: Partial<SchemaField> & Pick<SchemaField, 'stableId' | 'type'>): SchemaField {
   return {
@@ -18,23 +18,28 @@ function field(overrides: Partial<SchemaField> & Pick<SchemaField, 'stableId' | 
 
 describe('SchemaFormilyPreviewPanel', () => {
   it('mounts with empty fields without throwing', () => {
-    const html = renderToString(<SchemaFormilyPreviewPanel schemaFields={[]} />);
-    expect(html).toContain('Schema 预览');
-    expect(html).toContain('暂无字段');
+    const view = renderClient(<SchemaFormilyPreviewPanel schemaFields={[]} />);
+    expect(view.text()).toContain('Schema 预览');
+    expect(view.text()).toContain('暂无字段');
+    view.unmount();
   });
 
   it('re-renders when schemaFields prop changes', () => {
-    const first = renderToString(<SchemaFormilyPreviewPanel schemaFields={[field({ stableId: 'title', type: 'text', label: '标题' })]} />);
-    const second = renderToString(<SchemaFormilyPreviewPanel schemaFields={[field({ stableId: 'score', type: 'number', label: '分数' })]} />);
+    const view = renderClient(<SchemaFormilyPreviewPanel schemaFields={[field({ stableId: 'title', type: 'text', label: '标题' })]} />);
 
-    expect(first).toContain('标题');
-    expect(first).not.toContain('分数');
-    expect(second).toContain('分数');
+    expect(view.text()).toContain('标题');
+    expect(view.text()).not.toContain('分数');
+
+    view.rerender(<SchemaFormilyPreviewPanel schemaFields={[field({ stableId: 'score', type: 'number', label: '分数' })]} />);
+
+    expect(view.text()).toContain('分数');
+    view.unmount();
   });
 
   it('reset action uses an empty local preview AnswerPayload', () => {
-    const html = renderToString(<SchemaFormilyPreviewPanel schemaFields={[field({ stableId: 'title', type: 'text', label: '标题' })]} />);
-    expect(html).toContain('重置预览');
+    const view = renderClient(<SchemaFormilyPreviewPanel schemaFields={[field({ stableId: 'title', type: 'text', label: '标题' })]} />);
+    expect(view.text()).toContain('重置预览');
     expect(createEmptyPreviewPayload()).toEqual({});
+    view.unmount();
   });
 });

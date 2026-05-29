@@ -28,7 +28,7 @@ function fieldToSchema(field: SchemaField): ISchema {
     'x-component': LABEL_HUB_COMPONENTS[field.type],
     'x-component-props': {
       field,
-      placeholder: field.placeholder,
+      placeholder: placeholderWithValidationHint(field),
       mode: field.type === 'multi_select' ? 'multiple' : undefined,
     },
   };
@@ -75,6 +75,17 @@ function validationSchema(validation?: SchemaFieldValidation): Partial<ISchema> 
     maximum: validation.max,
     pattern: validation.pattern,
   });
+}
+
+function placeholderWithValidationHint(field: SchemaField): string | undefined {
+  const placeholder = field.placeholder;
+  const minLength = field.validation?.minLength;
+  if (field.type !== 'text' || !placeholder || minLength == null) {
+    return placeholder;
+  }
+
+  const reminder = `（至少${minLength}字符）`;
+  return placeholder.includes(reminder) ? placeholder : `${placeholder}${reminder}`;
 }
 
 function fieldOptions(options?: SchemaFieldOption[]): ISchema['enum'] {
