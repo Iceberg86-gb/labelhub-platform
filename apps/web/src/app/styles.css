@@ -505,12 +505,14 @@ a {
 .detail-timeline-card,
 .detail-dataset-card,
 .detail-submissions-card,
+.ai-review-rule-entry-card,
 .task-setup-guidance-card {
   border: 1px solid #d8dee9;
 }
 
 .detail-dataset-card,
 .detail-submissions-card,
+.ai-review-rule-entry-card,
 .task-setup-guidance-card {
   grid-column: 1 / -1;
 }
@@ -582,6 +584,55 @@ a {
   min-height: 28px;
 }
 
+.ai-review-rule-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ai-review-rule-editor__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-review-rule-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-review-rule-field__head,
+.ai-review-rule-dimension-row,
+.ai-review-rule-editor__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-review-rule-field__head {
+  justify-content: space-between;
+}
+
+.ai-review-rule-dimensions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-review-rule-dimension-row > :first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ai-review-rule-error {
+  color: #dc2626;
+}
+
+.ai-review-rule-editor__actions {
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
   .task-setup-guidance__steps {
     grid-template-columns: 1fr;
@@ -589,6 +640,10 @@ a {
 
   .task-setup-guidance__header {
     flex-direction: column;
+  }
+
+  .ai-review-rule-dimension-row {
+    align-items: stretch;
   }
 }
 
