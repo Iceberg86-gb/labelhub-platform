@@ -5,6 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { TaskStatusBadge } from '../../entities/task/TaskStatusBadge';
 import { DatasetUploadSection } from '../../features/dataset/DatasetUploadSection';
 import { TrustedExportCard } from '../../features/export/TrustedExportCard';
+import { AiReviewRuleEntryCard } from '../../features/ai-review-rule/AiReviewRuleEntryCard';
+import { AiReviewRuleEditorDrawer } from '../../features/ai-review-rule/AiReviewRuleEditorDrawer';
 import { buildTaskSchemaDraft, findSchemaForTask } from '../../features/schema-design/taskSchemaNavigation';
 import { useCreateSchemaMutation } from '../../features/schema-design/useCreateSchemaMutation';
 import { useSchemasQuery } from '../../features/schema-design/useSchemasQuery';
@@ -75,6 +77,7 @@ export function OwnerTaskDetailPage() {
   const { taskId: rawTaskId } = useParams();
   const taskId = parseTaskId(rawTaskId);
   const [targetStatus, setTargetStatus] = useState<TaskStatus | null>(null);
+  const [aiReviewRuleEditorOpen, setAiReviewRuleEditorOpen] = useState(false);
   const taskQuery = useTaskDetailQuery(taskId ?? 0);
   const transitionsQuery = useTaskTransitionsQuery(taskId ?? 0);
   const schemasQuery = useSchemasQuery({ page: 1, size: 100 });
@@ -111,6 +114,10 @@ export function OwnerTaskDetailPage() {
         : 'Schema 创建失败。';
       Toast.error(message);
     }
+  };
+
+  const openAiReviewRuleEditor = () => {
+    setAiReviewRuleEditorOpen(true);
   };
 
   if (!taskId) {
@@ -214,6 +221,8 @@ export function OwnerTaskDetailPage() {
           </Card>
         ) : null}
 
+        <AiReviewRuleEntryCard taskId={task.id} onOpenEditor={openAiReviewRuleEditor} />
+
         <Card className="detail-dataset-card">
           <DatasetUploadSection task={task} />
         </Card>
@@ -232,6 +241,11 @@ export function OwnerTaskDetailPage() {
       </div>
 
       <TransitionTaskModal task={task} targetStatus={targetStatus} onClose={() => setTargetStatus(null)} />
+      <AiReviewRuleEditorDrawer
+        taskId={task.id}
+        open={aiReviewRuleEditorOpen}
+        onClose={() => setAiReviewRuleEditorOpen(false)}
+      />
     </section>
   );
 }
