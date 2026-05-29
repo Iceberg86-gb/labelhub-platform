@@ -876,6 +876,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiError'
   /ai-review/rules:
+    get:
+      tags: [AIReview]
+      operationId: listAiReviewRules
+      parameters:
+        - in: query
+          name: taskId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: AI review rules for the task, ordered by version number.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AiReviewRule'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
     post:
       tags: [AIReview]
       operationId: saveAiReviewRule
@@ -892,6 +919,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AiReviewRule'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /ai-review/rules/{ruleId}/publish:
     post:
       tags: [AIReview]
@@ -910,6 +945,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AiReviewRule'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
         '404':
           description: Requested resource does not exist.
           content:
@@ -2025,7 +2064,7 @@ components:
           type: number
     AiReviewRule:
       type: object
-      required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, status, createdAt]
+      required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, status, isCurrent, createdAt]
       properties:
         id:
           type: integer
@@ -2048,6 +2087,9 @@ components:
           type: number
         status:
           $ref: '#/components/schemas/AiReviewRuleStatus'
+        isCurrent:
+          type: boolean
+          description: Server-derived. True when this rule id equals the task's current_ai_review_rule_id.
         createdAt:
           type: string
           format: date-time

@@ -62,12 +62,14 @@ class AiReviewRuleMapperContractTest {
         Method insert = AiReviewRuleMapper.class.getDeclaredMethod("insert", AiReviewRuleEntity.class);
         Method selectById = AiReviewRuleMapper.class.getDeclaredMethod("selectById", Long.class);
         Method selectByTaskId = AiReviewRuleMapper.class.getDeclaredMethod("selectByTaskId", Long.class);
+        Method selectByTaskIdOrderByVersionAsc = AiReviewRuleMapper.class.getDeclaredMethod("selectByTaskIdOrderByVersionAsc", Long.class);
         Method selectMaxVersionByTaskId = AiReviewRuleMapper.class.getDeclaredMethod("selectMaxVersionByTaskId", Long.class);
         Method markPublished = AiReviewRuleMapper.class.getDeclaredMethod("markPublished", Long.class);
 
         String insertSql = String.join(" ", insert.getAnnotation(Insert.class).value());
         String selectByIdSql = String.join(" ", selectById.getAnnotation(Select.class).value());
         String selectByTaskIdSql = String.join(" ", selectByTaskId.getAnnotation(Select.class).value());
+        String selectByTaskIdOrderByVersionAscSql = String.join(" ", selectByTaskIdOrderByVersionAsc.getAnnotation(Select.class).value());
         String selectMaxSql = String.join(" ", selectMaxVersionByTaskId.getAnnotation(Select.class).value());
         String markPublishedSql = String.join(" ", markPublished.getAnnotation(Update.class).value());
 
@@ -78,7 +80,14 @@ class AiReviewRuleMapperContractTest {
             .contains("dimensions_json")
             .contains("threshold");
         assertThat(selectByIdSql).contains("FROM ai_review_rules").contains("WHERE id = #{id}");
-        assertThat(selectByTaskIdSql).contains("FROM ai_review_rules").contains("WHERE task_id = #{taskId}");
+        assertThat(selectByTaskIdSql)
+            .contains("FROM ai_review_rules")
+            .contains("WHERE task_id = #{taskId}")
+            .contains("ORDER BY version_no DESC");
+        assertThat(selectByTaskIdOrderByVersionAscSql)
+            .contains("FROM ai_review_rules")
+            .contains("WHERE task_id = #{taskId}")
+            .contains("ORDER BY version_no ASC");
         assertThat(selectMaxSql).contains("MAX(version_no)").contains("FROM ai_review_rules").contains("task_id = #{taskId}");
         assertThat(markPublishedSql)
             .contains("UPDATE ai_review_rules")

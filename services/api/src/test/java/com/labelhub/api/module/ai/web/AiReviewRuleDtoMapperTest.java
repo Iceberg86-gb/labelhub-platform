@@ -32,7 +32,7 @@ class AiReviewRuleDtoMapperTest {
         promptVersion.setId(7L);
         promptVersion.setContent("Review prompt");
 
-        AiReviewRule dto = mapper.toRule(new AiReviewRuleView(rule, promptVersion));
+        AiReviewRule dto = mapper.toRule(new AiReviewRuleView(rule, promptVersion, true));
 
         assertThat(dto.getId()).isEqualTo(19L);
         assertThat(dto.getTaskId()).isEqualTo(44L);
@@ -42,6 +42,28 @@ class AiReviewRuleDtoMapperTest {
         assertThat(dto.getDimensions()).containsExactly("accuracy", "safety");
         assertThat(dto.getThreshold()).isEqualByComparingTo("0.8000");
         assertThat(dto.getStatus()).isEqualTo(AiReviewRuleStatus.DRAFT);
+        assertThat(dto.getIsCurrent()).isTrue();
         assertThat(dto.getCreatedAt()).isNotNull();
+    }
+
+    @Test
+    void maps_is_current_false_for_non_current_rules() {
+        AiReviewRuleEntity rule = new AiReviewRuleEntity();
+        rule.setId(20L);
+        rule.setTaskId(44L);
+        rule.setVersionNumber(4);
+        rule.setCurrentPromptVersionId(8L);
+        rule.setDimensionsJson("[\"accuracy\"]");
+        rule.setThreshold(new BigDecimal("0.7000"));
+        rule.setStatusCode("published");
+        rule.setCreatedAt(LocalDateTime.of(2026, 5, 28, 13, 5));
+
+        PromptVersionEntity promptVersion = new PromptVersionEntity();
+        promptVersion.setId(8L);
+        promptVersion.setContent("Review prompt v2");
+
+        AiReviewRule dto = mapper.toRule(new AiReviewRuleView(rule, promptVersion, false));
+
+        assertThat(dto.getIsCurrent()).isFalse();
     }
 }

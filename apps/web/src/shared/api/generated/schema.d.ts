@@ -411,7 +411,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["listAiReviewRules"];
         put?: never;
         post: operations["saveAiReviewRule"];
         delete?: never;
@@ -1035,6 +1035,8 @@ export interface components {
             dimensions: string[];
             threshold: number;
             status: components["schemas"]["AiReviewRuleStatus"];
+            /** @description Server-derived. True when this rule id equals the task's current_ai_review_rule_id. */
+            isCurrent: boolean;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -2245,6 +2247,32 @@ export interface operations {
             };
         };
     };
+    listAiReviewRules: {
+        parameters: {
+            query: {
+                taskId: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description AI review rules for the task, ordered by version number. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiReviewRule"][];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
     saveAiReviewRule: {
         parameters: {
             query?: never;
@@ -2267,6 +2295,10 @@ export interface operations {
                     "application/json": components["schemas"]["AiReviewRule"];
                 };
             };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
         };
     };
     publishAiReviewRule: {
@@ -2289,6 +2321,8 @@ export interface operations {
                     "application/json": components["schemas"]["AiReviewRule"];
                 };
             };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
             /** @description Requested resource does not exist. */
             404: {
                 headers: {
