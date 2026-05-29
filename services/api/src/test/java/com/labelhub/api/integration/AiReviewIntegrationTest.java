@@ -90,6 +90,11 @@ class AiReviewIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(false))
             .andExpect(jsonPath("$.aiCall.providerName").value("mock"))
+            .andExpect(jsonPath("$.aiCall.promptVersionId").value(1))
+            .andExpect(jsonPath("$.aiCall.aiReviewRuleId").doesNotExist())
+            .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
+                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
+            ))
             .andExpect(jsonPath("$.aiCall.outputHash", hasLength(64)))
             .andExpect(jsonPath("$.fieldFindings", hasSize(1)));
 
@@ -223,6 +228,94 @@ class AiReviewIntegrationTest {
             .andExpect(jsonPath("$.aiCalls[1].providerAdapterVersion").value("agent-default-v1"));
     }
 
+    @Test
+    void active_rule_overrides_request_prompt_and_binds_rule_evidence() throws Exception {
+        long submissionId = submissionFixture("ai-review-active-rule-wins");
+        JsonNode publishedRule = saveAndPublishRule(taskIdForSubmission(submissionId), "rule-specific-prompt");
+        long ruleId = publishedRule.get("id").asLong();
+        long rulePromptVersionId = publishedRule.get("promptVersionId").asLong();
+
+        triggerReview(submissionId, 1L)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.idempotencyHit").value(false))
+            .andExpect(jsonPath("$.aiCall.promptVersionId").value(rulePromptVersionId))
+            .andExpect(jsonPath("$.aiCall.aiReviewRuleId").value(ruleId))
+            .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
+                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:"
+                    + rulePromptVersionId + ":adapter:agent-default-v1:ruleVersionId:" + ruleId
+            ));
+
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT ai_review_rule_id FROM ai_calls WHERE submission_id=?",
+            Long.class,
+            submissionId
+        )).isEqualTo(ruleId);
+    }
+
+    @Test
+    void no_rule_and_active_rule_keys_are_isolated_for_same_submission() throws Exception {
+        long submissionId = submissionFixture("ai-review-rule-key-isolation");
+
+        triggerReview(submissionId, 1L)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.aiCall.aiReviewRuleId").doesNotExist())
+            .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
+                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
+            ));
+
+        JsonNode publishedRule = saveAndPublishRule(taskIdForSubmission(submissionId), "rule-key-isolation-prompt");
+        long ruleId = publishedRule.get("id").asLong();
+        long rulePromptVersionId = publishedRule.get("promptVersionId").asLong();
+
+        triggerReview(submissionId, 1L)
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.idempotencyHit").value(false))
+            .andExpect(jsonPath("$.aiCall.promptVersionId").value(rulePromptVersionId))
+            .andExpect(jsonPath("$.aiCall.aiReviewRuleId").value(ruleId))
+            .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
+                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:"
+                    + rulePromptVersionId + ":adapter:agent-default-v1:ruleVersionId:" + ruleId
+            ));
+
+        assertThat(mockAiProvider.getCallCount()).isEqualTo(2);
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ai_calls WHERE submission_id=?", Integer.class, submissionId))
+            .isEqualTo(2);
+    }
+
+    @Test
+    void dangling_active_rule_pointer_returns_404() throws Exception {
+        long submissionId = submissionFixture("ai-review-dangling-rule");
+        long taskId = taskIdForSubmission(submissionId);
+
+        jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=0");
+        try {
+            jdbcTemplate.update("UPDATE tasks SET current_ai_review_rule_id=? WHERE id=?", 999_999L, taskId);
+        } finally {
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS=1");
+        }
+
+        triggerReview(submissionId, 1L).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void provenance_returns_legacy_and_rule_bound_ai_calls_together() throws Exception {
+        long submissionId = submissionFixture("ai-review-mixed-provenance");
+        String legacyKey = legacyIdempotencyKey(submissionId);
+        insertLegacyAiCall(submissionId, legacyKey);
+        JsonNode publishedRule = saveAndPublishRule(taskIdForSubmission(submissionId), "mixed-provenance-rule");
+        long ruleId = publishedRule.get("id").asLong();
+
+        triggerReview(submissionId, 1L).andExpect(status().isCreated());
+
+        mockMvc.perform(get("/submissions/{submissionId}/ai-review", submissionId)
+                .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.aiCalls", hasSize(2)))
+            .andExpect(jsonPath("$.aiCalls[0].promptVersion").value("m3-owner-review-v1"))
+            .andExpect(jsonPath("$.aiCalls[0].aiReviewRuleId").doesNotExist())
+            .andExpect(jsonPath("$.aiCalls[1].aiReviewRuleId").value(ruleId));
+    }
+
     private org.springframework.test.web.servlet.ResultActions triggerReview(long submissionId, Long promptVersionId) throws Exception {
         return mockMvc.perform(post("/submissions/{submissionId}/ai-review", submissionId)
             .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
@@ -234,6 +327,30 @@ class AiReviewIntegrationTest {
         long submissionId = submissionFixture(seed);
         triggerReview(submissionId, 1L).andExpect(status().isCreated());
         return submissionId;
+    }
+
+    private JsonNode saveAndPublishRule(long taskId, String promptTemplate) throws Exception {
+        JsonNode saved = objectMapper.readTree(mockMvc.perform(post("/ai-review/rules")
+                .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"taskId":%d,"promptTemplate":"%s","dimensions":["accuracy","safety"],"threshold":0.8}
+                    """.formatted(taskId, promptTemplate)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString());
+
+        return objectMapper.readTree(mockMvc.perform(post("/ai-review/rules/{ruleId}/publish", saved.get("id").asLong())
+                .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER"))))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString());
+    }
+
+    private long taskIdForSubmission(long submissionId) {
+        return jdbcTemplate.queryForObject("SELECT task_id FROM submissions WHERE id=?", Long.class, submissionId);
     }
 
     private long insertPromptVersion(int versionNumber, String content) {
