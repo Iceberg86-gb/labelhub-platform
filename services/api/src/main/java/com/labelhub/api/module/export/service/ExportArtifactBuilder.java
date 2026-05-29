@@ -159,13 +159,19 @@ public class ExportArtifactBuilder {
     }
 
     private Map<String, Object> aiCallToCanonical(AiCallEntity call) {
-        return map("id", call.getId(), "submissionId", call.getSubmissionId(), "fieldPath", call.getFieldPath(), "purpose", call.getPurpose(),
-            "promptVersion", call.getPromptVersion(), "promptVersionId", call.getPromptVersionId(),
-            "aiReviewRuleId", call.getAiReviewRuleId(), "providerAdapterVersion", call.getProviderAdapterVersion(),
+        Map<String, Object> row = map("id", call.getId(), "submissionId", call.getSubmissionId(),
+            "fieldPath", call.getFieldPath(), "purpose", call.getPurpose(), "promptVersion", call.getPromptVersion());
+        putIfNotNull(row, "promptVersionId", call.getPromptVersionId());
+        putIfNotNull(row, "aiReviewRuleId", call.getAiReviewRuleId());
+        row.putAll(map("providerAdapterVersion", call.getProviderAdapterVersion(),
             "modelProvider", call.getModelProvider(), "modelName", call.getModelName(),
-            "inputHash", call.getInputHash(), "responsePayload", call.getResponsePayload(), "scores", call.getScores(), "verdict", call.getVerdict(),
-            "tokenInput", call.getTokenInput(), "tokenOutput", call.getTokenOutput(), "costDecimal", call.getCostDecimal(), "latencyMs", call.getLatencyMs(),
-            "status", call.getStatus(), "idempotencyKey", call.getIdempotencyKey(), "createdAt", asString(call.getCreatedAt()), "completedAt", asString(call.getCompletedAt()));
+            "inputHash", call.getInputHash(), "responsePayload", call.getResponsePayload(),
+            "scores", call.getScores(), "verdict", call.getVerdict(), "tokenInput", call.getTokenInput(),
+            "tokenOutput", call.getTokenOutput(), "costDecimal", call.getCostDecimal(),
+            "latencyMs", call.getLatencyMs(), "status", call.getStatus(),
+            "idempotencyKey", call.getIdempotencyKey(), "createdAt", asString(call.getCreatedAt()),
+            "completedAt", asString(call.getCompletedAt())));
+        return row;
     }
 
     private Map<String, Object> aiCallInFieldToCanonical(AiCallInFieldEntity field) {
@@ -189,6 +195,12 @@ public class ExportArtifactBuilder {
             map.put((String) pairs[i], pairs[i + 1]);
         }
         return map;
+    }
+
+    private void putIfNotNull(Map<String, Object> map, String key, Object value) {
+        if (value != null) {
+            map.put(key, value);
+        }
     }
 
     private String asString(LocalDateTime value) {
