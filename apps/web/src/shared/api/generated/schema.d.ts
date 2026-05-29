@@ -612,6 +612,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/ai-review/submissions/{submissionId}/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAiReviewContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1088,6 +1104,14 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             completedAt?: string | null;
+            businessPrompt?: string | null;
+            renderedPrompt?: string | null;
+            requestPayload?: {
+                [key: string]: unknown;
+            } | null;
+            responsePayload?: {
+                [key: string]: unknown;
+            } | null;
         };
         AiCallInField: {
             /** Format: int64 */
@@ -1125,12 +1149,19 @@ export interface components {
             aiCall: components["schemas"]["AiCall"];
             fieldFindings: components["schemas"]["FieldFinding"][];
             /** @enum {string} */
-            overallSuggestion: "looks_good" | "needs_review" | "issues_found";
+            overallSuggestion: "pass" | "reject" | "manual_review";
             /** Format: decimal */
             confidence?: string | null;
             summary?: string | null;
+            dimensionScores?: components["schemas"]["DimensionScore"][];
             idempotencyHit: boolean;
             usage?: components["schemas"]["AiCallUsage"];
+        };
+        DimensionScore: {
+            dimension: string;
+            /** Format: decimal */
+            score: string;
+            reason?: string | null;
         };
         TriggerAiReviewRequest: {
             /** Format: int64 */
@@ -1191,10 +1222,11 @@ export interface components {
         /**
          * @description Quality ledger entry types. M4 implemented `reviewer_overall_verdict`.
          *     M5 adds `ai_field_finding` for AI-derived field-level evidence.
+         *     P-A adds `ai_overall_recommendation` as non-final AI evidence.
          * @enum {string}
          */
-        QualityLedgerEntryType: "reviewer_overall_verdict" | "ai_field_finding";
-        QualityLedgerEntryPayload: components["schemas"]["ReviewerOverallVerdictPayload"] | components["schemas"]["AiFieldFindingPayload"];
+        QualityLedgerEntryType: "reviewer_overall_verdict" | "ai_field_finding" | "ai_overall_recommendation";
+        QualityLedgerEntryPayload: components["schemas"]["ReviewerOverallVerdictPayload"] | components["schemas"]["AiFieldFindingPayload"] | components["schemas"]["AiOverallRecommendationPayload"];
         ReviewerOverallVerdictPayload: {
             /** @enum {string} */
             verdict: "approve" | "reject";
@@ -1209,6 +1241,19 @@ export interface components {
             finding: string;
             /** Format: float */
             confidence?: number;
+        };
+        AiOverallRecommendationPayload: {
+            /** @enum {string} */
+            recommendation: "pass" | "reject" | "manual_review";
+            /** Format: decimal */
+            finalScore: string;
+            /** Format: decimal */
+            threshold?: string | null;
+            /** Format: decimal */
+            rejectFloor?: string | null;
+            scoringRuleVersion: string;
+            dimensionScores?: components["schemas"]["DimensionScore"][];
+            summary?: string | null;
         };
         CreateLedgerEntryRequest: {
             entryType: components["schemas"]["QualityLedgerEntryType"];
@@ -1235,6 +1280,8 @@ export interface components {
             /** Format: date-time */
             submittedAt: string;
             verdict: components["schemas"]["Verdict"];
+            /** @enum {string|null} */
+            aiRecommendation?: "pass" | "reject" | "manual_review" | null;
         };
         PagedReviewerSubmissions: {
             items: components["schemas"]["ReviewerSubmissionSummary"][];
@@ -1315,7 +1362,49 @@ export interface components {
             /** Format: int64 */
             submissionId: number;
             idempotencyKey: string;
-            result: components["schemas"]["AiReviewResult"];
+            result: components["schemas"]["InternalAiReviewResult"];
+        };
+        InternalAiReviewContext: {
+            /** Format: int64 */
+            submissionId: number;
+            idempotencyKey: string;
+            promptVersion: string;
+            /** Format: int64 */
+            promptVersionId: number;
+            /** Format: int64 */
+            aiReviewRuleId?: number | null;
+            providerAdapterVersion: string;
+            input: {
+                [key: string]: unknown;
+            };
+            inputHash: string;
+            dimensions: string[];
+            /** Format: decimal */
+            threshold: string;
+            /** Format: decimal */
+            rejectFloor: string;
+            scoringRuleVersion: string;
+            businessPrompt: string;
+            renderedPrompt: string;
+        };
+        InternalAiReviewResult: {
+            /** @enum {string} */
+            overallSuggestion: "pass" | "reject" | "manual_review";
+            /** Format: decimal */
+            finalScore: string;
+            dimensionScores: components["schemas"]["DimensionScore"][];
+            summary: string;
+            fieldFindings?: components["schemas"]["FieldFinding"][];
+            rawResponse?: string | null;
+            tokenInput?: number | null;
+            tokenOutput?: number | null;
+            usage?: components["schemas"]["AiCallUsage"];
+            latencyMs?: number | null;
+            modelProvider?: string;
+            modelName?: string;
+            responsePayload?: {
+                [key: string]: unknown;
+            };
         };
     };
     responses: {
@@ -2668,6 +2757,29 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    getAiReviewContext: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submissionId: components["parameters"]["SubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Submission AI review context for the outbox worker. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalAiReviewContext"];
+                };
+            };
+            404: components["responses"]["ErrorNotFound"];
         };
     };
 }

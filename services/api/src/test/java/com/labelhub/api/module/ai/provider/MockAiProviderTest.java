@@ -12,10 +12,11 @@ class MockAiProviderTest {
     private final MockAiProvider provider = new MockAiProvider();
 
     @Test
-    void mock_provider_returns_looks_good_overall_suggestion() {
+    void mock_provider_returns_pass_overall_suggestion() {
         AiCallResult result = provider.invoke(requestWithFields(List.of(field("field-title", "标题"))));
 
-        assertThat(result.overallSuggestion()).isEqualTo("looks_good");
+        assertThat(result.overallSuggestion()).isEqualTo("pass");
+        assertThat(result.output()).containsKey("dimensionScores");
         assertThat(result.summary()).contains("字段数 = 1");
         assertThat(result.latencyMs()).isEqualTo(100);
     }

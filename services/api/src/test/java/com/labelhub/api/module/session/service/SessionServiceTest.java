@@ -9,6 +9,7 @@ import com.labelhub.api.module.admin.audit.AuditEventBuilder;
 import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
+import com.labelhub.api.module.outbox.service.OutboxEventService;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
@@ -61,6 +62,7 @@ class SessionServiceTest {
     private final SchemaVersionMapper schemaVersionMapper = mock(SchemaVersionMapper.class);
     private final DraftMapper draftMapper = mock(DraftMapper.class);
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
+    private final OutboxEventService outboxEventService = mock(OutboxEventService.class);
     private final Canonicalizer canonicalizer = new Canonicalizer(new ObjectMapper());
     private final AuditLogService auditLogService = mock(AuditLogService.class);
     private SessionService sessionService;
@@ -75,6 +77,7 @@ class SessionServiceTest {
             schemaVersionMapper,
             draftMapper,
             submissionMapper,
+            outboxEventService,
             canonicalizer,
             clock,
             auditLogService
@@ -531,9 +534,32 @@ class SessionServiceTest {
 
         sessionService.submit(900L, 1002L, Map.of("field_0", "answer"));
 
-        InOrder inOrder = inOrder(submissionMapper, sessionMapper);
+        InOrder inOrder = inOrder(submissionMapper, outboxEventService, sessionMapper);
         inOrder.verify(submissionMapper).insert(any(SubmissionEntity.class));
+        inOrder.verify(outboxEventService).enqueueSubmissionAiReview(any(SubmissionEntity.class), any());
         inOrder.verify(sessionMapper).updateById(any(SessionEntity.class));
+    }
+
+    @Test
+    void submit_enqueues_ai_review_outbox_event_with_current_rule_reference() {
+        TaskEntity task = publishedTask();
+        task.setCurrentAiReviewRuleId(19L);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(claimedSession(900L, 1002L));
+        when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
+            SubmissionEntity submission = invocation.getArgument(0);
+            submission.setId(1200L);
+            return 1;
+        });
+        when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
+
+        sessionService.submit(900L, 1002L, Map.of("field_0", "answer"));
+
+        ArgumentCaptor<SubmissionEntity> submissionCaptor = ArgumentCaptor.forClass(SubmissionEntity.class);
+        verify(outboxEventService).enqueueSubmissionAiReview(submissionCaptor.capture(), org.mockito.ArgumentMatchers.eq(19L));
+        assertThat(submissionCaptor.getValue().getId()).isEqualTo(1200L);
+        assertThat(submissionCaptor.getValue().getTaskId()).isEqualTo(10L);
+        assertThat(submissionCaptor.getValue().getSessionId()).isEqualTo(900L);
     }
 
     @Test

@@ -38,7 +38,7 @@ class AiRetryPolicyTest {
             }
         );
 
-        assertThat(result.result().overallSuggestion()).isEqualTo("looks_good");
+        assertThat(result.result().overallSuggestion()).isEqualTo("pass");
         assertThat(attempts).hasValue(3);
         assertThat(delays).containsExactly(1000L, 2000L);
         assertThat(failedAttempts).containsExactly(1, 2);
@@ -112,8 +112,8 @@ class AiRetryPolicyTest {
 
     private static ProviderInvocationResult invocationResult() {
         AiCallResult result = new AiCallResult(
-            Map.of("overallSuggestion", "looks_good", "fieldFindings", List.of()),
-            "looks_good",
+            Map.of("overallSuggestion", "pass", "fieldFindings", List.of()),
+            "pass",
             new BigDecimal("0.90"),
             "summary",
             List.of(),

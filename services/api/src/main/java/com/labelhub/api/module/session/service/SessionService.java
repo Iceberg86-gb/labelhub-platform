@@ -8,6 +8,7 @@ import com.labelhub.api.module.admin.audit.AuditEventBuilder;
 import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
+import com.labelhub.api.module.outbox.service.OutboxEventService;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
@@ -59,6 +60,7 @@ public class SessionService {
     private final SchemaVersionMapper schemaVersionMapper;
     private final DraftMapper draftMapper;
     private final SubmissionMapper submissionMapper;
+    private final OutboxEventService outboxEventService;
     private final Canonicalizer canonicalizer;
     private final Clock clock;
     private final AuditLogService auditLogService;
@@ -73,6 +75,7 @@ public class SessionService {
         SchemaVersionMapper schemaVersionMapper,
         DraftMapper draftMapper,
         SubmissionMapper submissionMapper,
+        OutboxEventService outboxEventService,
         Canonicalizer canonicalizer,
         Clock clock,
         AuditLogService auditLogService,
@@ -85,6 +88,7 @@ public class SessionService {
         this.schemaVersionMapper = schemaVersionMapper;
         this.draftMapper = draftMapper;
         this.submissionMapper = submissionMapper;
+        this.outboxEventService = outboxEventService;
         this.canonicalizer = canonicalizer;
         this.clock = clock;
         this.auditLogService = auditLogService;
@@ -99,11 +103,27 @@ public class SessionService {
         SchemaVersionMapper schemaVersionMapper,
         DraftMapper draftMapper,
         SubmissionMapper submissionMapper,
+        OutboxEventService outboxEventService,
         Canonicalizer canonicalizer,
         Clock clock,
         AuditLogService auditLogService
     ) {
         this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper,
+            outboxEventService, canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator());
+    }
+
+    public SessionService(
+        TaskMapper taskMapper,
+        DatasetItemMapper datasetItemMapper,
+        SessionMapper sessionMapper,
+        SchemaVersionMapper schemaVersionMapper,
+        DraftMapper draftMapper,
+        SubmissionMapper submissionMapper,
+        Canonicalizer canonicalizer,
+        Clock clock,
+        AuditLogService auditLogService
+    ) {
+        this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper, null,
             canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator());
     }
 
@@ -245,6 +265,8 @@ public class SessionService {
         submission.setStatusCode(SubmissionStatusCodes.SUBMITTED);
         submission.setCreatedAt(LocalDateTime.now(clock));
         requireOneRow(submissionMapper.insert(submission), "insert submission");
+        Long aiReviewRuleId = currentAiReviewRuleId(session.getTaskId());
+        enqueueAiReview(submission, aiReviewRuleId);
 
         session.setStatus(SESSION_SUBMITTED);
         session.setSubmittedAt(LocalDateTime.now(clock));
@@ -261,6 +283,17 @@ public class SessionService {
                 .payload("contentHash", submission.getContentHash())
         );
         return submission;
+    }
+
+    private Long currentAiReviewRuleId(Long taskId) {
+        TaskEntity task = taskMapper.selectById(taskId);
+        return task == null ? null : task.getCurrentAiReviewRuleId();
+    }
+
+    private void enqueueAiReview(SubmissionEntity submission, Long aiReviewRuleId) {
+        if (outboxEventService != null) {
+            outboxEventService.enqueueSubmissionAiReview(submission, aiReviewRuleId);
+        }
     }
 
     private void validateAnswerPayload(SessionEntity session, Map<String, Object> answerPayload) {

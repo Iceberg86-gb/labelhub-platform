@@ -1231,6 +1231,21 @@ paths:
       responses:
         '204':
           description: AI result persisted.
+  /internal/ai-review/submissions/{submissionId}/context:
+    get:
+      tags: [Internal]
+      operationId: getAiReviewContext
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      responses:
+        '200':
+          description: Submission AI review context for the outbox worker.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalAiReviewContext'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -2192,6 +2207,20 @@ components:
           type: string
           format: date-time
           nullable: true
+        businessPrompt:
+          type: string
+          nullable: true
+        renderedPrompt:
+          type: string
+          nullable: true
+        requestPayload:
+          type: object
+          nullable: true
+          additionalProperties: true
+        responsePayload:
+          type: object
+          nullable: true
+          additionalProperties: true
     AiCallInField:
       type: object
       required: [id, submissionId, fieldPath, aiCallId, accepted, userModifiedAfter, ordinal, createdAt]
@@ -2266,7 +2295,7 @@ components:
             $ref: '#/components/schemas/FieldFinding'
         overallSuggestion:
           type: string
-          enum: [looks_good, needs_review, issues_found]
+          enum: [pass, reject, manual_review]
         confidence:
           type: string
           format: decimal
@@ -2274,10 +2303,26 @@ components:
         summary:
           type: string
           nullable: true
+        dimensionScores:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionScore'
         idempotencyHit:
           type: boolean
         usage:
           $ref: '#/components/schemas/AiCallUsage'
+    DimensionScore:
+      type: object
+      required: [dimension, score]
+      properties:
+        dimension:
+          type: string
+        score:
+          type: string
+          format: decimal
+        reason:
+          type: string
+          nullable: true
     TriggerAiReviewRequest:
       type: object
       required: [promptVersionId]
@@ -2380,14 +2425,16 @@ components:
           format: date-time
     QualityLedgerEntryType:
       type: string
-      enum: [reviewer_overall_verdict, ai_field_finding]
+      enum: [reviewer_overall_verdict, ai_field_finding, ai_overall_recommendation]
       description: |
         Quality ledger entry types. M4 implemented `reviewer_overall_verdict`.
         M5 adds `ai_field_finding` for AI-derived field-level evidence.
+        P-A adds `ai_overall_recommendation` as non-final AI evidence.
     QualityLedgerEntryPayload:
       oneOf:
         - $ref: '#/components/schemas/ReviewerOverallVerdictPayload'
         - $ref: '#/components/schemas/AiFieldFindingPayload'
+        - $ref: '#/components/schemas/AiOverallRecommendationPayload'
     ReviewerOverallVerdictPayload:
       type: object
       required: [verdict]
@@ -2418,6 +2465,33 @@ components:
           format: float
           minimum: 0
           maximum: 1
+    AiOverallRecommendationPayload:
+      type: object
+      required: [recommendation, finalScore, scoringRuleVersion]
+      properties:
+        recommendation:
+          type: string
+          enum: [pass, reject, manual_review]
+        finalScore:
+          type: string
+          format: decimal
+        threshold:
+          type: string
+          format: decimal
+          nullable: true
+        rejectFloor:
+          type: string
+          format: decimal
+          nullable: true
+        scoringRuleVersion:
+          type: string
+        dimensionScores:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionScore'
+        summary:
+          type: string
+          nullable: true
     CreateLedgerEntryRequest:
       type: object
       required: [entryType, payload]
@@ -2466,6 +2540,10 @@ components:
           format: date-time
         verdict:
           $ref: '#/components/schemas/Verdict'
+        aiRecommendation:
+          type: string
+          enum: [pass, reject, manual_review]
+          nullable: true
     PagedReviewerSubmissions:
       type: object
       required: [items, total, page, size]
@@ -2620,4 +2698,86 @@ components:
         idempotencyKey:
           type: string
         result:
-          $ref: '#/components/schemas/AiReviewResult'
+          $ref: '#/components/schemas/InternalAiReviewResult'
+    InternalAiReviewContext:
+      type: object
+      required: [submissionId, idempotencyKey, promptVersion, promptVersionId, providerAdapterVersion, input, inputHash, dimensions, threshold, rejectFloor, scoringRuleVersion, businessPrompt, renderedPrompt]
+      properties:
+        submissionId:
+          type: integer
+          format: int64
+        idempotencyKey:
+          type: string
+        promptVersion:
+          type: string
+        promptVersionId:
+          type: integer
+          format: int64
+        aiReviewRuleId:
+          type: integer
+          format: int64
+          nullable: true
+        providerAdapterVersion:
+          type: string
+        input:
+          type: object
+          additionalProperties: true
+        inputHash:
+          type: string
+        dimensions:
+          type: array
+          items:
+            type: string
+        threshold:
+          type: string
+          format: decimal
+        rejectFloor:
+          type: string
+          format: decimal
+        scoringRuleVersion:
+          type: string
+        businessPrompt:
+          type: string
+        renderedPrompt:
+          type: string
+    InternalAiReviewResult:
+      type: object
+      required: [overallSuggestion, finalScore, dimensionScores, summary]
+      properties:
+        overallSuggestion:
+          type: string
+          enum: [pass, reject, manual_review]
+        finalScore:
+          type: string
+          format: decimal
+        dimensionScores:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionScore'
+        summary:
+          type: string
+        fieldFindings:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldFinding'
+        rawResponse:
+          type: string
+          nullable: true
+        tokenInput:
+          type: integer
+          nullable: true
+        tokenOutput:
+          type: integer
+          nullable: true
+        usage:
+          $ref: '#/components/schemas/AiCallUsage'
+        latencyMs:
+          type: integer
+          nullable: true
+        modelProvider:
+          type: string
+        modelName:
+          type: string
+        responsePayload:
+          type: object
+          additionalProperties: true

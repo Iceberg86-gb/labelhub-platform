@@ -33,7 +33,7 @@ describe('triggerAiReview', () => {
         createdAt: '2026-05-28T00:00:00Z',
       },
       fieldFindings: [],
-      overallSuggestion: 'looks_good',
+      overallSuggestion: 'pass',
       idempotencyHit: false,
     };
     postMock.mockResolvedValueOnce({ data: result, error: undefined, response: { status: 201 } });

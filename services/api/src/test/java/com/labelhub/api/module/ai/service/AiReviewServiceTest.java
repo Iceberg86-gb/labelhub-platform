@@ -166,7 +166,7 @@ class AiReviewServiceTest {
         );
         assertThat(inserted.getIdempotencyKey().length()).isLessThanOrEqualTo(160);
         assertThat(inserted.getRequestPayload()).doesNotContainKey("labelerId");
-        assertThat(inserted.getResponsePayload()).containsEntry("overallSuggestion", "looks_good");
+        assertThat(inserted.getResponsePayload()).containsEntry("overallSuggestion", "pass");
         assertThat(result.idempotencyHit()).isFalse();
         assertThat(result.aiCall().getOutputHash()).hasSize(64);
     }
@@ -277,7 +277,7 @@ class AiReviewServiceTest {
         AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         assertThat(result.aiCall().getOutputHash())
-            .isEqualTo(canonicalizer.sha256Hex(canonicalizer.canonicalJson(jsonRoundTrip(providerResult().output()))));
+            .isEqualTo(canonicalizer.sha256Hex(canonicalizer.canonicalJson(jsonRoundTrip(result.aiCall().getResponsePayload()))));
     }
 
     @Test
@@ -610,6 +610,25 @@ class AiReviewServiceTest {
     }
 
     @Test
+    void ai_pass_appends_ai_overall_recommendation_but_not_reviewer_verdict() {
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, 1L);
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(ledgerService).appendAiOverallRecommendation(eq(300L), eq(10L), eq(900L), payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue()).containsEntry("recommendation", "pass");
+        assertThat(payloadCaptor.getValue()).containsKey("scoringRuleVersion");
+        verify(ledgerService, never()).createEntry(any(), any(), eq("reviewer_overall_verdict"), any());
+    }
+
+    @Test
     void review_returns_existing_result_when_idempotency_key_matches_and_input_hash_matches() {
         String inputHash = inputHashForDefaultFixture();
         AiCallEntity existing = persistedAiCall(inputHash);
@@ -619,7 +638,7 @@ class AiReviewServiceTest {
         AiReviewResultView result = service.review(300L, 1001L, 1L);
 
         assertThat(result.idempotencyHit()).isTrue();
-        assertThat(result.providerResult().overallSuggestion()).isEqualTo("looks_good");
+        assertThat(result.providerResult().overallSuggestion()).isEqualTo("pass");
         assertThat(result.providerResult().fieldFindings()).extracting(FieldFinding::fieldPath).containsExactly("field-title");
         verify(aiProvider, never()).invoke(any());
         verify(aiCallMapper, never()).insert(any());
@@ -833,7 +852,7 @@ class AiReviewServiceTest {
     private AiCallResult providerResult() {
         FieldFinding finding = new FieldFinding("field-title", "field-title", "标题", "info", "looks fine", new BigDecimal("0.90"));
         Map<String, Object> output = output(List.of(finding), "summary");
-        return new AiCallResult(output, "looks_good", new BigDecimal("0.90"), "summary",
+        return new AiCallResult(output, "pass", new BigDecimal("0.90"), "summary",
             List.of(finding), 10, 20, new BigDecimal("0.000100"), 100, null);
     }
 
@@ -842,21 +861,26 @@ class AiReviewServiceTest {
         FieldFinding second = new FieldFinding("field-body", "field-body", "正文", "info", "body looks fine", new BigDecimal("0.70"));
         List<FieldFinding> findings = List.of(first, second);
         Map<String, Object> output = output(findings, "two findings");
-        return new AiCallResult(output, "needs_review", new BigDecimal("0.75"), "two findings",
+        return new AiCallResult(output, "manual_review", new BigDecimal("0.75"), "two findings",
             findings, 10, 20, new BigDecimal("0.000100"), 100, null);
     }
 
     private AiCallResult emptyProviderResult() {
         Map<String, Object> output = output(List.of(), "empty");
-        return new AiCallResult(output, "looks_good", new BigDecimal("0.90"), "empty",
+        return new AiCallResult(output, "pass", new BigDecimal("0.90"), "empty",
             List.of(), 10, 0, new BigDecimal("0.000100"), 100, null);
     }
 
     private Map<String, Object> output(List<FieldFinding> findings, String summary) {
         return Map.of(
-            "overallSuggestion", "looks_good",
+            "overallSuggestion", "pass",
             "confidence", new BigDecimal("0.90"),
             "summary", summary,
+            "dimensionScores", List.of(Map.of(
+                "dimension", "quality",
+                "score", new BigDecimal("0.90"),
+                "reason", "fixture score"
+            )),
             "fieldFindings", findings.stream().map(finding -> Map.of(
                 "fieldPath", finding.fieldPath(),
                 "stableId", finding.stableId(),

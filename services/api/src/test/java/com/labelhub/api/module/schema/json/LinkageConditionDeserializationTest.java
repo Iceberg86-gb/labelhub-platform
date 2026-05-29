@@ -11,6 +11,7 @@ import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldType;
 import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
+import com.labelhub.api.module.outbox.service.OutboxEventService;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
 import com.labelhub.api.module.session.mapper.DraftMapper;
@@ -43,6 +44,7 @@ class LinkageConditionDeserializationTest {
         .withBean(SchemaVersionMapper.class, () -> mock(SchemaVersionMapper.class))
         .withBean(DraftMapper.class, () -> mock(DraftMapper.class))
         .withBean(SubmissionMapper.class, () -> mock(SubmissionMapper.class))
+        .withBean(OutboxEventService.class, () -> mock(OutboxEventService.class))
         .withBean(Clock.class, Clock::systemUTC)
         .withBean(AuditLogService.class, AuditLogService::noop)
         .withBean(AnswerPayloadValidator.class, AnswerPayloadValidator::new)

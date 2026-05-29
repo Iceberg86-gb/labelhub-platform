@@ -74,7 +74,8 @@ public interface QualityLedgerEntryMapper {
         SELECT s.id, s.task_id, t.title AS task_title, s.labeler_id, s.schema_version_id,
                s.status AS status_code, s.created_at AS submitted_at,
                latest.id AS derived_from_entry_id,
-               JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) AS reviewer_verdict
+               JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) AS reviewer_verdict,
+               JSON_UNQUOTE(JSON_EXTRACT(latest_ai.payload, '$.recommendation')) AS ai_recommendation
         FROM submissions s
         JOIN tasks t ON t.id = s.task_id
         LEFT JOIN (
@@ -90,6 +91,19 @@ public interface QualityLedgerEntryMapper {
             ) ranked
             WHERE ranked.rn = 1
         ) latest ON latest.submission_id = s.id
+        LEFT JOIN (
+            SELECT ranked_ai.*
+            FROM (
+                SELECT qle.*,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY qle.submission_id
+                           ORDER BY qle.created_at DESC, qle.id DESC
+                       ) AS rn
+                FROM quality_ledger_entries qle
+                WHERE qle.evidence_type = 'ai_overall_recommendation'
+            ) ranked_ai
+            WHERE ranked_ai.rn = 1
+        ) latest_ai ON latest_ai.submission_id = s.id
         WHERE s.status = #{status}
           AND (
               #{verdict} IS NULL
@@ -108,7 +122,8 @@ public interface QualityLedgerEntryMapper {
         @Result(column = "status_code", property = "statusCode"),
         @Result(column = "submitted_at", property = "submittedAt"),
         @Result(column = "derived_from_entry_id", property = "derivedFromEntryId"),
-        @Result(column = "reviewer_verdict", property = "reviewerVerdict")
+        @Result(column = "reviewer_verdict", property = "reviewerVerdict"),
+        @Result(column = "ai_recommendation", property = "aiRecommendation")
     })
     List<ReviewerSubmissionQueueRow> selectReviewerQueuePage(
         @Param("status") String status,

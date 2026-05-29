@@ -21,7 +21,13 @@ export const SEVERITY_COLORS = {
 } as const satisfies Record<FieldFinding['severity'], string>;
 
 export const OVERALL_SUGGESTION_LABELS = {
-  looks_good: '看起来良好',
-  needs_review: '需要复查',
-  issues_found: '发现问题',
+  pass: '通过',
+  reject: '打回',
+  manual_review: '人工复核',
 } as const satisfies Record<AiReviewResult['overallSuggestion'], string>;
+
+export const OVERALL_SUGGESTION_COLORS = {
+  pass: 'green',
+  reject: 'red',
+  manual_review: 'orange',
+} as const satisfies Record<AiReviewResult['overallSuggestion'], 'green' | 'red' | 'orange'>;
