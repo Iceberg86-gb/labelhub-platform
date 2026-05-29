@@ -160,6 +160,37 @@ class ExportServiceTest {
     }
 
     @Test
+    void export_omits_null_prompt_and_rule_evidence_fields_from_ai_calls() throws Exception {
+        when(factCollector.collectForTask(TASK_ID))
+            .thenReturn(bundleWithAiCall(legacyAiCallWithoutEvidenceBindings()));
+
+        exportService.createSnapshot(TASK_ID, OWNER_ID);
+
+        String aiCalls = writtenUtf8("ai-calls.jsonl");
+
+        assertThat(aiCalls).contains("\"promptVersion\":\"m3-owner-review-v1\"");
+        assertThat(aiCalls).contains("\"providerAdapterVersion\":\"agent-default-v1\"");
+        assertThat(aiCalls).contains("\"fieldPath\":null");
+        assertThat(aiCalls).doesNotContain("\"promptVersionId\"");
+        assertThat(aiCalls).doesNotContain("\"aiReviewRuleId\"");
+    }
+
+    @Test
+    void export_includes_non_null_prompt_and_rule_evidence_fields_in_ai_calls() throws Exception {
+        AiCallEntity ruleBound = aiCall();
+        ruleBound.setAiReviewRuleId(19L);
+        when(factCollector.collectForTask(TASK_ID)).thenReturn(bundleWithAiCall(ruleBound));
+
+        exportService.createSnapshot(TASK_ID, OWNER_ID);
+
+        String aiCalls = writtenUtf8("ai-calls.jsonl");
+
+        assertThat(aiCalls).contains("\"promptVersionId\":1");
+        assertThat(aiCalls).contains("\"aiReviewRuleId\":19");
+        assertThat(aiCalls).contains("\"providerAdapterVersion\":\"agent-default-v1\"");
+    }
+
+    @Test
     void export_manifest_includes_sha256_for_each_file() throws Exception {
         exportService.createSnapshot(TASK_ID, OWNER_ID);
 
@@ -383,6 +414,22 @@ class ExportServiceTest {
         );
     }
 
+    private static ExportFactBundle bundleWithAiCall(AiCallEntity aiCall) {
+        LinkedHashMap<Long, DerivedVerdictSnapshot> verdicts = new LinkedHashMap<>();
+        QualityLedgerEntryEntity latest = ledgerEntry(700L, "approve");
+        verdicts.put(SUBMISSION_ID, DerivedVerdictSnapshot.derive(SUBMISSION_ID, latest));
+        return new ExportFactBundle(
+            task(OWNER_ID),
+            List.of(schemaVersion()),
+            List.of(datasetItem()),
+            List.of(submission()),
+            List.of(aiCall),
+            List.of(aiCallInField()),
+            List.of(latest),
+            verdicts
+        );
+    }
+
     private static ExportFactBundle bundleWithLedgerEntries(List<QualityLedgerEntryEntity> ledgerEntries) {
         LinkedHashMap<Long, DerivedVerdictSnapshot> verdicts = new LinkedHashMap<>();
         QualityLedgerEntryEntity latest = ledgerEntries.get(ledgerEntries.size() - 1);
@@ -473,6 +520,14 @@ class ExportServiceTest {
         call.setStatus("completed");
         call.setCreatedAt(CREATED_AT.plusMinutes(1));
         call.setCompletedAt(CREATED_AT.plusMinutes(1).plusSeconds(1));
+        return call;
+    }
+
+    private static AiCallEntity legacyAiCallWithoutEvidenceBindings() {
+        AiCallEntity call = aiCall();
+        call.setPromptVersion("m3-owner-review-v1");
+        call.setPromptVersionId(null);
+        call.setAiReviewRuleId(null);
         return call;
     }
 
