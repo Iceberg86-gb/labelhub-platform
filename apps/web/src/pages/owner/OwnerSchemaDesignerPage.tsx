@@ -16,8 +16,7 @@ import {
   validateSchemaForUI,
 } from '../../entities/schema/schemaValidation';
 import type { SchemaDocument, SchemaField, SchemaFieldType, SchemaVersion } from '../../entities/schema/schemaTypes';
-import { AddFieldButton } from '../../features/schema-design/AddFieldButton';
-import { FieldList } from '../../features/schema-design/FieldList';
+import { DesignerFieldBuilder } from '../../features/schema-design/DesignerFieldBuilder';
 import { PublishSchemaModal } from '../../features/schema-design/PublishSchemaModal';
 import { VersionHistoryDrawer } from '../../features/schema-design/VersionHistoryDrawer';
 import { FieldEditor } from '../../features/schema-design/field-editors/FieldEditor';
@@ -88,12 +87,16 @@ export function OwnerSchemaDesignerPage() {
     setIsDirty(true);
   };
 
-  const handleAddField = (type: SchemaFieldType) => {
-    if (!draftDocument) return;
+  const handleAddField = (type: SchemaFieldType, index?: number): SchemaField | null => {
+    if (!draftDocument) return null;
     const field = createField(type);
-    setDraftDocument(replaceSchemaFields(draftDocument, [...schemaFields(draftDocument), field]));
+    const currentFields = schemaFields(draftDocument);
+    const insertIndex = index == null ? currentFields.length : Math.max(0, Math.min(index, currentFields.length));
+    const nextFields = [...currentFields.slice(0, insertIndex), field, ...currentFields.slice(insertIndex)];
+    setDraftDocument(replaceSchemaFields(draftDocument, nextFields));
     setSelectedStableId(field.stableId);
     setIsDirty(true);
+    return field;
   };
 
   const handleDeleteField = (stableId: string) => {
@@ -202,30 +205,16 @@ export function OwnerSchemaDesignerPage() {
         />
 
         <div className="schema-designer-grid">
-          <Card className="schema-designer-panel">
-            <div className="schema-designer-panel__header">
-              <div>
-                <Typography.Title heading={5}>字段列表</Typography.Title>
-                <Typography.Text type="tertiary">同级拖拽排序，stableId 隐藏保留。</Typography.Text>
-              </div>
-              <AddFieldButton onPick={handleAddField} />
-            </div>
-            {validationErrors.length > 0 ? (
-              <div className="schema-validation-summary">
-                <Typography.Text strong>当前有 {validationErrors.length} 条校验问题。</Typography.Text>
-              </div>
-            ) : null}
-            <div className="schema-field-list-shell">
-              <FieldList
-                fields={draftFields}
-                onChange={handleFieldsChange}
-                selectedStableId={selectedStableId}
-                onSelect={setSelectedStableId}
-                onDelete={handleDeleteField}
-                errors={validationErrorsByField}
-              />
-            </div>
-          </Card>
+          <DesignerFieldBuilder
+            fields={draftFields}
+            onChange={handleFieldsChange}
+            onAddField={handleAddField}
+            selectedStableId={selectedStableId}
+            onSelect={setSelectedStableId}
+            onDelete={handleDeleteField}
+            errors={validationErrorsByField}
+            validationErrorCount={validationErrors.length}
+          />
 
           <Card className="schema-designer-panel">
             <div className="schema-designer-panel__header">

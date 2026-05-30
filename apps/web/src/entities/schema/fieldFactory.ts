@@ -1,5 +1,7 @@
 import type { SchemaField, SchemaFieldType } from './schemaTypes';
 
+type SchemaTab = NonNullable<SchemaField['tabs']>[number];
+
 export function generateStableId(): string {
   return crypto.randomUUID();
 }
@@ -34,11 +36,21 @@ export function createField(type: SchemaFieldType): SchemaField {
       };
     case 'nested_object':
       return { ...base, children: [] };
+    case 'tab_container':
+      return { ...base, tabs: [createTab('Tab 1')] };
     default: {
       const _exhaustive: never = type;
       throw new Error(`Unknown field type: ${_exhaustive}`);
     }
   }
+}
+
+export function createTab(label: string): SchemaTab {
+  return {
+    stableId: generateStableId(),
+    label,
+    children: [],
+  };
 }
 
 export function findFieldByStableId(fields: SchemaField[], stableId: string | null): SchemaField | null {
@@ -49,7 +61,7 @@ export function findFieldByStableId(fields: SchemaField[], stableId: string | nu
       return field;
     }
 
-    const found = field.children ? findFieldByStableId(field.children, stableId) : null;
+    const found = findFieldByStableId(fieldChildFields(field), stableId);
     if (found) {
       return found;
     }
@@ -74,11 +86,26 @@ export function updateFieldByStableId(
       return updater(field);
     }
 
-    if (field.children?.length) {
+    if (field.type === 'nested_object' && field.children?.length) {
       const nextChildren = updateFieldByStableId(field.children, stableId, updater);
       if (nextChildren !== field.children) {
         changed = true;
         return { ...field, children: nextChildren };
+      }
+    }
+
+    if (field.type === 'tab_container' && field.tabs?.length) {
+      const nextTabs = field.tabs.map((tab) => {
+        const currentChildren = tab.children ?? [];
+        const nextChildren = updateFieldByStableId(currentChildren, stableId, updater);
+        if (nextChildren !== currentChildren) {
+          changed = true;
+          return { ...tab, children: nextChildren };
+        }
+        return tab;
+      });
+      if (changed) {
+        return { ...field, tabs: nextTabs };
       }
     }
 
@@ -98,7 +125,7 @@ export function removeFieldByStableId(fields: SchemaField[], stableId: string): 
       return;
     }
 
-    if (field.children?.length) {
+    if (field.type === 'nested_object' && field.children?.length) {
       const nextChildren = removeFieldByStableId(field.children, stableId);
       if (nextChildren !== field.children) {
         changed = true;
@@ -107,8 +134,34 @@ export function removeFieldByStableId(fields: SchemaField[], stableId: string): 
       }
     }
 
+    if (field.type === 'tab_container' && field.tabs?.length) {
+      const nextTabs = field.tabs.map((tab) => {
+        const currentChildren = tab.children ?? [];
+        const nextChildren = removeFieldByStableId(currentChildren, stableId);
+        if (nextChildren !== currentChildren) {
+          changed = true;
+          return { ...tab, children: nextChildren };
+        }
+        return tab;
+      });
+      if (changed) {
+        next.push({ ...field, tabs: nextTabs });
+        return;
+      }
+    }
+
     next.push(field);
   });
 
   return changed ? next : fields;
+}
+
+function fieldChildFields(field: SchemaField): SchemaField[] {
+  if (field.type === 'nested_object') {
+    return field.children ?? [];
+  }
+  if (field.type === 'tab_container') {
+    return field.tabs?.flatMap((tab) => tab.children ?? []) ?? [];
+  }
+  return [];
 }

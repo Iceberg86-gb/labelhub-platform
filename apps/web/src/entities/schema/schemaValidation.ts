@@ -58,6 +58,34 @@ function validateFields(fields: SchemaField[], pathPrefix: string, errors: Field
       });
       validateFields(field.children, `${fieldPath}.children`, errors);
     }
+
+    if (field.type === 'tab_container') {
+      if (!field.tabs || field.tabs.length === 0) {
+        errors.push({ fieldPath, stableId: field.stableId, reason: '多 Tab 容器需要至少一个 Tab' });
+        return;
+      }
+
+      field.tabs.forEach((tab, tabIndex) => {
+        const tabPath = `${fieldPath}.tabs[${tabIndex}]`;
+        if (!tab.label || tab.label.trim() === '') {
+          errors.push({ fieldPath: `${tabPath}.label`, stableId: field.stableId, reason: 'Tab 名称不能为空' });
+        }
+        if (!tab.children || tab.children.length === 0) {
+          errors.push({ fieldPath: `${tabPath}.children`, stableId: field.stableId, reason: '每个 Tab 至少需要一个字段' });
+          return;
+        }
+        tab.children.forEach((child, childIndex) => {
+          if (child.type === 'tab_container') {
+            errors.push({
+              fieldPath: `${tabPath}.children[${childIndex}]`,
+              stableId: child.stableId,
+              reason: 'UI 暂不支持 Tab 内再嵌套多 Tab',
+            });
+          }
+        });
+        validateFields(tab.children, `${tabPath}.children`, errors);
+      });
+    }
   });
 }
 
@@ -92,6 +120,11 @@ function indexFields(fields: SchemaField[], pathPrefix: string, index = new Map<
     if (field.children?.length) {
       indexFields(field.children, `${fieldPath}.children`, index);
     }
+    if (field.tabs?.length) {
+      field.tabs.forEach((tab, tabIndex) => {
+        indexFields(tab.children ?? [], `${fieldPath}.tabs[${tabIndex}].children`, index);
+      });
+    }
   });
   return index;
 }
@@ -109,6 +142,11 @@ function validateLinkage(
 
     if (field.children?.length) {
       validateLinkage(field.children, `${fieldPath}.children`, fieldIndex, errors);
+    }
+    if (field.tabs?.length) {
+      field.tabs.forEach((tab, tabIndex) => {
+        validateLinkage(tab.children ?? [], `${fieldPath}.tabs[${tabIndex}].children`, fieldIndex, errors);
+      });
     }
   });
 }

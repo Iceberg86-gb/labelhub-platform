@@ -1808,7 +1808,7 @@ components:
           type: integer
     SchemaFieldType:
       type: string
-      enum: [text, number, single_select, multi_select, date, file_upload, rich_text, json_editor, llm_interaction, show_item, nested_object]
+      enum: [text, number, single_select, multi_select, date, file_upload, rich_text, json_editor, llm_interaction, show_item, nested_object, tab_container]
     SchemaFieldValidation:
       type: object
       properties:
@@ -1834,6 +1834,18 @@ components:
           type: string
         value:
           type: string
+    SchemaTab:
+      type: object
+      required: [stableId, label, children]
+      properties:
+        stableId:
+          type: string
+        label:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaField'
     LinkageConditionOp:
       type: string
       enum: [eq, neq, in, notIn, gt, gte, lt, lte, empty, notEmpty]
@@ -1899,6 +1911,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SchemaField'
+        tabs:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaTab'
         visibleWhen:
           $ref: '#/components/schemas/LinkageCondition'
         requiredWhen:

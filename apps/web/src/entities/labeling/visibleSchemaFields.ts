@@ -61,6 +61,21 @@ function filterFields(fields: SchemaField[], flatValues: FlatValueIndex, parentP
       return;
     }
 
+    if (field.type === 'tab_container') {
+      let tabChanged = false;
+      const nextTabs = field.tabs?.map((tab) => {
+        const tabPath = `${path}.${tab.stableId}`;
+        const childResult = filterFields(tab.children ?? [], flatValues, tabPath);
+        tabChanged ||= childResult.changed;
+        signatureParts.push(tabPath, ...childResult.signatureParts);
+        return childResult.changed ? { ...tab, children: childResult.fields } : tab;
+      }) ?? [];
+      visibleFields.push(tabChanged ? { ...field, tabs: nextTabs } : field);
+      signatureParts.push(path);
+      changed ||= tabChanged;
+      return;
+    }
+
     visibleFields.push(field);
     signatureParts.push(path);
   });

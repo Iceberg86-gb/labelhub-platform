@@ -22,6 +22,11 @@ function extractFields(source: Record<string, unknown>, fields: SchemaField[]): 
   const payload: AnswerPayload = {};
 
   for (const field of fields) {
+    if (field.type === 'tab_container') {
+      Object.assign(payload, extractTabFields(source, field));
+      continue;
+    }
+
     if (field.type === 'show_item' || isInternalKey(field.stableId) || !Object.hasOwn(source, field.stableId)) {
       continue;
     }
@@ -39,6 +44,20 @@ function extractFields(source: Record<string, unknown>, fields: SchemaField[]): 
     }
 
     payload[field.stableId] = snapshotAnswerValue(rawValue);
+  }
+
+  return payload;
+}
+
+function extractTabFields(source: Record<string, unknown>, field: SchemaField): AnswerPayload {
+  const payload: AnswerPayload = {};
+  const containerValue = source[field.stableId];
+  const container = isPlainObject(containerValue) ? containerValue : {};
+
+  for (const tab of field.tabs ?? []) {
+    const tabValue = container[tab.stableId];
+    const tabSource = isPlainObject(tabValue) ? { ...source, ...tabValue } : source;
+    Object.assign(payload, extractFields(tabSource, tab.children ?? []));
   }
 
   return payload;

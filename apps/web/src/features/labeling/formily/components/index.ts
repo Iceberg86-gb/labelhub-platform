@@ -8,6 +8,7 @@ import { LabelHubNumberField } from './LabelHubNumberField';
 import { LabelHubRichTextField } from './LabelHubRichTextField';
 import { LabelHubSelectField } from './LabelHubSelectField';
 import { LabelHubShowItem } from './LabelHubShowItem';
+import { LabelHubTabPane, LabelHubTabsContainer } from './LabelHubTabsContainer';
 import { LabelHubTextField } from './LabelHubTextField';
 
 export const componentsMap = {
@@ -22,4 +23,6 @@ export const componentsMap = {
   LabelHubLlmInteractionField,
   LabelHubShowItem,
   LabelHubNestedObjectField,
+  LabelHubTabsContainer,
+  LabelHubTabPane,
 };

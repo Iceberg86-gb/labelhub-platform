@@ -81,7 +81,7 @@ type SortableFieldItemProps = {
   onDelete: (stableId: string) => void;
 };
 
-function SortableFieldItem({ field, selected, hasError, onSelect, onDelete }: SortableFieldItemProps) {
+export function SortableFieldItem({ field, selected, hasError, onSelect, onDelete }: SortableFieldItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.stableId });
   const transformStyle = transform
     ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0) scaleX(${transform.scaleX}) scaleY(${transform.scaleY})`

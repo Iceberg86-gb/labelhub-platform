@@ -10,6 +10,7 @@
         { "stableId": "multi_value", "label": "Multi", "type": "multi_select", "options": [{ "label": "X", "value": "x" }, { "label": "Y", "value": "y" }] },
         { "stableId": "date_value", "label": "Date", "type": "date" },
         { "stableId": "file_value", "label": "File", "type": "file_upload" },
+        { "stableId": "tabs", "label": "Tabs", "type": "tab_container", "tabs": [{ "stableId": "tab_a", "label": "Tab A", "children": [{ "stableId": "tab_text", "label": "Tab Text", "type": "text", "validation": { "required": true } }] }] },
         { "stableId": "parent", "label": "Parent", "type": "nested_object", "children": [{ "stableId": "child_text", "label": "Child Text", "type": "text" }, { "stableId": "child_number", "label": "Child Number", "type": "number" }] }
       ]
     },
@@ -20,6 +21,7 @@
       "multi_value": ["x", "y"],
       "date_value": "2026-05-28",
       "file_value": { "objectKey": "session-attachments/20260530/task-1/session-2/file.png", "fileName": "file.png", "contentType": "image/png", "sizeBytes": 1024 },
+      "tab_text": "inside tab",
       "parent": { "child_text": "nested", "child_number": 7 }
     },
     "expectedErrors": [],

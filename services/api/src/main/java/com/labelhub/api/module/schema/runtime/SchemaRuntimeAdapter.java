@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldOption;
+import com.labelhub.api.generated.model.SchemaTab;
 import com.labelhub.api.generated.model.SchemaFieldType;
 import com.labelhub.api.module.schema.exception.InvalidSchemaDocumentException;
 import java.util.ArrayList;
@@ -114,6 +115,10 @@ public class SchemaRuntimeAdapter {
     private Map<String, Object> propertiesFor(List<SchemaField> fields) {
         Map<String, Object> properties = new LinkedHashMap<>();
         for (SchemaField field : fields == null ? List.<SchemaField>of() : fields) {
+            if (field.getType() == SchemaFieldType.TAB_CONTAINER) {
+                properties.putAll(propertiesFor(tabChildren(field)));
+                continue;
+            }
             properties.put(field.getStableId(), propertyFor(field));
         }
         return properties;
@@ -146,6 +151,8 @@ public class SchemaRuntimeAdapter {
                 ));
             }
         } else if (type == SchemaFieldType.SHOW_ITEM) {
+            property.put("type", "null");
+        } else if (type == SchemaFieldType.TAB_CONTAINER) {
             property.put("type", "null");
         } else if (type == SchemaFieldType.NESTED_OBJECT) {
             List<SchemaField> children = field.getChildren() == null ? List.of() : field.getChildren();
@@ -189,6 +196,10 @@ public class SchemaRuntimeAdapter {
     private List<String> requiredStableIds(List<SchemaField> fields) {
         List<String> required = new ArrayList<>();
         for (SchemaField field : fields == null ? List.<SchemaField>of() : fields) {
+            if (field.getType() == SchemaFieldType.TAB_CONTAINER) {
+                required.addAll(requiredStableIds(tabChildren(field)));
+                continue;
+            }
             if (field.getValidation() != null && Boolean.TRUE.equals(field.getValidation().getRequired())) {
                 required.add(field.getStableId());
             }
@@ -199,6 +210,12 @@ public class SchemaRuntimeAdapter {
     private List<String> optionValues(SchemaField field) {
         return (field.getOptions() == null ? List.<SchemaFieldOption>of() : field.getOptions()).stream()
             .map(SchemaFieldOption::getValue)
+            .toList();
+    }
+
+    private List<SchemaField> tabChildren(SchemaField field) {
+        return (field.getTabs() == null ? List.<SchemaTab>of() : field.getTabs()).stream()
+            .flatMap(tab -> (tab.getChildren() == null ? List.<SchemaField>of() : tab.getChildren()).stream())
             .toList();
     }
 

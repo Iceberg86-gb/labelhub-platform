@@ -23,6 +23,7 @@ function field(overrides: Partial<SchemaField> & Pick<SchemaField, 'stableId' | 
     validation: overrides.validation,
     options: overrides.options,
     children: overrides.children,
+    tabs: overrides.tabs,
   };
 }
 
@@ -59,6 +60,17 @@ const fields: SchemaField[] = [
   field({ stableId: 'llm_1', type: 'llm_interaction', aiPrompt: 'Summarize this field' }),
   field({ stableId: 'show_1', type: 'show_item', content: 'Display-only copy' }),
   field({
+    stableId: 'tabs_1',
+    type: 'tab_container',
+    tabs: [
+      {
+        stableId: 'tab_a',
+        label: 'Tab A',
+        children: [field({ stableId: 'tab_text', type: 'text' })],
+      },
+    ],
+  }),
+  field({
     stableId: 'parent',
     type: 'nested_object',
     children: [field({ stableId: 'child_a', type: 'text' }), field({ stableId: 'child_b', type: 'number' })],
@@ -76,6 +88,7 @@ const historicalPayload: AnswerPayload = {
   json_1: { score: 0.95, tags: ['a'] },
   llm_1: { input: 'draft', output: { summary: 'suggestion' }, aiCallId: 9 },
   show_1: 'historical display-only value',
+  tab_text: 'tab value',
   parent: {
     child_a: 'nested-a',
     child_b: 7,
@@ -113,6 +126,7 @@ describe('Formily adapters', () => {
       llm_interaction: 'LabelHubLlmInteractionField',
       show_item: 'LabelHubShowItem',
       nested_object: 'LabelHubNestedObjectField',
+      tab_container: 'LabelHubTabsContainer',
     });
   });
 
@@ -127,6 +141,9 @@ describe('Formily adapters', () => {
     expect(properties.llm_1?.['x-component']).toBe('LabelHubLlmInteractionField');
     expect(properties.show_1?.['x-component']).toBe('LabelHubShowItem');
     expect(properties.show_1?.type).toBe('void');
+    expect(properties.tabs_1?.['x-component']).toBe('LabelHubTabsContainer');
+    expect(properties.tabs_1?.properties?.tab_a?.['x-component']).toBe('LabelHubTabPane');
+    expect(properties.tabs_1?.properties?.tab_a?.properties?.tab_text?.['x-component']).toBe('LabelHubTextField');
     expect(properties.text_1?.title).toBe('Text');
     expect(properties.text_1?.description).toBe('Text help');
     expect(properties.text_1?.['x-component-props']?.placeholder).toBe('Enter text（至少2字符）');
@@ -183,10 +200,27 @@ describe('Formily adapters', () => {
       rich_1: '<p>rich</p>',
       json_1: { score: 0.95, tags: ['a'] },
       llm_1: { input: 'draft', output: { summary: 'suggestion' }, aiCallId: 9 },
+      tab_text: 'tab value',
       parent: { child_a: 'nested-a', child_b: 7 },
     };
     const form = createForm({ initialValues: answerPayloadToFormilyValues(currentOnlyPayload) });
     expect(formilyValuesToAnswerPayload(form.values, fields)).toEqual(currentOnlyPayload);
+  });
+
+  it('hydrates tab container values for Formily paths and emits tab child fields as flat payload', () => {
+    const tabFields = [
+      field({
+        stableId: 'tabs_1',
+        type: 'tab_container',
+        tabs: [
+          { stableId: 'tab_a', label: 'Tab A', children: [field({ stableId: 'tab_text', type: 'text' })] },
+        ],
+      }),
+    ];
+    const values = answerPayloadToFormilyValues({ tab_text: 'initial' }, tabFields);
+    expect((values.tabs_1 as any).tab_a.tab_text).toBe('initial');
+    (values.tabs_1 as any).tab_a.tab_text = 'changed';
+    expect(formilyValuesToAnswerPayload(values, tabFields)).toEqual({ tab_text: 'changed' });
   });
 
   it('omits display-only show_item fields from outbound answer payload', () => {
