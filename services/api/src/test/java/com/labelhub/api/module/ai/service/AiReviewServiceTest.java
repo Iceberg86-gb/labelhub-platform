@@ -172,6 +172,29 @@ class AiReviewServiceTest {
     }
 
     @Test
+    void review_readsSchemaFieldsFromJsonSchemaV2RuntimeAdapter() {
+        when(schemaVersionMapper.selectById(700L)).thenReturn(jsonSchemaVersion());
+        when(aiProvider.invoke(any(AiCallRequest.class))).thenReturn(providerResult());
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+        when(aiCallInFieldMapper.insert(any())).thenReturn(1);
+
+        service.review(300L, 1001L, 1L);
+
+        ArgumentCaptor<AiCallEntity> captor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(captor.capture());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> input = (Map<String, Object>) captor.getValue().getRequestPayload().get("input");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> schemaFields = (List<Map<String, Object>>) input.get("schemaFields");
+        assertThat(schemaFields).hasSize(1);
+        assertThat(schemaFields.get(0)).containsEntry("stableId", "field-title");
+    }
+
+    @Test
     void active_task_rule_overrides_request_prompt_and_binds_rule_evidence() {
         TaskEntity task = task(10L, 1001L);
         task.setCurrentAiReviewRuleId(19L);
@@ -976,6 +999,23 @@ class AiReviewServiceTest {
             "label", "标题",
             "type", "text"
         ))));
+        return entity;
+    }
+
+    private SchemaVersionEntity jsonSchemaVersion() {
+        SchemaVersionEntity entity = new SchemaVersionEntity();
+        entity.setId(700L);
+        entity.setSchemaJson(Map.of(
+            "x-labelhub-schemaFormatVersion", 2,
+            "$schema", "https://json-schema.org/draft/2020-12/schema",
+            "type", "object",
+            "properties", Map.of("field-title", Map.of("type", "string")),
+            "x-labelhub-fields", List.of(Map.of(
+                "stableId", "field-title",
+                "label", "标题",
+                "type", "text"
+            ))
+        ));
         return entity;
     }
 

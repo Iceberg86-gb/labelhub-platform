@@ -432,6 +432,22 @@ class SessionServiceTest {
     }
 
     @Test
+    void submit_validatesJsonSchemaV2ThroughRuntimeAdapter() {
+        when(schemaVersionMapper.selectById(300L)).thenReturn(jsonSchemaVersion(300L));
+        when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(claimedSession(900L, 1002L));
+        when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
+            SubmissionEntity submission = invocation.getArgument(0);
+            submission.setId(1200L);
+            return 1;
+        });
+        when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
+
+        SubmissionEntity submission = sessionService.submit(900L, 1002L, Map.of("field_0", "answer"));
+
+        assertThat(submission.getId()).isEqualTo(1200L);
+    }
+
+    @Test
     void submit_writesSubmissionCreateAuditEvent() {
         when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(claimedSession(900L, 1002L));
         when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
@@ -622,6 +638,22 @@ class SessionServiceTest {
         version.setContentHash("hash");
         version.setStatusCode("published");
         version.setPublishedAt(NOW);
+        return version;
+    }
+
+    private SchemaVersionEntity jsonSchemaVersion(Long id) {
+        SchemaVersionEntity version = schemaVersion(id);
+        version.setSchemaJson(Map.of(
+            "x-labelhub-schemaFormatVersion", 2,
+            "$schema", "https://json-schema.org/draft/2020-12/schema",
+            "type", "object",
+            "properties", Map.of("field_0", Map.of("type", "string")),
+            "x-labelhub-fields", List.of(Map.of(
+                "stableId", "field_0",
+                "label", "Field 0",
+                "type", "text"
+            ))
+        ));
         return version;
     }
 

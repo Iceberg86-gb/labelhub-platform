@@ -1,5 +1,6 @@
 import type { SchemaDocument, SchemaField, SchemaFieldType } from './schemaTypes';
 import { SCHEMA_FIELD_TYPES } from './schemaTypes';
+import { schemaFields } from './runtimeSchema';
 
 export type SchemaSummary = {
   totalCount: number;
@@ -27,7 +28,7 @@ export function summarizeSchema(document: SchemaDocument): SchemaSummary {
     });
   }
 
-  visit(document.fields ?? [], 0);
+  visit(schemaFields(document), 0);
 
   return {
     totalCount: topLevelCount + nestedCount,

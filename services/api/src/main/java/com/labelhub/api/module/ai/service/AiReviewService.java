@@ -39,6 +39,7 @@ import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
+import com.labelhub.api.module.schema.runtime.SchemaRuntimeAdapter;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
@@ -80,6 +81,7 @@ public class AiReviewService {
     private final FailedAiCallRecorder failedCallRecorder;
     private final AuditLogService auditLogService;
     private final AiReviewScoringPolicy scoringPolicy;
+    private final SchemaRuntimeAdapter schemaRuntimeAdapter;
 
     @Autowired
     public AiReviewService(
@@ -101,7 +103,8 @@ public class AiReviewService {
         AiRetryPolicy retryPolicy,
         FailedAiCallRecorder failedCallRecorder,
         AuditLogService auditLogService,
-        AiReviewScoringPolicy scoringPolicy
+        AiReviewScoringPolicy scoringPolicy,
+        SchemaRuntimeAdapter schemaRuntimeAdapter
     ) {
         this.submissionMapper = submissionMapper;
         this.schemaVersionMapper = schemaVersionMapper;
@@ -122,6 +125,7 @@ public class AiReviewService {
         this.failedCallRecorder = failedCallRecorder;
         this.auditLogService = auditLogService;
         this.scoringPolicy = scoringPolicy;
+        this.schemaRuntimeAdapter = schemaRuntimeAdapter;
     }
 
     public AiReviewService(
@@ -147,7 +151,7 @@ public class AiReviewService {
         this(submissionMapper, schemaVersionMapper, datasetItemMapper, taskMapper, aiCallMapper, aiReviewRuleMapper,
             aiCallInFieldMapper, ledgerService, promptVersionService, canonicalizer, objectMapper, clock, aiProvider,
             costCalculator, metrics, retryPolicy, failedCallRecorder, auditLogService,
-            new AiReviewScoringPolicy(new AiReviewScoringProperties()));
+            new AiReviewScoringPolicy(new AiReviewScoringProperties()), new SchemaRuntimeAdapter(objectMapper));
     }
 
     public AiReviewService(
@@ -172,7 +176,7 @@ public class AiReviewService {
         this(submissionMapper, schemaVersionMapper, datasetItemMapper, taskMapper, aiCallMapper, aiReviewRuleMapper,
             aiCallInFieldMapper, ledgerService, promptVersionService, canonicalizer, objectMapper, clock, aiProvider,
             costCalculator, metrics, retryPolicy, failedCallRecorder, AuditLogService.noop(),
-            new AiReviewScoringPolicy(new AiReviewScoringProperties()));
+            new AiReviewScoringPolicy(new AiReviewScoringProperties()), new SchemaRuntimeAdapter(objectMapper));
     }
 
     @Transactional
@@ -671,7 +675,7 @@ public class AiReviewService {
     ) {
         Map<String, Object> input = new LinkedHashMap<>();
         input.put("schemaVersionId", schemaVersion.getId());
-        input.put("schemaFields", schemaVersion.getSchemaJson().getOrDefault("fields", List.of()));
+        input.put("schemaFields", schemaRuntimeAdapter.fieldMapsForAi(schemaVersion.getSchemaJson()));
         input.put("answerPayload", nullToEmpty(submission.getAnswerPayload()));
         input.put("datasetItemPayload", datasetItem == null ? Map.of() : nullToEmpty(datasetItem.getItemPayload()));
         input.put("task", taskInput(task));

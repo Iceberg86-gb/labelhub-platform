@@ -15,6 +15,7 @@ import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
+import com.labelhub.api.module.schema.runtime.SchemaRuntimeAdapter;
 import com.labelhub.api.module.session.entity.DraftEntity;
 import com.labelhub.api.module.session.entity.SessionEntity;
 import com.labelhub.api.module.session.exception.DraftNotFoundException;
@@ -66,6 +67,7 @@ public class SessionService {
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
     private final AnswerPayloadValidator answerPayloadValidator;
+    private final SchemaRuntimeAdapter schemaRuntimeAdapter;
 
     @Autowired
     public SessionService(
@@ -80,7 +82,8 @@ public class SessionService {
         Clock clock,
         AuditLogService auditLogService,
         ObjectMapper objectMapper,
-        AnswerPayloadValidator answerPayloadValidator
+        AnswerPayloadValidator answerPayloadValidator,
+        SchemaRuntimeAdapter schemaRuntimeAdapter
     ) {
         this.taskMapper = taskMapper;
         this.datasetItemMapper = datasetItemMapper;
@@ -94,6 +97,7 @@ public class SessionService {
         this.auditLogService = auditLogService;
         this.objectMapper = objectMapper;
         this.answerPayloadValidator = answerPayloadValidator;
+        this.schemaRuntimeAdapter = schemaRuntimeAdapter;
     }
 
     public SessionService(
@@ -109,7 +113,8 @@ public class SessionService {
         AuditLogService auditLogService
     ) {
         this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper,
-            outboxEventService, canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator());
+            outboxEventService, canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator(),
+            new SchemaRuntimeAdapter(new ObjectMapper()));
     }
 
     public SessionService(
@@ -124,7 +129,8 @@ public class SessionService {
         AuditLogService auditLogService
     ) {
         this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper, null,
-            canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator());
+            canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator(),
+            new SchemaRuntimeAdapter(new ObjectMapper()));
     }
 
     public SessionService(
@@ -301,7 +307,7 @@ public class SessionService {
         if (schemaVersion == null) {
             throw new SchemaVersionNotFoundException(session.getSchemaVersionId());
         }
-        SchemaDocument schemaDocument = objectMapper.convertValue(schemaVersion.getSchemaJson(), SchemaDocument.class);
+        SchemaDocument schemaDocument = schemaRuntimeAdapter.toSchemaDocument(schemaVersion.getSchemaJson());
         List<AnswerValidationError> errors = answerPayloadValidator.validate(schemaDocument, answerPayload);
         if (!errors.isEmpty()) {
             throw new AnswerValidationException(errors);

@@ -2,6 +2,7 @@ import { Button, Card, Empty, Space, Spin, Tag, Toast, Typography } from '@douyi
 import { IconArrowLeft, IconBolt } from '@douyinfe/semi-icons';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
@@ -103,7 +104,7 @@ export function OwnerSubmissionPage() {
       <div className="owner-submission-grid">
         <Card className="owner-submission-render-card" title="历史 Schema 作答" bordered={false}>
           <SchemaFormilyRenderer
-            schemaFields={schemaVersion.schemaJson.fields}
+            schemaFields={schemaFields(schemaVersion.schemaJson)}
             value={answerPayload}
             onChange={() => {}}
             readOnly

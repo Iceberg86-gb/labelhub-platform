@@ -907,8 +907,41 @@ export interface components {
             visibleWhen?: components["schemas"]["LinkageCondition"];
             requiredWhen?: components["schemas"]["LinkageCondition"];
         };
+        SchemaJsonSchemaProperty: {
+            type?: string;
+            title?: string;
+            description?: string;
+            enum?: unknown[];
+            items?: components["schemas"]["SchemaJsonSchemaProperty"];
+            properties?: {
+                [key: string]: components["schemas"]["SchemaJsonSchemaProperty"];
+            };
+            required?: string[];
+            minLength?: number;
+            maxLength?: number;
+            minimum?: number;
+            maximum?: number;
+            pattern?: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /** @description LabelHub schema document. Legacy published versions use `fields`; new versions use JSON Schema root keywords plus `x-labelhub-fields` for runtime rendering metadata. */
         SchemaDocument: {
-            fields: components["schemas"]["SchemaField"][];
+            /** @description Legacy LabelHub field list retained for immutable historical schema versions. */
+            fields?: components["schemas"]["SchemaField"][];
+            /** @enum {integer} */
+            "x-labelhub-schemaFormatVersion"?: 2;
+            $schema?: string;
+            /** @enum {string} */
+            type?: "object";
+            properties?: {
+                [key: string]: components["schemas"]["SchemaJsonSchemaProperty"];
+            };
+            required?: string[];
+            "x-labelhub-fields"?: components["schemas"]["SchemaField"][];
+            "x-labelhub-layout"?: {
+                [key: string]: unknown;
+            };
         };
         SchemaVersionRequest: {
             schemaJson: components["schemas"]["SchemaDocument"];

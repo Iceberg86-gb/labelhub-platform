@@ -2,6 +2,7 @@ import { Button, Card, Empty, Space, Spin, Tag, Toast, Tooltip, Typography } fro
 import { IconArrowLeft, IconClose, IconInfoCircle, IconPlusCircle, IconTickCircle } from '@douyinfe/semi-icons';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
 import {
@@ -105,7 +106,7 @@ export function ReviewerSubmissionPage() {
 
       <div className="reviewer-submission-grid">
         <Card className="reviewer-render-card" title="历史 Schema 作答" bordered={false}>
-          <SchemaFormilyRenderer schemaFields={schemaVersion.schemaJson.fields} value={answerPayload} onChange={() => {}} readOnly />
+          <SchemaFormilyRenderer schemaFields={schemaFields(schemaVersion.schemaJson)} value={answerPayload} onChange={() => {}} readOnly />
         </Card>
 
         <div className="reviewer-side-stack">

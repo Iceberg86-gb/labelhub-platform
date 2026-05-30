@@ -2,6 +2,7 @@ import corpus from '../../../../../packages/contracts/fixtures/linkage-corpus.js
 import { describe, expect, it } from 'vitest';
 import type { SchemaDocument } from '../schema/schemaTypes';
 import { validateSchemaForUI } from '../schema/schemaValidation';
+import { schemaFields } from '../schema/runtimeSchema';
 import type { AnswerPayload } from '../submission/answerPayload';
 import { validatePayload } from './payloadValidation';
 
@@ -36,7 +37,7 @@ describe('linkage shared corpus', () => {
   });
 
   it.each(runtimeCases)('$caseId', (testCase) => {
-    expect(validatePayload(testCase.schema.fields, testCase.payload ?? {})).toEqual(testCase.expectedErrors ?? []);
+    expect(validatePayload(schemaFields(testCase.schema), testCase.payload ?? {})).toEqual(testCase.expectedErrors ?? []);
   });
 
   it.each(publishCases)('$caseId', (testCase) => {

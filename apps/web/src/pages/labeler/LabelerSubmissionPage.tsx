@@ -1,5 +1,6 @@
 import { Banner, Button, Card, Empty, Space, Spin, Tag, Typography } from '@douyinfe/semi-ui';
 import { useParams } from 'react-router-dom';
+import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
@@ -87,7 +88,7 @@ export function LabelerSubmissionPage() {
           type="info"
         />
         <SchemaFormilyRenderer
-          schemaFields={schemaVersion.schemaJson.fields}
+          schemaFields={schemaFields(schemaVersion.schemaJson)}
           value={answerPayload}
           onChange={() => {}}
           readOnly

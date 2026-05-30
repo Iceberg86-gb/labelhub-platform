@@ -3,6 +3,7 @@ import { IconSend } from '@douyinfe/semi-icons';
 import type { Form } from '@formily/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import type { SchemaField } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD, type AnswerPayload } from '../../entities/submission/answerPayload';
@@ -64,7 +65,7 @@ export function LabelerSessionPage() {
   });
   const detail = detailQuery.data;
   const isClaimed = detail?.session.status === 'claimed';
-  const fields = detail?.schemaVersion.schemaJson.fields ?? [];
+  const fields = schemaFields(detail?.schemaVersion.schemaJson);
   const datasetItemContext = useMemo(
     () =>
       detail

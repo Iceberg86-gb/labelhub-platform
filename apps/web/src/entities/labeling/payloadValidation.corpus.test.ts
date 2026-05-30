@@ -1,6 +1,7 @@
 import corpus from '../../../../../packages/contracts/fixtures/validation-corpus.json';
 import { describe, expect, it } from 'vitest';
 import type { SchemaDocument } from '../schema/schemaTypes';
+import { schemaFields } from '../schema/runtimeSchema';
 import type { AnswerPayload } from '../submission/answerPayload';
 import { validatePayload } from './payloadValidation';
 
@@ -28,12 +29,12 @@ describe('payloadValidation shared corpus', () => {
   });
 
   it.each(symmetricCases)('$caseId', (testCase) => {
-    expect(validatePayload(testCase.schema.fields, testCase.payload)).toEqual(testCase.expectedErrors);
+    expect(validatePayload(schemaFields(testCase.schema), testCase.payload)).toEqual(testCase.expectedErrors);
   });
 
   it('documents the scientific notation message asymmetry without hiding the rule failure', () => {
     const testCase = asymmetricCases[0];
-    const actual = validatePayload(testCase.schema.fields, testCase.payload);
+    const actual = validatePayload(schemaFields(testCase.schema), testCase.payload);
 
     expect(actual).toHaveLength(1);
     expect(actual[0]?.stableId).toBe('score');

@@ -1,4 +1,5 @@
 import type { LinkageAtomicCondition, LinkageCondition, LinkageConditionGroup, LinkageConditionOp, SchemaDocument, SchemaField } from './schemaTypes';
+import { schemaFields } from './runtimeSchema';
 
 export interface FieldValidationError {
   fieldPath: string;
@@ -8,9 +9,10 @@ export interface FieldValidationError {
 
 export function validateSchemaForUI(document: SchemaDocument): FieldValidationError[] {
   const errors: FieldValidationError[] = [];
-  validateFields(document.fields ?? [], 'fields', errors);
-  const fieldIndex = indexFields(document.fields ?? [], 'fields');
-  validateLinkage(document.fields ?? [], 'fields', fieldIndex, errors);
+  const fields = schemaFields(document);
+  validateFields(fields, 'fields', errors);
+  const fieldIndex = indexFields(fields, 'fields');
+  validateLinkage(fields, 'fields', fieldIndex, errors);
   validateAcyclicLinkage(fieldIndex, errors);
   return errors;
 }

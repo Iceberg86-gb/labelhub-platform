@@ -14,6 +14,7 @@ import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.outbox.service.OutboxEventService;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
+import com.labelhub.api.module.schema.runtime.SchemaRuntimeAdapter;
 import com.labelhub.api.module.session.mapper.DraftMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.session.service.SessionService;
@@ -49,6 +50,7 @@ class LinkageConditionDeserializationTest {
         .withBean(AuditLogService.class, AuditLogService::noop)
         .withBean(AnswerPayloadValidator.class, AnswerPayloadValidator::new)
         .withBean(Canonicalizer.class, () -> new Canonicalizer(new ObjectMapper()))
+        .withBean(SchemaRuntimeAdapter.class)
         .withBean(SessionService.class);
 
     @Test

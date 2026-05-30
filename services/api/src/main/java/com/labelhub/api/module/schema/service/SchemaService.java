@@ -18,6 +18,7 @@ import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.LabelSchemaMapper;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
+import com.labelhub.api.module.schema.runtime.SchemaRuntimeAdapter;
 import com.labelhub.api.module.schema.service.view.SubmissionRenderSchemaView;
 import com.labelhub.api.module.schema.util.SchemaValidator;
 import com.labelhub.api.module.schema.util.StableIdExtractor;
@@ -45,6 +46,7 @@ public class SchemaService {
     private final TaskMapper taskMapper;
     private final SchemaValidator schemaValidator;
     private final StableIdExtractor stableIdExtractor;
+    private final SchemaRuntimeAdapter schemaRuntimeAdapter;
     private final ObjectMapper objectMapper;
     private final Canonicalizer canonicalizer;
     private final Clock clock;
@@ -58,6 +60,7 @@ public class SchemaService {
         TaskMapper taskMapper,
         SchemaValidator schemaValidator,
         StableIdExtractor stableIdExtractor,
+        SchemaRuntimeAdapter schemaRuntimeAdapter,
         ObjectMapper objectMapper,
         Canonicalizer canonicalizer,
         Clock clock,
@@ -69,6 +72,7 @@ public class SchemaService {
         this.taskMapper = taskMapper;
         this.schemaValidator = schemaValidator;
         this.stableIdExtractor = stableIdExtractor;
+        this.schemaRuntimeAdapter = schemaRuntimeAdapter;
         this.objectMapper = objectMapper;
         this.canonicalizer = canonicalizer;
         this.clock = clock;
@@ -87,7 +91,23 @@ public class SchemaService {
         Clock clock
     ) {
         this(labelSchemaMapper, schemaVersionMapper, submissionMapper, taskMapper, schemaValidator,
-            stableIdExtractor, objectMapper, canonicalizer, clock, AuditLogService.noop());
+            stableIdExtractor, new SchemaRuntimeAdapter(objectMapper), objectMapper, canonicalizer, clock, AuditLogService.noop());
+    }
+
+    public SchemaService(
+        LabelSchemaMapper labelSchemaMapper,
+        SchemaVersionMapper schemaVersionMapper,
+        SubmissionMapper submissionMapper,
+        TaskMapper taskMapper,
+        SchemaValidator schemaValidator,
+        StableIdExtractor stableIdExtractor,
+        ObjectMapper objectMapper,
+        Canonicalizer canonicalizer,
+        Clock clock,
+        AuditLogService auditLogService
+    ) {
+        this(labelSchemaMapper, schemaVersionMapper, submissionMapper, taskMapper, schemaValidator,
+            stableIdExtractor, new SchemaRuntimeAdapter(objectMapper), objectMapper, canonicalizer, clock, auditLogService);
     }
 
     public LabelSchemaEntity create(Long taskId, String name, String description, Long ownerId) {
@@ -129,7 +149,10 @@ public class SchemaService {
 
     @Transactional
     public SchemaVersionEntity publishVersion(Long schemaId, SchemaDocument schemaDocument, Long ownerId) {
-        schemaValidator.validate(schemaDocument);
+        Map<String, Object> requestedSchemaJson = objectMapper.convertValue(schemaDocument, new TypeReference<>() {});
+        Map<String, Object> schemaJson = schemaRuntimeAdapter.toStorageJson(requestedSchemaJson);
+        SchemaDocument runtimeDocument = schemaRuntimeAdapter.toSchemaDocument(schemaJson);
+        schemaValidator.validate(runtimeDocument);
 
         LabelSchemaEntity parent = labelSchemaMapper.selectByIdForUpdate(schemaId);
         if (parent == null) {
@@ -141,14 +164,13 @@ public class SchemaService {
 
         Integer currentMaxVersion = schemaVersionMapper.selectMaxVersionNumber(schemaId);
         int nextVersionNumber = currentMaxVersion == null ? 1 : currentMaxVersion + 1;
-        Map<String, Object> schemaJson = objectMapper.convertValue(schemaDocument, new TypeReference<>() {});
         String canonicalJson = canonicalizer.canonicalJson(schemaJson);
 
         SchemaVersionEntity version = new SchemaVersionEntity();
         version.setSchemaId(schemaId);
         version.setVersionNumber(nextVersionNumber);
         version.setSchemaJson(schemaJson);
-        version.setFieldStableIds(stableIdExtractor.extract(schemaDocument));
+        version.setFieldStableIds(stableIdExtractor.extract(runtimeDocument));
         version.setContentHash(canonicalizer.sha256Hex(canonicalJson));
         version.setStatusCode("published");
         version.setPublishedAt(LocalDateTime.now(clock));
