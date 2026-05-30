@@ -1,16 +1,20 @@
 import type { ISchema } from '@formily/react';
+import { buildFlatValueIndex, isFieldConditionallyRequired, isFieldVisible } from '../../../../entities/labeling/linkageEvaluator';
 import type { SchemaField, SchemaFieldOption, SchemaFieldValidation } from '../../../../entities/schema/schemaTypes';
 import { LABEL_HUB_COMPONENTS } from './componentRegistry';
+import { formilyValuesToAnswerPayload } from './formilyValuesToAnswerPayload';
 import { schemaToFormilyValidators } from './schemaToFormilyValidators';
 
 export type SchemaRuntimeContext = {
   sessionId?: number;
+  rootFields?: SchemaField[];
 };
 
 export function schemaToFormilyISchema(fields: SchemaField[], runtimeContext: SchemaRuntimeContext = {}): ISchema {
+  const context = { ...runtimeContext, rootFields: runtimeContext.rootFields ?? fields };
   return {
     type: 'object',
-    properties: fieldsToProperties(fields, runtimeContext),
+    properties: fieldsToProperties(fields, context),
     ...(requiredFieldIds(fields).length ? { required: requiredFieldIds(fields) } : {}),
   };
 }
@@ -30,6 +34,7 @@ function fieldToSchema(field: SchemaField, runtimeContext: SchemaRuntimeContext)
     'x-decorator': 'FieldFrame',
     'x-decorator-props': { field },
     'x-component': LABEL_HUB_COMPONENTS[field.type],
+    'x-reactions': schemaToFormilyReactions(field, runtimeContext.rootFields ?? []),
     'x-component-props': {
       field,
       placeholder: placeholderWithValidationHint(field),
@@ -76,6 +81,20 @@ function fieldToSchema(field: SchemaField, runtimeContext: SchemaRuntimeContext)
   }
 
   return removeUndefined(base);
+}
+
+function schemaToFormilyReactions(field: SchemaField, rootFields: SchemaField[]): ISchema['x-reactions'] | undefined {
+  if (!field.visibleWhen && !field.requiredWhen) return undefined;
+  return (formilyField: any) => {
+    const values = formilyValuesToAnswerPayload(formilyField.form?.values ?? {}, rootFields);
+    const flatValues = buildFlatValueIndex(rootFields, values);
+    const visible = isFieldVisible(field, flatValues);
+    const required = visible && ((field.validation?.required ?? false) || isFieldConditionallyRequired(field, flatValues));
+
+    formilyField.visible = visible;
+    formilyField.display = visible ? 'visible' : 'none';
+    formilyField.required = required;
+  };
 }
 
 function schemaType(field: SchemaField): ISchema['type'] {

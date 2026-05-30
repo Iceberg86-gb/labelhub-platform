@@ -1,4 +1,5 @@
 import type { LinkageAtomicCondition, LinkageCondition, LinkageConditionGroup, LinkageConditionOp, SchemaDocument, SchemaField } from './schemaTypes';
+import { isCustomValidationCompatible, isSupportedCustomValidationFunction } from './customValidation';
 import { schemaFields } from './runtimeSchema';
 
 export interface FieldValidationError {
@@ -40,6 +41,8 @@ function validateFields(fields: SchemaField[], pathPrefix: string, errors: Field
     if ((field.type === 'single_select' || field.type === 'multi_select') && (!field.options || field.options.length === 0)) {
       errors.push({ fieldPath, stableId: field.stableId, reason: '选择字段至少需要一个选项' });
     }
+
+    validateCustomFunction(field, fieldPath, errors);
 
     if (field.type === 'nested_object') {
       if (!field.children || field.children.length === 0) {
@@ -87,6 +90,20 @@ function validateFields(fields: SchemaField[], pathPrefix: string, errors: Field
       });
     }
   });
+}
+
+function validateCustomFunction(field: SchemaField, fieldPath: string, errors: FieldValidationError[]) {
+  const customFunction = field.validation?.customFunction;
+  if (!customFunction) return;
+
+  const customFunctionPath = `${fieldPath}.validation.customFunction`;
+  if (!isSupportedCustomValidationFunction(customFunction)) {
+    errors.push({ fieldPath: customFunctionPath, stableId: field.stableId, reason: '未知自定义校验函数' });
+    return;
+  }
+  if (!isCustomValidationCompatible(field.type, customFunction)) {
+    errors.push({ fieldPath: customFunctionPath, stableId: field.stableId, reason: '自定义校验函数不适用于该字段类型' });
+  }
 }
 
 const EMPTY_OPS = new Set<LinkageConditionOp>(['empty', 'notEmpty']);

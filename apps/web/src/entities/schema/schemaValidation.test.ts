@@ -140,4 +140,20 @@ describe('validateSchemaForUI linkage DSL validation', () => {
       '数值比较只能引用数字字段',
     );
   });
+
+  it('rejects unknown custom validation function names', () => {
+    expectSingleError(
+      document([field('details', 'text', { validation: { customFunction: 'customJs' } })]),
+      'fields[0].validation.customFunction',
+      '未知自定义校验函数',
+    );
+  });
+
+  it('rejects custom validation functions on incompatible field types', () => {
+    expectSingleError(
+      document([field('score', 'number', { validation: { customFunction: 'httpsUrl' } })]),
+      'fields[0].validation.customFunction',
+      '自定义校验函数不适用于该字段类型',
+    );
+  });
 });

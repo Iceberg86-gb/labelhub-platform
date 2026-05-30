@@ -97,4 +97,17 @@ describe('payloadValidation linkage integration', () => {
 
     expect(validatePayload(fields, { type: 'hide' })).toEqual([]);
   });
+
+  it('applies named custom validation functions after type validation', () => {
+    const fields = [
+      field({ stableId: 'url', type: 'text', validation: { customFunction: 'httpsUrl' } }),
+      field({ stableId: 'metadata', type: 'json_editor', validation: { customFunction: 'jsonObject' } }),
+    ];
+
+    expect(validatePayload(fields, { url: 'https://example.com', metadata: { score: 1 } })).toEqual([]);
+    expect(validatePayload(fields, { url: 'http://example.com', metadata: ['not-object'] })).toEqual([
+      { stableId: 'url', reason: '必须是 HTTPS URL' },
+      { stableId: 'metadata', reason: '必须是 JSON 对象' },
+    ]);
+  });
 });

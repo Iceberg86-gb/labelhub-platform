@@ -1,6 +1,6 @@
 import { Input, InputNumber, Switch, Typography } from '@douyinfe/semi-ui';
 import type { FieldEditorProps } from './editorTypes';
-import { EditorSection, FieldErrors, numberOrUndefined, updateValidation } from './editorUtils';
+import { CustomValidationSection, EditorSection, FieldErrors, numberOrUndefined, updateValidation } from './editorUtils';
 
 export function TextFieldEditor({ field, onChange, errors }: FieldEditorProps) {
   return (
@@ -57,6 +57,7 @@ export function TextFieldEditor({ field, onChange, errors }: FieldEditorProps) {
           />
         </label>
       </EditorSection>
+      <CustomValidationSection field={field} onChange={onChange} />
     </div>
   );
 }

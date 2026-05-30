@@ -1,4 +1,5 @@
 import type { FieldValidator } from '@formily/core';
+import { validateCustomFunctionValue } from '../../../../entities/schema/customValidation';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 
 export function schemaToFormilyValidators(field: SchemaField): FieldValidator | undefined {
@@ -30,6 +31,14 @@ export function schemaToFormilyValidators(field: SchemaField): FieldValidator | 
     if (validation.max != null) {
       validators.push({ max: validation.max, message: `不能大于 ${validation.max}` });
     }
+  }
+
+  if (validation.customFunction) {
+    validators.push({
+      validator(value) {
+        return validateCustomFunctionValue(field.type, validation.customFunction, value) ?? null;
+      },
+    });
   }
 
   return validators.length ? validators : undefined;

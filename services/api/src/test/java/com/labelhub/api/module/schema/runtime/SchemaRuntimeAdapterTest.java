@@ -81,6 +81,23 @@ class SchemaRuntimeAdapterTest {
         assertThat(storage.get("required")).isEqualTo(List.of("tab_text"));
     }
 
+    @Test
+    void projectsCustomValidationFunctionAsLabelHubJsonSchemaExtension() {
+        Map<String, Object> storage = adapter.toStorageJson(Map.of(
+            "fields",
+            List.of(Map.of(
+                "stableId", "title",
+                "label", "Title",
+                "type", "text",
+                "validation", Map.of("customFunction", "nonBlankTrimmed")
+            ))
+        ));
+
+        Map<?, ?> properties = (Map<?, ?>) storage.get("properties");
+        Map<?, ?> title = (Map<?, ?>) properties.get("title");
+        assertThat(title.get("x-labelhub-customFunction")).isEqualTo("nonBlankTrimmed");
+    }
+
     private Map<String, Object> legacySchema() {
         return Map.of(
             "fields",

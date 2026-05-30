@@ -1,5 +1,6 @@
-import { Typography } from '@douyinfe/semi-ui';
+import { Input, Typography } from '@douyinfe/semi-ui';
 import type { ReactNode } from 'react';
+import { CUSTOM_VALIDATION_FUNCTIONS } from '../../../entities/schema/customValidation';
 import type { SchemaField, SchemaFieldValidation } from '../../../entities/schema/schemaTypes';
 import type { FieldValidationError } from '../../../entities/schema/schemaValidation';
 
@@ -32,6 +33,26 @@ export function EditorSection({ title, children }: EditorSectionProps) {
       <Typography.Text strong>{title}</Typography.Text>
       {children}
     </section>
+  );
+}
+
+type CustomValidationSectionProps = {
+  field: SchemaField;
+  onChange: (field: SchemaField) => void;
+};
+
+export function CustomValidationSection({ field, onChange }: CustomValidationSectionProps) {
+  return (
+    <EditorSection title="自定义校验">
+      <label className="field-editor-row">
+        <Typography.Text>函数名</Typography.Text>
+        <Input
+          value={field.validation?.customFunction}
+          placeholder={CUSTOM_VALIDATION_FUNCTIONS.join(' / ')}
+          onChange={(customFunction) => onChange(updateValidation(field, { customFunction: customFunction || undefined }))}
+        />
+      </label>
+    </EditorSection>
   );
 }
 

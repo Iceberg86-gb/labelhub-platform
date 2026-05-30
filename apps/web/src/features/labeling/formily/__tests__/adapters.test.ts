@@ -24,6 +24,8 @@ function field(overrides: Partial<SchemaField> & Pick<SchemaField, 'stableId' | 
     options: overrides.options,
     children: overrides.children,
     tabs: overrides.tabs,
+    visibleWhen: overrides.visibleWhen,
+    requiredWhen: overrides.requiredWhen,
   };
 }
 
@@ -154,6 +156,29 @@ describe('Formily adapters', () => {
     ]);
   });
 
+  it('maps visibleWhen and requiredWhen to Formily x-reactions', () => {
+    const reactiveFields = [
+      field({ stableId: 'driver', type: 'text' }),
+      field({
+        stableId: 'details',
+        type: 'text',
+        visibleWhen: { field: 'driver', op: 'eq', value: 'show' },
+        requiredWhen: { field: 'driver', op: 'eq', value: 'show' },
+      }),
+    ];
+    const schema = schemaToFormilyISchema(reactiveFields);
+    const reaction = (schema.properties as Record<string, any>).details?.['x-reactions'];
+    const formilyField = { form: { values: { driver: 'show', details: '' } }, visible: false, display: 'none', required: false };
+
+    expect(reaction).toBeTypeOf('function');
+    reaction(formilyField);
+    expect(formilyField).toMatchObject({ visible: true, display: 'visible', required: true });
+
+    formilyField.form.values.driver = 'hide';
+    reaction(formilyField);
+    expect(formilyField).toMatchObject({ visible: false, display: 'none', required: false });
+  });
+
   it('adds the text minLength reminder to placeholders', () => {
     const schema = schemaToFormilyISchema([
       field({
@@ -263,6 +288,11 @@ describe('Formily validation projection', () => {
   it('projects pattern to Formily validation errors', async () => {
     const errors = await validateFormilyField(field({ stableId: 'pattern_text', type: 'text', validation: { pattern: '^[a-z ]+$' } }), 'ABC123');
     expect(errors.some((error) => error.includes('格式不正确'))).toBe(true);
+  });
+
+  it('projects named custom validators to Formily validation errors', async () => {
+    const errors = await validateFormilyField(field({ stableId: 'url', type: 'text', validation: { customFunction: 'httpsUrl' } }), 'http://example.com');
+    expect(errors.some((error) => error.includes('必须是 HTTPS URL'))).toBe(true);
   });
 
   it('keeps Formily passing values within payloadValidation authority', async () => {

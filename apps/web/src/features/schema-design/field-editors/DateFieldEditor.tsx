@@ -1,6 +1,6 @@
 import { Input, Switch, Typography } from '@douyinfe/semi-ui';
 import type { FieldEditorProps } from './editorTypes';
-import { EditorSection, FieldErrors, updateValidation } from './editorUtils';
+import { CustomValidationSection, EditorSection, FieldErrors, updateValidation } from './editorUtils';
 
 export function DateFieldEditor({ field, onChange, errors }: FieldEditorProps) {
   return (
@@ -25,6 +25,7 @@ export function DateFieldEditor({ field, onChange, errors }: FieldEditorProps) {
           <Switch checked={Boolean(field.validation?.required)} onChange={(required) => onChange(updateValidation(field, { required }))} />
         </div>
       </EditorSection>
+      <CustomValidationSection field={field} onChange={onChange} />
     </div>
   );
 }

@@ -80,6 +80,31 @@ class AnswerPayloadValidatorMaterialTest {
             .containsExactly("tab_text");
     }
 
+    @Test
+    void customValidationFunctions_applyAfterShapeValidation() {
+        SchemaField url = field("url", SchemaFieldType.TEXT);
+        SchemaFieldValidation urlValidation = new SchemaFieldValidation();
+        urlValidation.setCustomFunction("httpsUrl");
+        url.setValidation(urlValidation);
+
+        SchemaField metadata = field("metadata", SchemaFieldType.JSON_EDITOR);
+        SchemaFieldValidation metadataValidation = new SchemaFieldValidation();
+        metadataValidation.setCustomFunction("jsonObject");
+        metadata.setValidation(metadataValidation);
+
+        assertThat(validator.validate(document(url, metadata), Map.of(
+            "url", "https://example.com",
+            "metadata", Map.of("score", 1)
+        ))).isEmpty();
+
+        assertThat(validator.validate(document(url, metadata), Map.of(
+            "url", "http://example.com",
+            "metadata", List.of("not-object")
+        )))
+            .extracting(AnswerValidationError::reason)
+            .containsExactly("必须是 HTTPS URL", "必须是 JSON 对象");
+    }
+
     private static SchemaDocument document(SchemaField... fields) {
         SchemaDocument document = new SchemaDocument();
         document.setFields(List.of(fields));

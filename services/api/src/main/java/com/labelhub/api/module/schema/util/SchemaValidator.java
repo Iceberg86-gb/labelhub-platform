@@ -82,6 +82,7 @@ public class SchemaValidator {
                             "select type requires at least one option");
                 }
             }
+            validateCustomFunction(field, fieldPath);
             if (field.getType() == SchemaFieldType.NESTED_OBJECT) {
                 if (field.getChildren() == null || field.getChildren().isEmpty()) {
                     throw new InvalidSchemaDocumentException(fieldPath + ".children",
@@ -96,6 +97,22 @@ public class SchemaValidator {
                 }
                 validateTabs(field.getTabs(), seenStableIds, fieldPath + ".tabs");
             }
+        }
+    }
+
+    private void validateCustomFunction(SchemaField field, String fieldPath) {
+        if (field.getValidation() == null
+                || field.getValidation().getCustomFunction() == null
+                || field.getValidation().getCustomFunction().isBlank()) {
+            return;
+        }
+        String customFunction = field.getValidation().getCustomFunction();
+        String customFunctionPath = fieldPath + ".validation.customFunction";
+        if (!SchemaCustomValidationFunctions.isSupported(customFunction)) {
+            throw new InvalidSchemaDocumentException(customFunctionPath, "未知自定义校验函数");
+        }
+        if (!SchemaCustomValidationFunctions.isCompatible(field.getType(), customFunction)) {
+            throw new InvalidSchemaDocumentException(customFunctionPath, "自定义校验函数不适用于该字段类型");
         }
     }
 

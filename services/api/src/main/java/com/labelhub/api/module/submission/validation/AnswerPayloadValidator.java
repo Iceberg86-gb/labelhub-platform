@@ -6,6 +6,7 @@ import com.labelhub.api.generated.model.SchemaFieldOption;
 import com.labelhub.api.generated.model.SchemaFieldType;
 import com.labelhub.api.generated.model.SchemaFieldValidation;
 import com.labelhub.api.generated.model.SchemaTab;
+import com.labelhub.api.module.schema.util.SchemaCustomValidationFunctions;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -77,7 +78,7 @@ public class AnswerPayloadValidator {
             return List.of();
         }
 
-        return switch (type) {
+        List<AnswerValidationError> errors = switch (type) {
             case TEXT, RICH_TEXT -> validateText(field, value);
             case NUMBER -> validateNumber(field, value);
             case SINGLE_SELECT -> validateSingleSelect(field, value);
@@ -90,6 +91,11 @@ public class AnswerPayloadValidator {
             case TAB_CONTAINER -> validateTabContainer(field, rootPayload, flatValues);
             case NESTED_OBJECT -> validateNestedObject(field, value, flatValues);
         };
+        if (!errors.isEmpty()) {
+            return errors;
+        }
+        String customError = validateCustomFunction(field, value);
+        return customError == null ? List.of() : List.of(error(field, customError));
     }
 
     private List<AnswerValidationError> validateText(SchemaField field, Object value) {
@@ -200,6 +206,18 @@ public class AnswerPayloadValidator {
             .flatMap(tab -> (tab.getChildren() == null ? List.<SchemaField>of() : tab.getChildren()).stream())
             .flatMap(child -> validateField(child, rootPayload.get(child.getStableId()), flatValues, rootPayload).stream())
             .toList();
+    }
+
+    private String validateCustomFunction(SchemaField field, Object value) {
+        if (field.getValidation() == null
+                || field.getValidation().getCustomFunction() == null
+                || field.getValidation().getCustomFunction().isBlank()) {
+            return null;
+        }
+        return SchemaCustomValidationFunctions.validate(
+                field.getType(),
+                field.getValidation().getCustomFunction(),
+                value);
     }
 
     private Map<String, Object> buildFlatValueIndex(List<SchemaField> fields, Map<String, Object> payload) {

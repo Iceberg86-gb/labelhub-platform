@@ -4,6 +4,7 @@ import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldOption;
 import com.labelhub.api.generated.model.SchemaFieldType;
+import com.labelhub.api.generated.model.SchemaFieldValidation;
 import com.labelhub.api.generated.model.LinkageAtomicCondition;
 import com.labelhub.api.generated.model.LinkageConditionGroup;
 import com.labelhub.api.generated.model.LinkageConditionOp;
@@ -276,6 +277,30 @@ class SchemaValidatorTest {
         assertInvalid(document(field("type", SchemaFieldType.TEXT), details),
                 "fields[1].visibleWhen.field",
                 "数值比较只能引用数字字段");
+    }
+
+    @Test
+    void validate_rejects_unknown_custom_validation_function() {
+        SchemaField field = field("title", SchemaFieldType.TEXT);
+        SchemaFieldValidation validation = new SchemaFieldValidation();
+        validation.setCustomFunction("customJs");
+        field.setValidation(validation);
+
+        assertInvalid(document(field),
+                "fields[0].validation.customFunction",
+                "未知自定义校验函数");
+    }
+
+    @Test
+    void validate_rejects_custom_validation_function_for_incompatible_type() {
+        SchemaField field = field("score", SchemaFieldType.NUMBER);
+        SchemaFieldValidation validation = new SchemaFieldValidation();
+        validation.setCustomFunction("httpsUrl");
+        field.setValidation(validation);
+
+        assertInvalid(document(field),
+                "fields[0].validation.customFunction",
+                "自定义校验函数不适用于该字段类型");
     }
 
     private static SchemaDocument document(SchemaField... fields) {
