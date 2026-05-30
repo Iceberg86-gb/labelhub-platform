@@ -1895,6 +1895,9 @@ components:
           type: string
         content:
           type: string
+        sourcePath:
+          type: string
+          description: Dot-separated path into the dataset item payload used by show_item fields.
         aiPrompt:
           type: string
         acceptedFileTypes:

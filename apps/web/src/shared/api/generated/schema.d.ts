@@ -926,6 +926,8 @@ export interface components {
             placeholder?: string;
             help?: string;
             content?: string;
+            /** @description Dot-separated path into the dataset item payload used by show_item fields. */
+            sourcePath?: string;
             aiPrompt?: string;
             acceptedFileTypes?: string[];
             maxFileSizeMb?: number;

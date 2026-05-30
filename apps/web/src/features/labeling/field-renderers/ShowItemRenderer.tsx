@@ -1,11 +1,12 @@
-import { Typography } from '@douyinfe/semi-ui';
 import type { SchemaField } from '../../../entities/schema/schemaTypes';
+import { formatShowItemValue, resolveShowItemValue } from '../showItemSource';
 
-export function ShowItemRenderer({ field }: { field: SchemaField }) {
+export function ShowItemRenderer({ field, itemPayload }: { field: SchemaField; itemPayload?: unknown }) {
+  const value = formatShowItemValue(resolveShowItemValue(field, itemPayload));
   return (
     <div className="labelhub-show-item">
-      <Typography.Title heading={6}>{field.label}</Typography.Title>
-      <Typography.Paragraph>{field.content ?? field.help}</Typography.Paragraph>
+      <div className="labelhub-show-item__title">{field.label}</div>
+      <pre className="labelhub-show-item__body">{value}</pre>
     </div>
   );
 }
