@@ -1,6 +1,6 @@
-import { Input, Switch, Typography } from '@douyinfe/semi-ui';
+import { Input, InputNumber, Switch, Typography } from '@douyinfe/semi-ui';
 import type { FieldEditorProps } from './editorTypes';
-import { EditorSection, FieldErrors, updateValidation } from './editorUtils';
+import { EditorSection, FieldErrors, numberOrUndefined, updateValidation } from './editorUtils';
 
 export function FileUploadFieldEditor({ field, onChange, errors }: FieldEditorProps) {
   return (
@@ -24,8 +24,28 @@ export function FileUploadFieldEditor({ field, onChange, errors }: FieldEditorPr
           <Typography.Text>必填</Typography.Text>
           <Switch checked={Boolean(field.validation?.required)} onChange={(required) => onChange(updateValidation(field, { required }))} />
         </div>
-        <Typography.Text type="tertiary">Owner 端仅配置字段，实际文件上传控件留到 Labeler 作答页渲染。</Typography.Text>
+        <label className="field-editor-row">
+          <Typography.Text>允许类型</Typography.Text>
+          <Input
+            value={field.acceptedFileTypes?.join(',') ?? ''}
+            placeholder=".png,.jpg,application/pdf"
+            onChange={(value) => onChange({ ...field, acceptedFileTypes: splitList(value) })}
+          />
+        </label>
+        <label className="field-editor-row">
+          <Typography.Text>最大 MB</Typography.Text>
+          <InputNumber
+            min={1}
+            value={field.maxFileSizeMb}
+            onChange={(value) => onChange({ ...field, maxFileSizeMb: numberOrUndefined(value) })}
+          />
+        </label>
       </EditorSection>
     </div>
   );
+}
+
+function splitList(value: string): string[] | undefined {
+  const items = value.split(',').map((item) => item.trim()).filter(Boolean);
+  return items.length ? items : undefined;
 }

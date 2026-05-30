@@ -247,6 +247,7 @@ export function LabelerSessionPage() {
           readOnly={!isClaimed}
           errors={visibleFieldErrors}
           onFormReady={handleFormReady}
+          sessionId={sessionId}
         />
       </Card>
 

@@ -37,6 +37,10 @@ function fieldToJsonSchemaProperty(field: SchemaField): NonNullable<SchemaDocume
   };
   if (field.type === 'number') {
     property.type = 'number';
+  } else if (field.type === 'json_editor' || field.type === 'llm_interaction') {
+    property.type = 'object';
+  } else if (field.type === 'show_item') {
+    property.type = 'null';
   } else if (field.type === 'multi_select') {
     property.type = 'array';
     property.items = { type: 'string', enum: field.options?.map((option) => option.value) ?? [] };

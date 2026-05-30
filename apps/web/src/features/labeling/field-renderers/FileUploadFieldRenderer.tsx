@@ -1,29 +1,19 @@
-import { Input, Typography } from '@douyinfe/semi-ui';
+import type { AnswerValue } from '../../../entities/submission/answerPayload';
 import type { FieldRendererProps } from './FieldRendererProps';
 import { FieldFrame, ReadOnlyValue } from './rendererUtils';
 
-export function FileUploadFieldRenderer({
-  field,
-  value,
-  onChange,
-  readOnly,
-  errors,
-}: FieldRendererProps<string>) {
+export function FileUploadFieldRenderer({ field, value, readOnly, errors }: FieldRendererProps<AnswerValue>) {
+  const fileName = fileNameOf(value);
   return (
     <FieldFrame field={field} errors={errors} showRequiredMarker={!readOnly}>
-      {readOnly ? (
-        <ReadOnlyValue value={value} />
-      ) : (
-        <Input
-          value={value ?? ''}
-          placeholder="输入文件 URL 或文件名(M2 阶段)"
-          validateStatus={errors?.length ? 'error' : 'default'}
-          onChange={onChange}
-        />
-      )}
-      <Typography.Text type="tertiary" size="small">
-        M2 阶段:文件上传暂以文本占位,M3 集成文件存储
-      </Typography.Text>
+      <ReadOnlyValue value={fileName} />
     </FieldFrame>
   );
+}
+
+function fileNameOf(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+  const fileName = (value as { fileName?: unknown }).fileName;
+  const objectKey = (value as { objectKey?: unknown }).objectKey;
+  return typeof fileName === 'string' ? fileName : typeof objectKey === 'string' ? objectKey : '';
 }

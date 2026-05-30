@@ -50,10 +50,24 @@ function validateField(field: SchemaField, value: unknown, errors: PayloadValida
       }
       return;
     case 'date':
-    case 'file_upload':
+    case 'rich_text':
       if (typeof value !== 'string') {
         errors.push({ stableId: field.stableId, reason: '必须是文本' });
       }
+      return;
+    case 'file_upload':
+      if (!isFileUploadValue(value)) {
+        errors.push({ stableId: field.stableId, reason: '请上传文件' });
+      }
+      return;
+    case 'json_editor':
+      return;
+    case 'llm_interaction':
+      if (!isAnswerPayload(value)) {
+        errors.push({ stableId: field.stableId, reason: '必须是对象' });
+      }
+      return;
+    case 'show_item':
       return;
     case 'nested_object':
       if (!isAnswerPayload(value)) {
@@ -70,6 +84,13 @@ function validateField(field: SchemaField, value: unknown, errors: PayloadValida
       return _exhaustive;
     }
   }
+}
+
+function isFileUploadValue(value: unknown): boolean {
+  return isAnswerPayload(value)
+    && typeof value.objectKey === 'string'
+    && typeof value.fileName === 'string'
+    && typeof value.sizeBytes === 'number';
 }
 
 function validateText(field: SchemaField, value: unknown, errors: PayloadValidationError[]) {

@@ -23,6 +23,7 @@ import com.labelhub.api.module.schema.exception.SchemaNotFoundException;
 import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.session.exception.DraftNotFoundException;
+import com.labelhub.api.module.session.exception.InvalidSessionAttachmentException;
 import com.labelhub.api.module.session.exception.InvalidSubmissionPayloadException;
 import com.labelhub.api.module.session.exception.NoAvailableDatasetItemException;
 import com.labelhub.api.module.session.exception.SessionAccessDeniedException;
@@ -95,6 +96,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidSubmissionPayloadException.class)
     ResponseEntity<ApiError> invalidSubmissionPayload(InvalidSubmissionPayloadException exception) {
         return ResponseEntity.badRequest().body(error("INVALID_SUBMISSION_PAYLOAD", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidSessionAttachmentException.class)
+    ResponseEntity<ApiError> invalidSessionAttachment(InvalidSessionAttachmentException exception) {
+        return ResponseEntity.badRequest().body(error("INVALID_SESSION_ATTACHMENT", exception.getMessage()));
     }
 
     @ExceptionHandler(AnswerValidationException.class)

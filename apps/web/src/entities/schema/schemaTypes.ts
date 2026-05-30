@@ -20,6 +20,10 @@ export const SCHEMA_FIELD_TYPES = [
   'multi_select',
   'date',
   'file_upload',
+  'rich_text',
+  'json_editor',
+  'llm_interaction',
+  'show_item',
   'nested_object',
 ] satisfies SchemaFieldType[];
 
@@ -30,6 +34,10 @@ export const SCHEMA_FIELD_TYPE_LABELS: Record<SchemaFieldType, string> = {
   multi_select: '多选',
   date: '日期',
   file_upload: '文件上传',
+  rich_text: '富文本',
+  json_editor: 'JSON',
+  llm_interaction: 'LLM 交互',
+  show_item: '展示项',
   nested_object: '嵌套对象',
 };
 

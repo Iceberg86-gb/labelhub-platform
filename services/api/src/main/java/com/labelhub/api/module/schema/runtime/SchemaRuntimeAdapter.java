@@ -133,6 +133,20 @@ public class SchemaRuntimeAdapter {
         } else if (type == SchemaFieldType.MULTI_SELECT) {
             property.put("type", "array");
             property.put("items", mapOf("type", "string", "enum", optionValues(field)));
+        } else if (type == SchemaFieldType.FILE_UPLOAD || type == SchemaFieldType.JSON_EDITOR
+            || type == SchemaFieldType.LLM_INTERACTION) {
+            property.put("type", "object");
+            if (type == SchemaFieldType.FILE_UPLOAD) {
+                property.put("required", List.of("objectKey", "fileName", "sizeBytes"));
+                property.put("properties", mapOf(
+                    "objectKey", mapOf("type", "string"),
+                    "fileName", mapOf("type", "string"),
+                    "contentType", mapOf("type", "string"),
+                    "sizeBytes", mapOf("type", "integer")
+                ));
+            }
+        } else if (type == SchemaFieldType.SHOW_ITEM) {
+            property.put("type", "null");
         } else if (type == SchemaFieldType.NESTED_OBJECT) {
             List<SchemaField> children = field.getChildren() == null ? List.of() : field.getChildren();
             property.put("type", "object");

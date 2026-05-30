@@ -7,12 +7,15 @@ import com.labelhub.api.generated.model.SessionDetail;
 import com.labelhub.api.generated.model.SessionStatus;
 import com.labelhub.api.generated.model.Submission;
 import com.labelhub.api.generated.model.SubmitSessionRequest;
+import com.labelhub.api.generated.model.UploadedFile;
 import com.labelhub.api.generated.web.SessionsApi;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.session.entity.DraftEntity;
+import com.labelhub.api.module.session.service.SessionAttachmentService;
 import com.labelhub.api.module.session.service.SessionService;
 import com.labelhub.api.module.submission.web.SubmissionDtoMapper;
 import com.labelhub.api.security.JwtPrincipal;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,7 +27,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 
@@ -33,11 +38,18 @@ import jakarta.validation.Valid;
 public class SessionsController implements SessionsApi {
 
     private final SessionService sessionService;
+    private final SessionAttachmentService sessionAttachmentService;
     private final SessionDtoMapper dtoMapper;
     private final SubmissionDtoMapper submissionDtoMapper;
 
-    public SessionsController(SessionService sessionService, SessionDtoMapper dtoMapper, SubmissionDtoMapper submissionDtoMapper) {
+    public SessionsController(
+        SessionService sessionService,
+        SessionAttachmentService sessionAttachmentService,
+        SessionDtoMapper dtoMapper,
+        SubmissionDtoMapper submissionDtoMapper
+    ) {
         this.sessionService = sessionService;
+        this.sessionAttachmentService = sessionAttachmentService;
         this.dtoMapper = dtoMapper;
         this.submissionDtoMapper = submissionDtoMapper;
     }
@@ -90,6 +102,17 @@ public class SessionsController implements SessionsApi {
     ) {
         SubmissionEntity submission = sessionService.submit(sessionId, currentUserId(), submitSessionRequest.getAnswerPayload());
         return ResponseEntity.status(HttpStatus.CREATED).body(submissionDtoMapper.toSubmission(submission));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('LABELER')")
+    @PostMapping(path = "/sessions/{sessionId}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = "application/json")
+    public ResponseEntity<UploadedFile> uploadSessionAttachment(
+        @PathVariable("sessionId") Long sessionId,
+        @RequestPart("file") MultipartFile file
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(sessionAttachmentService.upload(sessionId, currentUserId(), file));
     }
 
     private Long currentUserId() {

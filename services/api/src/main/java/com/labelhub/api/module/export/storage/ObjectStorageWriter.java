@@ -18,10 +18,14 @@ public class ObjectStorageWriter {
     }
 
     public void putObject(String objectKey, byte[] content) {
+        putObject(objectKey, content, contentTypeFor(objectKey));
+    }
+
+    public void putObject(String objectKey, byte[] content, String contentType) {
         PutObjectRequest request = PutObjectRequest.builder()
             .bucket(properties.bucket())
             .key(objectKey)
-            .contentType(contentTypeFor(objectKey))
+            .contentType(contentType == null || contentType.isBlank() ? contentTypeFor(objectKey) : contentType)
             .build();
         s3Client.putObject(request, RequestBody.fromBytes(content));
     }

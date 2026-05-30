@@ -3,10 +3,13 @@ package com.labelhub.api.module.ai.web;
 import com.labelhub.api.generated.model.SubmissionAiProvenance;
 import com.labelhub.api.generated.model.AiReviewRule;
 import com.labelhub.api.generated.model.AiReviewRuleRequest;
+import com.labelhub.api.generated.model.FieldAssistRequest;
+import com.labelhub.api.generated.model.FieldAssistResponse;
 import com.labelhub.api.module.ai.entity.AiReviewRuleEntity;
 import com.labelhub.api.module.ai.entity.PromptVersionEntity;
 import com.labelhub.api.module.ai.service.AiReviewService;
 import com.labelhub.api.module.ai.service.AiReviewRuleService;
+import com.labelhub.api.module.ai.service.FieldAssistService;
 import com.labelhub.api.module.ai.service.view.AiReviewRuleView;
 import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
 import com.labelhub.api.security.JwtPrincipal;
@@ -28,11 +31,13 @@ import static org.mockito.Mockito.when;
 class AiReviewControllerTest {
 
     private final AiReviewService aiReviewService = mock(AiReviewService.class);
+    private final FieldAssistService fieldAssistService = mock(FieldAssistService.class);
     private final AiReviewRuleService aiReviewRuleService = mock(AiReviewRuleService.class);
     private final AiReviewDtoMapper aiReviewDtoMapper = mock(AiReviewDtoMapper.class);
     private final AiReviewRuleDtoMapper aiReviewRuleDtoMapper = mock(AiReviewRuleDtoMapper.class);
     private final AiReviewController controller = new AiReviewController(
         aiReviewService,
+        fieldAssistService,
         aiReviewDtoMapper,
         aiReviewRuleService,
         aiReviewRuleDtoMapper
@@ -77,6 +82,24 @@ class AiReviewControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isSameAs(dto);
         verify(aiReviewRuleService).saveRule(request, 1001L);
+    }
+
+    @Test
+    void createFieldAssistCall_delegates_to_service_with_current_labeler() {
+        FieldAssistRequest request = new FieldAssistRequest(55L, "summary", java.util.Map.of("value", "draft"));
+        FieldAssistResponse dto = new FieldAssistResponse();
+        when(fieldAssistService.assist(request, 2002L)).thenReturn(dto);
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+            new JwtPrincipal(2002L, "labeler_demo", List.of("LABELER")),
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_LABELER"))
+        ));
+
+        var response = controller.createFieldAssistCall(request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getBody()).isSameAs(dto);
+        verify(fieldAssistService).assist(request, 2002L);
     }
 
     @Test
