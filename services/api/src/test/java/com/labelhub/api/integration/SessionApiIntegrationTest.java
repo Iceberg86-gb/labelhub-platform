@@ -102,6 +102,35 @@ class SessionApiIntegrationTest {
     }
 
     @Test
+    void my_sessions_accepts_lowercase_status_query_value() throws Exception {
+        String labelerToken = login("labeler_demo", "demo1234");
+        claimSession(labelerToken, publishedTaskFixture("sessions-status-lowercase", 1, 1));
+
+        String body = mockMvc.perform(get("/my/sessions?status=claimed")
+                .header("Authorization", bearer(labelerToken)))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        JsonNode items = objectMapper.readTree(body).get("items");
+        assertThat(items).isNotEmpty();
+        for (JsonNode item : items) {
+            assertThat(item.get("status").asText()).isEqualTo("claimed");
+        }
+    }
+
+    @Test
+    void my_sessions_rejects_invalid_status_query_value_as_bad_request() throws Exception {
+        String labelerToken = login("labeler_demo", "demo1234");
+
+        mockMvc.perform(get("/my/sessions?status=CLAIMED")
+                .header("Authorization", bearer(labelerToken)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("INVALID_SESSION_STATUS"));
+    }
+
+    @Test
     void concurrent_claim_with_quota_1_allows_only_one_winner() throws Exception {
         String labelerToken = login("labeler_demo", "demo1234");
         Fixture fixture = publishedTaskFixture("marketplace-concurrent", 1, 5);
