@@ -1826,6 +1826,9 @@ components:
           type: number
         pattern:
           type: string
+        customFunction:
+          type: string
+          description: Named LabelHub custom validator. Supported values are nonBlankTrimmed, httpsUrl, and jsonObject.
     SchemaFieldOption:
       type: object
       required: [label, value]
@@ -1953,6 +1956,8 @@ components:
         maximum:
           type: number
         pattern:
+          type: string
+        x-labelhub-customFunction:
           type: string
     SchemaDocument:
       type: object

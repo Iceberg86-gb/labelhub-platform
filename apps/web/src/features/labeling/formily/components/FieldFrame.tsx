@@ -15,12 +15,13 @@ export function FieldFrame({ field, children, externalErrors, showRequiredMarker
   const formilyField = useField<GeneralField>();
   const errors = [...formilyErrors(formilyField), ...(externalErrors ?? [])];
   const schemaField = fieldFromPropsOrState(field, formilyField);
+  const required = Boolean(schemaField?.validation?.required || (formilyField as GeneralField & { required?: boolean }).required);
 
   return (
     <div className={['labeling-field', errors.length ? 'labeling-field--error' : ''].join(' ')} data-labeling-field-id={schemaField?.stableId}>
       <div className="labeling-field__header">
         <Typography.Text strong>{schemaField?.label || formilyField.title || '未命名字段'}</Typography.Text>
-        {showRequiredMarker && schemaField?.validation?.required ? (
+        {showRequiredMarker && required ? (
           <span className="labeling-field__required">必填</span>
         ) : null}
       </div>

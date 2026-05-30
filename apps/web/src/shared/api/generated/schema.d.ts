@@ -893,6 +893,8 @@ export interface components {
             min?: number;
             max?: number;
             pattern?: string;
+            /** @description Named LabelHub custom validator. Supported values are nonBlankTrimmed, httpsUrl, and jsonObject. */
+            customFunction?: string;
         };
         SchemaFieldOption: {
             label: string;
@@ -949,6 +951,7 @@ export interface components {
             minimum?: number;
             maximum?: number;
             pattern?: string;
+            "x-labelhub-customFunction"?: string;
         } & {
             [key: string]: unknown;
         };

@@ -191,6 +191,9 @@ public class SchemaRuntimeAdapter {
         if (field.getValidation().getPattern() != null && !field.getValidation().getPattern().isBlank()) {
             property.put("pattern", field.getValidation().getPattern());
         }
+        if (field.getValidation().getCustomFunction() != null && !field.getValidation().getCustomFunction().isBlank()) {
+            property.put("x-labelhub-customFunction", field.getValidation().getCustomFunction());
+        }
     }
 
     private List<String> requiredStableIds(List<SchemaField> fields) {

@@ -1,6 +1,6 @@
 import { Input, Switch, TextArea, Typography } from '@douyinfe/semi-ui';
 import type { FieldEditorProps } from './editorTypes';
-import { EditorSection, FieldErrors, updateValidation } from './editorUtils';
+import { CustomValidationSection, EditorSection, FieldErrors, updateValidation } from './editorUtils';
 
 export function RichTextFieldEditor({ field, onChange, errors }: FieldEditorProps) {
   return (
@@ -24,6 +24,7 @@ export function RichTextFieldEditor({ field, onChange, errors }: FieldEditorProp
           <Switch checked={Boolean(field.validation?.required)} onChange={(required) => onChange(updateValidation(field, { required }))} />
         </div>
       </EditorSection>
+      <CustomValidationSection field={field} onChange={onChange} />
     </div>
   );
 }

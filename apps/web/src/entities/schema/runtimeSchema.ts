@@ -72,6 +72,7 @@ function fieldToJsonSchemaProperty(field: SchemaField): NonNullable<SchemaDocume
   if (field.validation?.min != null) property.minimum = field.validation.min;
   if (field.validation?.max != null) property.maximum = field.validation.max;
   if (field.validation?.pattern) property.pattern = field.validation.pattern;
+  if (field.validation?.customFunction) property['x-labelhub-customFunction'] = field.validation.customFunction;
   return property;
 }
 

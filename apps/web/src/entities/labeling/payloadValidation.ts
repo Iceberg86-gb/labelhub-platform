@@ -1,4 +1,5 @@
 import type { SchemaField } from '../schema/schemaTypes';
+import { validateCustomFunctionValue } from '../schema/customValidation';
 import type { AnswerPayload } from '../submission/answerPayload';
 import { getFieldValue, isAnswerPayload } from '../submission/answerPayload';
 import { buildFlatValueIndex, isFieldConditionallyRequired, isFieldVisible, type FlatValueIndex } from './linkageEvaluator';
@@ -47,6 +48,7 @@ function validateField(
   switch (field.type) {
     case 'text':
       validateText(field, value, errors);
+      validateCustomFunction(field, value, errors);
       return;
     case 'number':
       validateNumber(field, value, errors);
@@ -62,10 +64,14 @@ function validateField(
       }
       return;
     case 'date':
-    case 'rich_text':
       if (typeof value !== 'string') {
         errors.push({ stableId: field.stableId, reason: '必须是文本' });
       }
+      validateCustomFunction(field, value, errors);
+      return;
+    case 'rich_text':
+      validateText(field, value, errors);
+      validateCustomFunction(field, value, errors);
       return;
     case 'file_upload':
       if (!isFileUploadValue(value)) {
@@ -73,11 +79,13 @@ function validateField(
       }
       return;
     case 'json_editor':
+      validateCustomFunction(field, value, errors);
       return;
     case 'llm_interaction':
       if (!isAnswerPayload(value)) {
         errors.push({ stableId: field.stableId, reason: '必须是对象' });
       }
+      validateCustomFunction(field, value, errors);
       return;
     case 'show_item':
       return;
@@ -95,6 +103,16 @@ function validateField(
       const _exhaustive: never = field.type;
       return _exhaustive;
     }
+  }
+}
+
+function validateCustomFunction(field: SchemaField, value: unknown, errors: PayloadValidationError[]) {
+  if (!field.validation?.customFunction || errors.some((error) => error.stableId === field.stableId)) {
+    return;
+  }
+  const reason = validateCustomFunctionValue(field.type, field.validation.customFunction, value);
+  if (reason) {
+    errors.push({ stableId: field.stableId, reason });
   }
 }
 

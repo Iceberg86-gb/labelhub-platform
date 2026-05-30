@@ -11,6 +11,7 @@ const titleField: SchemaField = {
     minLength: 3,
     maxLength: 120,
     pattern: '^[A-Z]',
+    customFunction: 'nonBlankTrimmed',
   },
 };
 
@@ -68,6 +69,7 @@ describe('runtime schema helpers', () => {
           minLength: 3,
           maxLength: 120,
           pattern: '^[A-Z]',
+          'x-labelhub-customFunction': 'nonBlankTrimmed',
         },
         score: {
           type: 'number',
