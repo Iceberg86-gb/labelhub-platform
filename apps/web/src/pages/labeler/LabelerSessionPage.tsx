@@ -248,6 +248,7 @@ export function LabelerSessionPage() {
           errors={visibleFieldErrors}
           onFormReady={handleFormReady}
           sessionId={sessionId}
+          itemPayload={datasetItemContext.payload}
         />
       </Card>
 

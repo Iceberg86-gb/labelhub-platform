@@ -17,6 +17,7 @@ function field(overrides: Partial<SchemaField> & Pick<SchemaField, 'stableId' | 
     placeholder: overrides.placeholder,
     help: overrides.help,
     content: overrides.content,
+    sourcePath: overrides.sourcePath,
     aiPrompt: overrides.aiPrompt,
     acceptedFileTypes: overrides.acceptedFileTypes,
     maxFileSizeMb: overrides.maxFileSizeMb,
@@ -251,9 +252,21 @@ describe('Formily adapters', () => {
   it('omits display-only show_item fields from outbound answer payload', () => {
     const form = createForm({ initialValues: { show_1: 'display copy', text_1: 'hello' } });
     expect(formilyValuesToAnswerPayload(form.values, [
-      field({ stableId: 'show_1', type: 'show_item', content: 'Display copy' }),
+      field({ stableId: 'show_1', type: 'show_item', content: 'Display copy', sourcePath: 'question.prompt' }),
       field({ stableId: 'text_1', type: 'text' }),
     ])).toEqual({ text_1: 'hello' });
+  });
+
+  it('passes dataset item payload to show_item component props', () => {
+    const itemPayload = { question: { prompt: 'Raw dataset prompt' } };
+    const schema = schemaToFormilyISchema([
+      field({ stableId: 'show_1', type: 'show_item', content: 'Fallback copy', sourcePath: 'question.prompt' }),
+    ], { itemPayload });
+    const properties = schema.properties as Record<string, any>;
+
+    expect(properties.show_1?.['x-component']).toBe('LabelHubShowItem');
+    expect(properties.show_1?.['x-component-props']?.field.sourcePath).toBe('question.prompt');
+    expect(properties.show_1?.['x-component-props']?.itemPayload).toBe(itemPayload);
   });
 
   it('handles empty payload and empty schema edge cases', () => {

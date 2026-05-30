@@ -20,6 +20,7 @@ export interface SchemaFormilyRendererProps {
   errors?: Map<string, string[]>;
   onFormReady?: (form: Form<Record<string, unknown>>) => void;
   sessionId?: number;
+  itemPayload?: unknown;
 }
 
 export function SchemaFormilyRenderer({
@@ -30,12 +31,13 @@ export function SchemaFormilyRenderer({
   errors,
   onFormReady,
   sessionId,
+  itemPayload,
 }: SchemaFormilyRendererProps) {
   const form = useMemo(
     () => createSchemaFormilyForm({ schemaFields, value, onChange, readOnly }),
     [schemaFields, value, onChange, readOnly],
   );
-  const schema = useMemo(() => schemaToFormilyISchema(schemaFields, { sessionId }), [schemaFields, sessionId]);
+  const schema = useMemo(() => schemaToFormilyISchema(schemaFields, { sessionId, itemPayload }), [schemaFields, sessionId, itemPayload]);
 
   useEffect(() => {
     onFormReady?.(form);

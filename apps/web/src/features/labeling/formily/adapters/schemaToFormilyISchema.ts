@@ -7,6 +7,7 @@ import { schemaToFormilyValidators } from './schemaToFormilyValidators';
 
 export type SchemaRuntimeContext = {
   sessionId?: number;
+  itemPayload?: unknown;
   rootFields?: SchemaField[];
 };
 
@@ -40,6 +41,7 @@ function fieldToSchema(field: SchemaField, runtimeContext: SchemaRuntimeContext)
       placeholder: placeholderWithValidationHint(field),
       mode: field.type === 'multi_select' ? 'multiple' : undefined,
       sessionId: runtimeContext.sessionId,
+      itemPayload: runtimeContext.itemPayload,
     },
   };
 

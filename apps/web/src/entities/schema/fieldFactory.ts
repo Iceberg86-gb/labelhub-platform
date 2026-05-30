@@ -22,7 +22,7 @@ export function createField(type: SchemaFieldType): SchemaField {
     case 'json_editor':
       return { ...base, help: undefined, placeholder: '{ }' };
     case 'show_item':
-      return { ...base, content: '展示内容', validation: { required: false } };
+      return { ...base, content: '展示内容', sourcePath: undefined, validation: { required: false } };
     case 'number':
     case 'date':
     case 'file_upload':

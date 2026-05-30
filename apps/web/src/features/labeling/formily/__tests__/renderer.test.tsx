@@ -116,4 +116,54 @@ describe('SchemaFormilyRenderer', () => {
     expect(properties.tags['x-component-props'].mode).toBe('multiple');
     expect(properties.status['x-component-props'].mode).toBeUndefined();
   });
+
+  it('renders show_item from dataset item sourcePath without adding it to answers', () => {
+    const sourceField = {
+      stableId: 'source_prompt',
+      label: 'Prompt',
+      type: 'show_item',
+      content: 'Fallback prompt',
+      sourcePath: 'question.prompt',
+    } satisfies SchemaField;
+    const answerField = { stableId: 'answer', label: 'Answer', type: 'text' } as SchemaField;
+    const view = renderClient(
+      <SchemaFormilyRenderer
+        schemaFields={[sourceField, answerField]}
+        value={{ source_prompt: 'must not submit', answer: 'draft' }}
+        readOnly={false}
+        onChange={() => {}}
+        itemPayload={{ question: { prompt: 'Raw dataset prompt' } }}
+      />,
+    );
+
+    expect(view.text()).toContain('Raw dataset prompt');
+    expect(view.text()).not.toContain('Fallback prompt');
+    expect(formilyValuesToAnswerPayload({ source_prompt: 'must not submit', answer: 'draft' }, [sourceField, answerField])).toEqual({
+      answer: 'draft',
+    });
+    view.unmount();
+  });
+
+  it('falls back to configured show_item content when sourcePath is missing', () => {
+    const sourceField = {
+      stableId: 'source_prompt',
+      label: 'Prompt',
+      type: 'show_item',
+      content: 'Fallback prompt',
+      sourcePath: 'question.missing',
+    } satisfies SchemaField;
+    const view = renderClient(
+      <SchemaFormilyRenderer
+        schemaFields={[sourceField]}
+        value={{}}
+        readOnly={false}
+        onChange={() => {}}
+        itemPayload={{ question: { prompt: 'Raw dataset prompt' } }}
+      />,
+    );
+
+    expect(view.text()).toContain('Fallback prompt');
+    expect(view.text()).not.toContain('Raw dataset prompt');
+    view.unmount();
+  });
 });
