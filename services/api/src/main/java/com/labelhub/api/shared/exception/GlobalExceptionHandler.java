@@ -2,6 +2,7 @@ package com.labelhub.api.shared.exception;
 
 import com.labelhub.api.generated.model.ApiError;
 import com.labelhub.api.generated.model.ApiFieldError;
+import com.labelhub.api.generated.model.SessionStatus;
 import com.labelhub.api.module.admin.exception.PayloadTooLargeException;
 import com.labelhub.api.module.ai.exception.AiInputHashMismatchException;
 import com.labelhub.api.module.ai.exception.AiProviderFailureException;
@@ -47,6 +48,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -65,6 +67,16 @@ public class GlobalExceptionHandler {
             })
             .toList();
         return ResponseEntity.badRequest().body(error("VALIDATION_FAILED", "Request validation failed", fields));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> methodArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        if (exception.getRequiredType() == SessionStatus.class && "status".equals(exception.getName())) {
+            return ResponseEntity.badRequest()
+                .body(error("INVALID_SESSION_STATUS", "Invalid session status query parameter: " + exception.getValue()));
+        }
+        return ResponseEntity.badRequest()
+            .body(error("INVALID_QUERY_PARAMETER", "Invalid query parameter: " + exception.getName()));
     }
 
     @ExceptionHandler(IllegalStateTransitionException.class)

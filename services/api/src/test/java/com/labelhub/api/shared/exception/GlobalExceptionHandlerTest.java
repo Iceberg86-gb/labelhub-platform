@@ -1,6 +1,7 @@
 package com.labelhub.api.shared.exception;
 
 import com.labelhub.api.generated.model.ApiError;
+import com.labelhub.api.generated.model.SessionStatus;
 import com.labelhub.api.module.dataset.exception.EmptyDatasetException;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetFileException;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetForTaskException;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -169,6 +171,19 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getCode()).isEqualTo("INVALID_SUBMISSION_PAYLOAD");
+    }
+
+    @Test
+    void invalid_session_status_query_returns_400_with_specific_code() {
+        ResponseEntity<ApiError> response = handler.methodArgumentTypeMismatch(
+            new MethodArgumentTypeMismatchException("CLAIMED", SessionStatus.class, "status", null,
+                new IllegalArgumentException("Unexpected value 'CLAIMED'"))
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode()).isEqualTo("INVALID_SESSION_STATUS");
+        assertThat(response.getBody().getMessage()).contains("status");
     }
 
     @Test
