@@ -74,11 +74,11 @@ class SchemaApiIntegrationTest {
         publishSchema(token, schemaId, schemaDocumentJson(3))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.versionNumber").value(1))
-            .andExpect(jsonPath("$.schemaJson.fields", hasSize(3)));
+            .andExpect(jsonPath("$['schemaJson']['x-labelhub-fields']", hasSize(3)));
         publishSchema(token, schemaId, schemaDocumentJson(5))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.versionNumber").value(2))
-            .andExpect(jsonPath("$.schemaJson.fields", hasSize(5)));
+            .andExpect(jsonPath("$['schemaJson']['x-labelhub-fields']", hasSize(5)));
 
         mockMvc.perform(get("/schemas/{schemaId}/versions", schemaId).header("Authorization", bearer(token)))
             .andExpect(status().isOk())
@@ -103,7 +103,7 @@ class SchemaApiIntegrationTest {
             .andExpect(jsonPath("$.submissionId").value(submissionId))
             .andExpect(jsonPath("$.schemaVersion.id").value(v1))
             .andExpect(jsonPath("$.schemaVersion.versionNumber").value(1))
-            .andExpect(jsonPath("$.schemaVersion.schemaJson.fields", hasSize(3)))
+            .andExpect(jsonPath("$['schemaVersion']['schemaJson']['x-labelhub-fields']", hasSize(3)))
             .andExpect(jsonPath("$.answerPayload.field_0").value("answer"));
     }
 

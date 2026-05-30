@@ -10,6 +10,7 @@ import {
   updateFieldByStableId,
 } from '../../entities/schema/fieldFactory';
 import { previewJson } from '../../entities/schema/schemaPreview';
+import { replaceSchemaFields, schemaFields } from '../../entities/schema/runtimeSchema';
 import {
   errorsByStableId,
   validateSchemaForUI,
@@ -43,7 +44,7 @@ export function OwnerSchemaDesignerPage() {
     if (!currentVersionQuery.isLoading && currentVersionQuery.document) {
       setDraftDocument(currentVersionQuery.document);
       setSelectedStableId((previous) =>
-        previous && containsFieldStableId(currentVersionQuery.document?.fields ?? [], previous) ? previous : null,
+        previous && containsFieldStableId(schemaFields(currentVersionQuery.document), previous) ? previous : null,
       );
       setIsDirty(false);
       if (import.meta.env.DEV) {
@@ -69,9 +70,10 @@ export function OwnerSchemaDesignerPage() {
   );
   const validationErrorsByField = useMemo(() => errorsByStableId(validationErrors), [validationErrors]);
   const selectedField = useMemo(
-    () => (draftDocument ? findFieldByStableId(draftDocument.fields ?? [], selectedStableId) : null),
+    () => (draftDocument ? findFieldByStableId(schemaFields(draftDocument), selectedStableId) : null),
     [draftDocument, selectedStableId],
   );
+  const draftFields = useMemo(() => schemaFields(draftDocument), [draftDocument]);
   const jsonPreview = useMemo(
     () => (draftDocument ? previewJson(draftDocument) : ''),
     [draftDocument],
@@ -79,7 +81,7 @@ export function OwnerSchemaDesignerPage() {
 
   const handleFieldsChange = (nextFields: SchemaField[]) => {
     if (!draftDocument) return;
-    setDraftDocument({ ...draftDocument, fields: nextFields });
+    setDraftDocument(replaceSchemaFields(draftDocument, nextFields));
     if (selectedStableId && !containsFieldStableId(nextFields, selectedStableId)) {
       setSelectedStableId(null);
     }
@@ -89,15 +91,15 @@ export function OwnerSchemaDesignerPage() {
   const handleAddField = (type: SchemaFieldType) => {
     if (!draftDocument) return;
     const field = createField(type);
-    setDraftDocument({ ...draftDocument, fields: [...(draftDocument.fields ?? []), field] });
+    setDraftDocument(replaceSchemaFields(draftDocument, [...schemaFields(draftDocument), field]));
     setSelectedStableId(field.stableId);
     setIsDirty(true);
   };
 
   const handleDeleteField = (stableId: string) => {
     if (!draftDocument) return;
-    const nextFields = removeFieldByStableId(draftDocument.fields ?? [], stableId);
-    setDraftDocument({ ...draftDocument, fields: nextFields });
+    const nextFields = removeFieldByStableId(schemaFields(draftDocument), stableId);
+    setDraftDocument(replaceSchemaFields(draftDocument, nextFields));
     if (selectedStableId && !containsFieldStableId(nextFields, selectedStableId)) {
       setSelectedStableId(null);
     }
@@ -106,8 +108,8 @@ export function OwnerSchemaDesignerPage() {
 
   const handleSelectedFieldChange = (updatedField: SchemaField) => {
     if (!draftDocument) return;
-    const nextFields = updateFieldByStableId(draftDocument.fields ?? [], updatedField.stableId, () => updatedField);
-    setDraftDocument({ ...draftDocument, fields: nextFields });
+    const nextFields = updateFieldByStableId(schemaFields(draftDocument), updatedField.stableId, () => updatedField);
+    setDraftDocument(replaceSchemaFields(draftDocument, nextFields));
     setIsDirty(true);
   };
 
@@ -123,7 +125,7 @@ export function OwnerSchemaDesignerPage() {
     setPublishModalVisible(false);
     setDraftDocument(newVersion.schemaJson);
     setSelectedStableId((previous) =>
-      previous && containsFieldStableId(newVersion.schemaJson.fields ?? [], previous) ? previous : null,
+      previous && containsFieldStableId(schemaFields(newVersion.schemaJson), previous) ? previous : null,
     );
     setIsDirty(false);
     Toast.success(`已发布 v${newVersion.versionNumber}`);
@@ -215,7 +217,7 @@ export function OwnerSchemaDesignerPage() {
             ) : null}
             <div className="schema-field-list-shell">
               <FieldList
-                fields={draftDocument.fields ?? []}
+                fields={draftFields}
                 onChange={handleFieldsChange}
                 selectedStableId={selectedStableId}
                 onSelect={setSelectedStableId}
@@ -254,7 +256,7 @@ export function OwnerSchemaDesignerPage() {
             </details>
           </Card>
 
-          <SchemaFormilyPreviewPanel schemaFields={draftDocument.fields ?? []} />
+          <SchemaFormilyPreviewPanel schemaFields={draftFields} />
         </div>
 
         <PublishSchemaModal

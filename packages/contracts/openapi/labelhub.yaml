@@ -1859,14 +1859,73 @@ components:
           $ref: '#/components/schemas/LinkageCondition'
         requiredWhen:
           $ref: '#/components/schemas/LinkageCondition'
+    SchemaJsonSchemaProperty:
+      type: object
+      additionalProperties: true
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        enum:
+          type: array
+          items: {}
+        items:
+          $ref: '#/components/schemas/SchemaJsonSchemaProperty'
+        properties:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/SchemaJsonSchemaProperty'
+        required:
+          type: array
+          items:
+            type: string
+        minLength:
+          type: integer
+          minimum: 0
+        maxLength:
+          type: integer
+          minimum: 0
+        minimum:
+          type: number
+        maximum:
+          type: number
+        pattern:
+          type: string
     SchemaDocument:
       type: object
-      required: [fields]
+      description: LabelHub schema document. Legacy published versions use `fields`; new versions use JSON Schema root keywords plus `x-labelhub-fields` for runtime rendering metadata.
       properties:
         fields:
+          description: Legacy LabelHub field list retained for immutable historical schema versions.
           type: array
           items:
             $ref: '#/components/schemas/SchemaField'
+        x-labelhub-schemaFormatVersion:
+          type: integer
+          enum: [2]
+        $schema:
+          type: string
+        type:
+          type: string
+          enum: [object]
+        properties:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/SchemaJsonSchemaProperty'
+        required:
+          type: array
+          items:
+            type: string
+        x-labelhub-fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchemaField'
+        x-labelhub-layout:
+          type: object
+          additionalProperties: true
     SchemaVersionRequest:
       type: object
       required: [schemaJson]

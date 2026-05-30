@@ -21,6 +21,7 @@ import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.LabelSchemaMapper;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
+import com.labelhub.api.module.schema.runtime.SchemaRuntimeAdapter;
 import com.labelhub.api.module.schema.service.view.SubmissionRenderSchemaView;
 import com.labelhub.api.module.schema.util.SchemaValidator;
 import com.labelhub.api.module.schema.util.StableIdExtractor;
@@ -63,6 +64,7 @@ class SchemaServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
     private final AuditLogService auditLogService = mock(AuditLogService.class);
+    private final SchemaRuntimeAdapter schemaRuntimeAdapter = new SchemaRuntimeAdapter(objectMapper);
     private SchemaService schemaService;
 
     @BeforeEach
@@ -190,9 +192,25 @@ class SchemaServiceTest {
 
         SchemaVersionEntity version = schemaService.publishVersion(5L, document, 1001L);
 
-        Map<String, Object> schemaMap = objectMapper.convertValue(document, new TypeReference<>() {});
+        Map<String, Object> schemaMap = schemaRuntimeAdapter.toStorageJson(objectMapper.convertValue(document, new TypeReference<>() {}));
         assertThat(version.getContentHash()).isEqualTo(canonicalizer.sha256Hex(canonicalizer.canonicalJson(schemaMap)));
         assertThat(version.getContentHash()).hasSize(64);
+    }
+
+    @Test
+    void publishVersion_storesNewSchemaAsJsonSchemaV2() {
+        when(labelSchemaMapper.selectByIdForUpdate(5L)).thenReturn(schema(5L, 10L, 1001L));
+        when(schemaVersionMapper.selectMaxVersionNumber(5L)).thenReturn(null);
+        when(schemaVersionMapper.insert(any())).thenReturn(1);
+        when(labelSchemaMapper.updateById(any(LabelSchemaEntity.class))).thenReturn(1);
+
+        SchemaVersionEntity version = schemaService.publishVersion(5L, simpleDocument(), 1001L);
+
+        assertThat(version.getSchemaJson()).containsEntry("x-labelhub-schemaFormatVersion", 2);
+        assertThat(version.getSchemaJson()).containsEntry("type", "object");
+        assertThat(version.getSchemaJson()).containsKey("properties");
+        assertThat(version.getSchemaJson()).containsKey("x-labelhub-fields");
+        assertThat(version.getSchemaJson()).doesNotContainKey("fields");
     }
 
     @Test
