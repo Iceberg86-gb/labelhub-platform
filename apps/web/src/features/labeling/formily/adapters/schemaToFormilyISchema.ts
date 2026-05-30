@@ -3,19 +3,23 @@ import type { SchemaField, SchemaFieldOption, SchemaFieldValidation } from '../.
 import { LABEL_HUB_COMPONENTS } from './componentRegistry';
 import { schemaToFormilyValidators } from './schemaToFormilyValidators';
 
-export function schemaToFormilyISchema(fields: SchemaField[]): ISchema {
+export type SchemaRuntimeContext = {
+  sessionId?: number;
+};
+
+export function schemaToFormilyISchema(fields: SchemaField[], runtimeContext: SchemaRuntimeContext = {}): ISchema {
   return {
     type: 'object',
-    properties: fieldsToProperties(fields),
+    properties: fieldsToProperties(fields, runtimeContext),
     ...(requiredFieldIds(fields).length ? { required: requiredFieldIds(fields) } : {}),
   };
 }
 
-function fieldsToProperties(fields: SchemaField[]): Record<string, ISchema> {
-  return Object.fromEntries(fields.map((field) => [field.stableId, fieldToSchema(field)]));
+function fieldsToProperties(fields: SchemaField[], runtimeContext: SchemaRuntimeContext): Record<string, ISchema> {
+  return Object.fromEntries(fields.map((field) => [field.stableId, fieldToSchema(field, runtimeContext)]));
 }
 
-function fieldToSchema(field: SchemaField): ISchema {
+function fieldToSchema(field: SchemaField, runtimeContext: SchemaRuntimeContext): ISchema {
   const base: ISchema = {
     type: schemaType(field),
     title: field.label,
@@ -30,14 +34,24 @@ function fieldToSchema(field: SchemaField): ISchema {
       field,
       placeholder: placeholderWithValidationHint(field),
       mode: field.type === 'multi_select' ? 'multiple' : undefined,
+      sessionId: runtimeContext.sessionId,
     },
   };
+
+  if (field.type === 'show_item') {
+    return removeUndefined({
+      ...base,
+      type: 'void',
+      'x-decorator': undefined,
+      'x-decorator-props': undefined,
+    });
+  }
 
   if (field.type === 'nested_object') {
     return {
       ...base,
       type: 'object',
-      properties: fieldsToProperties(field.children ?? []),
+      properties: fieldsToProperties(field.children ?? [], runtimeContext),
       ...(requiredFieldIds(field.children ?? []).length ? { required: requiredFieldIds(field.children ?? []) } : {}),
     };
   }
@@ -50,13 +64,19 @@ function schemaType(field: SchemaField): ISchema['type'] {
     case 'number':
       return 'number';
     case 'nested_object':
+    case 'json_editor':
+    case 'llm_interaction':
       return 'object';
     case 'multi_select':
       return 'array';
     case 'text':
+    case 'rich_text':
     case 'single_select':
     case 'date':
+      return 'string';
     case 'file_upload':
+      return 'object';
+    case 'show_item':
       return 'string';
     default: {
       const _exhaustive: never = field.type;
@@ -94,7 +114,7 @@ function fieldOptions(options?: SchemaFieldOption[]): ISchema['enum'] {
 }
 
 function requiredFieldIds(fields: SchemaField[]): string[] {
-  return fields.filter((field) => field.validation?.required).map((field) => field.stableId);
+  return fields.filter((field) => field.type !== 'show_item' && field.validation?.required).map((field) => field.stableId);
 }
 
 function removeUndefined<T extends Record<string, unknown>>(value: T): T {

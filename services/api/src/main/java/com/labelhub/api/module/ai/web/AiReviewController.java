@@ -10,6 +10,7 @@ import com.labelhub.api.generated.model.TriggerAiReviewRequest;
 import com.labelhub.api.generated.web.AiReviewApi;
 import com.labelhub.api.module.ai.service.AiReviewService;
 import com.labelhub.api.module.ai.service.AiReviewRuleService;
+import com.labelhub.api.module.ai.service.FieldAssistService;
 import com.labelhub.api.security.JwtPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -28,17 +29,20 @@ import org.springframework.web.server.ResponseStatusException;
 public class AiReviewController implements AiReviewApi {
 
     private final AiReviewService aiReviewService;
+    private final FieldAssistService fieldAssistService;
     private final AiReviewDtoMapper aiReviewDtoMapper;
     private final AiReviewRuleService aiReviewRuleService;
     private final AiReviewRuleDtoMapper aiReviewRuleDtoMapper;
 
     public AiReviewController(
         AiReviewService aiReviewService,
+        FieldAssistService fieldAssistService,
         AiReviewDtoMapper aiReviewDtoMapper,
         AiReviewRuleService aiReviewRuleService,
         AiReviewRuleDtoMapper aiReviewRuleDtoMapper
     ) {
         this.aiReviewService = aiReviewService;
+        this.fieldAssistService = fieldAssistService;
         this.aiReviewDtoMapper = aiReviewDtoMapper;
         this.aiReviewRuleService = aiReviewRuleService;
         this.aiReviewRuleDtoMapper = aiReviewRuleDtoMapper;
@@ -70,7 +74,8 @@ public class AiReviewController implements AiReviewApi {
     public ResponseEntity<FieldAssistResponse> createFieldAssistCall(
         @Valid @RequestBody FieldAssistRequest fieldAssistRequest
     ) {
-        throw notImplemented();
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(fieldAssistService.assist(fieldAssistRequest, currentUserId()));
     }
 
     @Override

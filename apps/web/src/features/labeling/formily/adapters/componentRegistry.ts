@@ -7,9 +7,12 @@ export const LABEL_HUB_COMPONENTS = {
   multi_select: 'LabelHubSelectField',
   date: 'LabelHubDateField',
   file_upload: 'LabelHubFileUploadField',
+  rich_text: 'LabelHubRichTextField',
+  json_editor: 'LabelHubJsonField',
+  llm_interaction: 'LabelHubLlmInteractionField',
+  show_item: 'LabelHubShowItem',
   nested_object: 'LabelHubNestedObjectField',
 } as const satisfies Record<LabelHubSchemaFieldType, string>;
 
 export type SchemaFieldType = keyof typeof LABEL_HUB_COMPONENTS;
 export type LabelHubComponentName = (typeof LABEL_HUB_COMPONENTS)[SchemaFieldType];
-

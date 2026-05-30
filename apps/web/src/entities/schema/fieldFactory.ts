@@ -14,7 +14,13 @@ export function createField(type: SchemaFieldType): SchemaField {
 
   switch (type) {
     case 'text':
+    case 'rich_text':
+    case 'llm_interaction':
       return { ...base, placeholder: undefined, help: undefined };
+    case 'json_editor':
+      return { ...base, help: undefined, placeholder: '{ }' };
+    case 'show_item':
+      return { ...base, content: '展示内容', validation: { required: false } };
     case 'number':
     case 'date':
     case 'file_upload':

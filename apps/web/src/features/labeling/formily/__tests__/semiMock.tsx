@@ -1,5 +1,23 @@
 import type { ChangeEvent, ReactNode } from 'react';
 
+export function Button({
+  children,
+  disabled,
+  onClick,
+}: {
+  children?: ReactNode;
+  disabled?: boolean;
+  loading?: boolean;
+  icon?: ReactNode;
+  onClick?: () => void;
+}) {
+  return (
+    <button type="button" disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
 export function Input({
   value,
   onChange,
@@ -21,6 +39,10 @@ export function InputNumber({ value, onChange }: { value?: number; onChange?: (v
       readOnly
     />
   );
+}
+
+export function TextArea({ value, onChange }: { value?: string; onChange?: (value: string) => void; autosize?: boolean; placeholder?: string }) {
+  return <textarea value={value ?? ''} onChange={(event) => onChange?.(event.target.value)} readOnly />;
 }
 
 export function DatePicker({ value, onChange }: { value?: string; onChange?: (value: string) => void }) {
@@ -47,4 +69,12 @@ export const Typography = {
   Text({ children }: { children?: ReactNode }) {
     return <span>{children}</span>;
   },
+  Paragraph({ children }: { children?: ReactNode }) {
+    return <p>{children}</p>;
+  },
+};
+
+export const Toast = {
+  error() {},
+  warning() {},
 };

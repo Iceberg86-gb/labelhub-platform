@@ -19,7 +19,7 @@
       "single_value": "a",
       "multi_value": ["x", "y"],
       "date_value": "2026-05-28",
-      "file_value": "s3://bucket/key",
+      "file_value": { "objectKey": "session-attachments/20260530/task-1/session-2/file.png", "fileName": "file.png", "contentType": "image/png", "sizeBytes": 1024 },
       "parent": { "child_text": "nested", "child_number": 7 }
     },
     "expectedErrors": [],
@@ -166,10 +166,10 @@
     "expectSymmetry": true
   },
   {
-    "caseId": "file-upload-string-passes",
-    "description": "File upload validates string shape only.",
+    "caseId": "file-upload-object-passes",
+    "description": "File upload validates persisted object reference shape.",
     "schema": { "fields": [{ "stableId": "file_value", "label": "File", "type": "file_upload" }] },
-    "payload": { "file_value": "pending-upload-key" },
+    "payload": { "file_value": { "objectKey": "session-attachments/file.pdf", "fileName": "file.pdf", "contentType": "application/pdf", "sizeBytes": 2048 } },
     "expectedErrors": [],
     "expectSymmetry": true
   },

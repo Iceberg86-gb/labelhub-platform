@@ -875,6 +875,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
+  /sessions/{sessionId}/attachments:
+    post:
+      tags: [Sessions]
+      operationId: uploadSessionAttachment
+      description: Upload a file attachment for a claimed labeler session field.
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Attachment uploaded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadedFile'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /ai-review/rules:
     get:
       tags: [AIReview]
@@ -1775,7 +1808,7 @@ components:
           type: integer
     SchemaFieldType:
       type: string
-      enum: [text, number, single_select, multi_select, date, file_upload, nested_object]
+      enum: [text, number, single_select, multi_select, date, file_upload, rich_text, json_editor, llm_interaction, show_item, nested_object]
     SchemaFieldValidation:
       type: object
       properties:
@@ -1845,6 +1878,17 @@ components:
           type: string
         help:
           type: string
+        content:
+          type: string
+        aiPrompt:
+          type: string
+        acceptedFileTypes:
+          type: array
+          items:
+            type: string
+        maxFileSizeMb:
+          type: integer
+          minimum: 1
         validation:
           $ref: '#/components/schemas/SchemaFieldValidation'
         options:
@@ -2417,6 +2461,19 @@ components:
           additionalProperties: true
         provenance:
           $ref: '#/components/schemas/FieldAITrace'
+    UploadedFile:
+      type: object
+      required: [objectKey, fileName, contentType, sizeBytes]
+      properties:
+        objectKey:
+          type: string
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
     FieldAITrace:
       type: object
       required: [aiCallId, fieldPath, source, accepted, userModifiedAfter, ordinal]

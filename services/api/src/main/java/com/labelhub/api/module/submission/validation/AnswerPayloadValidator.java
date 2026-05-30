@@ -55,6 +55,10 @@ public class AnswerPayloadValidator {
         if (!isVisible(field, flatValues)) {
             return List.of();
         }
+        SchemaFieldType type = field.getType();
+        if (type == null || type == SchemaFieldType.SHOW_ITEM) {
+            return List.of();
+        }
         boolean required = isRequired(field) || isConditionallyRequired(field, flatValues);
         boolean empty = isEmpty(value);
 
@@ -65,17 +69,16 @@ public class AnswerPayloadValidator {
             return List.of();
         }
 
-        SchemaFieldType type = field.getType();
-        if (type == null) {
-            return List.of();
-        }
-
         return switch (type) {
-            case TEXT -> validateText(field, value);
+            case TEXT, RICH_TEXT -> validateText(field, value);
             case NUMBER -> validateNumber(field, value);
             case SINGLE_SELECT -> validateSingleSelect(field, value);
             case MULTI_SELECT -> validateMultiSelect(field, value);
-            case DATE, FILE_UPLOAD -> validateStringShape(field, value);
+            case DATE -> validateStringShape(field, value);
+            case FILE_UPLOAD -> validateFileUpload(field, value);
+            case JSON_EDITOR -> List.of();
+            case LLM_INTERACTION -> validateObjectShape(field, value);
+            case SHOW_ITEM -> List.of();
             case NESTED_OBJECT -> validateNestedObject(field, value, flatValues);
         };
     }
@@ -152,6 +155,23 @@ public class AnswerPayloadValidator {
         return List.of();
     }
 
+    private List<AnswerValidationError> validateObjectShape(SchemaField field, Object value) {
+        if (!(value instanceof Map<?, ?>)) {
+            return List.of(error(field, OBJECT_REQUIRED));
+        }
+        return List.of();
+    }
+
+    private List<AnswerValidationError> validateFileUpload(SchemaField field, Object value) {
+        if (!(value instanceof Map<?, ?> file)) {
+            return List.of(error(field, OBJECT_REQUIRED));
+        }
+        if (blank(file.get("objectKey")) || blank(file.get("fileName")) || !positiveLong(file.get("sizeBytes"))) {
+            return List.of(error(field, FORMAT_INVALID));
+        }
+        return List.of();
+    }
+
     private List<AnswerValidationError> validateNestedObject(SchemaField field, Object value, Map<String, Object> flatValues) {
         if (!(value instanceof Map<?, ?> nested)) {
             return List.of(error(field, OBJECT_REQUIRED));
@@ -196,6 +216,21 @@ public class AnswerPayloadValidator {
             || value instanceof String text && text.isEmpty()
             || value instanceof Collection<?> collection && collection.isEmpty()
             || value instanceof Map<?, ?> map && map.isEmpty();
+    }
+
+    private boolean blank(Object value) {
+        return value == null || String.valueOf(value).isBlank();
+    }
+
+    private boolean positiveLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue() > 0;
+        }
+        try {
+            return value != null && Long.parseLong(String.valueOf(value)) > 0;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
     }
 
     private List<String> optionValues(SchemaField field) {

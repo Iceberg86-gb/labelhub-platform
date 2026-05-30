@@ -16,6 +16,10 @@ function field(overrides: Partial<SchemaField> & Pick<SchemaField, 'stableId' | 
     label: overrides.label ?? overrides.stableId,
     placeholder: overrides.placeholder,
     help: overrides.help,
+    content: overrides.content,
+    aiPrompt: overrides.aiPrompt,
+    acceptedFileTypes: overrides.acceptedFileTypes,
+    maxFileSizeMb: overrides.maxFileSizeMb,
     validation: overrides.validation,
     options: overrides.options,
     children: overrides.children,
@@ -49,7 +53,11 @@ const fields: SchemaField[] = [
     ],
   }),
   field({ stableId: 'date_1', type: 'date' }),
-  field({ stableId: 'file_1', type: 'file_upload' }),
+  field({ stableId: 'file_1', type: 'file_upload', acceptedFileTypes: ['image/png'], maxFileSizeMb: 5 }),
+  field({ stableId: 'rich_1', type: 'rich_text' }),
+  field({ stableId: 'json_1', type: 'json_editor' }),
+  field({ stableId: 'llm_1', type: 'llm_interaction', aiPrompt: 'Summarize this field' }),
+  field({ stableId: 'show_1', type: 'show_item', content: 'Display-only copy' }),
   field({
     stableId: 'parent',
     type: 'nested_object',
@@ -63,7 +71,11 @@ const historicalPayload: AnswerPayload = {
   single_1: 'a',
   multi_1: ['x', 'y'],
   date_1: '2026-05-27',
-  file_1: 's3://bucket/file.png',
+  file_1: { objectKey: 'session-attachments/file.png', fileName: 'file.png', contentType: 'image/png', sizeBytes: 1024 },
+  rich_1: '<p>rich</p>',
+  json_1: { score: 0.95, tags: ['a'] },
+  llm_1: { input: 'draft', output: { summary: 'suggestion' }, aiCallId: 9 },
+  show_1: 'historical display-only value',
   parent: {
     child_a: 'nested-a',
     child_b: 7,
@@ -96,6 +108,10 @@ describe('Formily adapters', () => {
       multi_select: 'LabelHubSelectField',
       date: 'LabelHubDateField',
       file_upload: 'LabelHubFileUploadField',
+      rich_text: 'LabelHubRichTextField',
+      json_editor: 'LabelHubJsonField',
+      llm_interaction: 'LabelHubLlmInteractionField',
+      show_item: 'LabelHubShowItem',
       nested_object: 'LabelHubNestedObjectField',
     });
   });
@@ -106,6 +122,11 @@ describe('Formily adapters', () => {
     expect(schema.type).toBe('object');
     expect(properties.text_1?.['x-component']).toBe('LabelHubTextField');
     expect(properties.parent?.properties?.child_a?.['x-component']).toBe('LabelHubTextField');
+    expect(properties.rich_1?.['x-component']).toBe('LabelHubRichTextField');
+    expect(properties.json_1?.['x-component']).toBe('LabelHubJsonField');
+    expect(properties.llm_1?.['x-component']).toBe('LabelHubLlmInteractionField');
+    expect(properties.show_1?.['x-component']).toBe('LabelHubShowItem');
+    expect(properties.show_1?.type).toBe('void');
     expect(properties.text_1?.title).toBe('Text');
     expect(properties.text_1?.description).toBe('Text help');
     expect(properties.text_1?.['x-component-props']?.placeholder).toBe('Enter text（至少2字符）');
@@ -158,11 +179,22 @@ describe('Formily adapters', () => {
       single_1: 'a',
       multi_1: ['x', 'y'],
       date_1: '2026-05-27',
-      file_1: 's3://bucket/file.png',
+      file_1: { objectKey: 'session-attachments/file.png', fileName: 'file.png', contentType: 'image/png', sizeBytes: 1024 },
+      rich_1: '<p>rich</p>',
+      json_1: { score: 0.95, tags: ['a'] },
+      llm_1: { input: 'draft', output: { summary: 'suggestion' }, aiCallId: 9 },
       parent: { child_a: 'nested-a', child_b: 7 },
     };
     const form = createForm({ initialValues: answerPayloadToFormilyValues(currentOnlyPayload) });
     expect(formilyValuesToAnswerPayload(form.values, fields)).toEqual(currentOnlyPayload);
+  });
+
+  it('omits display-only show_item fields from outbound answer payload', () => {
+    const form = createForm({ initialValues: { show_1: 'display copy', text_1: 'hello' } });
+    expect(formilyValuesToAnswerPayload(form.values, [
+      field({ stableId: 'show_1', type: 'show_item', content: 'Display copy' }),
+      field({ stableId: 'text_1', type: 'text' }),
+    ])).toEqual({ text_1: 'hello' });
   });
 
   it('handles empty payload and empty schema edge cases', () => {

@@ -19,6 +19,7 @@ export interface SchemaFormilyRendererProps {
   readOnly?: boolean;
   errors?: Map<string, string[]>;
   onFormReady?: (form: Form<Record<string, unknown>>) => void;
+  sessionId?: number;
 }
 
 export function SchemaFormilyRenderer({
@@ -28,12 +29,13 @@ export function SchemaFormilyRenderer({
   readOnly = false,
   errors,
   onFormReady,
+  sessionId,
 }: SchemaFormilyRendererProps) {
   const form = useMemo(
     () => createSchemaFormilyForm({ schemaFields, value, onChange, readOnly }),
     [schemaFields, value, onChange, readOnly],
   );
-  const schema = useMemo(() => schemaToFormilyISchema(schemaFields), [schemaFields]);
+  const schema = useMemo(() => schemaToFormilyISchema(schemaFields, { sessionId }), [schemaFields, sessionId]);
 
   useEffect(() => {
     onFormReady?.(form);

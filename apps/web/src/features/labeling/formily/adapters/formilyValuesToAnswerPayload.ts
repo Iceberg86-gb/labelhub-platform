@@ -22,7 +22,7 @@ function extractFields(source: Record<string, unknown>, fields: SchemaField[]): 
   const payload: AnswerPayload = {};
 
   for (const field of fields) {
-    if (isInternalKey(field.stableId) || !Object.hasOwn(source, field.stableId)) {
+    if (field.type === 'show_item' || isInternalKey(field.stableId) || !Object.hasOwn(source, field.stableId)) {
       continue;
     }
 
@@ -55,4 +55,3 @@ function isInternalKey(key: string): boolean {
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
-

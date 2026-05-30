@@ -1,5 +1,6 @@
 export type AnswerPrimitive = string | number | boolean | string[] | null;
-export type AnswerValue = AnswerPrimitive | AnswerPayload;
+export type JsonAnswerValue = AnswerPrimitive | JsonAnswerValue[] | { [key: string]: JsonAnswerValue };
+export type AnswerValue = JsonAnswerValue | AnswerPayload;
 
 export interface AnswerPayload {
   [stableId: string]: AnswerValue;

@@ -404,6 +404,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sessions/{sessionId}/attachments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Upload a file attachment for a claimed labeler session field. */
+        post: operations["uploadSessionAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ai-review/rules": {
         parameters: {
             query?: never;
@@ -868,7 +885,7 @@ export interface components {
             size: number;
         };
         /** @enum {string} */
-        SchemaFieldType: "text" | "number" | "single_select" | "multi_select" | "date" | "file_upload" | "nested_object";
+        SchemaFieldType: "text" | "number" | "single_select" | "multi_select" | "date" | "file_upload" | "rich_text" | "json_editor" | "llm_interaction" | "show_item" | "nested_object";
         SchemaFieldValidation: {
             required?: boolean;
             minLength?: number;
@@ -901,6 +918,10 @@ export interface components {
             type: components["schemas"]["SchemaFieldType"];
             placeholder?: string;
             help?: string;
+            content?: string;
+            aiPrompt?: string;
+            acceptedFileTypes?: string[];
+            maxFileSizeMb?: number;
             validation?: components["schemas"]["SchemaFieldValidation"];
             options?: components["schemas"]["SchemaFieldOption"][];
             children?: components["schemas"]["SchemaField"][];
@@ -1217,6 +1238,13 @@ export interface components {
                 [key: string]: unknown;
             };
             provenance: components["schemas"]["FieldAITrace"];
+        };
+        UploadedFile: {
+            objectKey: string;
+            fileName: string;
+            contentType: string;
+            /** Format: int64 */
+            sizeBytes: number;
         };
         FieldAITrace: {
             /** Format: int64 */
@@ -2367,6 +2395,39 @@ export interface operations {
                     "application/json": components["schemas"]["ApiError"];
                 };
             };
+        };
+    };
+    uploadSessionAttachment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: components["parameters"]["SessionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Attachment uploaded. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadedFile"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
         };
     };
     listAiReviewRules: {

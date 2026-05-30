@@ -1,9 +1,13 @@
 import type { FieldEditorProps } from './editorTypes';
 import { DateFieldEditor } from './DateFieldEditor';
 import { FileUploadFieldEditor } from './FileUploadFieldEditor';
+import { JsonFieldEditor } from './JsonFieldEditor';
+import { LlmInteractionFieldEditor } from './LlmInteractionFieldEditor';
 import { NestedObjectFieldEditor } from './NestedObjectFieldEditor';
 import { NumberFieldEditor } from './NumberFieldEditor';
 import { SelectFieldEditor } from './SelectFieldEditor';
+import { RichTextFieldEditor } from './RichTextFieldEditor';
+import { ShowItemFieldEditor } from './ShowItemFieldEditor';
 import { TextFieldEditor } from './TextFieldEditor';
 import { LinkageJsonEditor } from './LinkageJsonEditor';
 
@@ -33,6 +37,14 @@ function renderConcreteFieldEditor(props: FieldEditorProps) {
       return <DateFieldEditor {...props} />;
     case 'file_upload':
       return <FileUploadFieldEditor {...props} />;
+    case 'rich_text':
+      return <RichTextFieldEditor {...props} />;
+    case 'json_editor':
+      return <JsonFieldEditor {...props} />;
+    case 'llm_interaction':
+      return <LlmInteractionFieldEditor {...props} />;
+    case 'show_item':
+      return <ShowItemFieldEditor {...props} />;
     case 'nested_object':
       return <NestedObjectFieldEditor {...props} />;
     default: {
