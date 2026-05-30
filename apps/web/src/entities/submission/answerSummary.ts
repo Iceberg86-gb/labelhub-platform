@@ -21,6 +21,11 @@ export function summarizeAnswerPayload(fields: SchemaField[], payload: AnswerPay
       }
       if (field.type === 'nested_object') {
         visit(field.children ?? [], isAnswerPayload(value) ? value : {});
+        return;
+      }
+      if (field.type === 'tab_container') {
+        totalCount -= 1;
+        field.tabs?.forEach((tab) => visit(tab.children ?? [], current));
       }
     });
   };

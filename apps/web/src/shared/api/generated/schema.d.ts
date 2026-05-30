@@ -885,7 +885,7 @@ export interface components {
             size: number;
         };
         /** @enum {string} */
-        SchemaFieldType: "text" | "number" | "single_select" | "multi_select" | "date" | "file_upload" | "rich_text" | "json_editor" | "llm_interaction" | "show_item" | "nested_object";
+        SchemaFieldType: "text" | "number" | "single_select" | "multi_select" | "date" | "file_upload" | "rich_text" | "json_editor" | "llm_interaction" | "show_item" | "nested_object" | "tab_container";
         SchemaFieldValidation: {
             required?: boolean;
             minLength?: number;
@@ -897,6 +897,11 @@ export interface components {
         SchemaFieldOption: {
             label: string;
             value: string;
+        };
+        SchemaTab: {
+            stableId: string;
+            label: string;
+            children: components["schemas"]["SchemaField"][];
         };
         /** @enum {string} */
         LinkageConditionOp: "eq" | "neq" | "in" | "notIn" | "gt" | "gte" | "lt" | "lte" | "empty" | "notEmpty";
@@ -925,6 +930,7 @@ export interface components {
             validation?: components["schemas"]["SchemaFieldValidation"];
             options?: components["schemas"]["SchemaFieldOption"][];
             children?: components["schemas"]["SchemaField"][];
+            tabs?: components["schemas"]["SchemaTab"][];
             visibleWhen?: components["schemas"]["LinkageCondition"];
             requiredWhen?: components["schemas"]["LinkageCondition"];
         };

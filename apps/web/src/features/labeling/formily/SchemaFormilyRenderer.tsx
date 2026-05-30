@@ -73,7 +73,7 @@ export function createSchemaFormilyForm({
   readOnly = false,
 }: SchemaFormilyRendererProps): Form<Record<string, unknown>> {
   return createForm<Record<string, unknown>>({
-    initialValues: answerPayloadToFormilyValues(value ?? {}),
+    initialValues: answerPayloadToFormilyValues(value ?? {}, schemaFields),
     readPretty: readOnly,
     effects() {
       onFormValuesChange((form) => {
@@ -150,6 +150,12 @@ function flattenFieldPaths(fields: SchemaField[], parentPath?: string): Array<{ 
   return fields.flatMap((field) => {
     const path = parentPath ? `${parentPath}.${field.stableId}` : field.stableId;
     const current = { path, field };
+    if (field.type === 'tab_container') {
+      return [
+        current,
+        ...(field.tabs?.flatMap((tab) => flattenFieldPaths(tab.children ?? [], `${path}.${tab.stableId}`)) ?? []),
+      ];
+    }
     if (field.type !== 'nested_object') {
       return [current];
     }

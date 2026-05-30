@@ -25,6 +25,9 @@ export function summarizeSchema(document: SchemaDocument): SchemaSummary {
       if (field.children?.length) {
         visit(field.children, depth + 1);
       }
+      if (field.tabs?.length) {
+        field.tabs.forEach((tab) => visit(tab.children ?? [], depth + 1));
+      }
     });
   }
 

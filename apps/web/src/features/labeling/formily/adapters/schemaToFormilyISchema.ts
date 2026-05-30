@@ -47,6 +47,25 @@ function fieldToSchema(field: SchemaField, runtimeContext: SchemaRuntimeContext)
     });
   }
 
+  if (field.type === 'tab_container') {
+    return removeUndefined({
+      ...base,
+      type: 'void',
+      'x-decorator': undefined,
+      'x-decorator-props': undefined,
+      properties: Object.fromEntries((field.tabs ?? []).map((tab) => [
+        tab.stableId,
+        removeUndefined({
+          type: 'void',
+          'x-component': 'LabelHubTabPane',
+          'x-component-props': { tab },
+          properties: fieldsToProperties(tab.children ?? [], runtimeContext),
+          ...(requiredFieldIds(tab.children ?? []).length ? { required: requiredFieldIds(tab.children ?? []) } : {}),
+        }),
+      ])),
+    });
+  }
+
   if (field.type === 'nested_object') {
     return {
       ...base,
@@ -67,6 +86,8 @@ function schemaType(field: SchemaField): ISchema['type'] {
     case 'json_editor':
     case 'llm_interaction':
       return 'object';
+    case 'tab_container':
+      return 'void';
     case 'multi_select':
       return 'array';
     case 'text':
@@ -114,7 +135,9 @@ function fieldOptions(options?: SchemaFieldOption[]): ISchema['enum'] {
 }
 
 function requiredFieldIds(fields: SchemaField[]): string[] {
-  return fields.filter((field) => field.type !== 'show_item' && field.validation?.required).map((field) => field.stableId);
+  return fields
+    .filter((field) => field.type !== 'show_item' && field.type !== 'tab_container' && field.validation?.required)
+    .map((field) => field.stableId);
 }
 
 function removeUndefined<T extends Record<string, unknown>>(value: T): T {

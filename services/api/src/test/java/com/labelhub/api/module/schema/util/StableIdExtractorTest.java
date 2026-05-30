@@ -3,6 +3,7 @@ package com.labelhub.api.module.schema.util;
 import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldType;
+import com.labelhub.api.generated.model.SchemaTab;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +42,19 @@ class StableIdExtractorTest {
 
         assertThat(extractor.extract(document(field("top"), nested)))
                 .containsExactly("top", "parent", "child-a", "child-parent", "grandchild", "child-b");
+    }
+
+    @Test
+    void extract_recurses_into_tab_container_children_without_counting_tab_ids() {
+        SchemaField tabs = field("tabs");
+        tabs.setType(SchemaFieldType.TAB_CONTAINER);
+        SchemaTab tab = new SchemaTab();
+        tab.setStableId("tab-a");
+        tab.setLabel("Tab A");
+        tab.setChildren(List.of(field("tab-child")));
+        tabs.setTabs(List.of(tab));
+
+        assertThat(extractor.extract(document(tabs))).containsExactly("tabs", "tab-child");
     }
 
     private static SchemaDocument document(SchemaField... fields) {

@@ -172,5 +172,8 @@ function indexFieldValues(fields: SchemaField[] | undefined, source: AnswerPaylo
     if (field.type === 'nested_object') {
       indexFieldValues(field.children, isAnswerPayload(value) ? value : undefined, values);
     }
+    if (field.type === 'tab_container') {
+      field.tabs?.forEach((tab) => indexFieldValues(tab.children, source, values));
+    }
   });
 }

@@ -12,6 +12,7 @@ export const LABEL_HUB_COMPONENTS = {
   llm_interaction: 'LabelHubLlmInteractionField',
   show_item: 'LabelHubShowItem',
   nested_object: 'LabelHubNestedObjectField',
+  tab_container: 'LabelHubTabsContainer',
 } as const satisfies Record<LabelHubSchemaFieldType, string>;
 
 export type SchemaFieldType = keyof typeof LABEL_HUB_COMPONENTS;

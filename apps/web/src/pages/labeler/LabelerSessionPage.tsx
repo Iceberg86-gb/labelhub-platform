@@ -304,6 +304,14 @@ function findFieldLabel(fields: SchemaField[], stableId: string): string | null 
         return childLabel;
       }
     }
+    if (field.type === 'tab_container') {
+      for (const tab of field.tabs ?? []) {
+        const childLabel = findFieldLabel(tab.children ?? [], stableId);
+        if (childLabel) {
+          return childLabel;
+        }
+      }
+    }
   }
   return null;
 }

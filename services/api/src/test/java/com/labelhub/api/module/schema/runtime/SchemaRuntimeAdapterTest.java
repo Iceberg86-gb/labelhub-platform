@@ -55,6 +55,32 @@ class SchemaRuntimeAdapterTest {
         assertThat(storage).doesNotContainKey("fields");
     }
 
+    @Test
+    void flattensTabContainerChildrenIntoJsonSchemaProperties() {
+        Map<String, Object> storage = adapter.toStorageJson(Map.of(
+            "fields",
+            List.of(Map.of(
+                "stableId", "tabs",
+                "label", "Tabs",
+                "type", "tab_container",
+                "tabs", List.of(Map.of(
+                    "stableId", "tab_a",
+                    "label", "Tab A",
+                    "children", List.of(Map.of(
+                        "stableId", "tab_text",
+                        "label", "Tab Text",
+                        "type", "text",
+                        "validation", Map.of("required", true)
+                    ))
+                ))
+            ))
+        ));
+
+        Map<?, ?> properties = (Map<?, ?>) storage.get("properties");
+        assertThat(properties.containsKey("tab_text")).isTrue();
+        assertThat(storage.get("required")).isEqualTo(List.of("tab_text"));
+    }
+
     private Map<String, Object> legacySchema() {
         return Map.of(
             "fields",

@@ -25,6 +25,7 @@ export const SCHEMA_FIELD_TYPES = [
   'llm_interaction',
   'show_item',
   'nested_object',
+  'tab_container',
 ] satisfies SchemaFieldType[];
 
 export const SCHEMA_FIELD_TYPE_LABELS: Record<SchemaFieldType, string> = {
@@ -39,6 +40,7 @@ export const SCHEMA_FIELD_TYPE_LABELS: Record<SchemaFieldType, string> = {
   llm_interaction: 'LLM 交互',
   show_item: '展示项',
   nested_object: '嵌套对象',
+  tab_container: '多 Tab',
 };
 
 export function schemaVersionLabel(version?: SchemaVersion | null): string {

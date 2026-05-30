@@ -8,6 +8,7 @@ import { NumberFieldEditor } from './NumberFieldEditor';
 import { SelectFieldEditor } from './SelectFieldEditor';
 import { RichTextFieldEditor } from './RichTextFieldEditor';
 import { ShowItemFieldEditor } from './ShowItemFieldEditor';
+import { TabContainerFieldEditor } from './TabContainerFieldEditor';
 import { TextFieldEditor } from './TextFieldEditor';
 import { LinkageJsonEditor } from './LinkageJsonEditor';
 
@@ -47,6 +48,8 @@ function renderConcreteFieldEditor(props: FieldEditorProps) {
       return <ShowItemFieldEditor {...props} />;
     case 'nested_object':
       return <NestedObjectFieldEditor {...props} />;
+    case 'tab_container':
+      return <TabContainerFieldEditor {...props} />;
     default: {
       const _exhaustive: never = props.field.type;
       return null;

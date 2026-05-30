@@ -5,6 +5,7 @@ import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldOption;
 import com.labelhub.api.generated.model.SchemaFieldType;
 import com.labelhub.api.generated.model.SchemaFieldValidation;
+import com.labelhub.api.generated.model.SchemaTab;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -44,11 +45,15 @@ public class AnswerPayloadValidator {
         Map<String, Object> payload = answerPayload == null ? Map.of() : answerPayload;
         Map<String, Object> flatValues = buildFlatValueIndex(fields, payload);
         return fields.stream()
-            .flatMap(field -> validateField(field, payload.get(field.getStableId()), flatValues).stream())
+            .flatMap(field -> validateField(field, payload.get(field.getStableId()), flatValues, payload).stream())
             .toList();
     }
 
-    private List<AnswerValidationError> validateField(SchemaField field, Object value, Map<String, Object> flatValues) {
+    private List<AnswerValidationError> validateField(
+            SchemaField field,
+            Object value,
+            Map<String, Object> flatValues,
+            Map<String, Object> rootPayload) {
         if (field == null) {
             return List.of();
         }
@@ -58,6 +63,9 @@ public class AnswerPayloadValidator {
         SchemaFieldType type = field.getType();
         if (type == null || type == SchemaFieldType.SHOW_ITEM) {
             return List.of();
+        }
+        if (type == SchemaFieldType.TAB_CONTAINER) {
+            return validateTabContainer(field, rootPayload, flatValues);
         }
         boolean required = isRequired(field) || isConditionallyRequired(field, flatValues);
         boolean empty = isEmpty(value);
@@ -79,6 +87,7 @@ public class AnswerPayloadValidator {
             case JSON_EDITOR -> List.of();
             case LLM_INTERACTION -> validateObjectShape(field, value);
             case SHOW_ITEM -> List.of();
+            case TAB_CONTAINER -> validateTabContainer(field, rootPayload, flatValues);
             case NESTED_OBJECT -> validateNestedObject(field, value, flatValues);
         };
     }
@@ -178,7 +187,18 @@ public class AnswerPayloadValidator {
         }
         List<SchemaField> children = field.getChildren() == null ? List.of() : field.getChildren();
         return children.stream()
-            .flatMap(child -> validateField(child, nested.get(child.getStableId()), flatValues).stream())
+            .flatMap(child -> validateField(child, nested.get(child.getStableId()), flatValues, nestedAsMap(nested)).stream())
+            .toList();
+    }
+
+    private List<AnswerValidationError> validateTabContainer(
+            SchemaField field,
+            Map<String, Object> rootPayload,
+            Map<String, Object> flatValues) {
+        List<SchemaTab> tabs = field.getTabs() == null ? List.of() : field.getTabs();
+        return tabs.stream()
+            .flatMap(tab -> (tab.getChildren() == null ? List.<SchemaField>of() : tab.getChildren()).stream())
+            .flatMap(child -> validateField(child, rootPayload.get(child.getStableId()), flatValues, rootPayload).stream())
             .toList();
     }
 
@@ -196,7 +216,22 @@ public class AnswerPayloadValidator {
                 Map<?, ?> nestedSource = value instanceof Map<?, ?> nested ? nested : null;
                 indexFieldValues(field.getChildren(), nestedSource, values);
             }
+            if (field.getType() == SchemaFieldType.TAB_CONTAINER && field.getTabs() != null) {
+                for (SchemaTab tab : field.getTabs()) {
+                    indexFieldValues(tab.getChildren(), source, values);
+                }
+            }
         }
+    }
+
+    private Map<String, Object> nestedAsMap(Map<?, ?> nested) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        nested.forEach((key, nestedValue) -> {
+            if (key instanceof String stringKey) {
+                map.put(stringKey, nestedValue);
+            }
+        });
+        return map;
     }
 
     private boolean isRequired(SchemaField field) {

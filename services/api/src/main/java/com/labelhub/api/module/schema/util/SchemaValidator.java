@@ -7,6 +7,7 @@ import com.labelhub.api.generated.model.LinkageConditionOp;
 import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldType;
+import com.labelhub.api.generated.model.SchemaTab;
 import com.labelhub.api.module.schema.exception.InvalidSchemaDocumentException;
 import java.lang.reflect.Array;
 import java.util.Collection;
@@ -88,6 +89,41 @@ public class SchemaValidator {
                 }
                 validateFields(field.getChildren(), seenStableIds, fieldPath + ".children");
             }
+            if (field.getType() == SchemaFieldType.TAB_CONTAINER) {
+                if (field.getTabs() == null || field.getTabs().isEmpty()) {
+                    throw new InvalidSchemaDocumentException(fieldPath + ".tabs",
+                            "tab_container must have at least one tab");
+                }
+                validateTabs(field.getTabs(), seenStableIds, fieldPath + ".tabs");
+            }
+        }
+    }
+
+    private void validateTabs(List<SchemaTab> tabs, Set<String> seenStableIds, String pathPrefix) {
+        for (int i = 0; i < tabs.size(); i++) {
+            SchemaTab tab = tabs.get(i);
+            String tabPath = pathPrefix + "[" + i + "]";
+            if (tab.getStableId() == null || tab.getStableId().isBlank()) {
+                throw new InvalidSchemaDocumentException(tabPath + ".stableId", "stableId is required");
+            }
+            if (!seenStableIds.add(tab.getStableId())) {
+                throw new InvalidSchemaDocumentException(tabPath + ".stableId",
+                        "duplicate stableId: " + tab.getStableId());
+            }
+            if (tab.getLabel() == null || tab.getLabel().isBlank()) {
+                throw new InvalidSchemaDocumentException(tabPath + ".label", "label is required");
+            }
+            if (tab.getChildren() == null || tab.getChildren().isEmpty()) {
+                throw new InvalidSchemaDocumentException(tabPath + ".children",
+                        "tab must have at least one child field");
+            }
+            for (int childIndex = 0; childIndex < tab.getChildren().size(); childIndex++) {
+                if (tab.getChildren().get(childIndex).getType() == SchemaFieldType.TAB_CONTAINER) {
+                    throw new InvalidSchemaDocumentException(tabPath + ".children[" + childIndex + "].type",
+                            "tab_container cannot be nested inside tab_container");
+                }
+            }
+            validateFields(tab.getChildren(), seenStableIds, tabPath + ".children");
         }
     }
 
@@ -99,6 +135,12 @@ public class SchemaValidator {
 
             if (field.getChildren() != null && !field.getChildren().isEmpty()) {
                 indexFields(field.getChildren(), fieldPath + ".children", fieldIndex);
+            }
+            if (field.getTabs() != null && !field.getTabs().isEmpty()) {
+                for (int tabIndex = 0; tabIndex < field.getTabs().size(); tabIndex++) {
+                    SchemaTab tab = field.getTabs().get(tabIndex);
+                    indexFields(tab.getChildren(), fieldPath + ".tabs[" + tabIndex + "].children", fieldIndex);
+                }
             }
         }
     }
@@ -112,6 +154,12 @@ public class SchemaValidator {
 
             if (field.getChildren() != null && !field.getChildren().isEmpty()) {
                 validateLinkage(field.getChildren(), fieldPath + ".children", fieldIndex);
+            }
+            if (field.getTabs() != null && !field.getTabs().isEmpty()) {
+                for (int tabIndex = 0; tabIndex < field.getTabs().size(); tabIndex++) {
+                    SchemaTab tab = field.getTabs().get(tabIndex);
+                    validateLinkage(tab.getChildren(), fieldPath + ".tabs[" + tabIndex + "].children", fieldIndex);
+                }
             }
         }
     }

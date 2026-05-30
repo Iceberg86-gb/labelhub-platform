@@ -27,7 +27,14 @@ export function replaceSchemaFields(document: SchemaDocument, fields: SchemaFiel
 }
 
 function fieldsToJsonSchemaProperties(fields: SchemaField[]): NonNullable<SchemaDocument['properties']> {
-  return Object.fromEntries(fields.map((field) => [field.stableId, fieldToJsonSchemaProperty(field)]));
+  return fields.reduce<NonNullable<SchemaDocument['properties']>>((properties, field) => {
+    if (field.type === 'tab_container') {
+      Object.assign(properties, fieldsToJsonSchemaProperties(tabChildren(field)));
+      return properties;
+    }
+    properties[field.stableId] = fieldToJsonSchemaProperty(field);
+    return properties;
+  }, {});
 }
 
 function fieldToJsonSchemaProperty(field: SchemaField): NonNullable<SchemaDocument['properties']>[string] {
@@ -52,6 +59,8 @@ function fieldToJsonSchemaProperty(field: SchemaField): NonNullable<SchemaDocume
     if (required.length) {
       property.required = required;
     }
+  } else if (field.type === 'tab_container') {
+    property.type = 'null';
   } else {
     property.type = 'string';
     if (field.type === 'single_select') {
@@ -66,6 +75,15 @@ function fieldToJsonSchemaProperty(field: SchemaField): NonNullable<SchemaDocume
   return property;
 }
 
-function requiredFieldIds(fields: SchemaField[]) {
-  return fields.filter((field) => field.validation?.required).map((field) => field.stableId);
+function requiredFieldIds(fields: SchemaField[]): string[] {
+  return fields.flatMap((field) => {
+    if (field.type === 'tab_container') {
+      return requiredFieldIds(tabChildren(field));
+    }
+    return field.validation?.required ? [field.stableId] : [];
+  });
+}
+
+function tabChildren(field: SchemaField): SchemaField[] {
+  return field.tabs?.flatMap((tab) => tab.children ?? []) ?? [];
 }

@@ -7,6 +7,7 @@ import com.labelhub.api.generated.model.SchemaFieldType;
 import com.labelhub.api.generated.model.LinkageAtomicCondition;
 import com.labelhub.api.generated.model.LinkageConditionGroup;
 import com.labelhub.api.generated.model.LinkageConditionOp;
+import com.labelhub.api.generated.model.SchemaTab;
 import com.labelhub.api.module.schema.exception.InvalidSchemaDocumentException;
 import java.util.ArrayList;
 import java.util.List;
@@ -118,6 +119,33 @@ class SchemaValidatorTest {
         assertThatThrownBy(() -> validator.validate(document(field)))
                 .isInstanceOf(InvalidSchemaDocumentException.class)
                 .satisfies(error -> assertThat(((InvalidSchemaDocumentException) error).getField()).isEqualTo("fields[0].children"));
+    }
+
+    @Test
+    void validate_rejects_tab_container_without_tabs() {
+        SchemaField field = field("tabs", SchemaFieldType.TAB_CONTAINER);
+        field.setTabs(List.of());
+
+        assertThatThrownBy(() -> validator.validate(document(field)))
+                .isInstanceOf(InvalidSchemaDocumentException.class)
+                .satisfies(error -> assertThat(((InvalidSchemaDocumentException) error).getField()).isEqualTo("fields[0].tabs"));
+    }
+
+    @Test
+    void validate_indexes_tab_children_for_duplicate_and_linkage_checks() {
+        SchemaField tabs = field("tabs", SchemaFieldType.TAB_CONTAINER);
+        tabs.getTabs().get(0).setChildren(List.of(field("driver", SchemaFieldType.TEXT)));
+        SchemaField details = field("details", SchemaFieldType.TEXT);
+        details.setVisibleWhen(atomic("driver", LinkageConditionOp.NOTEMPTY, null));
+        tabs.getTabs().add(tab("second", "Second", List.of(details)));
+
+        validator.validate(document(tabs));
+
+        tabs.getTabs().get(1).getChildren().get(0).setStableId("driver");
+        assertThatThrownBy(() -> validator.validate(document(tabs)))
+                .isInstanceOf(InvalidSchemaDocumentException.class)
+                .satisfies(error -> assertThat(((InvalidSchemaDocumentException) error).getField())
+                        .isEqualTo("fields[0].tabs[1].children[0].stableId"));
     }
 
     @Test
@@ -298,6 +326,17 @@ class SchemaValidatorTest {
         if (type == SchemaFieldType.NESTED_OBJECT) {
             field.setChildren(List.of(field(stableId + "-child", SchemaFieldType.TEXT)));
         }
+        if (type == SchemaFieldType.TAB_CONTAINER) {
+            field.setTabs(new ArrayList<>(List.of(tab(stableId + "-tab", "Tab", List.of(field(stableId + "-child", SchemaFieldType.TEXT))))));
+        }
         return field;
+    }
+
+    private static SchemaTab tab(String stableId, String label, List<SchemaField> children) {
+        SchemaTab tab = new SchemaTab();
+        tab.setStableId(stableId);
+        tab.setLabel(label);
+        tab.setChildren(new ArrayList<>(children));
+        return tab;
     }
 }

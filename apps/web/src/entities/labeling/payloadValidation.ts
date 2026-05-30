@@ -13,13 +13,25 @@ export function validatePayload(fields: SchemaField[], payload: AnswerPayload): 
   const errors: PayloadValidationError[] = [];
   const flatValues = buildFlatValueIndex(fields, payload);
   fields.forEach((field) => {
-    validateField(field, getFieldValue(payload, field.stableId), errors, flatValues);
+    validateField(field, getFieldValue(payload, field.stableId), errors, flatValues, payload);
   });
   return errors;
 }
 
-function validateField(field: SchemaField, value: unknown, errors: PayloadValidationError[], flatValues: FlatValueIndex) {
+function validateField(
+  field: SchemaField,
+  value: unknown,
+  errors: PayloadValidationError[],
+  flatValues: FlatValueIndex,
+  rootPayload: AnswerPayload,
+) {
   if (!isFieldVisible(field, flatValues)) {
+    return;
+  }
+  if (field.type === 'tab_container') {
+    field.tabs?.forEach((tab) => {
+      tab.children?.forEach((child) => validateField(child, getFieldValue(rootPayload, child.stableId), errors, flatValues, rootPayload));
+    });
     return;
   }
   const required = (field.validation?.required ?? false) || isFieldConditionallyRequired(field, flatValues);
@@ -76,7 +88,7 @@ function validateField(field: SchemaField, value: unknown, errors: PayloadValida
       }
       {
         const childPayload = value;
-        field.children?.forEach((child) => validateField(child, childPayload[child.stableId], errors, flatValues));
+        field.children?.forEach((child) => validateField(child, childPayload[child.stableId], errors, flatValues, childPayload));
       }
       return;
     default: {

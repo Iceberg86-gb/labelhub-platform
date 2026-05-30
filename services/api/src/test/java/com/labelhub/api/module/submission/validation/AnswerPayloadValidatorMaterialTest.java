@@ -4,6 +4,7 @@ import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldType;
 import com.labelhub.api.generated.model.SchemaFieldValidation;
+import com.labelhub.api.generated.model.SchemaTab;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,25 @@ class AnswerPayloadValidatorMaterialTest {
         showItem.setValidation(validation);
 
         assertThat(validator.validate(document(showItem), Map.of())).isEmpty();
+    }
+
+    @Test
+    void tabContainer_validatesChildrenAgainstFlatPayloadWithoutContainerValue() {
+        SchemaField child = field("tab_text", SchemaFieldType.TEXT);
+        SchemaFieldValidation validation = new SchemaFieldValidation();
+        validation.setRequired(true);
+        child.setValidation(validation);
+        SchemaTab tab = new SchemaTab();
+        tab.setStableId("tab_a");
+        tab.setLabel("Tab A");
+        tab.setChildren(List.of(child));
+        SchemaField tabs = field("tabs", SchemaFieldType.TAB_CONTAINER);
+        tabs.setTabs(List.of(tab));
+
+        assertThat(validator.validate(document(tabs), Map.of("tab_text", "filled"))).isEmpty();
+        assertThat(validator.validate(document(tabs), Map.of()))
+            .extracting(AnswerValidationError::stableId)
+            .containsExactly("tab_text");
     }
 
     private static SchemaDocument document(SchemaField... fields) {

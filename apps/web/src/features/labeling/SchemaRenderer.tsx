@@ -25,114 +25,128 @@ export function SchemaRenderer({ fields, value, onChange, readOnly, errors }: Sc
     return <div className="schema-renderer schema-renderer--empty">暂无字段。</div>;
   }
 
+  const renderField = (field: SchemaField) => {
+    const fieldValue = getFieldValue(value, field.stableId);
+    const fieldErrors = errors?.get(field.stableId);
+    const handleFieldChange = (newValue: AnswerValue) => {
+      onChange(setFieldValue(value, field.stableId, newValue));
+    };
+
+    switch (field.type) {
+      case 'text':
+        return (
+          <TextFieldRenderer
+            key={field.stableId}
+            field={field}
+            value={typeof fieldValue === 'string' ? fieldValue : undefined}
+            onChange={handleFieldChange}
+            readOnly={readOnly}
+            errors={fieldErrors}
+          />
+        );
+      case 'number':
+        return (
+          <NumberFieldRenderer
+            key={field.stableId}
+            field={field}
+            value={typeof fieldValue === 'number' ? fieldValue : undefined}
+            onChange={handleFieldChange}
+            readOnly={readOnly}
+            errors={fieldErrors}
+          />
+        );
+      case 'single_select':
+      case 'multi_select':
+        return (
+          <SelectFieldRenderer
+            key={field.stableId}
+            field={field}
+            value={asSelectValue(fieldValue)}
+            onChange={handleFieldChange}
+            readOnly={readOnly}
+            errors={fieldErrors}
+          />
+        );
+      case 'date':
+        return (
+          <DateFieldRenderer
+            key={field.stableId}
+            field={field}
+            value={typeof fieldValue === 'string' ? fieldValue : undefined}
+            onChange={handleFieldChange}
+            readOnly={readOnly}
+            errors={fieldErrors}
+          />
+        );
+      case 'file_upload':
+        return (
+          <FileUploadFieldRenderer
+            key={field.stableId}
+            field={field}
+            value={fieldValue}
+            onChange={handleFieldChange}
+            readOnly={readOnly}
+            errors={fieldErrors}
+          />
+        );
+      case 'rich_text':
+        return (
+          <RichTextFieldRenderer
+            key={field.stableId}
+            field={field}
+            value={typeof fieldValue === 'string' ? fieldValue : undefined}
+            onChange={handleFieldChange}
+            readOnly={readOnly}
+            errors={fieldErrors}
+          />
+        );
+      case 'json_editor':
+      case 'llm_interaction':
+        return (
+          <JsonFieldRenderer
+            key={field.stableId}
+            field={field}
+            value={fieldValue}
+            onChange={handleFieldChange}
+            readOnly={readOnly}
+            errors={fieldErrors}
+          />
+        );
+      case 'show_item':
+        return <ShowItemRenderer key={field.stableId} field={field} />;
+      case 'tab_container':
+        return (
+          <div key={field.stableId} className="labelhub-tabs-fallback">
+            <div className="labelhub-tabs-fallback__title">{field.label}</div>
+            {field.tabs?.map((tab) => (
+              <section key={tab.stableId} className="labelhub-tabs-fallback__pane">
+                <h4>{tab.label}</h4>
+                {tab.children?.map(renderField)}
+              </section>
+            ))}
+          </div>
+        );
+      case 'nested_object':
+        return (
+          <NestedObjectFieldRenderer
+            key={field.stableId}
+            field={field}
+            value={fieldValue && typeof fieldValue === 'object' && !Array.isArray(fieldValue) ? fieldValue : undefined}
+            onChange={handleFieldChange}
+            readOnly={readOnly}
+            errors={fieldErrors}
+          />
+        );
+      default: {
+        const _exhaustive: never = field.type;
+        return _exhaustive;
+      }
+    }
+  };
+
   return (
     <div className="schema-renderer">
-      {fields.map((field) => {
-        const fieldValue = getFieldValue(value, field.stableId);
-        const fieldErrors = errors?.get(field.stableId);
-        const handleFieldChange = (newValue: AnswerValue) => {
-          onChange(setFieldValue(value, field.stableId, newValue));
-        };
-
-        switch (field.type) {
-          case 'text':
-            return (
-              <TextFieldRenderer
-                key={field.stableId}
-                field={field}
-                value={typeof fieldValue === 'string' ? fieldValue : undefined}
-                onChange={handleFieldChange}
-                readOnly={readOnly}
-                errors={fieldErrors}
-              />
-            );
-          case 'number':
-            return (
-              <NumberFieldRenderer
-                key={field.stableId}
-                field={field}
-                value={typeof fieldValue === 'number' ? fieldValue : undefined}
-                onChange={handleFieldChange}
-                readOnly={readOnly}
-                errors={fieldErrors}
-              />
-            );
-          case 'single_select':
-          case 'multi_select':
-            return (
-              <SelectFieldRenderer
-                key={field.stableId}
-                field={field}
-                value={asSelectValue(fieldValue)}
-                onChange={handleFieldChange}
-                readOnly={readOnly}
-                errors={fieldErrors}
-              />
-            );
-          case 'date':
-            return (
-              <DateFieldRenderer
-                key={field.stableId}
-                field={field}
-                value={typeof fieldValue === 'string' ? fieldValue : undefined}
-                onChange={handleFieldChange}
-                readOnly={readOnly}
-                errors={fieldErrors}
-              />
-            );
-          case 'file_upload':
-            return (
-              <FileUploadFieldRenderer
-                key={field.stableId}
-                field={field}
-                value={fieldValue}
-                onChange={handleFieldChange}
-                readOnly={readOnly}
-                errors={fieldErrors}
-              />
-            );
-          case 'rich_text':
-            return (
-              <RichTextFieldRenderer
-                key={field.stableId}
-                field={field}
-                value={typeof fieldValue === 'string' ? fieldValue : undefined}
-                onChange={handleFieldChange}
-                readOnly={readOnly}
-                errors={fieldErrors}
-              />
-            );
-          case 'json_editor':
-          case 'llm_interaction':
-            return (
-              <JsonFieldRenderer
-                key={field.stableId}
-                field={field}
-                value={fieldValue}
-                onChange={handleFieldChange}
-                readOnly={readOnly}
-                errors={fieldErrors}
-              />
-            );
-          case 'show_item':
-            return <ShowItemRenderer key={field.stableId} field={field} />;
-          case 'nested_object':
-            return (
-              <NestedObjectFieldRenderer
-                key={field.stableId}
-                field={field}
-                value={fieldValue && typeof fieldValue === 'object' && !Array.isArray(fieldValue) ? fieldValue : undefined}
-                onChange={handleFieldChange}
-                readOnly={readOnly}
-                errors={fieldErrors}
-              />
-            );
-          default: {
-            const _exhaustive: never = field.type;
-            return _exhaustive;
-          }
-        }
-      })}
+      {fields.map(renderField)}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export function NestedObjectFieldEditor({
       </EditorSection>
       <EditorSection title="子字段">
         <div className="nested-children-panel">
-          <AddFieldButton label="添加子字段" excludeTypes={['nested_object']} onPick={handleAddChild} />
+          <AddFieldButton label="添加子字段" excludeTypes={['nested_object', 'tab_container']} onPick={handleAddChild} />
           <FieldList
             fields={children}
             onChange={(nextChildren) => onChange({ ...field, children: nextChildren })}

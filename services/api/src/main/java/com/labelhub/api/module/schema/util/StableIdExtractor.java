@@ -2,6 +2,7 @@ package com.labelhub.api.module.schema.util;
 
 import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
+import com.labelhub.api.generated.model.SchemaTab;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,11 @@ public class StableIdExtractor {
             ids.add(field.getStableId());
             if (field.getChildren() != null && !field.getChildren().isEmpty()) {
                 collect(field.getChildren(), ids);
+            }
+            if (field.getTabs() != null && !field.getTabs().isEmpty()) {
+                for (SchemaTab tab : field.getTabs()) {
+                    collect(tab.getChildren(), ids);
+                }
             }
         }
     }
