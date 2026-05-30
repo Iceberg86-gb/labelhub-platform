@@ -14,25 +14,29 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext,
-  arrayMove,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import type { CSSProperties } from 'react';
 import { useMemo, useState } from 'react';
+import { findFieldByStableId } from '../../entities/schema/fieldFactory';
 import type { SchemaField, SchemaFieldType } from '../../entities/schema/schemaTypes';
 import { SCHEMA_FIELD_TYPES, SCHEMA_FIELD_TYPE_LABELS } from '../../entities/schema/schemaTypes';
 import type { FieldValidationError } from '../../entities/schema/schemaValidation';
 import { AddFieldButton } from './AddFieldButton';
+import {
+  PALETTE_PREFIX,
+  designerDropIdFromTarget,
+  paletteTypeFromDesignerId,
+  resolveDesignerDragEnd,
+  type DesignerDropTarget,
+} from './designerDragModel';
 import { SortableFieldItem } from './FieldList';
-
-const CANVAS_DROP_ID = 'schema-designer-canvas-dropzone';
-const PALETTE_PREFIX = 'palette:';
 
 type DesignerFieldBuilderProps = {
   fields: SchemaField[];
   onChange: (fields: SchemaField[]) => void;
-  onAddField: (type: SchemaFieldType, index?: number) => SchemaField | null;
+  onAddField: (type: SchemaFieldType, parentStableId?: string, index?: number) => SchemaField | null;
   selectedStableId: string | null;
   onSelect: (stableId: string) => void;
   onDelete: (stableId: string) => void;
@@ -55,8 +59,8 @@ export function DesignerFieldBuilder({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const activePaletteType = paletteTypeFromId(activeDragId);
-  const activeField = useMemo(() => fields.find((field) => field.stableId === activeDragId) ?? null, [activeDragId, fields]);
+  const activePaletteType = paletteTypeFromDesignerId(activeDragId);
+  const activeField = useMemo(() => findFieldByStableId(fields, activeDragId), [activeDragId, fields]);
 
   const handleDragStart = ({ active }: DragStartEvent) => {
     setActiveDragId(String(active.id));
@@ -64,21 +68,17 @@ export function DesignerFieldBuilder({
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     const activeId = String(active.id);
-    const overId = over?.id ? String(over.id) : CANVAS_DROP_ID;
+    const overId = over?.id ? String(over.id) : null;
     setActiveDragId(null);
 
-    const paletteType = paletteTypeFromId(activeId);
-    if (paletteType) {
-      const insertIndex = fields.findIndex((field) => field.stableId === overId);
-      onAddField(paletteType, insertIndex >= 0 ? insertIndex : fields.length);
+    const resolution = resolveDesignerDragEnd(fields, { activeId, overId });
+    if (resolution.kind === 'add') {
+      onAddField(resolution.fieldType, resolution.parentStableId, resolution.index);
       return;
     }
-
-    if (!over || active.id === over.id) return;
-    const oldIndex = fields.findIndex((field) => field.stableId === active.id);
-    const newIndex = fields.findIndex((field) => field.stableId === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    onChange(arrayMove(fields, oldIndex, newIndex));
+    if (resolution.kind === 'change') {
+      onChange(resolution.fields);
+    }
   };
 
   return (
@@ -108,6 +108,7 @@ export function DesignerFieldBuilder({
         ) : null}
         <CanvasFieldList
           fields={fields}
+          target={{ kind: 'root' }}
           selectedStableId={selectedStableId}
           onSelect={onSelect}
           onDelete={onDelete}
@@ -159,37 +160,104 @@ function PaletteItem({ type }: { type: SchemaFieldType }) {
 
 function CanvasFieldList({
   fields,
+  target,
   selectedStableId,
   onSelect,
   onDelete,
   errors,
-}: Pick<DesignerFieldBuilderProps, 'fields' | 'selectedStableId' | 'onSelect' | 'onDelete' | 'errors'>) {
-  const { isOver, setNodeRef } = useDroppable({ id: CANVAS_DROP_ID });
+}: Pick<DesignerFieldBuilderProps, 'fields' | 'selectedStableId' | 'onSelect' | 'onDelete' | 'errors'> & { target: DesignerDropTarget }) {
+  const { isOver, setNodeRef } = useDroppable({ id: designerDropIdFromTarget(target) });
+  const isRoot = target.kind === 'root';
+  const emptyText = isRoot ? '从左侧拖入物料创建第一个字段。' : '拖入字段到此处。';
 
   return (
-    <div ref={setNodeRef} className={['schema-canvas-dropzone', isOver ? 'schema-canvas-dropzone--over' : ''].join(' ')}>
+    <div
+      ref={setNodeRef}
+      className={[
+        'schema-canvas-dropzone',
+        isRoot ? 'schema-canvas-dropzone--root' : 'schema-canvas-dropzone--nested',
+        isOver ? 'schema-canvas-dropzone--over' : '',
+      ].join(' ')}
+      data-drop-id={designerDropIdFromTarget(target)}
+    >
       {fields.length === 0 ? (
         <div className="field-list-empty">
-          <Typography.Text type="tertiary">从左侧拖入物料创建第一个字段。</Typography.Text>
+          <Typography.Text type="tertiary">{emptyText}</Typography.Text>
         </div>
       ) : (
         <SortableContext items={fields.map((field) => field.stableId)} strategy={verticalListSortingStrategy}>
           <div className="field-list">
             {fields.map((field) => (
-              <SortableFieldItem
-                key={field.stableId}
-                field={field}
-                selected={field.stableId === selectedStableId}
-                hasError={errors.has(field.stableId)}
-                onSelect={onSelect}
-                onDelete={onDelete}
-              />
+              <div key={field.stableId} className="field-tree-node">
+                <SortableFieldItem
+                  field={field}
+                  selected={field.stableId === selectedStableId}
+                  hasError={errors.has(field.stableId)}
+                  onSelect={onSelect}
+                  onDelete={onDelete}
+                />
+                <CanvasFieldChildren
+                  field={field}
+                  selectedStableId={selectedStableId}
+                  onSelect={onSelect}
+                  onDelete={onDelete}
+                  errors={errors}
+                />
+              </div>
             ))}
           </div>
         </SortableContext>
       )}
     </div>
   );
+}
+
+function CanvasFieldChildren({
+  field,
+  selectedStableId,
+  onSelect,
+  onDelete,
+  errors,
+}: Pick<DesignerFieldBuilderProps, 'selectedStableId' | 'onSelect' | 'onDelete' | 'errors'> & { field: SchemaField }) {
+  if (field.type === 'nested_object') {
+    return (
+      <div className="schema-canvas-child-container">
+        <Typography.Text type="tertiary">子字段</Typography.Text>
+        <CanvasFieldList
+          fields={field.children ?? []}
+          target={{ kind: 'nested', stableId: field.stableId }}
+          selectedStableId={selectedStableId}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          errors={errors}
+        />
+      </div>
+    );
+  }
+
+  if (field.type === 'tab_container') {
+    return (
+      <div className="schema-canvas-child-container schema-canvas-tab-container">
+        {(field.tabs ?? []).map((tab) => (
+          <div key={tab.stableId} className="schema-canvas-tab-pane">
+            <div className="schema-canvas-tab-pane__label">
+              <Typography.Text strong>{tab.label || '未命名 Tab'}</Typography.Text>
+            </div>
+            <CanvasFieldList
+              fields={tab.children ?? []}
+              target={{ kind: 'tab', containerStableId: field.stableId, tabStableId: tab.stableId }}
+              selectedStableId={selectedStableId}
+              onSelect={onSelect}
+              onDelete={onDelete}
+              errors={errors}
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return null;
 }
 
 function PaletteDragPreview({ type }: { type: SchemaFieldType }) {
@@ -207,10 +275,4 @@ function FieldDragPreview({ field, hasError }: { field: SchemaField; hasError: b
       <Tag color={hasError ? 'red' : 'blue'}>{SCHEMA_FIELD_TYPE_LABELS[field.type]}</Tag>
     </div>
   );
-}
-
-function paletteTypeFromId(id: string | null): SchemaFieldType | null {
-  if (!id?.startsWith(PALETTE_PREFIX)) return null;
-  const type = id.slice(PALETTE_PREFIX.length);
-  return SCHEMA_FIELD_TYPES.includes(type as SchemaFieldType) ? type as SchemaFieldType : null;
 }

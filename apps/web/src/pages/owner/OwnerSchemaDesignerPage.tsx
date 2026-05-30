@@ -17,6 +17,10 @@ import {
 } from '../../entities/schema/schemaValidation';
 import type { SchemaDocument, SchemaField, SchemaFieldType, SchemaVersion } from '../../entities/schema/schemaTypes';
 import { DesignerFieldBuilder } from '../../features/schema-design/DesignerFieldBuilder';
+import {
+  designerTargetFromParentStableId,
+  insertFieldIntoDesignerTarget,
+} from '../../features/schema-design/designerDragModel';
 import { PublishSchemaModal } from '../../features/schema-design/PublishSchemaModal';
 import { VersionHistoryDrawer } from '../../features/schema-design/VersionHistoryDrawer';
 import { FieldEditor } from '../../features/schema-design/field-editors/FieldEditor';
@@ -87,12 +91,13 @@ export function OwnerSchemaDesignerPage() {
     setIsDirty(true);
   };
 
-  const handleAddField = (type: SchemaFieldType, index?: number): SchemaField | null => {
+  const handleAddField = (type: SchemaFieldType, parentStableId?: string, index?: number): SchemaField | null => {
     if (!draftDocument) return null;
     const field = createField(type);
     const currentFields = schemaFields(draftDocument);
-    const insertIndex = index == null ? currentFields.length : Math.max(0, Math.min(index, currentFields.length));
-    const nextFields = [...currentFields.slice(0, insertIndex), field, ...currentFields.slice(insertIndex)];
+    const target = designerTargetFromParentStableId(parentStableId);
+    const nextFields = insertFieldIntoDesignerTarget(currentFields, target, field, index);
+    if (!nextFields) return null;
     setDraftDocument(replaceSchemaFields(draftDocument, nextFields));
     setSelectedStableId(field.stableId);
     setIsDirty(true);
