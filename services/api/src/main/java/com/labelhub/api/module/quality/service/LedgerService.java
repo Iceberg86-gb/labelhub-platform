@@ -12,6 +12,8 @@ import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
+import com.labelhub.api.module.session.mapper.SessionMapper;
+import com.labelhub.api.module.submission.SubmissionStatusCodes;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.module.task.service.PagedResult;
@@ -38,6 +40,7 @@ public class LedgerService {
     private final SubmissionMapper submissionMapper;
     private final TaskMapper taskMapper;
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper;
+    private final SessionMapper sessionMapper;
     private final Clock clock;
     private final AuditLogService auditLogService;
 
@@ -47,11 +50,13 @@ public class LedgerService {
         TaskMapper taskMapper,
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Clock clock,
-        AuditLogService auditLogService
+        AuditLogService auditLogService,
+        SessionMapper sessionMapper
     ) {
         this.submissionMapper = submissionMapper;
         this.taskMapper = taskMapper;
         this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
+        this.sessionMapper = sessionMapper;
         this.clock = clock;
         this.auditLogService = auditLogService;
     }
@@ -60,9 +65,19 @@ public class LedgerService {
         SubmissionMapper submissionMapper,
         TaskMapper taskMapper,
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
+        Clock clock,
+        AuditLogService auditLogService
+    ) {
+        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock, auditLogService, null);
+    }
+
+    public LedgerService(
+        SubmissionMapper submissionMapper,
+        TaskMapper taskMapper,
+        QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Clock clock
     ) {
-        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock, AuditLogService.noop());
+        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock, AuditLogService.noop(), null);
     }
 
     @Transactional
@@ -100,9 +115,23 @@ public class LedgerService {
         if ("approve".equals(verdict)) {
             auditLogService.record(reviewAuditEvent(AuditActions.REVIEW_APPROVE, submission, entity, reviewerUserId, verdict));
         } else {
+            markReturnedForRevision(submission);
             auditLogService.record(reviewAuditEvent(AuditActions.REVIEW_REJECT, submission, entity, reviewerUserId, verdict));
         }
         return entity;
+    }
+
+    private void markReturnedForRevision(SubmissionEntity submission) {
+        requireOneRow(
+            submissionMapper.updateStatus(submission.getId(), SubmissionStatusCodes.RETURNED_FOR_REVISION),
+            "mark submission returned for revision"
+        );
+        if (sessionMapper != null && submission.getSessionId() != null) {
+            requireOneRow(
+                sessionMapper.updateStatus(submission.getSessionId(), SubmissionStatusCodes.RETURNED_FOR_REVISION),
+                "mark session returned for revision"
+            );
+        }
     }
 
     public PagedResult<QualityLedgerEntryEntity> listEntries(

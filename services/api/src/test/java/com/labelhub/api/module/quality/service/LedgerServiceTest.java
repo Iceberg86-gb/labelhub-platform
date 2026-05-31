@@ -13,6 +13,7 @@ import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
+import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.module.task.service.PagedResult;
@@ -49,6 +50,7 @@ class LedgerServiceTest {
     private static final LocalDateTime NOW = LocalDateTime.parse("2026-05-25T09:30:00");
 
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
+    private final SessionMapper sessionMapper = mock(SessionMapper.class);
     private final TaskMapper taskMapper = mock(TaskMapper.class);
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper = mock(QualityLedgerEntryMapper.class);
     private final AuditLogService auditLogService = mock(AuditLogService.class);
@@ -57,7 +59,14 @@ class LedgerServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-05-25T09:30:00Z"), ZoneOffset.UTC);
-        ledgerService = new LedgerService(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock, auditLogService);
+        ledgerService = new LedgerService(
+            submissionMapper,
+            taskMapper,
+            qualityLedgerEntryMapper,
+            clock,
+            auditLogService,
+            sessionMapper
+        );
     }
 
     @Test
@@ -93,6 +102,8 @@ class LedgerServiceTest {
     void createEntry_sets_task_id_from_submission_to_align_indexing() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
         doAnswer(invocation -> 1).when(qualityLedgerEntryMapper).insert(any(QualityLedgerEntryEntity.class));
+        when(submissionMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
+        when(sessionMapper.updateStatus(900L, "returned_for_revision")).thenReturn(1);
 
         ledgerService.createEntry(SUBMISSION_ID, REVIEWER_ID, "reviewer_overall_verdict", Map.of("verdict", "reject"));
 
@@ -100,6 +111,26 @@ class LedgerServiceTest {
         verify(qualityLedgerEntryMapper).insert(captor.capture());
         assertThat(captor.getValue().getTaskId()).isEqualTo(TASK_ID);
         assertAuditEvent(AuditActions.REVIEW_REJECT, "user", "submission");
+    }
+
+    @Test
+    void createEntry_reject_marks_submission_and_session_returned_for_revision() {
+        SubmissionEntity submission = submission();
+        submission.setSessionId(900L);
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission);
+        doAnswer(invocation -> 1).when(qualityLedgerEntryMapper).insert(any(QualityLedgerEntryEntity.class));
+        when(submissionMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
+        when(sessionMapper.updateStatus(900L, "returned_for_revision")).thenReturn(1);
+
+        ledgerService.createEntry(
+            SUBMISSION_ID,
+            REVIEWER_ID,
+            "reviewer_overall_verdict",
+            Map.of("verdict", "reject", "reason", "Needs correction")
+        );
+
+        verify(submissionMapper).updateStatus(SUBMISSION_ID, "returned_for_revision");
+        verify(sessionMapper).updateStatus(900L, "returned_for_revision");
     }
 
     @Test

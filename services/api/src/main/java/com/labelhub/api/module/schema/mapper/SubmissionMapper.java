@@ -11,6 +11,7 @@ import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface SubmissionMapper {
@@ -71,4 +72,25 @@ public interface SubmissionMapper {
         """)
     @ResultMap("submissionResultMap")
     List<SubmissionEntity> selectSubmittedByTaskOrderedById(@Param("taskId") Long taskId);
+
+    @Select("""
+        SELECT id, session_id, task_id, dataset_item_id, labeler_id, schema_version_id,
+               answer_payload, provenance, content_hash, status AS status_code,
+               created_at, superseded_by_id
+        FROM submissions
+        WHERE session_id = #{sessionId}
+          AND status = 'returned_for_revision'
+          AND superseded_by_id IS NULL
+        ORDER BY id DESC
+        LIMIT 1
+        FOR UPDATE
+        """)
+    @ResultMap("submissionResultMap")
+    SubmissionEntity selectLatestBySessionIdForUpdate(@Param("sessionId") Long sessionId);
+
+    @Update("UPDATE submissions SET status = #{status} WHERE id = #{id}")
+    int updateStatus(@Param("id") Long id, @Param("status") String status);
+
+    @Update("UPDATE submissions SET superseded_by_id = #{supersededById} WHERE id = #{id}")
+    int updateSupersededBy(@Param("id") Long id, @Param("supersededById") Long supersededById);
 }

@@ -10,6 +10,7 @@ import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface SessionMapper extends BaseMapper<SessionEntity> {
@@ -62,4 +63,7 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
         @Param("labelerId") Long labelerId,
         @Param("statusFilter") String statusFilter
     );
+
+    @Update("UPDATE sessions SET status = #{status} WHERE id = #{id}")
+    int updateStatus(@Param("id") Long id, @Param("status") String status);
 }
