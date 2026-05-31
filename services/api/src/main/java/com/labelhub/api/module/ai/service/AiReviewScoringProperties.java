@@ -10,7 +10,7 @@ public class AiReviewScoringProperties {
 
     private BigDecimal defaultThreshold = new BigDecimal("0.80");
     private BigDecimal rejectFloor = new BigDecimal("0.20");
-    private String scoringRuleVersion = "equal-weight-threshold-v1";
+    private String scoringRuleVersion = "equal-weight-three-zone-v2";
 
     public BigDecimal getDefaultThreshold() {
         return defaultThreshold;
