@@ -16,6 +16,7 @@ import com.labelhub.api.module.export.mapper.ExportJobMapper;
 import com.labelhub.api.module.export.mapper.ExportSnapshotMapper;
 import com.labelhub.api.module.export.storage.ObjectStorageProperties;
 import com.labelhub.api.module.export.storage.ObjectStorageWriter;
+import com.labelhub.api.module.outbox.service.OutboxEventService;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
@@ -46,6 +47,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -74,6 +76,7 @@ class ExportServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
     private final AuditLogService auditLogService = mock(AuditLogService.class);
+    private final OutboxEventService outboxEventService = mock(OutboxEventService.class);
     private final MutableClock clock = new MutableClock(Instant.parse("2026-05-25T10:00:00Z"));
 
     private ExportService exportService;
@@ -90,13 +93,18 @@ class ExportServiceTest {
             storageWriter,
             objectMapper,
             clock,
-            auditLogService
+            auditLogService,
+            outboxEventService
         );
         baseBundle = bundleWithLedgerEntries(List.of(ledgerEntry(700L, "approve")));
         when(taskMapper.selectById(TASK_ID)).thenReturn(task(OWNER_ID));
         when(factCollector.collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY)).thenReturn(baseBundle);
         when(factCollector.collectForTask(TASK_ID, ExportDataScope.FULL))
             .thenReturn(bundleWithLedgerEntries(List.of(ledgerEntry(700L, "approve")), ExportDataScope.FULL));
+        when(exportJobMapper.markQueued(any())).thenReturn(1);
+        when(exportJobMapper.markRunning(any(), any())).thenReturn(1);
+        when(exportJobMapper.markSucceeded(any(), any(), any(), any())).thenReturn(1);
+        when(exportJobMapper.markFailed(any(), any())).thenReturn(1);
         stubGeneratedIds();
     }
 
@@ -209,6 +217,37 @@ class ExportServiceTest {
         assertThat(snapshot.getFieldMappingSnapshot()).isEqualTo(mapping);
         assertThat(castList(mapping.get("columns"))).hasSize(2);
         assertThat(writtenUtf8("training-results.csv")).startsWith("prompt_text,label\n");
+    }
+
+    @Test
+    void requestExport_creates_queued_job_and_enqueues_export_outbox_event() {
+        ExportJobEntity job = exportService.requestExport(TASK_ID, OWNER_ID, ExportDataScope.APPROVED_ONLY, ExportFieldMapping.empty());
+
+        assertThat(job.getStatus()).isEqualTo("queued");
+        assertThat(job.getParameters()).containsEntry("mode", "approved_only");
+        verify(outboxEventService).enqueueExportRequested(job);
+        verify(exportJobMapper).markQueued(job.getId());
+        verify(factCollector, never()).collectForTask(any(), any());
+    }
+
+    @Test
+    void processExportJob_collects_business_table_from_approved_only_even_for_full_snapshot() {
+        ExportJobEntity job = exportJob();
+        job.setParameters(Map.of(
+            "mode", "full",
+            "fieldMapping", new ExportFieldMapping(List.of(
+                new ExportFieldMappingColumn("item.text", "prompt_text", true)
+            )).toParameter()
+        ));
+        when(exportJobMapper.selectById(99L)).thenReturn(job);
+
+        ExportSnapshotEntity snapshot = exportService.processExportJob(99L);
+
+        verify(factCollector).collectForTask(TASK_ID, ExportDataScope.FULL);
+        verify(factCollector).collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY);
+        verify(exportJobMapper).markRunning(99L, LocalDateTime.parse("2026-05-25T10:00"));
+        verify(exportJobMapper).markSucceeded(eq(99L), any(), eq(snapshot.getObjectKey()), any());
+        assertThat(writtenUtf8("training-results.csv")).startsWith("prompt_text\n");
     }
 
     @Test
@@ -531,6 +570,18 @@ class ExportServiceTest {
         task.setCreatedAt(CREATED_AT.minusDays(1));
         task.setUpdatedAt(CREATED_AT);
         return task;
+    }
+
+    private static ExportJobEntity exportJob() {
+        ExportJobEntity job = new ExportJobEntity();
+        job.setId(99L);
+        job.setTaskId(TASK_ID);
+        job.setRequestedBy(OWNER_ID);
+        job.setFormat("jsonl-bundle");
+        job.setStatus("queued");
+        job.setCreatedAt(CREATED_AT);
+        job.setDownloadCount(0);
+        return job;
     }
 
     private static SchemaVersionEntity schemaVersion() {

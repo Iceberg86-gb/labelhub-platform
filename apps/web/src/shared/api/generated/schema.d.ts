@@ -1567,6 +1567,27 @@ export interface components {
             canonicalizationVersion: string;
             generatedAt: string;
         };
+        ExportJob: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            taskId: number;
+            /** Format: int64 */
+            requestedBy: number;
+            format: string;
+            /** @enum {string} */
+            status: "created" | "queued" | "running" | "succeeded" | "failed";
+            parameters?: {
+                [key: string]: unknown;
+            };
+            fileKey?: string | null;
+            /** Format: int64 */
+            fileSize?: number | null;
+            downloadCount: number;
+            createdAt: string;
+            startedAt?: string | null;
+            completedAt?: string | null;
+        };
         ExportFileEntry: {
             name: string;
             sha256: string;
@@ -2015,13 +2036,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Synchronous immutable export snapshot. */
+            /** @description Async export job accepted and queued. */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ExportSnapshot"];
+                    "application/json": components["schemas"]["ExportJob"];
                 };
             };
             401: components["responses"]["ErrorUnauthorized"];

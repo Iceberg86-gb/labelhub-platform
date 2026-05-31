@@ -2,6 +2,7 @@ package com.labelhub.api.module.outbox.service;
 
 import com.labelhub.api.module.outbox.entity.OutboxEventEntity;
 import com.labelhub.api.module.outbox.mapper.OutboxEventMapper;
+import com.labelhub.api.module.export.entity.ExportJobEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import java.time.Clock;
 import java.time.Instant;
@@ -47,6 +48,27 @@ class OutboxEventServiceTest {
         ));
     }
 
+    @Test
+    void enqueueExportRequested_writes_pending_export_event_without_ai_review_type() {
+        when(mapper.insert(org.mockito.ArgumentMatchers.any())).thenReturn(1);
+
+        service.enqueueExportRequested(exportJob());
+
+        ArgumentCaptor<OutboxEventEntity> captor = ArgumentCaptor.forClass(OutboxEventEntity.class);
+        verify(mapper).insert(captor.capture());
+        OutboxEventEntity event = captor.getValue();
+        assertThat(event.getAggregateType()).isEqualTo("export_job");
+        assertThat(event.getAggregateId()).isEqualTo(900L);
+        assertThat(event.getEventType()).isEqualTo("export.requested");
+        assertThat(event.getStatus()).isEqualTo("pending");
+        assertThat(event.getPayload()).containsAllEntriesOf(Map.of(
+            "exportJobId", 900L,
+            "taskId", 10L,
+            "requestedBy", 44L,
+            "idempotencySeed", "export_job:900:export.requested"
+        ));
+    }
+
     private static SubmissionEntity submission() {
         SubmissionEntity entity = new SubmissionEntity();
         entity.setId(300L);
@@ -56,6 +78,15 @@ class OutboxEventServiceTest {
         entity.setDatasetItemId(500L);
         entity.setLabelerId(1002L);
         entity.setContentHash("f".repeat(64));
+        return entity;
+    }
+
+    private static ExportJobEntity exportJob() {
+        ExportJobEntity entity = new ExportJobEntity();
+        entity.setId(900L);
+        entity.setTaskId(10L);
+        entity.setRequestedBy(44L);
+        entity.setParameters(Map.of("mode", "approved_only"));
         return entity;
     }
 }

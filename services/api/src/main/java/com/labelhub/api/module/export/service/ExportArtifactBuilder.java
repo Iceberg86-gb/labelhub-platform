@@ -45,6 +45,10 @@ public class ExportArtifactBuilder {
     }
 
     public ExportArtifact build(ExportFactBundle bundle, ExportFieldMapping fieldMapping) {
+        return build(bundle, bundle, fieldMapping);
+    }
+
+    public ExportArtifact build(ExportFactBundle bundle, ExportFactBundle businessBundle, ExportFieldMapping fieldMapping) {
         ExportFieldMapping effectiveMapping = fieldMapping == null ? ExportFieldMapping.empty() : fieldMapping;
         Map<String, Object> sourceState = buildSourceStateRef(bundle);
         List<ArtifactFile> files = new ArrayList<>();
@@ -66,7 +70,7 @@ public class ExportArtifactBuilder {
             bundle.ledgerEntries().stream().map(this::ledgerEntryToCanonical).toList()));
         files.add(buildJsonlFile("verdicts.jsonl",
             bundle.verdicts().values().stream().map(this::verdictToCanonical).toList()));
-        List<Map<String, String>> trainingRows = trainingResultRows(bundle);
+        List<Map<String, String>> trainingRows = trainingResultRows(businessBundle);
         List<String> trainingHeaders = trainingHeaders(trainingRows);
         List<ExportFieldMappingColumn> trainingColumns = effectiveMapping.effectiveColumns(trainingHeaders);
         Map<String, Object> fieldMappingSnapshot = effectiveMapping.snapshot(trainingHeaders);

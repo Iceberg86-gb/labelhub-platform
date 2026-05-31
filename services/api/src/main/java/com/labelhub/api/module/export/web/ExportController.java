@@ -1,6 +1,7 @@
 package com.labelhub.api.module.export.web;
 
 import com.labelhub.api.generated.model.CreateTaskExportRequest;
+import com.labelhub.api.generated.model.ExportJob;
 import com.labelhub.api.generated.model.ExportSnapshot;
 import com.labelhub.api.generated.model.ExportSnapshotDiff;
 import com.labelhub.api.generated.model.PagedExportSnapshots;
@@ -38,15 +39,16 @@ public class ExportController implements ExportsApi {
     }
 
     @Override
-    public ResponseEntity<ExportSnapshot> createTaskExport(
+    public ResponseEntity<ExportJob> createTaskExport(
         @PathVariable("taskId") Long taskId,
         @Valid @RequestBody(required = false) CreateTaskExportRequest body
     ) {
         ExportDataScope dataScope = ExportDataScope.fromMode(
             body == null || body.getMode() == null ? null : body.getMode().getValue()
         );
-        ExportSnapshotEntity snapshot = exportService.createSnapshot(taskId, currentUserId(), dataScope, toFieldMapping(body));
-        return ResponseEntity.status(HttpStatus.CREATED).body(dtoMapper.toExportSnapshot(snapshot));
+        return ResponseEntity.status(HttpStatus.CREATED).body(dtoMapper.toExportJob(
+            exportService.requestExport(taskId, currentUserId(), dataScope, toFieldMapping(body))
+        ));
     }
 
     @Override

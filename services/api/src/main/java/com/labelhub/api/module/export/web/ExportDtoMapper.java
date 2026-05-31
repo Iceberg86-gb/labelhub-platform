@@ -1,12 +1,14 @@
 package com.labelhub.api.module.export.web;
 
 import com.labelhub.api.generated.model.ExportFileEntry;
+import com.labelhub.api.generated.model.ExportJob;
 import com.labelhub.api.generated.model.ExportSnapshot;
 import com.labelhub.api.generated.model.ExportSnapshotDiff;
 import com.labelhub.api.generated.model.ExportSnapshotDiffFileLevelMatchesInner;
 import com.labelhub.api.generated.model.ExportSnapshotDiffHashMatches;
 import com.labelhub.api.generated.model.PagedExportSnapshots;
 import com.labelhub.api.module.export.entity.ExportSnapshotEntity;
+import com.labelhub.api.module.export.entity.ExportJobEntity;
 import com.labelhub.api.module.export.service.ExportSnapshotDiffView;
 import com.labelhub.api.module.task.service.PagedResult;
 import java.util.ArrayList;
@@ -31,6 +33,23 @@ public class ExportDtoMapper {
         dto.setFieldMappingSnapshot(entity.getFieldMappingSnapshot());
         dto.setCanonicalizationVersion(entity.getCanonicalizationVersion());
         dto.setGeneratedAt(entity.getGeneratedAt() == null ? null : entity.getGeneratedAt().toString());
+        return dto;
+    }
+
+    public ExportJob toExportJob(ExportJobEntity entity) {
+        ExportJob dto = new ExportJob();
+        dto.setId(entity.getId());
+        dto.setTaskId(entity.getTaskId());
+        dto.setRequestedBy(entity.getRequestedBy());
+        dto.setFormat(entity.getFormat());
+        dto.setStatus(ExportJob.StatusEnum.fromValue(entity.getStatus()));
+        dto.setParameters(entity.getParameters());
+        dto.setFileKey(entity.getFileKey());
+        dto.setFileSize(entity.getFileSize());
+        dto.setDownloadCount(entity.getDownloadCount() == null ? 0 : entity.getDownloadCount());
+        dto.setCreatedAt(entity.getCreatedAt() == null ? null : entity.getCreatedAt().toString());
+        dto.setStartedAt(entity.getStartedAt() == null ? null : entity.getStartedAt().toString());
+        dto.setCompletedAt(entity.getCompletedAt() == null ? null : entity.getCompletedAt().toString());
         return dto;
     }
 

@@ -18,18 +18,27 @@ public class JdbcOutboxRepository implements OutboxRepository {
 
     @Override
     public List<OutboxEvent> findDueAiReviewEvents(int batchSize, int leaseSeconds) {
+        return findDueEvents("ai_review", batchSize, leaseSeconds);
+    }
+
+    @Override
+    public List<OutboxEvent> findDueExportEvents(int batchSize, int leaseSeconds) {
+        return findDueEvents("export.requested", batchSize, leaseSeconds);
+    }
+
+    private List<OutboxEvent> findDueEvents(String eventType, int batchSize, int leaseSeconds) {
         return jdbcTemplate.query("""
             SELECT id, aggregate_type, aggregate_id, event_type, payload, status, retry_count,
                    next_retry_at, locked_by, locked_at
             FROM outbox
-            WHERE event_type = 'ai_review'
+            WHERE event_type = ?
               AND (
                   (status = 'pending' AND next_retry_at <= CURRENT_TIMESTAMP(3))
                   OR (status = 'processing' AND locked_at < DATE_SUB(CURRENT_TIMESTAMP(3), INTERVAL ? SECOND))
               )
             ORDER BY status ASC, next_retry_at ASC, id ASC
             LIMIT ?
-            """, this::mapRow, leaseSeconds, batchSize);
+            """, this::mapRow, eventType, leaseSeconds, batchSize);
     }
 
     @Override

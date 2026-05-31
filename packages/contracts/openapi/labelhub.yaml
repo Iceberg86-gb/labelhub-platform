@@ -325,11 +325,11 @@ paths:
               $ref: '#/components/schemas/CreateTaskExportRequest'
       responses:
         '201':
-          description: Synchronous immutable export snapshot.
+          description: Async export job accepted and queued.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExportSnapshot'
+                $ref: '#/components/schemas/ExportJob'
         '401':
           $ref: '#/components/responses/ErrorUnauthorized'
         '403':
@@ -3139,6 +3139,44 @@ components:
           type: string
         generatedAt:
           type: string
+    ExportJob:
+      type: object
+      required: [id, taskId, requestedBy, format, status, downloadCount, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        requestedBy:
+          type: integer
+          format: int64
+        format:
+          type: string
+        status:
+          type: string
+          enum: [created, queued, running, succeeded, failed]
+        parameters:
+          type: object
+          additionalProperties: true
+        fileKey:
+          type: string
+          nullable: true
+        fileSize:
+          type: integer
+          format: int64
+          nullable: true
+        downloadCount:
+          type: integer
+        createdAt:
+          type: string
+        startedAt:
+          type: string
+          nullable: true
+        completedAt:
+          type: string
+          nullable: true
     ExportFileEntry:
       type: object
       required: [name, sha256, lines, sizeBytes]
