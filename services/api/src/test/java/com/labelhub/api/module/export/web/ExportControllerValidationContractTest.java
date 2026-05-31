@@ -17,7 +17,8 @@ class ExportControllerValidationContractTest {
             "listTaskExports",
             Long.class,
             Integer.class,
-            Integer.class
+            Integer.class,
+            Boolean.class
         );
 
         assertThat(parameterAnnotation(method, 1, Min.class).value()).isEqualTo(1);
