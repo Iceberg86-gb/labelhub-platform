@@ -10,22 +10,26 @@ export type TaskListParams = {
   page: number;
   size: number;
   status?: TaskStatus;
+  enabled?: boolean;
 };
 
 export const taskListQueryKey = (params?: Partial<TaskListParams>) =>
   params ? ['tasks', params] : ['tasks'];
 
 export function useTasksQuery(params: TaskListParams) {
+  const { enabled = true, ...queryParams } = params;
+
   return useQuery<PagedTasks>({
-    queryKey: taskListQueryKey(params),
+    queryKey: taskListQueryKey(queryParams),
+    enabled,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/tasks', {
         params: {
           query: {
-            page: params.page,
-            size: params.size,
-            status: params.status,
+            page: queryParams.page,
+            size: queryParams.size,
+            status: queryParams.status,
           },
         },
       });

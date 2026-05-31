@@ -7,17 +7,21 @@ export type MySessionsQueryParams = {
   size: number;
   status?: SessionStatus;
   workStatus?: LabelerSessionWorkStatus;
+  enabled?: boolean;
 };
 
 export const mySessionsQueryKey = (params: MySessionsQueryParams) => ['my', 'sessions', params] as const;
 
 export function useMySessionsQuery(params: MySessionsQueryParams) {
+  const { enabled = true, ...queryParams } = params;
+
   return useQuery<PagedSessions>({
-    queryKey: mySessionsQueryKey(params),
+    queryKey: mySessionsQueryKey(queryParams),
+    enabled,
     staleTime: 20_000,
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/my/sessions', {
-        params: { query: params },
+        params: { query: queryParams },
       });
 
       if (error || !data) {
