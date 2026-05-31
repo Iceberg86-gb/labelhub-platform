@@ -9,22 +9,26 @@ export type SchemaListParams = {
   page: number;
   size: number;
   q?: string;
+  enabled?: boolean;
 };
 
 export const schemaListQueryKey = (params?: Partial<SchemaListParams>) =>
   params ? ['schemas', 'list', params] : ['schemas', 'list'];
 
 export function useSchemasQuery(params: SchemaListParams) {
+  const { enabled = true, ...queryParams } = params;
+
   return useQuery<PagedSchemas>({
-    queryKey: schemaListQueryKey(params),
+    queryKey: schemaListQueryKey(queryParams),
+    enabled,
     staleTime: 30_000,
     queryFn: async () => {
       const { data, error } = await apiClient.GET('/schemas', {
         params: {
           query: {
-            page: params.page,
-            size: params.size,
-            q: params.q,
+            page: queryParams.page,
+            size: queryParams.size,
+            q: queryParams.q,
           },
         },
       });
@@ -39,4 +43,3 @@ export function useSchemasQuery(params: SchemaListParams) {
 }
 
 export type { LabelSchema };
-
