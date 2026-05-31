@@ -6,6 +6,7 @@ import com.labelhub.api.generated.model.Draft;
 import com.labelhub.api.generated.model.PagedSessions;
 import com.labelhub.api.generated.model.Session;
 import com.labelhub.api.generated.model.SessionDetail;
+import com.labelhub.api.generated.model.SessionReviewFeedback;
 import com.labelhub.api.generated.model.SessionStatus;
 import com.labelhub.api.generated.model.SessionTask;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
@@ -65,6 +66,20 @@ public class SessionDtoMapper {
         dto.setSchemaVersion(schemaDtoMapper.toSchemaVersion(view.getSchemaVersion()));
         dto.setDatasetItem(toDatasetItem(view.getDatasetItem()));
         dto.setLatestDraft(view.getLatestDraft() == null ? null : toDraft(view.getLatestDraft()));
+        dto.setPreviousReviewFeedback(view.getPreviousReviewFeedback() == null
+            ? null
+            : toSessionReviewFeedback(view.getPreviousReviewFeedback()));
+        return dto;
+    }
+
+    private SessionReviewFeedback toSessionReviewFeedback(
+        com.labelhub.api.module.session.service.view.SessionReviewFeedbackView view
+    ) {
+        SessionReviewFeedback dto = new SessionReviewFeedback();
+        dto.setLedgerEntryId(view.ledgerEntryId());
+        dto.setReviewerUserId(view.reviewerUserId());
+        dto.setReason(view.reason());
+        dto.setCreatedAt(view.createdAt() == null ? null : view.createdAt().atOffset(ZoneOffset.UTC));
         return dto;
     }
 

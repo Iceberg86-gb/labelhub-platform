@@ -1004,7 +1004,7 @@ export interface components {
             };
         };
         /** @enum {string} */
-        SessionStatus: "claimed" | "submitted" | "abandoned";
+        SessionStatus: "claimed" | "submitted" | "returned_for_revision" | "abandoned";
         Session: {
             /** Format: int64 */
             id: number;
@@ -1049,6 +1049,16 @@ export interface components {
             schemaVersion: components["schemas"]["SchemaVersion"];
             datasetItem: components["schemas"]["DatasetItem"];
             latestDraft?: components["schemas"]["Draft"];
+            previousReviewFeedback?: components["schemas"]["SessionReviewFeedback"];
+        };
+        SessionReviewFeedback: {
+            /** Format: int64 */
+            ledgerEntryId: number;
+            /** Format: int64 */
+            reviewerUserId?: number | null;
+            reason: string;
+            /** Format: date-time */
+            createdAt: string;
         };
         PagedSessions: {
             items: components["schemas"]["Session"][];

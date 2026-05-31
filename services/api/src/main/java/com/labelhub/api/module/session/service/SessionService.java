@@ -9,6 +9,8 @@ import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.outbox.service.OutboxEventService;
+import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
+import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
@@ -30,6 +32,7 @@ import com.labelhub.api.module.session.mapper.DraftMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
 import com.labelhub.api.module.session.service.view.SessionDetailView;
+import com.labelhub.api.module.session.service.view.SessionReviewFeedbackView;
 import com.labelhub.api.module.submission.SubmissionStatusCodes;
 import com.labelhub.api.module.submission.validation.AnswerPayloadValidator;
 import com.labelhub.api.module.submission.validation.AnswerValidationError;
@@ -63,6 +66,7 @@ public class SessionService {
     private final DraftMapper draftMapper;
     private final SubmissionMapper submissionMapper;
     private final OutboxEventService outboxEventService;
+    private final QualityLedgerEntryMapper qualityLedgerEntryMapper;
     private final Canonicalizer canonicalizer;
     private final Clock clock;
     private final AuditLogService auditLogService;
@@ -79,6 +83,7 @@ public class SessionService {
         DraftMapper draftMapper,
         SubmissionMapper submissionMapper,
         OutboxEventService outboxEventService,
+        QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Canonicalizer canonicalizer,
         Clock clock,
         AuditLogService auditLogService,
@@ -93,6 +98,7 @@ public class SessionService {
         this.draftMapper = draftMapper;
         this.submissionMapper = submissionMapper;
         this.outboxEventService = outboxEventService;
+        this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
         this.canonicalizer = canonicalizer;
         this.clock = clock;
         this.auditLogService = auditLogService;
@@ -109,13 +115,31 @@ public class SessionService {
         DraftMapper draftMapper,
         SubmissionMapper submissionMapper,
         OutboxEventService outboxEventService,
+        QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Canonicalizer canonicalizer,
         Clock clock,
         AuditLogService auditLogService
     ) {
         this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper,
-            outboxEventService, canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator(),
-            new SchemaRuntimeAdapter(new ObjectMapper()));
+            outboxEventService, qualityLedgerEntryMapper, canonicalizer, clock, auditLogService, new ObjectMapper(),
+            new AnswerPayloadValidator(), new SchemaRuntimeAdapter(new ObjectMapper()));
+    }
+
+    public SessionService(
+        TaskMapper taskMapper,
+        DatasetItemMapper datasetItemMapper,
+        SessionMapper sessionMapper,
+        SchemaVersionMapper schemaVersionMapper,
+        DraftMapper draftMapper,
+        SubmissionMapper submissionMapper,
+        OutboxEventService outboxEventService,
+        Canonicalizer canonicalizer,
+        Clock clock,
+        AuditLogService auditLogService
+    ) {
+        this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper,
+            outboxEventService, null, canonicalizer, clock, auditLogService, new ObjectMapper(),
+            new AnswerPayloadValidator(), new SchemaRuntimeAdapter(new ObjectMapper()));
     }
 
     public SessionService(
@@ -130,7 +154,7 @@ public class SessionService {
         AuditLogService auditLogService
     ) {
         this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper, null,
-            canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator(),
+            null, canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator(),
             new SchemaRuntimeAdapter(new ObjectMapper()));
     }
 
@@ -208,7 +232,14 @@ public class SessionService {
         SchemaVersionEntity schemaVersion = schemaVersionMapper.selectById(session.getSchemaVersionId());
         DatasetItemEntity item = datasetItemMapper.selectById(session.getDatasetItemId());
         DraftEntity latestDraft = draftMapper.selectLatestBySession(sessionId);
-        return new SessionDetailView(session, task, schemaVersion, item, latestDraft);
+        return new SessionDetailView(
+            session,
+            task,
+            schemaVersion,
+            item,
+            latestDraft,
+            latestReviewFeedback(sessionId)
+        );
     }
 
     public Page<SessionEntity> listMySessions(Long labelerId, String statusFilter, long page, long size) {
@@ -309,6 +340,23 @@ public class SessionService {
 
     private boolean isEditableSessionStatus(String status) {
         return SESSION_CLAIMED.equals(status) || SESSION_RETURNED_FOR_REVISION.equals(status);
+    }
+
+    private SessionReviewFeedbackView latestReviewFeedback(Long sessionId) {
+        if (qualityLedgerEntryMapper == null) {
+            return null;
+        }
+        QualityLedgerEntryEntity entry = qualityLedgerEntryMapper.selectLatestReviewerRejectBySessionId(sessionId);
+        if (entry == null) {
+            return null;
+        }
+        Object reason = entry.getPayload() == null ? null : entry.getPayload().get("reason");
+        return new SessionReviewFeedbackView(
+            entry.getId(),
+            entry.getActorId(),
+            reason instanceof String text ? text : "",
+            entry.getCreatedAt()
+        );
     }
 
     private void enqueueAiReview(SubmissionEntity submission, Long aiReviewRuleId) {

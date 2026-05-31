@@ -2043,7 +2043,7 @@ components:
           additionalProperties: true
     SessionStatus:
       type: string
-      enum: [claimed, submitted, abandoned]
+      enum: [claimed, submitted, returned_for_revision, abandoned]
     Session:
       type: object
       required: [id, taskId, datasetItemId, labelerId, schemaVersionId, status]
@@ -2115,6 +2115,24 @@ components:
           $ref: '#/components/schemas/DatasetItem'
         latestDraft:
           $ref: '#/components/schemas/Draft'
+        previousReviewFeedback:
+          $ref: '#/components/schemas/SessionReviewFeedback'
+    SessionReviewFeedback:
+      type: object
+      required: [ledgerEntryId, reason, createdAt]
+      properties:
+        ledgerEntryId:
+          type: integer
+          format: int64
+        reviewerUserId:
+          type: integer
+          format: int64
+          nullable: true
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
     PagedSessions:
       type: object
       required: [items, total, page, size]
