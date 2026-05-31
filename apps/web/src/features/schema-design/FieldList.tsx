@@ -82,7 +82,7 @@ type SortableFieldItemProps = {
 };
 
 export function SortableFieldItem({ field, selected, hasError, onSelect, onDelete }: SortableFieldItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.stableId });
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.stableId });
   const transformStyle = transform
     ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0) scaleX(${transform.scaleX}) scaleY(${transform.scaleY})`
     : undefined;
@@ -100,9 +100,17 @@ export function SortableFieldItem({ field, selected, hasError, onSelect, onDelet
       ].join(' ')}
       onClick={() => onSelect(field.stableId)}
     >
-      <button className="field-list-item__drag-handle" type="button" {...attributes} {...listeners} aria-label="拖拽字段排序">
+      <div
+        ref={setActivatorNodeRef}
+        className="field-list-item__drag-handle"
+        {...attributes}
+        {...listeners}
+        role="button"
+        tabIndex={0}
+        aria-label="拖拽字段排序"
+      >
         <IconHandle />
-      </button>
+      </div>
       <div className="field-list-item__main">
         <Typography.Text strong ellipsis={{ showTooltip: true }}>
           {field.label || '未命名字段'}

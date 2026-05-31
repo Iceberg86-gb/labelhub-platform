@@ -1055,6 +1055,7 @@ a {
   border: 1px solid #d8dee9;
   background: #ffffff;
   cursor: grab;
+  touch-action: none;
 }
 
 .field-type-palette__item:hover {
@@ -1179,6 +1180,7 @@ a {
     background-color 120ms ease,
     border-color 120ms ease,
     box-shadow 120ms ease;
+  touch-action: none;
 }
 
 .field-list-item::before {
@@ -1236,6 +1238,7 @@ a {
   background: transparent;
   color: #64748b;
   cursor: grab;
+  touch-action: none;
 }
 
 .field-list-item__drag-handle:active {

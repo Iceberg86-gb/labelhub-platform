@@ -18,7 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import type { CSSProperties } from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { findFieldByStableId } from '../../entities/schema/fieldFactory';
 import type { SchemaField, SchemaFieldType } from '../../entities/schema/schemaTypes';
 import { SCHEMA_FIELD_TYPES, SCHEMA_FIELD_TYPE_LABELS } from '../../entities/schema/schemaTypes';
@@ -135,26 +135,34 @@ function FieldTypePalette() {
 }
 
 function PaletteItem({ type }: { type: SchemaFieldType }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, isDragging } = useDraggable({
     id: `${PALETTE_PREFIX}${type}`,
   });
+  const setPaletteRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      setNodeRef(node);
+      setActivatorNodeRef(node);
+    },
+    [setActivatorNodeRef, setNodeRef],
+  );
   const style: CSSProperties = transform
     ? { transform: `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)` }
     : {};
 
   return (
-    <button
-      ref={setNodeRef}
-      type="button"
+    <div
+      ref={setPaletteRef}
       className={['field-type-palette__item', isDragging ? 'field-type-palette__item--dragging' : ''].join(' ')}
       style={style}
       {...attributes}
       {...listeners}
+      role="button"
+      tabIndex={0}
     >
       <Tag color="blue" size="small">
         {SCHEMA_FIELD_TYPE_LABELS[type]}
       </Tag>
-    </button>
+    </div>
   );
 }
 
