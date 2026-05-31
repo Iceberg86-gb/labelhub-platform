@@ -136,7 +136,7 @@ describe('AiReviewRuleEditorDrawer', () => {
     const html = renderToString(<AiReviewRuleEditorDrawer taskId={22} open onClose={() => {}} />);
     const formHtml = extractBetween(html, 'data-testid="ai-review-rule-save-form"', 'data-testid="ai-review-rule-history-section"');
 
-    expect(html).toContain('AI 审核规则配置');
+    expect(html).toContain('AI 预审辅助配置');
     expect(formHtml).toContain('Prompt 模板');
     expect(formHtml).toContain('评分维度');
     expect(formHtml).toContain('通过阈值');

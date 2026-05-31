@@ -1,0 +1,167 @@
+import type { ReactNode } from 'react';
+import { renderToString } from 'react-dom/server';
+import { describe, expect, it, vi } from 'vitest';
+import { TrustedExportCard } from '../../features/export/TrustedExportCard';
+import type { ExportSnapshot } from '../../entities/export/exportTypes';
+
+const taskExportsQueryMock = vi.hoisted(() => vi.fn());
+const createExportMutationMock = vi.hoisted(() => vi.fn());
+const downloadExportFileMutationMock = vi.hoisted(() => vi.fn());
+const archiveExportSnapshotMutationMock = vi.hoisted(() => vi.fn());
+const routeState = vi.hoisted(() => ({
+  searchParams: new URLSearchParams(),
+  setSearchParams: vi.fn(),
+}));
+
+vi.mock('@douyinfe/semi-icons', () => ({
+  IconArchive: () => <span />,
+  IconRefresh: () => <span />,
+  IconUpload: () => <span />,
+}));
+
+function MockSelect({ children, className }: { children?: ReactNode; className?: string }) {
+  return <div className={className}>{children}</div>;
+}
+
+vi.mock('@douyinfe/semi-ui', () => ({
+  Button: ({ children, className, icon }: { children?: ReactNode; className?: string; icon?: ReactNode }) => (
+    <button className={className}>
+      {icon}
+      {children}
+    </button>
+  ),
+  Card: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <section className={className}>{children}</section>
+  ),
+  Checkbox: ({ className }: { className?: string }) => <input className={className} type="checkbox" readOnly />,
+  Empty: ({ title, description }: { title?: ReactNode; description?: ReactNode }) => (
+    <div>
+      {title}
+      {description}
+    </div>
+  ),
+  Input: ({ className, placeholder, value }: { className?: string; placeholder?: string; value?: string }) => (
+    <input className={className} placeholder={placeholder} value={value} readOnly />
+  ),
+  Pagination: () => <nav />,
+  Popconfirm: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  Select: MockSelect,
+  Space: ({ children, className }: { children?: ReactNode; className?: string }) => <div className={className}>{children}</div>,
+  Spin: () => <div />,
+  Table: ({ columns, dataSource, className }: { columns: Array<any>; dataSource: Array<any>; className?: string }) => (
+    <table className={className}>
+      <tbody>
+        {dataSource.map((record) => (
+          <tr key={record.id}>
+            {columns.map((column, index) => (
+              <td key={column.dataIndex ?? index}>
+                {column.render ? column.render(record[column.dataIndex], record) : String(record[column.dataIndex] ?? '')}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ),
+  Tag: ({ children, className }: { children?: ReactNode; className?: string }) => <span className={className}>{children}</span>,
+  Toast: {
+    error: vi.fn(),
+    success: vi.fn(),
+  },
+  Typography: {
+    Paragraph: ({ children, className }: { children?: ReactNode; className?: string }) => (
+      <p className={className}>{children}</p>
+    ),
+    Text: ({ children, className }: { children?: ReactNode; className?: string }) => (
+      <span className={className}>{children}</span>
+    ),
+    Title: ({ children, className }: { children?: ReactNode; className?: string }) => (
+      <h2 className={className}>{children}</h2>
+    ),
+  },
+}));
+
+vi.mock('react-router-dom', () => ({
+  useSearchParams: () => [routeState.searchParams, routeState.setSearchParams],
+}));
+
+vi.mock('../../features/export/useTaskExportsQuery', () => ({
+  useTaskExportsQuery: taskExportsQueryMock,
+}));
+
+vi.mock('../../features/export/useCreateExportMutation', async () => {
+  const actual = await vi.importActual<typeof import('../../features/export/useCreateExportMutation')>('../../features/export/useCreateExportMutation');
+  return {
+    ...actual,
+    useCreateExportMutation: createExportMutationMock,
+  };
+});
+
+vi.mock('../../features/export/useDownloadExportFileMutation', () => ({
+  useDownloadExportFileMutation: downloadExportFileMutationMock,
+}));
+
+vi.mock('../../features/export/useArchiveExportSnapshotMutation', () => ({
+  useArchiveExportSnapshotMutation: archiveExportSnapshotMutationMock,
+}));
+
+vi.mock('../../features/export/ExportSnapshotDiffModal', () => ({
+  ExportSnapshotDiffModal: () => <section>快照对比</section>,
+}));
+
+vi.mock('../../shared/ui/TruncatedHash', () => ({
+  TruncatedHash: ({ value }: { value: string }) => <code>{value}</code>,
+}));
+
+describe('TrustedExportCard design shell', () => {
+  it('renders exports as a quiet reproducibility console with builder and snapshot surfaces', () => {
+    routeState.searchParams = new URLSearchParams();
+    taskExportsQueryMock.mockReturnValue({
+      data: { items: [makeSnapshot()], total: 1 },
+      error: null,
+      isError: false,
+      isLoading: false,
+    });
+    createExportMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    downloadExportFileMutationMock.mockReturnValue({ isPending: false, mutate: vi.fn() });
+    archiveExportSnapshotMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+
+    const html = renderToString(<TrustedExportCard taskId={22} />);
+
+    expect(html).toContain('trusted-export-card trusted-export-card--console');
+    expect(html).toContain('trusted-export-console-hero');
+    expect(html).toContain('trusted-export-status-strip');
+    expect(html).toContain('trusted-export-command-strip');
+    expect(html).toContain('trusted-export-builder');
+    expect(html).toContain('trusted-export-builder__row');
+    expect(html).toContain('trusted-export-table-shell');
+    expect(html).toContain('trusted-export-table');
+    expect(html).toContain('可信快照控制台');
+    expect(html).toContain('可复现');
+    expect(html).toContain('业务表字段映射');
+    expect(html).toContain('CSV');
+    expect(html).toContain('Excel');
+    expect(html).toContain('Manifest');
+  });
+});
+
+function makeSnapshot(): ExportSnapshot {
+  return {
+    id: 91,
+    archivedAt: null,
+    canonicalizationVersion: 'v1',
+    exportJobId: 7,
+    fileHash: 'file-hash',
+    fileManifest: [
+      { lines: 12, name: 'training-results.csv', sha256: 'csv-sha', sizeBytes: 1024 },
+      { lines: 12, name: 'training-results.xlsx', sha256: 'xlsx-sha', sizeBytes: 2048 },
+      { lines: 1, name: 'manifest.json', sha256: 'manifest-sha', sizeBytes: 512 },
+    ],
+    generatedAt: '2026-05-30T09:00:00Z',
+    manifestHash: 'manifest-hash',
+    objectKey: 'exports/91',
+    recordCounts: { submissions: 12 },
+    sourceStateHash: 'source-state-hash',
+    taskId: 22,
+  };
+}

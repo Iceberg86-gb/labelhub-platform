@@ -210,22 +210,31 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   }
 
   return (
-    <Card className="trusted-export-card">
-      <div className="trusted-export-header">
-        <div>
+    <Card className="trusted-export-card trusted-export-card--console" bordered={false}>
+      <div className="trusted-export-header trusted-export-console-hero">
+        <div className="trusted-export-console-hero__copy">
           <Typography.Title className="trusted-export-title" heading={4}>
-            Trusted Export(可信训练数据集)
+            可信快照控制台
           </Typography.Title>
-          <Typography.Text className="trusted-export-subtitle">将 task 的 source facts 物化为 canonical export 快照。</Typography.Text>
+          <Typography.Text className="trusted-export-subtitle">
+            将 task 的 source facts 物化为 canonical export 快照,用于训练数据交付与审计复现。
+          </Typography.Text>
+        </div>
+        <div className="trusted-export-status-strip" aria-label="Export reproducibility summary">
+          <span className="trusted-export-status-pill trusted-export-status-pill--strong">
+            {exportsQuery.data?.total ?? 0} 个{showArchived ? '已归档' : '活跃'}快照
+          </span>
+          <span className="trusted-export-status-pill">已选 {selectedIds.length}/2</span>
+          <span className="trusted-export-status-pill trusted-export-status-pill--stable">可复现</span>
         </div>
       </div>
 
-      <div className="trusted-export-toolbar">
+      <div className="trusted-export-toolbar trusted-export-command-strip">
         <Typography.Text type="tertiary">
           共 {exportsQuery.data?.total ?? 0} 个{showArchived ? '已归档' : '活跃'}快照
           {selectedIds.length > 0 ? `,已选 ${selectedIds.length}/2` : ''}
         </Typography.Text>
-        <Space>
+        <Space className="trusted-export-command-group">
           <Select
             size="small"
             value={showArchived ? 'archived' : 'active'}
@@ -253,16 +262,16 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         </Space>
       </div>
 
-      <div className="trusted-export-field-mapping">
-        <div className="trusted-export-field-mapping-header">
+      <div className="trusted-export-field-mapping trusted-export-builder">
+        <div className="trusted-export-field-mapping-header trusted-export-builder__header">
           <Typography.Text strong>业务表字段映射</Typography.Text>
           <Button size="small" onClick={addMappingRow}>
             添加列
           </Button>
         </div>
-        <div className="trusted-export-field-mapping-list">
+        <div className="trusted-export-field-mapping-list trusted-export-builder__list">
           {mappingRows.map((row) => (
-            <div className="trusted-export-field-mapping-row" key={row.id}>
+            <div className="trusted-export-field-mapping-row trusted-export-builder__row" key={row.id}>
               <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
               <Input
                 size="small"
@@ -286,17 +295,21 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 
       {exportsQuery.isLoading ? <Spin /> : null}
       {exportsQuery.isError ? (
-        <Empty title="导出列表加载失败" description={exportsQuery.error instanceof Error ? exportsQuery.error.message : '请稍后重试。'} />
+        <div className="trusted-export-empty-state">
+          <Empty title="导出列表加载失败" description={exportsQuery.error instanceof Error ? exportsQuery.error.message : '请稍后重试。'} />
+        </div>
       ) : null}
       {!exportsQuery.isLoading && !exportsQuery.isError && items.length === 0 ? (
-        <Empty
-          title={showArchived ? '暂无已归档快照' : '尚未导出'}
-          description={showArchived ? '归档后的快照会保留在这里,仍可下载审计。' : '点击"导出"按钮创建可信训练数据集快照。'}
-        />
+        <div className="trusted-export-empty-state">
+          <Empty
+            title={showArchived ? '暂无已归档快照' : '尚未导出'}
+            description={showArchived ? '归档后的快照会保留在这里,仍可下载审计。' : '点击"导出"按钮创建可信训练数据集快照。'}
+          />
+        </div>
       ) : null}
       {items.length > 0 ? (
-        <>
-          <Table columns={columns} dataSource={items} rowKey="id" pagination={false} size="small" />
+        <div className="trusted-export-table-shell">
+          <Table className="trusted-export-table" columns={columns} dataSource={items} rowKey="id" pagination={false} size="small" />
           <div className="export-pagination">
             <Pagination
               total={exportsQuery.data?.total ?? 0}
@@ -307,7 +320,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
               onPageSizeChange={(nextSize) => updateParams({ page: 1, size: nextSize })}
             />
           </div>
-        </>
+        </div>
       ) : null}
 
       {diffModalOpen && baseSnapshotId != null && compareSnapshotId != null ? (
@@ -339,8 +352,7 @@ function formatDateTime(value?: string) {
 }
 
 function downloadableFiles(snapshot: ExportSnapshot) {
-  const manifest = snapshot.fileManifest as { files?: Array<{ name?: string }> } | undefined;
-  const names = manifest?.files?.map((file) => file.name).filter((name): name is string => Boolean(name)) ?? [];
+  const names = snapshot.fileManifest.map((file) => file.name).filter(Boolean);
   const preferred = ['training-results.csv', 'training-results.xlsx', 'manifest.json'];
   return preferred.filter((name) => names.includes(name));
 }
