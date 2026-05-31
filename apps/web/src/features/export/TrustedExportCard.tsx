@@ -1,8 +1,8 @@
-import { Button, Card, Checkbox, Empty, Pagination, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Checkbox, Empty, Input, Pagination, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconRefresh, IconUpload } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { ExportSnapshot } from '../../entities/export/exportTypes';
+import type { ExportFieldMapping, ExportSnapshot } from '../../entities/export/exportTypes';
 import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { CreateExportFailure, useCreateExportMutation } from './useCreateExportMutation';
 import { ExportSnapshotDiffModal } from './ExportSnapshotDiffModal';
@@ -14,6 +14,24 @@ type TrustedExportCardProps = {
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 20;
+const DEFAULT_FIELD_MAPPING_ROWS: FieldMappingDraftRow[] = [
+  { id: 'task_id', source: 'task_id', columnName: 'task_id', included: true },
+  { id: 'dataset_item_id', source: 'dataset_item_id', columnName: 'dataset_item_id', included: true },
+  { id: 'submission_id', source: 'submission_id', columnName: 'submission_id', included: true },
+  { id: 'schema_version_id', source: 'schema_version_id', columnName: 'schema_version_id', included: true },
+  { id: 'submitted_at', source: 'submitted_at', columnName: 'submitted_at', included: true },
+  { id: 'final_verdict', source: 'final_verdict', columnName: 'final_verdict', included: true },
+  { id: 'reviewed_at', source: 'reviewed_at', columnName: 'reviewed_at', included: true },
+  { id: 'item-source', source: 'item.text', columnName: 'item_text', included: true },
+  { id: 'answer-source', source: 'answer.title', columnName: 'answer_title', included: true },
+];
+
+type FieldMappingDraftRow = {
+  id: string;
+  source: string;
+  columnName: string;
+  included: boolean;
+};
 
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   month: '2-digit',
@@ -24,6 +42,7 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
 
 export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [mappingRows, setMappingRows] = useState<FieldMappingDraftRow[]>(DEFAULT_FIELD_MAPPING_ROWS);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePositiveInt(searchParams.get('exportPage')) ?? DEFAULT_PAGE;
@@ -79,12 +98,25 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 
   async function handleCreateExport() {
     try {
-      await createExport.mutateAsync({ taskId });
-      Toast.success('导出成功');
+      await createExport.mutateAsync({ taskId, fieldMapping: buildFieldMapping(mappingRows) });
+      Toast.success('导出任务已提交');
     } catch (error) {
       const failure = error instanceof CreateExportFailure ? error : null;
       Toast.error(failure?.userMessage ?? '导出失败');
     }
+  }
+
+  function updateMappingRow(rowId: string, patch: Partial<FieldMappingDraftRow>) {
+    setMappingRows((current) => current.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
+  }
+
+  function addMappingRow() {
+    const id = `custom-${Date.now()}`;
+    setMappingRows((current) => [...current, { id, source: '', columnName: '', included: true }]);
+  }
+
+  function removeMappingRow(rowId: string) {
+    setMappingRows((current) => current.filter((row) => row.id !== rowId));
   }
 
   function toggleSelection(snapshotId: number) {
@@ -133,6 +165,37 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         </Space>
       </div>
 
+      <div className="trusted-export-field-mapping">
+        <div className="trusted-export-field-mapping-header">
+          <Typography.Text strong>业务表字段映射</Typography.Text>
+          <Button size="small" onClick={addMappingRow}>
+            添加列
+          </Button>
+        </div>
+        <div className="trusted-export-field-mapping-list">
+          {mappingRows.map((row) => (
+            <div className="trusted-export-field-mapping-row" key={row.id}>
+              <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
+              <Input
+                size="small"
+                value={row.source}
+                placeholder="source: item.prompt / answer.label"
+                onChange={(value) => updateMappingRow(row.id, { source: value })}
+              />
+              <Input
+                size="small"
+                value={row.columnName}
+                placeholder="导出列名"
+                onChange={(value) => updateMappingRow(row.id, { columnName: value })}
+              />
+              <Button size="small" type="danger" theme="borderless" onClick={() => removeMappingRow(row.id)}>
+                删除
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {exportsQuery.isLoading ? <Spin /> : null}
       {exportsQuery.isError ? (
         <Empty title="导出列表加载失败" description={exportsQuery.error instanceof Error ? exportsQuery.error.message : '请稍后重试。'} />
@@ -161,6 +224,18 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
       ) : null}
     </Card>
   );
+}
+
+function buildFieldMapping(rows: FieldMappingDraftRow[]): ExportFieldMapping {
+  return {
+    columns: rows
+      .filter((row) => row.source.trim() && row.columnName.trim())
+      .map((row) => ({
+        source: row.source.trim(),
+        columnName: row.columnName.trim(),
+        included: row.included,
+      })),
+  };
 }
 
 function parsePositiveInt(value: string | null) {

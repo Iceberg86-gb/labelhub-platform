@@ -28,6 +28,7 @@ public class ExportDtoMapper {
         dto.setObjectKey(entity.getObjectKey());
         dto.setFileManifest(toFileEntries(entity.getFileManifest()));
         dto.setRecordCounts(entity.getRecordCounts());
+        dto.setFieldMappingSnapshot(entity.getFieldMappingSnapshot());
         dto.setCanonicalizationVersion(entity.getCanonicalizationVersion());
         dto.setGeneratedAt(entity.getGeneratedAt() == null ? null : entity.getGeneratedAt().toString());
         return dto;

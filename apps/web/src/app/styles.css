@@ -2373,6 +2373,34 @@ a {
   margin-bottom: 14px;
 }
 
+.trusted-export-field-mapping {
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid #dbe4f0;
+  background: #f8fbff;
+}
+
+.trusted-export-field-mapping-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.trusted-export-field-mapping-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trusted-export-field-mapping-row {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 1fr) minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
 .export-manifest-hash-cell {
   display: inline-flex;
   align-items: center;
@@ -2533,6 +2561,10 @@ a {
   .trusted-export-toolbar,
   .trusted-export-header {
     flex-direction: column;
+  }
+
+  .trusted-export-field-mapping-row {
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .hash-matches-grid {

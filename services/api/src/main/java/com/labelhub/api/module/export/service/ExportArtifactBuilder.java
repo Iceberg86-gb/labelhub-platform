@@ -41,6 +41,11 @@ public class ExportArtifactBuilder {
     }
 
     public ExportArtifact build(ExportFactBundle bundle) {
+        return build(bundle, ExportFieldMapping.empty());
+    }
+
+    public ExportArtifact build(ExportFactBundle bundle, ExportFieldMapping fieldMapping) {
+        ExportFieldMapping effectiveMapping = fieldMapping == null ? ExportFieldMapping.empty() : fieldMapping;
         Map<String, Object> sourceState = buildSourceStateRef(bundle);
         List<ArtifactFile> files = new ArrayList<>();
         files.add(buildJsonFile("task.json", taskToCanonical(bundle.task())));
@@ -63,8 +68,10 @@ public class ExportArtifactBuilder {
             bundle.verdicts().values().stream().map(this::verdictToCanonical).toList()));
         List<Map<String, String>> trainingRows = trainingResultRows(bundle);
         List<String> trainingHeaders = trainingHeaders(trainingRows);
-        files.add(buildCsvFile("training-results.csv", trainingHeaders, trainingRows));
-        files.add(buildXlsxFile("training-results.xlsx", trainingHeaders, trainingRows));
+        List<ExportFieldMappingColumn> trainingColumns = effectiveMapping.effectiveColumns(trainingHeaders);
+        Map<String, Object> fieldMappingSnapshot = effectiveMapping.snapshot(trainingHeaders);
+        files.add(buildCsvFile("training-results.csv", trainingColumns, trainingRows));
+        files.add(buildXlsxFile("training-results.xlsx", trainingColumns, trainingRows));
 
         Map<String, Integer> recordCounts = buildRecordCounts(bundle);
         recordCounts.put("trainingResults", trainingRows.size());
@@ -72,6 +79,7 @@ public class ExportArtifactBuilder {
         manifestContent.put("taskId", bundle.task().getId());
         manifestContent.put("canonicalizationVersion", CANONICALIZATION_VERSION);
         manifestContent.put("dataScope", bundle.dataScope().toSnapshotDataScope());
+        manifestContent.put("fieldMappingSnapshot", fieldMappingSnapshot);
         manifestContent.put("exportedAtSourceState", sourceState);
         manifestContent.put("files", files.stream().map(ArtifactFile::toManifestEntry).toList());
         manifestContent.put("recordCounts", recordCounts);
@@ -104,17 +112,17 @@ public class ExportArtifactBuilder {
         return new ArtifactFile(name, content, sha256(content), rows.size(), content.length);
     }
 
-    private ArtifactFile buildCsvFile(String name, List<String> headers, List<Map<String, String>> rows) {
+    private ArtifactFile buildCsvFile(String name, List<ExportFieldMappingColumn> columns, List<Map<String, String>> rows) {
         StringBuilder builder = new StringBuilder();
-        appendCsvRow(builder, headers);
+        appendCsvRow(builder, columns.stream().map(ExportFieldMappingColumn::columnName).toList());
         for (Map<String, String> row : rows) {
-            appendCsvRow(builder, headers.stream().map(header -> row.getOrDefault(header, "")).toList());
+            appendCsvRow(builder, columns.stream().map(column -> row.getOrDefault(column.source(), "")).toList());
         }
         byte[] content = builder.toString().getBytes(StandardCharsets.UTF_8);
         return new ArtifactFile(name, content, sha256(content), rows.size() + 1, content.length);
     }
 
-    private ArtifactFile buildXlsxFile(String name, List<String> headers, List<Map<String, String>> rows) {
+    private ArtifactFile buildXlsxFile(String name, List<ExportFieldMappingColumn> columns, List<Map<String, String>> rows) {
         try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             var coreProperties = workbook.getProperties().getCoreProperties();
             Date fixedDate = Date.from(Instant.EPOCH);
@@ -126,14 +134,14 @@ public class ExportArtifactBuilder {
             coreProperties.setRevision("1");
             var sheet = workbook.createSheet("training-results");
             Row headerRow = sheet.createRow(0);
-            for (int index = 0; index < headers.size(); index++) {
-                headerRow.createCell(index).setCellValue(headers.get(index));
+            for (int index = 0; index < columns.size(); index++) {
+                headerRow.createCell(index).setCellValue(columns.get(index).columnName());
             }
             for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
                 Row row = sheet.createRow(rowIndex + 1);
                 Map<String, String> values = rows.get(rowIndex);
-                for (int columnIndex = 0; columnIndex < headers.size(); columnIndex++) {
-                    row.createCell(columnIndex).setCellValue(values.getOrDefault(headers.get(columnIndex), ""));
+                for (int columnIndex = 0; columnIndex < columns.size(); columnIndex++) {
+                    row.createCell(columnIndex).setCellValue(values.getOrDefault(columns.get(columnIndex).source(), ""));
                 }
             }
             workbook.write(output);

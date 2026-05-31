@@ -191,6 +191,27 @@ class ExportServiceTest {
     }
 
     @Test
+    void createSnapshot_snapshots_field_mapping_into_manifest_and_entity() throws Exception {
+        ExportSnapshotEntity snapshot = exportService.createSnapshot(
+            TASK_ID,
+            OWNER_ID,
+            ExportDataScope.APPROVED_ONLY,
+            new ExportFieldMapping(List.of(
+                new ExportFieldMappingColumn("item.text", "prompt_text", true),
+                new ExportFieldMappingColumn("answer.title", "label", true)
+            ))
+        );
+
+        Map<String, Object> manifest = json(writtenUtf8("manifest.json"));
+        Map<String, Object> content = castMap(manifest.get("content"));
+        Map<String, Object> mapping = castMap(content.get("fieldMappingSnapshot"));
+
+        assertThat(snapshot.getFieldMappingSnapshot()).isEqualTo(mapping);
+        assertThat(castList(mapping.get("columns"))).hasSize(2);
+        assertThat(writtenUtf8("training-results.csv")).startsWith("prompt_text,label\n");
+    }
+
+    @Test
     void export_omits_null_prompt_and_rule_evidence_fields_from_ai_calls() throws Exception {
         when(factCollector.collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY))
             .thenReturn(bundleWithAiCall(legacyAiCallWithoutEvidenceBindings()));

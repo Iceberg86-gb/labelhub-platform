@@ -72,7 +72,13 @@ public class ExportService {
 
     @Transactional
     public ExportSnapshotEntity createSnapshot(Long taskId, Long ownerUserId, ExportDataScope dataScope) {
+        return createSnapshot(taskId, ownerUserId, dataScope, ExportFieldMapping.empty());
+    }
+
+    @Transactional
+    public ExportSnapshotEntity createSnapshot(Long taskId, Long ownerUserId, ExportDataScope dataScope, ExportFieldMapping fieldMapping) {
         ExportDataScope effectiveScope = dataScope == null ? ExportDataScope.APPROVED_ONLY : dataScope;
+        ExportFieldMapping effectiveFieldMapping = fieldMapping == null ? ExportFieldMapping.empty() : fieldMapping;
         TaskEntity task = taskMapper.selectById(taskId);
         if (task == null || !Objects.equals(task.getOwnerId(), ownerUserId)) {
             throw new TaskNotFoundException(taskId);
@@ -93,7 +99,8 @@ public class ExportService {
         List<String> writtenKeys = new ArrayList<>();
         try {
             ExportFactBundle bundle = factCollector.collectForTask(taskId, effectiveScope);
-            ExportArtifact artifact = artifactBuilder.build(bundle);
+            ExportArtifact artifact = artifactBuilder.build(bundle, effectiveFieldMapping);
+            Map<String, Object> fieldMappingSnapshot = fieldMappingSnapshot(artifact);
             String objectKeyPrefix = "exports/tasks/" + taskId + "/jobs/" + job.getId() + "/";
 
             for (ArtifactFile file : artifact.files()) {
@@ -115,7 +122,7 @@ public class ExportService {
             snapshot.setSchemaVersionIds(bundle.schemaVersions().stream().map(SchemaVersionEntity::getId).toList());
             snapshot.setVerdictRuleVersionId(null);
             snapshot.setDataScope(effectiveScope.toSnapshotDataScope());
-            snapshot.setFieldMappingSnapshot(Map.of());
+            snapshot.setFieldMappingSnapshot(fieldMappingSnapshot);
             snapshot.setCanonicalizationVersion(artifact.canonicalizationVersion());
             snapshot.setGeneratedAt(now);
             requireOneRow(exportSnapshotMapper.insert(snapshot), "insert export snapshot");
@@ -131,12 +138,19 @@ public class ExportService {
                     .payload("sourceStateHash", snapshot.getSourceStateHash())
                     .payload("objectKey", snapshot.getObjectKey())
                     .payload("mode", effectiveScope.mode())
+                    .payload("fieldMappingSnapshot", fieldMappingSnapshot)
             );
             return snapshot;
         } catch (RuntimeException e) {
             cleanupBestEffort(writtenKeys);
             throw new ExportFailureException("Export failed for task " + taskId, e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> fieldMappingSnapshot(ExportArtifact artifact) {
+        Object value = artifact.manifestContent().get("fieldMappingSnapshot");
+        return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
     }
 
     public PagedResult<ExportSnapshotEntity> listSnapshotsForOwner(
