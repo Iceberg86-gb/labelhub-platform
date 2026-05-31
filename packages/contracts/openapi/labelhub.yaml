@@ -1113,6 +1113,29 @@ paths:
           $ref: '#/components/responses/ErrorUnauthorized'
         '403':
           $ref: '#/components/responses/ErrorForbidden'
+  /reviews/batch:
+    post:
+      tags: [Reviews]
+      operationId: batchReviewSubmissions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchReviewRequest'
+      responses:
+        '200':
+          description: Per-submission batch review result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchReviewResult'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
   /submissions/{submissionId}/ledger-entries:
     post:
       tags: [Reviews]
@@ -2717,6 +2740,48 @@ components:
           type: integer
         size:
           type: integer
+    BatchReviewRequest:
+      type: object
+      required: [submissionIds, verdict]
+      properties:
+        submissionIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            type: integer
+            format: int64
+        verdict:
+          type: string
+          enum: [approve, reject]
+        reason:
+          type: string
+          nullable: true
+    BatchReviewResult:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BatchReviewItemResult'
+    BatchReviewItemResult:
+      type: object
+      required: [submissionId, status]
+      properties:
+        submissionId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [created, self_review_not_allowed, not_found]
+        ledgerEntryId:
+          type: integer
+          format: int64
+          nullable: true
+        error:
+          type: string
+          nullable: true
     RecomputeRuleRequest:
       type: object
       properties:

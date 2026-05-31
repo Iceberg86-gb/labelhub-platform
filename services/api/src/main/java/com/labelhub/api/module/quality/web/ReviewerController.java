@@ -1,5 +1,8 @@
 package com.labelhub.api.module.quality.web;
 
+import com.labelhub.api.generated.model.BatchReviewItemResult;
+import com.labelhub.api.generated.model.BatchReviewRequest;
+import com.labelhub.api.generated.model.BatchReviewResult;
 import com.labelhub.api.generated.model.CreateLedgerEntryRequest;
 import com.labelhub.api.generated.model.PagedQualityLedgerEntries;
 import com.labelhub.api.generated.model.PagedReviewerSubmissions;
@@ -11,6 +14,7 @@ import com.labelhub.api.generated.web.ReviewsApi;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.quality.mapper.ReviewerSubmissionQueueRow;
 import com.labelhub.api.module.quality.service.LedgerService;
+import com.labelhub.api.module.quality.service.ReviewerBatchService;
 import com.labelhub.api.module.quality.service.ReviewerQueueService;
 import com.labelhub.api.module.quality.service.VerdictService;
 import com.labelhub.api.module.quality.service.view.VerdictView;
@@ -36,17 +40,20 @@ public class ReviewerController implements ReviewsApi {
     private final LedgerService ledgerService;
     private final VerdictService verdictService;
     private final ReviewerQueueService reviewerQueueService;
+    private final ReviewerBatchService reviewerBatchService;
     private final QualityDtoMapper qualityDtoMapper;
 
     public ReviewerController(
         LedgerService ledgerService,
         VerdictService verdictService,
         ReviewerQueueService reviewerQueueService,
+        ReviewerBatchService reviewerBatchService,
         QualityDtoMapper qualityDtoMapper
     ) {
         this.ledgerService = ledgerService;
         this.verdictService = verdictService;
         this.reviewerQueueService = reviewerQueueService;
+        this.reviewerBatchService = reviewerBatchService;
         this.qualityDtoMapper = qualityDtoMapper;
     }
 
@@ -78,6 +85,29 @@ public class ReviewerController implements ReviewsApi {
             qualityDtoMapper.toPayloadMap(createLedgerEntryRequest.getPayload())
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(qualityDtoMapper.toQualityLedgerEntry(entity));
+    }
+
+    @Override
+    public ResponseEntity<BatchReviewResult> batchReviewSubmissions(
+        @Valid @RequestBody BatchReviewRequest request
+    ) {
+        com.labelhub.api.module.quality.service.ReviewerBatchResult result =
+            reviewerBatchService.reviewSubmissions(
+                request.getSubmissionIds(),
+                currentUserId(),
+                request.getVerdict().getValue(),
+                request.getReason()
+            );
+        BatchReviewResult dto = new BatchReviewResult();
+        dto.setItems(result.items().stream().map(item -> {
+            BatchReviewItemResult itemDto = new BatchReviewItemResult();
+            itemDto.setSubmissionId(item.submissionId());
+            itemDto.setStatus(BatchReviewItemResult.StatusEnum.fromValue(item.status()));
+            itemDto.setLedgerEntryId(item.ledgerEntryId());
+            itemDto.setError(item.error());
+            return itemDto;
+        }).toList());
+        return ResponseEntity.ok(dto);
     }
 
     @Override
