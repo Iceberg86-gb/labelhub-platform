@@ -262,6 +262,17 @@ class ExportServiceTest {
     }
 
     @Test
+    void export_source_state_keeps_dataset_item_payload_hash_and_status_from_collected_facts() throws Exception {
+        exportService.createSnapshot(TASK_ID, OWNER_ID);
+
+        String datasetItems = writtenUtf8("dataset-items.jsonl");
+
+        assertThat(datasetItems).contains("\"itemPayload\":{\"text\":\"source\"}");
+        assertThat(datasetItems).contains("\"itemHash\":\"item-hash\"");
+        assertThat(datasetItems).contains("\"status\":\"completed\"");
+    }
+
+    @Test
     void partial_export_failure_deletes_written_object_keys() {
         failPutObjectOnAttempt(3);
 
