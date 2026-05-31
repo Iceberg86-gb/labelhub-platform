@@ -66,7 +66,6 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/tasks/*/exports").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/tasks/*/exports").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/exports/snapshots/*/diff").hasRole("OWNER")
-                .requestMatchers(HttpMethod.DELETE, "/exports/snapshots/*").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/exports/snapshots/*").hasRole("OWNER")
                 .anyRequest().authenticated())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

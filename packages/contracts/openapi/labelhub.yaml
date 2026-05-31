@@ -1376,20 +1376,6 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
-    delete:
-      tags: [Exports]
-      operationId: deleteExportSnapshot
-      parameters:
-        - $ref: '#/components/parameters/SnapshotId'
-      responses:
-        '204':
-          description: Export snapshot deleted.
-        '401':
-          $ref: '#/components/responses/ErrorUnauthorized'
-        '403':
-          $ref: '#/components/responses/ErrorForbidden'
-        '404':
-          $ref: '#/components/responses/ErrorNotFound'
   /exports/snapshots/{snapshotId}/files/{fileName}:
     get:
       tags: [Exports]
