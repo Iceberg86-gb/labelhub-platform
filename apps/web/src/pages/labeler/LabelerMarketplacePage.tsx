@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { MarketplaceTask } from '../../entities/submission/submissionTypes';
 import { ClaimTaskFailure, useClaimMutation } from '../../features/labeling/useClaimMutation';
 import { useMarketplaceQuery } from '../../features/labeling/useMarketplaceQuery';
+import { RoleBadge } from '../../shared/ui/RoleBadge';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 10;
@@ -124,9 +125,10 @@ export function LabelerMarketplacePage() {
   const hasActiveFilters = Boolean(q || tag || hasReward || deadline);
 
   return (
-    <section className="labeler-page" aria-label="Labeler marketplace">
-      <div className="page-heading">
-        <div>
+    <section className="labeler-page labeler-page--marketplace" aria-label="Labeler marketplace">
+      <header className="labeler-workbench-hero">
+        <div className="labeler-workbench-hero__copy">
+          <RoleBadge role="LABELER" />
           <Typography.Title heading={3} className="page-title">
             任务广场
           </Typography.Title>
@@ -134,12 +136,14 @@ export function LabelerMarketplacePage() {
             领取已发布且仍有可用数据项的任务。每次领取会分配一个可用数据项;同一任务可多次领取不同 item。
           </Typography.Text>
         </div>
-        <Button icon={<IconRefresh />} onClick={() => marketplaceQuery.refetch()} loading={marketplaceQuery.isFetching}>
-          刷新
-        </Button>
-      </div>
+        <div className="labeler-workbench-hero__actions">
+          <Button icon={<IconRefresh />} onClick={() => marketplaceQuery.refetch()} loading={marketplaceQuery.isFetching}>
+            刷新
+          </Button>
+        </div>
+      </header>
 
-      <div className="marketplace-filter-bar" aria-label="任务广场筛选">
+      <div className="marketplace-filter-bar labeler-workbench-filter-bar" aria-label="任务广场筛选">
         <Input
           prefix={<IconSearch />}
           value={draftSearch.q}
@@ -174,7 +178,7 @@ export function LabelerMarketplacePage() {
         </Button>
       </div>
 
-      <div className="task-toolbar">
+      <div className="task-toolbar labeler-workbench-toolbar">
         <Typography.Text type="tertiary">共 {data?.total ?? 0} 个可领取任务</Typography.Text>
         <Space>
           <Button icon={<IconChevronLeft />} disabled={page <= 1} onClick={() => updatePage(page - 1)}>
@@ -187,7 +191,7 @@ export function LabelerMarketplacePage() {
         </Space>
       </div>
 
-      <div className="task-table-surface">
+      <div className="task-table-surface task-table-surface--labeler">
         {marketplaceQuery.isLoading ? (
           <div className="task-state-panel">
             <Spin size="large" />
@@ -207,7 +211,7 @@ export function LabelerMarketplacePage() {
         {items.length > 0 ? (
           <div className="marketplace-card-grid">
             {items.map((record: MarketplaceTask) => (
-              <article className="marketplace-task-card" key={record.id}>
+              <article className="marketplace-task-card marketplace-task-card--claimable" key={record.id}>
                 <div className="marketplace-task-card__main">
                   <div className="marketplace-task-card__heading">
                     <Typography.Title heading={5}>{record.title}</Typography.Title>
@@ -231,6 +235,7 @@ export function LabelerMarketplacePage() {
                   <span>截止 {formatDateTime(record.deadlineAt)}</span>
                 </div>
                 <Button
+                  className="labeler-task-card__cta"
                   icon={<IconPlay />}
                   theme="solid"
                   type="primary"

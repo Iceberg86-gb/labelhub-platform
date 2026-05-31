@@ -9,6 +9,7 @@ import {
   type Session,
 } from '../../entities/submission/submissionTypes';
 import { useMySessionsQuery } from '../../features/labeling/useMySessionsQuery';
+import { RoleBadge } from '../../shared/ui/RoleBadge';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 10;
@@ -107,31 +108,34 @@ export function LabelerMySessionsPage() {
   );
 
   return (
-    <section className="labeler-page" aria-label="Labeler sessions">
-      <div className="page-heading">
-        <div>
+    <section className="labeler-page labeler-page--sessions" aria-label="Labeler sessions">
+      <header className="labeler-workbench-hero">
+        <div className="labeler-workbench-hero__copy">
+          <RoleBadge role="LABELER" />
           <Typography.Title heading={3} className="page-title">
             我的数据
           </Typography.Title>
           <Typography.Text type="tertiary">查看已领取、审核中、通过、打回和待修改的作答会话。</Typography.Text>
         </div>
-        <Select
-          className="session-status-filter"
-          value={workStatus ?? 'all'}
-          onChange={(value) =>
-            updateParams({ page: 1, workStatus: value === 'all' ? null : (value as LabelerSessionWorkStatus) })
-          }
-        >
-          <Select.Option value="all">全部状态</Select.Option>
-          {LABELER_WORK_STATUSES.map((item) => (
-            <Select.Option key={item} value={item}>
-              {LABELER_WORK_STATUS_LABELS[item]}
-            </Select.Option>
-          ))}
-        </Select>
-      </div>
+        <div className="labeler-workbench-hero__actions">
+          <Select
+            className="session-status-filter"
+            value={workStatus ?? 'all'}
+            onChange={(value) =>
+              updateParams({ page: 1, workStatus: value === 'all' ? null : (value as LabelerSessionWorkStatus) })
+            }
+          >
+            <Select.Option value="all">全部状态</Select.Option>
+            {LABELER_WORK_STATUSES.map((item) => (
+              <Select.Option key={item} value={item}>
+                {LABELER_WORK_STATUS_LABELS[item]}
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+      </header>
 
-      <div className="labeler-session-summary-grid" aria-label="我的数据统计">
+      <div className="labeler-session-summary-grid labeler-session-summary-grid--quiet" aria-label="我的数据统计">
         <button className="labeler-session-summary-card" type="button" onClick={() => updateParams({ page: 1, workStatus: 'submitted' })}>
           <span>已提交</span>
           <strong>{summary.submitted}</strong>
@@ -154,7 +158,7 @@ export function LabelerMySessionsPage() {
         </button>
       </div>
 
-      <div className="task-toolbar">
+      <div className="task-toolbar labeler-workbench-toolbar">
         <Typography.Text type="tertiary">
           共 {data?.total ?? 0} 个会话
           {workStatus ? ` · ${LABELER_WORK_STATUS_LABELS[workStatus]}` : ''}
@@ -170,7 +174,7 @@ export function LabelerMySessionsPage() {
         </Space>
       </div>
 
-      <div className="task-table-surface">
+      <div className="task-table-surface task-table-surface--labeler labeler-workbench-table">
         {sessionsQuery.isLoading ? (
           <div className="task-state-panel">
             <Spin size="large" />

@@ -261,8 +261,8 @@ export function LabelerSessionPage() {
   }
 
   return (
-    <section className="labeler-session-page" aria-label="Labeler session workspace">
-      <div className="labeler-session-header">
+    <section className="labeler-session-page labeler-session-page--workspace" aria-label="Labeler session workspace">
+      <div className="labeler-session-header labeler-session-hero">
         <div>
           <Typography.Title heading={3} className="page-title">
             {detail.task.title}
@@ -273,7 +273,7 @@ export function LabelerSessionPage() {
             <Typography.Text type="tertiary">{detail.task.description || '暂无描述'}</Typography.Text>
           </Space>
         </div>
-        <div className="labeler-session-actions">
+        <div className="labeler-session-actions labeler-session-actions--sticky">
           <AutosaveStatusTag
             autosave={autosave}
             offlineDraft={offlineDraftStatus}
@@ -292,7 +292,7 @@ export function LabelerSessionPage() {
         </div>
       </div>
 
-      <div className="labeler-session-navigation" aria-label="Session navigation">
+      <div className="labeler-session-navigation labeler-session-navigation--compact" aria-label="Session navigation">
         <Button
           icon={<IconChevronLeft />}
           disabled={!navigation.previousSessionId || navigationBusy}
@@ -327,29 +327,35 @@ export function LabelerSessionPage() {
         </Typography.Text>
       </div>
 
-      <DatasetItemContextCard itemPayload={datasetItemContext.payload} sourceLabel={datasetItemContext.source} />
+      <div className="labeler-session-layout">
+        <aside className="labeler-context-rail" aria-label="题目上下文">
+          <DatasetItemContextCard itemPayload={datasetItemContext.payload} sourceLabel={datasetItemContext.source} />
 
-      {detail.previousReviewFeedback ? (
-        <Card className="labeler-session-review-feedback" bodyStyle={{ padding: 16 }}>
-          <Space vertical align="start">
-            <Tag color="red">上一轮打回意见</Tag>
-            <Typography.Text>{detail.previousReviewFeedback.reason}</Typography.Text>
-          </Space>
-        </Card>
-      ) : null}
+          {detail.previousReviewFeedback ? (
+            <Card className="labeler-session-review-feedback" bodyStyle={{ padding: 16 }}>
+              <Space vertical align="start">
+                <Tag color="red">上一轮打回意见</Tag>
+                <Typography.Text>{detail.previousReviewFeedback.reason}</Typography.Text>
+              </Space>
+            </Card>
+          ) : null}
+        </aside>
 
-      <Card className="labeler-session-card" bodyStyle={{ padding: 24 }}>
-        <SchemaFormilyRenderer
-          schemaFields={visibleFields}
-          value={answerPayload}
-          onChange={handleAnswerPayloadChange}
-          readOnly={!isEditable}
-          errors={visibleFieldErrors}
-          onFormReady={handleFormReady}
-          sessionId={sessionId}
-          itemPayload={datasetItemContext.payload}
-        />
-      </Card>
+        <div className="labeler-answer-panel">
+          <Card className="labeler-session-card labeler-session-card--answer" bodyStyle={{ padding: 24 }}>
+            <SchemaFormilyRenderer
+              schemaFields={visibleFields}
+              value={answerPayload}
+              onChange={handleAnswerPayloadChange}
+              readOnly={!isEditable}
+              errors={visibleFieldErrors}
+              onFormReady={handleFormReady}
+              sessionId={sessionId}
+              itemPayload={datasetItemContext.payload}
+            />
+          </Card>
+        </div>
+      </div>
 
       <SubmitConfirmModal
         visible={submitModalOpen}
