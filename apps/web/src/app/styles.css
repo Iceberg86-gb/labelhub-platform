@@ -2487,6 +2487,27 @@ a {
   background: #f8fafc;
 }
 
+.dataset-items-modal-body {
+  width: 100%;
+}
+
+.dataset-item-preview-json {
+  max-height: 160px;
+  margin: 0;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid #d8dee9;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+}
+
+.dataset-bulk-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 @media (max-width: 900px) {
   .labeler-session-header {
     flex-direction: column;

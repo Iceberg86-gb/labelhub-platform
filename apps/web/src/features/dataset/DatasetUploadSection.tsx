@@ -1,10 +1,18 @@
-import { Button, Empty, RadioGroup, Space, Spin, Table, Tag, Toast, Tooltip, Typography, Upload } from '@douyinfe/semi-ui';
+import { Button, Empty, Modal, RadioGroup, Space, Spin, Table, Tag, TextArea, Toast, Tooltip, Typography, Upload } from '@douyinfe/semi-ui';
 import type { BeforeUploadProps, customRequestArgs } from '@douyinfe/semi-ui/lib/es/upload';
 import { IconRefresh, IconUpload } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
-import { DATASET_IMPORT_STATUS_LABELS, type Dataset, type DatasetImportFormat } from '../../entities/dataset/datasetTypes';
+import {
+  DATASET_IMPORT_STATUS_LABELS,
+  type Dataset,
+  type DatasetImportFormat,
+  type DatasetItem,
+  type DatasetItemBulkUpdateItem,
+} from '../../entities/dataset/datasetTypes';
 import type { Task } from '../task/list-tasks/useTasksQuery';
+import { BulkUpdateDatasetItemsFailure, useBulkUpdateDatasetItemsMutation } from './useBulkUpdateDatasetItemsMutation';
 import { useDatasetsQuery } from './useDatasetsQuery';
+import { useDatasetItemsQuery } from './useDatasetItemsQuery';
 import { UploadDatasetFailure, useUploadDatasetMutation } from './useUploadDatasetMutation';
 import { UpdateCurrentDatasetFailure, useUpdateCurrentDatasetMutation } from './useUpdateCurrentDatasetMutation';
 
@@ -21,10 +29,15 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: 
 
 export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
   const [formatChoice, setFormatChoice] = useState<FormatChoice>('auto');
+  const [previewDataset, setPreviewDataset] = useState<Dataset | null>(null);
+  const [bulkEditText, setBulkEditText] = useState('');
   const datasetsQuery = useDatasetsQuery(task.id);
+  const datasetItemsQuery = useDatasetItemsQuery(previewDataset?.id);
   const uploadDataset = useUploadDatasetMutation();
   const updateCurrentDataset = useUpdateCurrentDatasetMutation();
+  const bulkUpdateDatasetItems = useBulkUpdateDatasetItemsMutation();
   const datasets = datasetsQuery.data?.items ?? [];
+  const datasetItems = datasetItemsQuery.data?.items ?? [];
   const currentDataset = datasets.find((dataset) => dataset.id === task.currentDatasetId);
   const published = task.status === 'published';
 
@@ -59,11 +72,36 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
       },
       {
         title: '操作',
-        width: 130,
-        render: (_: unknown, record: Dataset) => renderAction(record),
+        width: 220,
+        render: (_: unknown, record: Dataset) => (
+          <Space>
+            <Button size="small" onClick={() => openDatasetItems(record)}>
+              预览/编辑
+            </Button>
+            {renderAction(record)}
+          </Space>
+        ),
       },
     ],
     [published, task.currentDatasetId, updateCurrentDataset.isPending, updateCurrentDataset.variables?.datasetId],
+  );
+
+  const itemColumns = useMemo(
+    () => [
+      { title: '序号', dataIndex: 'ordinal', width: 72 },
+      {
+        title: '状态',
+        dataIndex: 'status',
+        width: 100,
+        render: (value: string) => <Tag color={value === 'available' ? 'green' : 'grey'}>{value}</Tag>,
+      },
+      {
+        title: '题目预览',
+        dataIndex: 'itemPayload',
+        render: (value: DatasetItem['itemPayload']) => <pre className="dataset-item-preview-json">{formatJson(value)}</pre>,
+      },
+    ],
+    [],
   );
 
   function beforeUpload({ file }: BeforeUploadProps) {
@@ -131,6 +169,55 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
     }
   }
 
+  function openDatasetItems(dataset: Dataset) {
+    setPreviewDataset(dataset);
+    setBulkEditText('');
+  }
+
+  function closeDatasetItems() {
+    setPreviewDataset(null);
+    setBulkEditText('');
+  }
+
+  function seedBulkEditFromCurrentItems() {
+    setBulkEditText(JSON.stringify(
+      datasetItems
+        .filter((item) => item.status === 'available')
+        .map((item) => ({ id: item.id, itemPayload: item.itemPayload })),
+      null,
+      2,
+    ));
+  }
+
+  async function submitBulkEdit() {
+    if (!previewDataset) return;
+    let items: DatasetItemBulkUpdateItem[];
+    try {
+      const parsed = JSON.parse(bulkEditText);
+      if (!Array.isArray(parsed)) throw new Error('批量编辑 JSON 必须是数组');
+      items = parsed.map((item) => {
+        if (typeof item?.id !== 'number' || !isPlainObject(item.itemPayload)) {
+          throw new Error('每一行必须包含 number id 和 object itemPayload');
+        }
+        return { id: item.id, itemPayload: item.itemPayload };
+      });
+    } catch (error) {
+      Toast.error(error instanceof Error ? error.message : '批量编辑 JSON 无效');
+      return;
+    }
+
+    try {
+      const result = await bulkUpdateDatasetItems.mutateAsync({ datasetId: previewDataset.id, items });
+      Toast.success(`已更新 ${result.updated.length} 条,跳过 ${result.skippedLocked.length} 条锁定题目`);
+      if (result.skippedLocked.length > 0) {
+        setBulkEditText(JSON.stringify(result.skippedLocked, null, 2));
+      }
+    } catch (error) {
+      const failure = error instanceof BulkUpdateDatasetItemsFailure ? error : null;
+      Toast.error(failure?.userMessage ?? '批量编辑失败,请稍后重试');
+    }
+  }
+
   return (
     <div className="dataset-upload-section">
       <div className="dataset-section-header">
@@ -180,10 +267,61 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
         <Empty title="暂无数据集" description="上传第一个 JSON、JSONL 或 Excel 文件后,可将它设为当前数据集。" />
       ) : null}
       {datasets.length > 0 ? <Table columns={columns} dataSource={datasets} rowKey="id" pagination={false} /> : null}
+      <Modal
+        title={previewDataset ? `Dataset #${previewDataset.id} 题目预览` : '题目预览'}
+        visible={Boolean(previewDataset)}
+        width={920}
+        footer={null}
+        onCancel={closeDatasetItems}
+      >
+        <Space vertical align="start" spacing={16} className="dataset-items-modal-body">
+          {datasetItemsQuery.isLoading ? <Spin /> : null}
+          {datasetItemsQuery.isError ? (
+            <Empty title="题目列表加载失败" description={datasetItemsQuery.error instanceof Error ? datasetItemsQuery.error.message : '请稍后重试。'} />
+          ) : null}
+          {!datasetItemsQuery.isLoading && !datasetItemsQuery.isError ? (
+            <Table columns={itemColumns} dataSource={datasetItems} rowKey="id" pagination={false} />
+          ) : null}
+          <div className="dataset-bulk-editor">
+            <div className="dataset-list-toolbar">
+              <Typography.Text strong>批量编辑 available 题目</Typography.Text>
+              <Button size="small" onClick={seedBulkEditFromCurrentItems} disabled={datasetItems.length === 0}>
+                填入当前 available 题目
+              </Button>
+            </div>
+            <TextArea
+              autosize
+              value={bulkEditText}
+              placeholder='[{"id": 1, "itemPayload": {"prompt": "新的题目内容"}}]'
+              onChange={setBulkEditText}
+            />
+            <Typography.Text type="tertiary">
+              后端只会更新 status=available 的题目;已被领取或标注的题目会逐行跳过。
+            </Typography.Text>
+            <Button
+              theme="solid"
+              type="primary"
+              loading={bulkUpdateDatasetItems.isPending}
+              disabled={!bulkEditText.trim()}
+              onClick={submitBulkEdit}
+            >
+              提交批量编辑
+            </Button>
+          </div>
+        </Space>
+      </Modal>
     </div>
   );
 }
 
 function formatDateTime(value?: string) {
   return value ? dateFormatter.format(new Date(value)) : '-';
+}
+
+function formatJson(value: unknown) {
+  return JSON.stringify(value, null, 2);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }

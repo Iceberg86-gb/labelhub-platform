@@ -2,6 +2,10 @@ import type { components } from '../../shared/api/generated/schema';
 
 export type Dataset = components['schemas']['Dataset'];
 export type PagedDatasets = components['schemas']['PagedDatasets'];
+export type DatasetItem = components['schemas']['DatasetItem'];
+export type DatasetItemBulkUpdateItem = components['schemas']['DatasetItemBulkUpdateItem'];
+export type DatasetItemBulkUpdateResult = components['schemas']['DatasetItemBulkUpdateResult'];
+export type PagedDatasetItems = components['schemas']['PagedDatasetItems'];
 export type DatasetImportFormat = components['schemas']['DatasetImportFormat'];
 export type UpdateTaskCurrentDatasetRequest = components['schemas']['UpdateTaskCurrentDatasetRequest'];
 

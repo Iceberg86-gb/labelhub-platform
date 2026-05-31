@@ -224,6 +224,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/datasets/{datasetId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listDatasetItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/datasets/{datasetId}/items:bulk-update": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["bulkUpdateDatasetItems"];
+        trace?: never;
+    };
     "/tasks/{taskId}/claim": {
         parameters: {
             query?: never;
@@ -1072,10 +1104,44 @@ export interface components {
         DatasetItem: {
             /** Format: int64 */
             id: number;
+            /** Format: int64 */
+            datasetId: number;
+            /** Format: int64 */
+            taskId: number;
             ordinal: number;
             itemPayload: {
                 [key: string]: unknown;
             };
+            itemHash: string;
+            status: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PagedDatasetItems: {
+            items: components["schemas"]["DatasetItem"][];
+            /** Format: int64 */
+            total: number;
+            page: number;
+            size: number;
+        };
+        DatasetItemBulkUpdateRequest: {
+            items: components["schemas"]["DatasetItemBulkUpdateItem"][];
+        };
+        DatasetItemBulkUpdateItem: {
+            /** Format: int64 */
+            id: number;
+            itemPayload: {
+                [key: string]: unknown;
+            };
+        };
+        DatasetItemBulkUpdateSkipped: {
+            /** Format: int64 */
+            id: number;
+            reason: string;
+        };
+        DatasetItemBulkUpdateResult: {
+            updated: components["schemas"]["DatasetItem"][];
+            skippedLocked: components["schemas"]["DatasetItemBulkUpdateSkipped"][];
         };
         Draft: {
             /** Format: int64 */
@@ -2147,6 +2213,64 @@ export interface operations {
                     "application/json": components["schemas"]["Dataset"];
                 };
             };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    listDatasetItems: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                datasetId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Owner-scoped dataset items. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedDatasetItems"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    bulkUpdateDatasetItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                datasetId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DatasetItemBulkUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Dataset items updated; locked rows are skipped per item. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DatasetItemBulkUpdateResult"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
