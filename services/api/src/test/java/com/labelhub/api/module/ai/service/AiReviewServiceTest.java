@@ -652,6 +652,55 @@ class AiReviewServiceTest {
     }
 
     @Test
+    void internal_agent_result_uses_api_scoring_authority_instead_of_agent_recommendation() {
+        TaskEntity task = task(10L, 1001L);
+        task.setCurrentAiReviewRuleId(19L);
+        AiReviewRuleEntity rule = activeRule(19L, 10L, 7L);
+        rule.setPassThreshold(new BigDecimal("0.80"));
+        rule.setRejectThreshold(new BigDecimal("0.40"));
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(aiReviewRuleMapper.selectById(19L)).thenReturn(rule);
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+
+        AiReviewResultView result = service.recordInternalResult(new InternalAiReviewResultCommand(
+            300L,
+            "submission:300:ai_review:promptVersionId:7:adapter:agent-default-v1:ruleVersionId:19",
+            "pass",
+            new BigDecimal("0.35"),
+            List.of(new DimensionScoreValue("quality", new BigDecimal("0.35"), "agent raw score")),
+            "agent suggested pass, but score is below reject threshold",
+            List.of(),
+            "{}",
+            11,
+            12,
+            new AiCallUsage(11, 12, 23, 0),
+            123,
+            "agent",
+            "fake-agent",
+            Map.of("overallSuggestion", "pass")
+        ));
+
+        ArgumentCaptor<AiCallEntity> aiCallCaptor = ArgumentCaptor.forClass(AiCallEntity.class);
+        verify(aiCallMapper).insert(aiCallCaptor.capture());
+        AiCallEntity aiCall = aiCallCaptor.getValue();
+        assertThat(aiCall.getVerdict()).isEqualTo("reject");
+        assertThat(aiCall.getScores()).containsEntry("finalScore", new BigDecimal("0.3500"));
+        assertThat(aiCall.getResponsePayload()).containsEntry("overallSuggestion", "reject");
+        assertThat(result.providerResult().overallSuggestion()).isEqualTo("reject");
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(ledgerService).appendAiOverallRecommendation(eq(300L), eq(10L), eq(900L), payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue()).containsEntry("recommendation", "reject");
+        assertThat(payloadCaptor.getValue()).containsEntry("passThreshold", new BigDecimal("0.80"));
+        assertThat(payloadCaptor.getValue()).containsEntry("rejectThreshold", new BigDecimal("0.40"));
+        verify(ledgerService, never()).createEntry(any(), any(), eq("reviewer_overall_verdict"), any());
+    }
+
+    @Test
     void review_returns_existing_result_when_idempotency_key_matches_and_input_hash_matches() {
         String inputHash = inputHashForDefaultFixture();
         AiCallEntity existing = persistedAiCall(inputHash);
