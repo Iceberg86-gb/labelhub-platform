@@ -173,7 +173,7 @@ export function OwnerSchemaDesignerPage() {
     : '当前版本: 尚未发布';
 
   return (
-    <section className="schema-designer-page" aria-label="Owner schema designer">
+    <section className="schema-designer-page schema-designer-page--workspace" aria-label="Owner schema designer">
       <div className="schema-designer-canvas">
         <div className="detail-heading">
           <Button icon={<IconArrowLeft />} theme="borderless" onClick={() => navigate('/owner/schemas')}>
@@ -184,7 +184,7 @@ export function OwnerSchemaDesignerPage() {
           </Button>
         </div>
 
-        <div className="schema-designer-header">
+        <div className="schema-designer-header schema-designer-header--workspace">
           <div>
             <Typography.Title heading={3} className="page-title">
               {currentVersionQuery.schema.name}
@@ -206,7 +206,7 @@ export function OwnerSchemaDesignerPage() {
           closeIcon={null}
         />
 
-        <div className="schema-designer-grid">
+        <div className="schema-designer-grid schema-designer-grid--workspace">
           <DesignerFieldBuilder
             fields={draftFields}
             onChange={handleFieldsChange}
@@ -218,36 +218,38 @@ export function OwnerSchemaDesignerPage() {
             validationErrorCount={validationErrors.length}
           />
 
-          <Card className="schema-designer-panel">
-            <div className="schema-designer-panel__header">
-              <div>
-                <Typography.Title heading={5}>字段属性</Typography.Title>
-                <Typography.Text type="tertiary">选择左侧字段后编辑属性。</Typography.Text>
+          <aside className="schema-designer-inspector-stack" aria-label="字段属性与运行时预览">
+            <Card className="schema-designer-panel schema-designer-panel--inspector">
+              <div className="schema-designer-panel__header">
+                <div>
+                  <Typography.Title heading={5}>字段属性</Typography.Title>
+                  <Typography.Text type="tertiary">选择画布字段后编辑属性、校验与联动。</Typography.Text>
+                </div>
               </div>
-            </div>
-            {selectedField ? (
-              <FieldEditor
-                field={selectedField}
-                onChange={handleSelectedFieldChange}
-                errors={validationErrorsByField.get(selectedField.stableId) ?? []}
-                errorsByField={validationErrorsByField}
-                selectedStableId={selectedStableId}
-                onSelect={setSelectedStableId}
-                onDelete={handleDeleteField}
-              />
-            ) : (
-              <div className="designer-placeholder">
-                <Typography.Text type="tertiary">请从左侧选择字段编辑。</Typography.Text>
-              </div>
-            )}
+              {selectedField ? (
+                <FieldEditor
+                  field={selectedField}
+                  onChange={handleSelectedFieldChange}
+                  errors={validationErrorsByField.get(selectedField.stableId) ?? []}
+                  errorsByField={validationErrorsByField}
+                  selectedStableId={selectedStableId}
+                  onSelect={setSelectedStableId}
+                  onDelete={handleDeleteField}
+                />
+              ) : (
+                <div className="designer-placeholder">
+                  <Typography.Text type="tertiary">请从画布选择字段编辑。</Typography.Text>
+                </div>
+              )}
 
-            <details className="json-preview-collapse">
-              <summary>JSON 预览</summary>
-              <pre className="schema-json-preview">{jsonPreview}</pre>
-            </details>
-          </Card>
+              <details className="json-preview-collapse">
+                <summary>JSON 预览</summary>
+                <pre className="schema-json-preview">{jsonPreview}</pre>
+              </details>
+            </Card>
 
-          <SchemaFormilyPreviewPanel schemaFields={draftFields} />
+            <SchemaFormilyPreviewPanel schemaFields={draftFields} />
+          </aside>
         </div>
 
         <PublishSchemaModal
