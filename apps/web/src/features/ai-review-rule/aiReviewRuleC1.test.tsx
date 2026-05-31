@@ -115,7 +115,7 @@ describe('AiReviewRuleEntryCard', () => {
   it('renders the append-only entry without a form body', () => {
     const html = renderToString(<AiReviewRuleEntryCard taskId={22} onOpenEditor={() => {}} />);
 
-    expect(html).toContain('AI 审核规则');
+    expect(html).toContain('AI 预审辅助规则');
     expect(html).toContain('配置规则');
     expect(html).toContain('保存会创建新的规则版本');
     expect(html).toContain('发布后才会成为当前生效规则');

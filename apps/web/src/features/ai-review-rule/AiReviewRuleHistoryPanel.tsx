@@ -58,7 +58,7 @@ export function AiReviewRuleHistoryPanel({ taskId }: AiReviewRuleHistoryPanelPro
   };
 
   return (
-    <section className="ai-review-rule-history" data-testid="ai-review-rule-history-section">
+    <section className="ai-review-rule-history ai-review-rule-history--versioned" data-testid="ai-review-rule-history-section">
       <div className="ai-review-rule-history__head">
         <Typography.Title heading={5}>版本历史</Typography.Title>
         <Typography.Text type="tertiary">发布后会更新任务使用的规则版本。</Typography.Text>
@@ -76,9 +76,9 @@ export function AiReviewRuleHistoryPanel({ taskId }: AiReviewRuleHistoryPanelPro
             <div className="ai-review-rule-history__meta">
               <Space>
                 <Typography.Text strong>v{rule.versionNo}</Typography.Text>
-                <Tag>{formatStatus(rule.status)}</Tag>
+                <Tag className={`ai-review-rule-status-tag ai-review-rule-status-tag--${rule.status}`}>{formatStatus(rule.status)}</Tag>
                 {rule.isCurrent ? (
-                  <Tag color="green">
+                  <Tag className="ai-review-rule-current-tag">
                     <IconTickCircle /> 当前生效
                   </Tag>
                 ) : null}

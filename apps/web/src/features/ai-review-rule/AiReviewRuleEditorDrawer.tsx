@@ -67,19 +67,24 @@ export function AiReviewRuleEditorDrawer({ taskId, open, onClose }: AiReviewRule
 
   return (
     <SideSheet
-      title="AI 审核规则配置"
+      title="AI 预审辅助配置"
       visible={open}
       width={640}
-      maskStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      maskStyle={{ backgroundColor: 'color-mix(in srgb, var(--color-primary-black) 34%, transparent)' }}
       onCancel={onClose}
     >
-      <div className="ai-review-rule-editor">
-        <section className="ai-review-rule-save-form" data-testid="ai-review-rule-save-form">
+      <div className="ai-review-rule-editor ai-review-rule-editor--drawer">
+        <section className="ai-review-rule-save-form ai-review-rule-save-form--structured" data-testid="ai-review-rule-save-form">
           <div className="ai-review-rule-editor__intro">
             <Typography.Title heading={5}>创建新的规则草稿</Typography.Title>
             <Typography.Text type="tertiary">
               保存会追加一个新的规则版本,不会覆盖既有配置。
             </Typography.Text>
+          </div>
+
+          <div className="ai-review-rule-assistive-note">
+            <Typography.Text strong>AI 只提供预审证据</Typography.Text>
+            <Typography.Text type="tertiary">通过/打回仍由人工审核员在审核台完成。</Typography.Text>
           </div>
 
           <label className="ai-review-rule-field">
