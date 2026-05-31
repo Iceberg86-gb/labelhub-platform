@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="4" y="6" width="16" height="12" rx="3" />
+  <path d="M8 11h5" />
+  <path d="M8 14h3" />
+  <circle class="icon-accent" stroke="currentColor" cx="16" cy="11" r="1" />
+  <path class="icon-accent" stroke="currentColor" d="M16 8.5V8" />
+  <path class="icon-accent" stroke="currentColor" d="M16 14v-.5" />
+</svg>

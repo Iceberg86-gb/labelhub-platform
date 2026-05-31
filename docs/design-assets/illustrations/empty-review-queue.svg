@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    .lh-base { color: var(--lh-illustration-base, currentColor); }
+    .lh-muted { color: var(--lh-illustration-muted, currentColor); opacity: .52; }
+    .lh-soft { color: var(--lh-illustration-soft, currentColor); opacity: .1; }
+    .lh-accent { color: var(--lh-illustration-accent, currentColor); }
+    .lh-success { color: var(--lh-illustration-success, currentColor); }
+  </style>
+  <g class="lh-soft" stroke="none" fill="currentColor">
+    <rect x="35" y="24" width="90" height="70" rx="16" />
+  </g>
+  <g class="lh-base">
+    <rect x="42" y="30" width="50" height="56" rx="10" />
+    <rect x="98" y="39" width="20" height="20" rx="8" />
+    <path d="M103 63c1.6-1.5 3.1-2.2 5-2.2s3.4.7 5 2.2" />
+  </g>
+  <g class="lh-muted">
+    <path d="M52 44h26" />
+    <path d="M52 57h30" />
+    <path d="M52 70h20" />
+    <path d="M103.5 48.8a4.5 4.5 0 0 1 9 0" />
+  </g>
+  <g class="lh-success">
+    <circle cx="116" cy="72" r="9" />
+    <path d="m112 72 2.6 2.6 5-5.6" />
+  </g>
+  <g class="lh-accent">
+    <path d="M92 50h8" />
+  </g>
+</svg>

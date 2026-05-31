@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    .lh-base { color: var(--lh-illustration-base, currentColor); }
+    .lh-muted { color: var(--lh-illustration-muted, currentColor); opacity: .52; }
+    .lh-soft { color: var(--lh-illustration-soft, currentColor); opacity: .1; }
+    .lh-warning { color: var(--lh-illustration-warning, currentColor); }
+    .lh-danger { color: var(--lh-illustration-danger, currentColor); }
+  </style>
+  <g class="lh-soft" stroke="none" fill="currentColor">
+    <rect x="42" y="28" width="76" height="58" rx="16" />
+  </g>
+  <g class="lh-base">
+    <rect x="50" y="34" width="60" height="44" rx="10" />
+    <path d="M62 48h28" />
+    <path d="M62 60h18" />
+  </g>
+  <g class="lh-muted">
+    <path d="M53 88h54" />
+    <path d="M94 59a10 10 0 0 1 12 3" />
+  </g>
+  <g class="lh-warning">
+    <path d="M101 42 116 68H86l15-26Z" />
+    <path d="M101 51v7" />
+    <path d="M101 63h.01" />
+  </g>
+  <g class="lh-danger">
+    <path d="M68 68h10" />
+  </g>
+</svg>

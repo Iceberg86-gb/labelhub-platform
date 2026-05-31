@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    .lh-base { color: var(--lh-illustration-base, currentColor); }
+    .lh-muted { color: var(--lh-illustration-muted, currentColor); opacity: .52; }
+    .lh-soft { color: var(--lh-illustration-soft, currentColor); opacity: .1; }
+    .lh-accent { color: var(--lh-illustration-accent, currentColor); }
+  </style>
+  <g class="lh-soft" stroke="none" fill="currentColor">
+    <rect x="40" y="28" width="80" height="60" rx="16" />
+  </g>
+  <g class="lh-base">
+    <rect x="45" y="54" width="48" height="30" rx="8" />
+    <path d="M49 54v-7a6 6 0 0 1 6-6h22a6 6 0 0 1 6 6v7" />
+    <rect x="96" y="43" width="22" height="30" rx="6" />
+    <path d="M96 51h22" />
+  </g>
+  <g class="lh-muted">
+    <path d="M59 66h20" />
+    <path d="M103 60h8" />
+    <path d="M50 91h58" />
+  </g>
+  <g class="lh-accent">
+    <path d="M69 35v18" />
+    <path d="m63.5 47.5 5.5 5.5 5.5-5.5" />
+  </g>
+</svg>
