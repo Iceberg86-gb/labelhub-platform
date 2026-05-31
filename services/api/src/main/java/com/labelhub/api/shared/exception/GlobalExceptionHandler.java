@@ -35,6 +35,7 @@ import com.labelhub.api.module.session.exception.TaskNotAvailableException;
 import com.labelhub.api.module.submission.validation.AnswerValidationException;
 import com.labelhub.api.module.task.service.IllegalStateTransitionException;
 import com.labelhub.api.module.task.service.TaskAccessDeniedException;
+import com.labelhub.api.module.task.service.TaskEditingLockedException;
 import com.labelhub.api.module.task.service.TaskNotFoundException;
 import com.labelhub.api.module.task.service.TaskPublishGuardException;
 import java.util.List;
@@ -148,6 +149,12 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> taskPublishedLock(TaskPublishedLockException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
             .body(error("TASK_PUBLISHED_LOCK", exception.getMessage()));
+    }
+
+    @ExceptionHandler(TaskEditingLockedException.class)
+    ResponseEntity<ApiError> taskEditingLocked(TaskEditingLockedException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(error("TASK_EDITING_LOCKED", exception.getMessage()));
     }
 
     @ExceptionHandler(AiProviderFailureException.class)

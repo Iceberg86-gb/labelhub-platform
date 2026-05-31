@@ -1,5 +1,5 @@
-import { Button, Card, Empty, Spin, Timeline, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconArrowLeft, IconRefresh } from '@douyinfe/semi-icons';
+import { Button, Card, Empty, Spin, Timeline, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { IconArrowLeft, IconEdit, IconRefresh } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { TaskStatusBadge } from '../../entities/task/TaskStatusBadge';
@@ -18,6 +18,7 @@ import { useTaskTransitionsQuery, type TaskTransition } from '../../features/tas
 import { TransitionButtons } from '../../features/task/transition-task/TransitionButtons';
 import { TransitionTaskModal } from '../../features/task/transition-task/TransitionTaskModal';
 import { transitionLabels } from '../../features/task/transition-task/transitionRules';
+import { EditTaskModal } from '../../features/task/update-task/EditTaskModal';
 import { getUser } from '../../shared/api/auth-storage';
 
 function parseTaskId(raw?: string) {
@@ -78,6 +79,7 @@ export function OwnerTaskDetailPage() {
   const taskId = parseTaskId(rawTaskId);
   const [targetStatus, setTargetStatus] = useState<TaskStatus | null>(null);
   const [aiReviewRuleEditorOpen, setAiReviewRuleEditorOpen] = useState(false);
+  const [taskEditorOpen, setTaskEditorOpen] = useState(false);
   const taskQuery = useTaskDetailQuery(taskId ?? 0);
   const transitionsQuery = useTaskTransitionsQuery(taskId ?? 0);
   const schemasQuery = useSchemasQuery({ page: 1, size: 100 });
@@ -85,6 +87,7 @@ export function OwnerTaskDetailPage() {
   const task = taskQuery.data;
 
   const tags = useMemo(() => task?.tags?.filter(Boolean) ?? [], [task?.tags]);
+  const editableTaskFields = task?.status === 'draft' || task?.status === 'paused';
   const taskSchema = useMemo(
     () => (task ? findSchemaForTask(schemasQuery.data?.items ?? [], task.id) : undefined),
     [schemasQuery.data?.items, task],
@@ -172,7 +175,18 @@ export function OwnerTaskDetailPage() {
               </Typography.Title>
               <Typography.Text type="tertiary">{task.description || '暂无任务描述。'}</Typography.Text>
             </div>
-            <TaskStatusBadge status={task.status} />
+            <div className="task-detail-actions">
+              <TaskStatusBadge status={task.status} />
+              <Tooltip content={editableTaskFields ? '编辑任务基础信息' : '仅草稿或已暂停任务可编辑'}>
+                <Button
+                  icon={<IconEdit />}
+                  onClick={() => setTaskEditorOpen(true)}
+                  disabled={!editableTaskFields}
+                >
+                  编辑
+                </Button>
+              </Tooltip>
+            </div>
           </div>
 
           <dl className="task-meta-grid">
@@ -193,6 +207,13 @@ export function OwnerTaskDetailPage() {
               <dd>{getUser()?.displayName ?? '当前用户'}</dd>
             </div>
           </dl>
+
+          <div className="task-extended-copy">
+            <Typography.Title heading={6}>富文本说明</Typography.Title>
+            <Typography.Paragraph>{task.instructionRichText || '暂无富文本说明。'}</Typography.Paragraph>
+            <Typography.Title heading={6}>奖励规则</Typography.Title>
+            <pre>{task.rewardRule ? JSON.stringify(task.rewardRule, null, 2) : '暂无奖励规则。'}</pre>
+          </div>
 
           <div className="transition-action-panel">
             <Typography.Title heading={5}>状态操作</Typography.Title>
@@ -241,6 +262,7 @@ export function OwnerTaskDetailPage() {
       </div>
 
       <TransitionTaskModal task={task} targetStatus={targetStatus} onClose={() => setTargetStatus(null)} />
+      <EditTaskModal task={task} visible={taskEditorOpen} onClose={() => setTaskEditorOpen(false)} />
       <AiReviewRuleEditorDrawer
         taskId={task.id}
         open={aiReviewRuleEditorOpen}

@@ -235,6 +235,34 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+    patch:
+      tags: [Tasks]
+      operationId: updateTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Updated task detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
     delete:
       tags: [Tasks]
       operationId: deleteTask
@@ -1563,6 +1591,28 @@ components:
           type: string
           format: date-time
     CreateTaskRequest:
+      type: object
+      required: [title, quotaTotal, deadlineAt]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        instructionRichText:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        rewardRule:
+          type: object
+          additionalProperties: true
+        deadlineAt:
+          type: string
+          format: date-time
+        quotaTotal:
+          type: integer
+    UpdateTaskRequest:
       type: object
       required: [title, quotaTotal, deadlineAt]
       properties:

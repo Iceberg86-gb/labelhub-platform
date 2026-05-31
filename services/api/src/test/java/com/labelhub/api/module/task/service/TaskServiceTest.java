@@ -326,6 +326,47 @@ class TaskServiceTest {
         verify(taskMapper, never()).updateById(any(TaskEntity.class));
     }
 
+    @Test
+    void updateTask_updates_basic_fields_when_task_is_draft() {
+        TaskEntity task = task(1L, TaskStatus.DRAFT);
+        when(taskMapper.selectByIdForUpdate(1L)).thenReturn(task);
+        when(taskMapper.updateById(any(TaskEntity.class))).thenReturn(1);
+
+        TaskEntity updated = taskService.updateTask(1L, 1001L, TaskUpdateCommand.builder()
+            .title("Updated title")
+            .description("Updated description")
+            .instructionRichText("# Rich instructions")
+            .tags(List.of("quality", "image"))
+            .rewardRule(Map.of("type", "fixed", "amount", 12))
+            .deadlineAt(LocalDateTime.parse("2026-05-24T00:00:00"))
+            .quotaTotal(25)
+            .build());
+
+        assertThat(updated.getTitle()).isEqualTo("Updated title");
+        assertThat(updated.getDescription()).isEqualTo("Updated description");
+        assertThat(updated.getInstructionRichText()).isEqualTo("# Rich instructions");
+        assertThat(updated.getTags()).containsExactly("quality", "image");
+        assertThat(updated.getRewardRule()).containsEntry("type", "fixed").containsEntry("amount", 12);
+        assertThat(updated.getDeadlineAt()).isEqualTo(LocalDateTime.parse("2026-05-24T00:00:00"));
+        assertThat(updated.getQuotaTotal()).isEqualTo(25);
+        assertThat(updated.getUpdatedAt()).isEqualTo(LocalDateTime.parse("2026-05-23T12:00:00"));
+        verify(taskMapper).updateById(task);
+    }
+
+    @Test
+    void updateTask_rejects_published_or_ended_tasks() {
+        when(taskMapper.selectByIdForUpdate(1L)).thenReturn(task(1L, TaskStatus.PUBLISHED));
+
+        assertThatThrownBy(() -> taskService.updateTask(1L, 1001L, TaskUpdateCommand.builder()
+            .title("Updated title")
+            .quotaTotal(25)
+            .build()))
+            .isInstanceOf(TaskEditingLockedException.class)
+            .hasMessageContaining("published");
+
+        verify(taskMapper, never()).updateById(any(TaskEntity.class));
+    }
+
     private TaskEntity publishableTask(Long id, TaskStatus status) {
         TaskEntity task = task(id, status);
         task.setQuotaTotal(10);

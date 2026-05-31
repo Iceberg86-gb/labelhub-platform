@@ -815,6 +815,13 @@ a {
   overflow-wrap: anywhere;
 }
 
+.task-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
 .task-status-badge {
   display: inline-flex;
   align-items: center;
@@ -853,6 +860,26 @@ a {
   margin: 0;
   color: #172033;
   font-weight: 700;
+}
+
+.task-extended-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 16px;
+  border: 1px solid #e5eaf1;
+  background: #f8fafc;
+}
+
+.task-extended-copy pre {
+  max-height: 220px;
+  margin: 0;
+  overflow: auto;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
 }
 
 .transition-action-panel,
