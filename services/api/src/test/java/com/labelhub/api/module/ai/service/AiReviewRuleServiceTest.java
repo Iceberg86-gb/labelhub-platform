@@ -57,6 +57,8 @@ class AiReviewRuleServiceTest {
         assertThat(result.rule().getCurrentPromptVersionId()).isEqualTo(7L);
         assertThat(result.rule().getDimensionsJson()).isEqualTo("[\"accuracy\",\"safety\"]");
         assertThat(result.rule().getThreshold()).isEqualByComparingTo("0.8000");
+        assertThat(result.rule().getPassThreshold()).isEqualByComparingTo("0.8000");
+        assertThat(result.rule().getRejectThreshold()).isEqualByComparingTo("0.2000");
         assertThat(result.rule().getStatusCode()).isEqualTo("draft");
         assertThat(result.rule().getCreatedBy()).isEqualTo(1001L);
         assertThat(result.isCurrent()).isFalse();
@@ -79,6 +81,8 @@ class AiReviewRuleServiceTest {
         assertThat(result.rule().getVersionNumber()).isEqualTo(4);
         assertThat(result.rule().getCurrentPromptVersionId()).isEqualTo(7L);
         assertThat(result.rule().getThreshold()).isEqualByComparingTo("0.9000");
+        assertThat(result.rule().getPassThreshold()).isEqualByComparingTo("0.9000");
+        assertThat(result.rule().getRejectThreshold()).isEqualByComparingTo("0.2000");
         verify(promptVersionService).create("Review prompt", 1001L);
     }
 
@@ -114,6 +118,15 @@ class AiReviewRuleServiceTest {
         assertThatThrownBy(() -> service.saveRule(request(44L, "Review prompt", List.of("accuracy"), "1.1000"), 1001L))
             .isInstanceOf(InvalidAiReviewRuleException.class)
             .hasMessageContaining("阈值必须在 0 到 1 之间");
+    }
+
+    @Test
+    void saveRule_rejects_three_zone_thresholds_when_reject_is_not_below_pass() {
+        AiReviewRuleRequest request = request(44L, "Review prompt", List.of("accuracy"), "0.7000", "0.7000");
+
+        assertThatThrownBy(() -> service.saveRule(request, 1001L))
+            .isInstanceOf(InvalidAiReviewRuleException.class)
+            .hasMessageContaining("打回阈值必须小于通过阈值");
     }
 
     @Test
@@ -207,7 +220,24 @@ class AiReviewRuleServiceTest {
     }
 
     private AiReviewRuleRequest request(Long taskId, String prompt, List<String> dimensions, String threshold) {
-        return new AiReviewRuleRequest(taskId, prompt, dimensions, new BigDecimal(threshold));
+        return request(taskId, prompt, dimensions, threshold, "0.2000");
+    }
+
+    private AiReviewRuleRequest request(
+        Long taskId,
+        String prompt,
+        List<String> dimensions,
+        String passThreshold,
+        String rejectThreshold
+    ) {
+        AiReviewRuleRequest request = new AiReviewRuleRequest();
+        request.setTaskId(taskId);
+        request.setPromptTemplate(prompt);
+        request.setDimensions(dimensions);
+        request.setThreshold(new BigDecimal(passThreshold));
+        request.setPassThreshold(new BigDecimal(passThreshold));
+        request.setRejectThreshold(new BigDecimal(rejectThreshold));
+        return request;
     }
 
     private TaskEntity task(Long taskId, Long ownerId) {
@@ -239,6 +269,8 @@ class AiReviewRuleServiceTest {
         entity.setCurrentPromptVersionId(promptVersionId);
         entity.setDimensionsJson("[\"accuracy\"]");
         entity.setThreshold(new BigDecimal("0.8000"));
+        entity.setPassThreshold(new BigDecimal("0.8000"));
+        entity.setRejectThreshold(new BigDecimal("0.2000"));
         entity.setStatusCode(status);
         entity.setCreatedBy(1001L);
         return entity;

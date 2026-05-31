@@ -18,6 +18,8 @@ public class AiReviewRuleEntity {
     private Long currentPromptVersionId;
     private String dimensionsJson;
     private BigDecimal threshold;
+    private BigDecimal passThreshold;
+    private BigDecimal rejectThreshold;
     @TableField("status")
     private String statusCode;
     private Long createdBy;
@@ -36,6 +38,10 @@ public class AiReviewRuleEntity {
     public void setDimensionsJson(String dimensionsJson) { this.dimensionsJson = dimensionsJson; }
     public BigDecimal getThreshold() { return threshold; }
     public void setThreshold(BigDecimal threshold) { this.threshold = threshold; }
+    public BigDecimal getPassThreshold() { return passThreshold; }
+    public void setPassThreshold(BigDecimal passThreshold) { this.passThreshold = passThreshold; }
+    public BigDecimal getRejectThreshold() { return rejectThreshold; }
+    public void setRejectThreshold(BigDecimal rejectThreshold) { this.rejectThreshold = rejectThreshold; }
     public String getStatusCode() { return statusCode; }
     public void setStatusCode(String statusCode) { this.statusCode = statusCode; }
     public Long getCreatedBy() { return createdBy; }

@@ -66,7 +66,14 @@ class AiReviewControllerTest {
 
     @Test
     void saveAiReviewRule_delegates_to_service_with_current_owner() {
-        AiReviewRuleRequest request = new AiReviewRuleRequest(44L, "Review prompt", List.of("accuracy"), new BigDecimal("0.8"));
+        AiReviewRuleRequest request = new AiReviewRuleRequest(
+            44L,
+            "Review prompt",
+            List.of("accuracy"),
+            new BigDecimal("0.8"),
+            new BigDecimal("0.2")
+        );
+        request.setThreshold(new BigDecimal("0.8"));
         AiReviewRuleView view = view();
         AiReviewRule dto = new AiReviewRule();
         when(aiReviewRuleService.saveRule(request, 1001L)).thenReturn(view);

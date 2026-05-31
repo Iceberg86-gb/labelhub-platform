@@ -1255,7 +1255,13 @@ export interface components {
             taskId: number;
             promptTemplate: string;
             dimensions: string[];
-            threshold: number;
+            /**
+             * @deprecated
+             * @description Legacy pass threshold alias retained for v1 clients. New clients should send passThreshold.
+             */
+            threshold?: number | null;
+            passThreshold: number;
+            rejectThreshold: number;
         };
         AiReviewRule: {
             /** Format: int64 */
@@ -1267,7 +1273,10 @@ export interface components {
             promptVersionId: number;
             promptTemplate: string;
             dimensions: string[];
+            /** @description Legacy pass threshold alias retained for v1 clients. Mirrors passThreshold when present. */
             threshold: number;
+            passThreshold: number;
+            rejectThreshold: number;
             status: components["schemas"]["AiReviewRuleStatus"];
             /** @description Server-derived. True when this rule id equals the task's current_ai_review_rule_id. */
             isCurrent: boolean;

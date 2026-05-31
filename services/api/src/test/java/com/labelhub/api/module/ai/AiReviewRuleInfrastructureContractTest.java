@@ -35,19 +35,30 @@ class AiReviewRuleInfrastructureContractTest {
     }
 
     @Test
+    void ai_review_rules_migration_adds_nullable_three_zone_thresholds_for_p8() throws IOException {
+        String migrations = migrationsText();
+
+        assertThat(migrations)
+            .contains("ADD COLUMN pass_threshold DECIMAL(8,4) NULL")
+            .contains("ADD COLUMN reject_threshold DECIMAL(8,4) NULL");
+    }
+
+    @Test
     void ai_review_rule_openapi_response_is_explicit_and_keeps_request_prompt_template_input() throws IOException {
         String openApi = Files.readString(Path.of("../../packages/contracts/openapi/labelhub.yaml"));
 
         assertThat(openApi)
             .contains("/ai-review/rules/{ruleId}/publish:")
             .contains("operationId: publishAiReviewRule")
-            .contains("AiReviewRuleRequest:\n      type: object\n      required: [taskId, promptTemplate, dimensions, threshold]")
+            .contains("AiReviewRuleRequest:\n      type: object\n      required: [taskId, promptTemplate, dimensions, passThreshold, rejectThreshold]")
             .contains("AiReviewRuleStatus:")
             .contains("enum: [draft, published]")
             .contains("AiReviewRule:\n      type: object")
-            .contains("required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, status, isCurrent, createdAt]")
+            .contains("required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, passThreshold, rejectThreshold, status, isCurrent, createdAt]")
             .contains("promptVersionId:")
             .contains("versionNo:")
+            .contains("passThreshold:")
+            .contains("rejectThreshold:")
             .contains("isCurrent:")
             .contains("activatedAt:");
 

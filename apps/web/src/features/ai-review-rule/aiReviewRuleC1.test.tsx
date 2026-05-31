@@ -47,6 +47,8 @@ describe('AI review rule C1 hooks', () => {
         promptTemplate: 'review prompt',
         dimensions: ['准确性'],
         threshold: 0.8,
+        passThreshold: 0.8,
+        rejectThreshold: 0.2,
       }),
     ).resolves.toEqual(rule);
     expect(postMock).toHaveBeenCalledWith('/ai-review/rules', {
@@ -55,6 +57,8 @@ describe('AI review rule C1 hooks', () => {
         promptTemplate: 'review prompt',
         dimensions: ['准确性'],
         threshold: 0.8,
+        passThreshold: 0.8,
+        rejectThreshold: 0.2,
       },
     });
   });
@@ -72,6 +76,8 @@ describe('AI review rule C1 hooks', () => {
         promptTemplate: 'review prompt',
         dimensions: ['准确性', '准确性'],
         threshold: 0.8,
+        passThreshold: 0.8,
+        rejectThreshold: 0.2,
       }),
     ).rejects.toMatchObject({
       status: 400,
@@ -134,6 +140,8 @@ function makeRule(overrides: Partial<AiReviewRule> = {}): AiReviewRule {
     promptTemplate: 'review prompt',
     dimensions: ['准确性'],
     threshold: 0.8,
+    passThreshold: 0.8,
+    rejectThreshold: 0.2,
     status: 'draft' as const,
     isCurrent: false,
     createdAt: '2026-05-28T00:00:00Z',

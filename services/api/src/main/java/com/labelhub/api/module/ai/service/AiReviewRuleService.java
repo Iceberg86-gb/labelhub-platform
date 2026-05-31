@@ -51,7 +51,7 @@ public class AiReviewRuleService {
     public AiReviewRuleView saveRule(AiReviewRuleRequest request, Long ownerId) {
         List<String> dimensions = validateDimensions(request.getDimensions());
         validatePromptTemplate(request.getPromptTemplate());
-        validateThreshold(request.getThreshold());
+        ThresholdPair thresholds = validateThresholds(request.getPassThreshold(), request.getRejectThreshold(), request.getThreshold());
         TaskEntity task = requireOwnedTask(request.getTaskId(), ownerId);
         PromptVersionEntity promptVersion = promptVersionService.create(request.getPromptTemplate(), ownerId);
 
@@ -59,7 +59,9 @@ public class AiReviewRuleService {
         entity.setTaskId(task.getId());
         entity.setCurrentPromptVersionId(promptVersion.getId());
         entity.setDimensionsJson(writeDimensions(dimensions));
-        entity.setThreshold(request.getThreshold());
+        entity.setThreshold(thresholds.passThreshold());
+        entity.setPassThreshold(thresholds.passThreshold());
+        entity.setRejectThreshold(thresholds.rejectThreshold());
         entity.setStatusCode("draft");
         entity.setCreatedBy(ownerId);
 
@@ -168,6 +170,23 @@ public class AiReviewRuleService {
         if (threshold == null || threshold.compareTo(ZERO) < 0 || threshold.compareTo(ONE) > 0) {
             throw new InvalidAiReviewRuleException("threshold", "阈值必须在 0 到 1 之间");
         }
+    }
+
+    private ThresholdPair validateThresholds(
+        BigDecimal passThreshold,
+        BigDecimal rejectThreshold,
+        BigDecimal legacyThreshold
+    ) {
+        BigDecimal effectivePass = passThreshold == null ? legacyThreshold : passThreshold;
+        validateThreshold(effectivePass);
+        validateThreshold(rejectThreshold);
+        if (rejectThreshold.compareTo(effectivePass) >= 0) {
+            throw new InvalidAiReviewRuleException("rejectThreshold", "打回阈值必须小于通过阈值");
+        }
+        return new ThresholdPair(effectivePass, rejectThreshold);
+    }
+
+    private record ThresholdPair(BigDecimal passThreshold, BigDecimal rejectThreshold) {
     }
 
     private String writeDimensions(List<String> dimensions) {

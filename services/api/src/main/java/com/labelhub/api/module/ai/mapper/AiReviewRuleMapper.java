@@ -17,16 +17,16 @@ public interface AiReviewRuleMapper {
 
     @Insert("""
         INSERT INTO ai_review_rules
-        (task_id, version_no, current_prompt_version_id, dimensions_json, threshold, status, created_by, created_at, activated_at)
+        (task_id, version_no, current_prompt_version_id, dimensions_json, threshold, pass_threshold, reject_threshold, status, created_by, created_at, activated_at)
         VALUES
-        (#{taskId}, #{versionNumber}, #{currentPromptVersionId}, #{dimensionsJson}, #{threshold}, #{statusCode}, #{createdBy}, NOW(3), #{activatedAt})
+        (#{taskId}, #{versionNumber}, #{currentPromptVersionId}, #{dimensionsJson}, #{threshold}, #{passThreshold}, #{rejectThreshold}, #{statusCode}, #{createdBy}, NOW(3), #{activatedAt})
         """)
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(AiReviewRuleEntity entity);
 
     @Select("""
         SELECT id, task_id, version_no, current_prompt_version_id, dimensions_json,
-               threshold, status, created_by, created_at, activated_at
+               threshold, pass_threshold, reject_threshold, status, created_by, created_at, activated_at
         FROM ai_review_rules
         WHERE id = #{id}
         """)
@@ -44,7 +44,7 @@ public interface AiReviewRuleMapper {
 
     @Select("""
         SELECT id, task_id, version_no, current_prompt_version_id, dimensions_json,
-               threshold, status, created_by, created_at, activated_at
+               threshold, pass_threshold, reject_threshold, status, created_by, created_at, activated_at
         FROM ai_review_rules
         WHERE task_id = #{taskId}
         ORDER BY version_no DESC
@@ -63,7 +63,7 @@ public interface AiReviewRuleMapper {
 
     @Select("""
         SELECT id, task_id, version_no, current_prompt_version_id, dimensions_json,
-               threshold, status, created_by, created_at, activated_at
+               threshold, pass_threshold, reject_threshold, status, created_by, created_at, activated_at
         FROM ai_review_rules
         WHERE task_id = #{taskId}
         ORDER BY version_no ASC

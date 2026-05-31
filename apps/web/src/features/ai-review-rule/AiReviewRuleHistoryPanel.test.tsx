@@ -108,6 +108,8 @@ function makeRule(overrides: Partial<AiReviewRule> = {}): AiReviewRule {
     promptTemplate: 'review prompt',
     dimensions: ['准确性'],
     threshold: 0.8,
+    passThreshold: 0.8,
+    rejectThreshold: 0.2,
     status: 'draft',
     isCurrent: false,
     createdAt: '2026-05-28T00:00:00Z',
