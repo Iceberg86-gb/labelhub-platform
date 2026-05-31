@@ -6,6 +6,8 @@ import { TaskStatusBadge } from '../../entities/task/TaskStatusBadge';
 import { CreateTaskModal } from '../../features/task/create-task/CreateTaskModal';
 import { useDeleteTaskMutation } from '../../features/task/delete-task/useDeleteTaskMutation';
 import { useTasksQuery, type Task, type TaskStatus } from '../../features/task/list-tasks/useTasksQuery';
+import { IconDataset, IconDesignerBlock, IconStatusFlow, IconTask } from '../../shared/ui/LabelHubIcons';
+import { RoleBadge } from '../../shared/ui/RoleBadge';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 10;
@@ -144,22 +146,60 @@ export function OwnerTasksListPage() {
   const data = tasksQuery.data;
   const items = data?.items ?? [];
   const isEmpty = !tasksQuery.isLoading && !tasksQuery.isError && items.length === 0;
+  const pageStatusCounts = items.reduce<Record<TaskStatus, number>>(
+    (counts, task) => {
+      counts[task.status] += 1;
+      return counts;
+    },
+    { draft: 0, ended: 0, paused: 0, published: 0 },
+  );
+  const quotaClaimed = items.reduce((sum, task) => sum + task.quotaClaimed, 0);
+  const quotaTotal = items.reduce((sum, task) => sum + task.quotaTotal, 0);
 
   return (
-    <section className="tasks-page" aria-label="Owner task list">
-      <div className="page-heading">
-        <div>
+    <section className="tasks-page owner-task-page" aria-label="Owner task list">
+      <header className="owner-page-hero">
+        <div className="owner-page-hero__copy">
+          <div className="owner-page-hero__meta">
+            <RoleBadge role="OWNER" />
+            <Typography.Text>任务配置与发布</Typography.Text>
+          </div>
           <Typography.Title heading={3} className="page-title">
             任务管理
           </Typography.Title>
-          <Typography.Text type="tertiary">创建任务、查看配额和状态，M1 先完成 Owner 管理闭环。</Typography.Text>
+          <Typography.Text type="tertiary">
+            管理标注任务的生命周期、题量配额与后续 Designer / 数据集配置入口。
+          </Typography.Text>
         </div>
         <Button icon={<IconPlus />} theme="solid" type="primary" onClick={() => setCreateVisible(true)}>
           创建任务
         </Button>
-      </div>
+      </header>
 
-      <div className="task-toolbar">
+      <section className="owner-task-overview" aria-label="任务概览">
+        <div className="owner-task-stat owner-task-stat--primary">
+          <span className="owner-task-stat__icon"><IconTask /></span>
+          <span>任务总数</span>
+          <strong>{data?.total ?? 0}</strong>
+        </div>
+        <div className="owner-task-stat">
+          <span className="owner-task-stat__icon"><IconStatusFlow /></span>
+          <span>本页发布中</span>
+          <strong>{pageStatusCounts.published}</strong>
+        </div>
+        <div className="owner-task-stat">
+          <span className="owner-task-stat__icon"><IconDesignerBlock /></span>
+          <span>本页草稿</span>
+          <strong>{pageStatusCounts.draft}</strong>
+        </div>
+        <div className="owner-task-stat">
+          <span className="owner-task-stat__icon"><IconDataset /></span>
+          <span>本页配额</span>
+          <strong>{quotaClaimed}/{quotaTotal}</strong>
+        </div>
+      </section>
+
+      <div className="task-toolbar owner-task-toolbar">
         <Space>
           <Select
             aria-label="任务状态筛选"
@@ -177,7 +217,7 @@ export function OwnerTasksListPage() {
         <Typography.Text type="tertiary">共 {data?.total ?? 0} 条</Typography.Text>
       </div>
 
-      <div className="task-table-surface">
+      <div className="task-table-surface task-table-surface--owner">
         {tasksQuery.isLoading ? (
           <div className="task-state-panel">
             <Spin size="large" />
