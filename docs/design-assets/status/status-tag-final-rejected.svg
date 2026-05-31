@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="32" viewBox="0 0 180 32" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    .lh-danger { color: var(--lh-status-danger, currentColor); }
+    .lh-muted { color: var(--lh-status-muted, currentColor); opacity: .5; }
+    .lh-fill { color: var(--lh-status-danger-soft, currentColor); opacity: .2; }
+  </style>
+  <rect class="lh-fill" x="1" y="1" width="178" height="30" rx="15" stroke="none" fill="currentColor" />
+  <rect class="lh-danger" x="1" y="1" width="178" height="30" rx="15" />
+  <g class="lh-danger">
+    <circle cx="19" cy="16" r="6" />
+    <path d="M16.5 13.5 21.5 18.5" />
+    <path d="M21.5 13.5 16.5 18.5" />
+    <path d="M30 16h10" />
+  </g>
+  <g class="lh-muted">
+    <path d="M48 12h48" />
+    <path d="M48 20h70" />
+  </g>
+</svg>

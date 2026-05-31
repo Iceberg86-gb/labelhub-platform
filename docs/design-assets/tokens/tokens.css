@@ -1,0 +1,119 @@
+:root {
+  /* Background / Surface */
+  --color-app-background: #FAFBFA;
+  --color-main-surface: #FFFFFF;
+  --color-surface-subtle: #F6F8F7;
+  --color-panel-surface: #F3F6F4;
+  --color-sidebar-gradient-top: #F7F9F8;
+  --color-sidebar-gradient-mid: #F1F5F3;
+  --color-sidebar-gradient-end: #ECF2EF;
+  --color-sidebar-gradient: linear-gradient(180deg, var(--color-sidebar-gradient-top) 0%, var(--color-sidebar-gradient-mid) 52%, var(--color-sidebar-gradient-end) 100%);
+  --color-hover-surface: #F2F4F3;
+  --color-selected-surface: #EEF6FF;
+
+  /* Text */
+  --color-text-primary: #171A1D;
+  --color-text-secondary: #4F575E;
+  --color-text-tertiary: #8A9299;
+  --color-text-disabled: #B8BEC3;
+  --color-text-inverse: #FFFFFF;
+
+  /* Border / Divider */
+  --color-border-subtle: #EEF0F1;
+  --color-border-default: #E2E6E8;
+  --color-border-strong: #CCD3D7;
+  --color-focus-ring: #8DBBFF;
+
+  /* Primary Action */
+  --color-primary-black: #0D0D0E;
+  --color-primary-black-hover: #242426;
+  --color-primary-black-pressed: #000000;
+
+  /* Accent */
+  --color-accent-blue: #2563EB;
+  --color-accent-blue-hover: #1D4ED8;
+  --color-accent-blue-soft: #EAF2FF;
+
+  /* Semantic */
+  --color-success: #3F7D58;
+  --color-success-soft: #EAF5EE;
+  --color-warning: #A66A1F;
+  --color-warning-soft: #FFF4E3;
+  --color-danger: #B54747;
+  --color-danger-soft: #FCECEC;
+  --color-info: #3B6EA8;
+  --color-info-soft: #EAF2FB;
+
+  /* Spacing */
+  --space-2: 2px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-28: 28px;
+  --space-32: 32px;
+  --space-36: 36px;
+  --space-40: 40px;
+  --space-44: 44px;
+  --space-48: 48px;
+
+  /* Radius */
+  --radius-button-sm: 8px;
+  --radius-button-default: 10px;
+  --radius-input: 12px;
+  --radius-card: 14px;
+  --radius-panel: 14px;
+  --radius-drawer: 18px;
+  --radius-modal: 18px;
+  --radius-pill: 999px;
+  --radius-icon-button-circle: 999px;
+
+  /* Shadow */
+  --shadow-popover: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-modal: 0 24px 64px rgba(15, 23, 42, 0.14);
+
+  /* Typography */
+  --font-family-sans: Inter, "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --font-size-display: 28px;
+  --line-height-display: 36px;
+  --font-weight-display: 700;
+
+  --font-size-page-title: 22px;
+  --line-height-page-title: 30px;
+  --font-weight-page-title: 700;
+
+  --font-size-section-title: 18px;
+  --line-height-section-title: 26px;
+  --font-weight-section-title: 650;
+
+  --font-size-card-title: 15px;
+  --line-height-card-title: 22px;
+  --font-weight-card-title: 600;
+
+  --font-size-body: 14px;
+  --line-height-body: 22px;
+  --font-weight-body: 400;
+
+  --font-size-body-strong: 14px;
+  --line-height-body-strong: 22px;
+  --font-weight-body-strong: 600;
+
+  --font-size-small: 13px;
+  --line-height-small: 20px;
+  --font-weight-small: 400;
+
+  --font-size-caption: 12px;
+  --line-height-caption: 18px;
+  --font-weight-caption: 400;
+
+  --font-size-table-header: 12px;
+  --line-height-table-header: 16px;
+  --font-weight-table-header: 600;
+
+  --font-size-micro-label: 11px;
+  --line-height-micro-label: 16px;
+  --font-weight-micro-label: 600;
+}

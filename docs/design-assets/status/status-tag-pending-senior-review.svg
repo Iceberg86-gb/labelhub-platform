@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="32" viewBox="0 0 180 32" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    .lh-active { color: var(--lh-status-active, currentColor); }
+    .lh-muted { color: var(--lh-status-muted, currentColor); opacity: .5; }
+    .lh-fill { color: var(--lh-status-active-soft, currentColor); opacity: .18; }
+  </style>
+  <rect class="lh-fill" x="1" y="1" width="178" height="30" rx="15" stroke="none" fill="currentColor" />
+  <rect class="lh-active" x="1" y="1" width="178" height="30" rx="15" />
+  <g class="lh-active">
+    <circle cx="19" cy="16" r="6" />
+    <circle cx="19" cy="16" r="2" stroke="none" fill="currentColor" />
+  </g>
+  <g class="lh-muted">
+    <path d="M34 12h56" />
+    <path d="M34 20h72" />
+  </g>
+</svg>

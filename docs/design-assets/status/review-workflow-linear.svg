@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="80" viewBox="0 0 360 80" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    .lh-muted { color: var(--lh-status-muted, currentColor); opacity: .45; }
+    .lh-active { color: var(--lh-status-active, currentColor); }
+    .lh-success { color: var(--lh-status-success, currentColor); }
+    .lh-danger { color: var(--lh-status-danger, currentColor); }
+    .lh-soft { color: var(--lh-status-soft, currentColor); opacity: .1; }
+  </style>
+  <g class="lh-soft" stroke="none" fill="currentColor">
+    <rect x="14" y="14" width="332" height="52" rx="18" />
+  </g>
+  <g class="lh-muted">
+    <path d="M48 40h64" />
+    <path d="M128 40h64" />
+    <path d="M208 40h42" />
+    <path d="M250 40c22 0 22-18 44-18" />
+    <path d="M250 40c22 0 22 18 44 18" />
+  </g>
+  <g class="lh-muted">
+    <circle cx="36" cy="40" r="6" />
+  </g>
+  <g class="lh-success">
+    <circle cx="120" cy="40" r="6" />
+    <path d="m116.8 40 2.2 2.2 4-4.6" />
+    <path d="M132 40h10" />
+    <path d="m139 37 3 3-3 3" />
+  </g>
+  <g class="lh-active">
+    <circle cx="204" cy="40" r="7" />
+    <circle cx="204" cy="40" r="2" stroke="none" fill="currentColor" />
+  </g>
+  <g class="lh-success">
+    <circle cx="306" cy="22" r="7" />
+    <path d="m302.5 22 2.4 2.4 4.6-5" />
+    <path d="M316 22h10" />
+  </g>
+  <g class="lh-danger">
+    <circle cx="306" cy="58" r="7" />
+    <path d="M303 55 309 61" />
+    <path d="M309 55 303 61" />
+    <path d="M316 58h10" />
+  </g>
+</svg>

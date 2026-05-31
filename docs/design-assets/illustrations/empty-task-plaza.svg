@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120" role="img" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <style>
+    .lh-base { color: var(--lh-illustration-base, currentColor); }
+    .lh-muted { color: var(--lh-illustration-muted, currentColor); opacity: .52; }
+    .lh-soft { color: var(--lh-illustration-soft, currentColor); opacity: .1; }
+    .lh-accent { color: var(--lh-illustration-accent, currentColor); }
+  </style>
+  <g class="lh-soft" stroke="none" fill="currentColor">
+    <rect x="42" y="24" width="76" height="66" rx="16" />
+  </g>
+  <g class="lh-base">
+    <rect x="48" y="28" width="64" height="58" rx="12" />
+    <path d="M63 44h33" />
+    <path d="M63 58h28" />
+    <path d="M63 72h18" />
+  </g>
+  <g class="lh-muted">
+    <path d="M50 94h60" />
+    <rect x="56" y="38" width="12" height="12" rx="3" />
+    <rect x="56" y="52" width="12" height="12" rx="3" />
+    <rect x="56" y="66" width="12" height="12" rx="3" />
+  </g>
+  <g class="lh-accent">
+    <path d="m59 44 2.4 2.4 4.2-5" />
+    <circle cx="108" cy="30" r="5" />
+    <path d="M108 27v6" />
+    <path d="M105 30h6" />
+  </g>
+</svg>
