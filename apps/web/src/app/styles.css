@@ -4248,6 +4248,10 @@ a {
   box-shadow: var(--shadow-popover);
 }
 
+.llm-scope-panel {
+  gap: var(--space-24);
+}
+
 .llm-panel-head {
   display: flex;
   align-items: flex-start;
@@ -4350,7 +4354,7 @@ a {
 
 .llm-scope-list {
   display: grid;
-  gap: var(--space-12);
+  gap: var(--space-16);
 }
 
 .llm-scope-item {
@@ -4359,7 +4363,8 @@ a {
   gap: var(--space-16);
   align-items: center;
   min-width: 0;
-  padding: var(--space-16) var(--space-18);
+  min-height: 92px;
+  padding: var(--space-18) var(--space-20);
   border-radius: var(--radius-card);
   background: var(--color-surface-subtle);
 }
@@ -4367,7 +4372,7 @@ a {
 .llm-scope-item span {
   display: grid;
   min-width: 0;
-  gap: var(--space-4);
+  gap: var(--space-8);
 }
 
 .llm-scope-item strong {
@@ -4387,8 +4392,8 @@ a {
 
 .llm-safety-note {
   display: grid;
-  gap: var(--space-6);
-  padding: var(--space-18);
+  gap: var(--space-8);
+  padding: var(--space-18) var(--space-20);
   border-radius: var(--radius-card);
   background: var(--color-info-soft);
 }
