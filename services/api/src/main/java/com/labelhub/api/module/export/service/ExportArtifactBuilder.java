@@ -8,12 +8,25 @@ import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.shared.canonical.Canonicalizer;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.TreeSet;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -48,8 +61,13 @@ public class ExportArtifactBuilder {
             bundle.ledgerEntries().stream().map(this::ledgerEntryToCanonical).toList()));
         files.add(buildJsonlFile("verdicts.jsonl",
             bundle.verdicts().values().stream().map(this::verdictToCanonical).toList()));
+        List<Map<String, String>> trainingRows = trainingResultRows(bundle);
+        List<String> trainingHeaders = trainingHeaders(trainingRows);
+        files.add(buildCsvFile("training-results.csv", trainingHeaders, trainingRows));
+        files.add(buildXlsxFile("training-results.xlsx", trainingHeaders, trainingRows));
 
         Map<String, Integer> recordCounts = buildRecordCounts(bundle);
+        recordCounts.put("trainingResults", trainingRows.size());
         Map<String, Object> manifestContent = new LinkedHashMap<>();
         manifestContent.put("taskId", bundle.task().getId());
         manifestContent.put("canonicalizationVersion", CANONICALIZATION_VERSION);
@@ -84,6 +102,64 @@ public class ExportArtifactBuilder {
         }
         byte[] content = builder.toString().getBytes(StandardCharsets.UTF_8);
         return new ArtifactFile(name, content, sha256(content), rows.size(), content.length);
+    }
+
+    private ArtifactFile buildCsvFile(String name, List<String> headers, List<Map<String, String>> rows) {
+        StringBuilder builder = new StringBuilder();
+        appendCsvRow(builder, headers);
+        for (Map<String, String> row : rows) {
+            appendCsvRow(builder, headers.stream().map(header -> row.getOrDefault(header, "")).toList());
+        }
+        byte[] content = builder.toString().getBytes(StandardCharsets.UTF_8);
+        return new ArtifactFile(name, content, sha256(content), rows.size() + 1, content.length);
+    }
+
+    private ArtifactFile buildXlsxFile(String name, List<String> headers, List<Map<String, String>> rows) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            var coreProperties = workbook.getProperties().getCoreProperties();
+            Date fixedDate = Date.from(Instant.EPOCH);
+            coreProperties.setCreated(Optional.of(fixedDate));
+            coreProperties.setModified(Optional.of(fixedDate));
+            coreProperties.setCreator("LabelHub");
+            coreProperties.setLastModifiedByUser("LabelHub");
+            coreProperties.setTitle("training-results");
+            coreProperties.setRevision("1");
+            var sheet = workbook.createSheet("training-results");
+            Row headerRow = sheet.createRow(0);
+            for (int index = 0; index < headers.size(); index++) {
+                headerRow.createCell(index).setCellValue(headers.get(index));
+            }
+            for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
+                Row row = sheet.createRow(rowIndex + 1);
+                Map<String, String> values = rows.get(rowIndex);
+                for (int columnIndex = 0; columnIndex < headers.size(); columnIndex++) {
+                    row.createCell(columnIndex).setCellValue(values.getOrDefault(headers.get(columnIndex), ""));
+                }
+            }
+            workbook.write(output);
+            byte[] content = output.toByteArray();
+            return new ArtifactFile(name, content, sha256(content), rows.size() + 1, content.length);
+        } catch (IOException exception) {
+            throw new UncheckedIOException("Unable to build Excel export artifact", exception);
+        }
+    }
+
+    private void appendCsvRow(StringBuilder builder, List<String> values) {
+        for (int index = 0; index < values.size(); index++) {
+            if (index > 0) {
+                builder.append(',');
+            }
+            builder.append(csv(values.get(index)));
+        }
+        builder.append('\n');
+    }
+
+    private String csv(String value) {
+        String safe = value == null ? "" : value;
+        if (safe.contains(",") || safe.contains("\"") || safe.contains("\n") || safe.contains("\r")) {
+            return "\"" + safe.replace("\"", "\"\"") + "\"";
+        }
+        return safe;
     }
 
     private String computeSourceStateHash(List<ArtifactFile> files) {
@@ -124,6 +200,83 @@ public class ExportArtifactBuilder {
         counts.put("aiCalls", bundle.aiCalls().size()); counts.put("aiCallInFields", bundle.aiCallInFields().size());
         counts.put("ledgerEntries", bundle.ledgerEntries().size()); counts.put("verdicts", bundle.verdicts().size());
         return counts;
+    }
+
+    private List<Map<String, String>> trainingResultRows(ExportFactBundle bundle) {
+        Map<Long, DatasetItemEntity> itemsById = new HashMap<>();
+        for (DatasetItemEntity item : bundle.datasetItems()) {
+            itemsById.put(item.getId(), item);
+        }
+        Map<Long, QualityLedgerEntryEntity> ledgerById = new HashMap<>();
+        for (QualityLedgerEntryEntity entry : bundle.ledgerEntries()) {
+            ledgerById.put(entry.getId(), entry);
+        }
+        return bundle.submissions().stream()
+            .sorted(Comparator.comparing(SubmissionEntity::getId, Comparator.nullsLast(Long::compareTo)))
+            .map(submission -> trainingResultRow(
+                submission,
+                itemsById.get(submission.getDatasetItemId()),
+                bundle.verdicts().get(submission.getId()),
+                ledgerById
+            ))
+            .toList();
+    }
+
+    private Map<String, String> trainingResultRow(
+        SubmissionEntity submission,
+        DatasetItemEntity item,
+        DerivedVerdictSnapshot verdict,
+        Map<Long, QualityLedgerEntryEntity> ledgerById
+    ) {
+        Map<String, String> row = new LinkedHashMap<>();
+        row.put("task_id", cell(submission.getTaskId()));
+        row.put("dataset_item_id", cell(submission.getDatasetItemId()));
+        row.put("submission_id", cell(submission.getId()));
+        row.put("schema_version_id", cell(submission.getSchemaVersionId()));
+        row.put("submitted_at", cell(submission.getCreatedAt()));
+        row.put("final_verdict", verdict == null ? "" : cell(verdict.status()));
+        QualityLedgerEntryEntity entry = verdict == null ? null : ledgerById.get(verdict.derivedFromEntryId());
+        row.put("reviewed_at", entry == null ? "" : cell(entry.getCreatedAt()));
+        addPayloadColumns(row, "item.", item == null ? Map.of() : item.getItemPayload());
+        addPayloadColumns(row, "answer.", submission.getAnswerPayload());
+        return row;
+    }
+
+    private void addPayloadColumns(Map<String, String> row, String prefix, Map<String, Object> payload) {
+        if (payload == null) {
+            return;
+        }
+        TreeSet<String> keys = new TreeSet<>(payload.keySet());
+        for (String key : keys) {
+            row.put(prefix + key, cell(payload.get(key)));
+        }
+    }
+
+    private List<String> trainingHeaders(List<Map<String, String>> rows) {
+        List<String> headers = new ArrayList<>(List.of(
+            "task_id",
+            "dataset_item_id",
+            "submission_id",
+            "schema_version_id",
+            "submitted_at",
+            "final_verdict",
+            "reviewed_at"
+        ));
+        TreeSet<String> itemHeaders = new TreeSet<>();
+        TreeSet<String> answerHeaders = new TreeSet<>();
+        for (Map<String, String> row : rows) {
+            for (String header : row.keySet()) {
+                if (header.startsWith("item.")) {
+                    itemHeaders.add(header);
+                }
+                if (header.startsWith("answer.")) {
+                    answerHeaders.add(header);
+                }
+            }
+        }
+        headers.addAll(itemHeaders);
+        headers.addAll(answerHeaders);
+        return headers;
     }
 
     private Long maxId(List<Long> ids) {
@@ -209,8 +362,31 @@ public class ExportArtifactBuilder {
         return value == null ? null : value.toString();
     }
 
+    private String cell(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof LocalDateTime dateTime) {
+            return asString(dateTime);
+        }
+        if (value instanceof String || value instanceof Number || value instanceof Boolean) {
+            return String.valueOf(value);
+        }
+        return canonicalizer.canonicalJson(value);
+    }
+
     private String sha256(byte[] value) {
-        return canonicalizer.sha256Hex(new String(value, StandardCharsets.UTF_8));
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(value);
+            StringBuilder hex = new StringBuilder(hashed.length * 2);
+            for (byte b : hashed) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available", exception);
+        }
     }
 
     private String sha256(String value) {

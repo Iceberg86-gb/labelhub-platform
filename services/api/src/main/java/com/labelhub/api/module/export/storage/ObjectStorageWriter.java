@@ -39,8 +39,15 @@ public class ObjectStorageWriter {
     }
 
     private String contentTypeFor(String objectKey) {
-        return objectKey.endsWith(".json") || objectKey.endsWith(".jsonl")
-            ? "application/json"
-            : "application/octet-stream";
+        if (objectKey.endsWith(".json") || objectKey.endsWith(".jsonl")) {
+            return "application/json";
+        }
+        if (objectKey.endsWith(".csv")) {
+            return "text/csv; charset=utf-8";
+        }
+        if (objectKey.endsWith(".xlsx")) {
+            return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        }
+        return "application/octet-stream";
     }
 }

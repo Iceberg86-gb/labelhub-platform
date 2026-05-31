@@ -116,7 +116,7 @@ class ExportServiceTest {
         assertThat(snap1.getFileHash()).isEqualTo(snap2.getFileHash());
         assertAuditEvent(AuditActions.EXPORT_SNAPSHOT_CREATE, "user", "export_snapshot");
 
-        verify(s3Client, times(22)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        verify(s3Client, times(26)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
 
     @Test
@@ -229,7 +229,7 @@ class ExportServiceTest {
         Map<String, Object> content = castMap(manifest.get("content"));
         List<Map<String, Object>> files = castList(content.get("files"));
 
-        assertThat(files).hasSize(10);
+        assertThat(files).hasSize(12);
         assertThat(files)
             .allSatisfy(file -> {
                 assertThat(file.get("name")).isNotNull();
@@ -410,7 +410,7 @@ class ExportServiceTest {
     private String writtenUtf8(String suffix) {
         ArgumentCaptor<PutObjectRequest> requestCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         ArgumentCaptor<RequestBody> bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
-        verify(s3Client, times(11)).putObject(requestCaptor.capture(), bodyCaptor.capture());
+        verify(s3Client, times(13)).putObject(requestCaptor.capture(), bodyCaptor.capture());
         List<PutObjectRequest> requests = requestCaptor.getAllValues();
         List<RequestBody> bodies = bodyCaptor.getAllValues();
         for (int i = 0; i < requests.size(); i++) {
