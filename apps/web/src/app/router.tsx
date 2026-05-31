@@ -7,6 +7,7 @@ import { RequireRole } from '../shared/auth/RequireRole';
 import { getAccessToken, getUser } from '../shared/api/auth-storage';
 import { defaultPathForRoles } from '../shared/auth/roleRoutes';
 import { LoginPage } from '../pages/login/LoginPage';
+import { HomePage } from '../pages/home/HomePage';
 import { OwnerTasksListPage } from '../pages/owner/OwnerTasksListPage';
 import { OwnerTaskDetailPage } from '../pages/owner/OwnerTaskDetailPage';
 import { OwnerSubmissionPage } from '../pages/owner/OwnerSubmissionPage';
@@ -66,6 +67,14 @@ export const router = createBrowserRouter(
         {
           index: true,
           element: <RootRedirect />,
+        },
+        {
+          path: 'home',
+          element: (
+            <RequireAuth>
+              <HomePage />
+            </RequireAuth>
+          ),
         },
         {
           path: 'owner/tasks',

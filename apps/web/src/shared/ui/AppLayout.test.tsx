@@ -3,8 +3,12 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@douyinfe/semi-ui', () => ({
-  Button: ({ children, className }: { children?: ReactNode; className?: string }) => (
-    <button className={className}>{children}</button>
+  Button: ({
+    children,
+    className,
+    ...props
+  }: { children?: ReactNode; className?: string } & Record<string, unknown>) => (
+    <button className={className} {...props}>{children}</button>
   ),
   Tag: ({ children, className }: { children?: ReactNode; className?: string }) => (
     <span className={className}>{children}</span>
@@ -60,7 +64,18 @@ describe('AppLayout design shell', () => {
     const html = renderToString(<AppLayout />);
 
     expect(html).toContain('app-shell app-shell--private');
+    expect(html).toContain('app-sidebar-toggle');
+    expect(html).toContain('aria-controls="app-sidebar"');
+    expect(html).toContain('app-topbar__brand');
+    expect(html).toContain('app-topbar__context');
+    expect(html).toContain('app-topbar__actions');
     expect(html).toContain('app-sidebar');
+    expect(html).toContain('id="app-sidebar"');
+    expect(html).toContain('app-sidebar__header');
+    expect(html).toContain('nav-section');
+    expect(html).toContain('任务负责人');
+    expect(html).toContain('nav-item__hint');
+    expect(html).toContain('app-content-shell');
     expect(html).toContain('nav-item__icon lh-icon');
     expect(html).toContain('class="icon-accent"');
     expect(html).toContain('is-active');
