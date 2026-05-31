@@ -33,6 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class ExportService {
@@ -285,6 +287,26 @@ public class ExportService {
         return new ExportDownloadFile(resolvedFileName, storageWriter.contentTypeFor(resolvedFileName), content);
     }
 
+    @Transactional
+    public void deleteSnapshotForOwner(Long snapshotId, Long ownerUserId) {
+        ExportSnapshotEntity snapshot = getSnapshotForOwner(snapshotId, ownerUserId);
+        List<String> objectKeys = exportObjectKeys(snapshot);
+        requireOneRow(exportSnapshotMapper.deleteById(snapshot.getId()), "delete export snapshot");
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.EXPORT_SNAPSHOT_DELETE)
+                .actorUser(ownerUserId)
+                .resource("export_snapshot", snapshot.getId())
+                .payload("snapshotId", snapshot.getId())
+                .payload("taskId", snapshot.getTaskId())
+                .payload("exportJobId", snapshot.getExportJobId())
+                .payload("fileHash", snapshot.getFileHash())
+                .payload("manifestHash", snapshot.getManifestHash())
+                .payload("sourceStateHash", snapshot.getSourceStateHash())
+                .payload("objectKey", snapshot.getObjectKey())
+        );
+        registerAfterCommitCleanup(objectKeys);
+    }
+
     public ExportSnapshotDiffView diffSnapshotsForOwner(
         Long baseSnapshotId,
         Long compareSnapshotId,
@@ -326,6 +348,48 @@ public class ExportService {
             }
         }
         throw new ExportSnapshotNotFoundException(snapshot.getId());
+    }
+
+    private List<String> exportObjectKeys(ExportSnapshotEntity snapshot) {
+        if (snapshot.getObjectKey() == null || snapshot.getObjectKey().isBlank()) {
+            return List.of();
+        }
+        List<String> objectKeys = new ArrayList<>();
+        objectKeys.add(snapshot.getObjectKey() + "manifest.json");
+        for (Map<String, Object> file : fileEntries(snapshot.getFileManifest())) {
+            Object name = file.get("name");
+            if (name instanceof String fileName && !fileName.isBlank()) {
+                objectKeys.add(snapshot.getObjectKey() + fileName);
+            }
+        }
+        return objectKeys;
+    }
+
+    private void registerAfterCommitCleanup(List<String> objectKeys) {
+        if (objectKeys.isEmpty()) {
+            return;
+        }
+        List<String> cleanupKeys = List.copyOf(objectKeys);
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            cleanupS3Objects(cleanupKeys);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                cleanupS3Objects(cleanupKeys);
+            }
+        });
+    }
+
+    private void cleanupS3Objects(List<String> objectKeys) {
+        for (String objectKey : objectKeys) {
+            try {
+                storageWriter.deleteObject(objectKey);
+            } catch (RuntimeException exception) {
+                log.warn("Best-effort export snapshot object cleanup failed for key={}", objectKey, exception);
+            }
+        }
     }
 
     private List<ExportSnapshotDiffView.FileLevelMatch> computeFileLevelMatches(

@@ -450,6 +450,30 @@ class ExportServiceTest {
     }
 
     @Test
+    void deleteSnapshotForOwner_deletes_row_and_cleans_snapshot_objects() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);
+        when(exportSnapshotMapper.deleteById(100L)).thenReturn(1);
+
+        exportService.deleteSnapshotForOwner(100L, OWNER_ID);
+
+        verify(exportSnapshotMapper).deleteById(100L);
+        ArgumentCaptor<DeleteObjectRequest> deleteCaptor = ArgumentCaptor.forClass(DeleteObjectRequest.class);
+        verify(s3Client, times(3)).deleteObject(deleteCaptor.capture());
+        assertThat(deleteCaptor.getAllValues().stream().map(DeleteObjectRequest::key).toList()).containsExactlyInAnyOrder(
+            "exports/tasks/100/jobs/1100/manifest.json",
+            "exports/tasks/100/jobs/1100/answers.jsonl",
+            "exports/tasks/100/jobs/1100/task.json"
+        );
+        ArgumentCaptor<AuditEventBuilder> auditCaptor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService).record(auditCaptor.capture());
+        AuditEvent event = auditCaptor.getValue().build();
+        assertThat(event.action()).isEqualTo(AuditActions.EXPORT_SNAPSHOT_DELETE);
+        assertThat(event.actorType()).isEqualTo("user");
+        assertThat(event.resourceType()).isEqualTo("export_snapshot");
+    }
+
+    @Test
     void diffSnapshotsForOwner_compares_three_hash_layers_and_file_hashes() {
         ExportSnapshotEntity base = snapshot(100L, TASK_ID, "aaa");
         ExportSnapshotEntity compare = snapshot(101L, TASK_ID, "bbb");

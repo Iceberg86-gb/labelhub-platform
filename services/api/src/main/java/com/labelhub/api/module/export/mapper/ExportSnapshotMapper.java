@@ -11,6 +11,7 @@ import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Delete;
 
 @Mapper
 public interface ExportSnapshotMapper {
@@ -76,6 +77,9 @@ public interface ExportSnapshotMapper {
 
     @Select("SELECT COUNT(*) FROM export_snapshots WHERE task_id = #{taskId}")
     Long selectCountByTaskId(@Param("taskId") Long taskId);
+
+    @Delete("DELETE FROM export_snapshots WHERE id = #{id}")
+    int deleteById(@Param("id") Long id);
 
     @Select("""
         SELECT id, export_job_id, task_id, file_hash, manifest_hash, source_state_hash, object_key,

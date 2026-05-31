@@ -26,6 +26,7 @@ public final class AuditActions {
     public static final String REVIEW_APPROVE = "review.approve";
     public static final String REVIEW_REJECT = "review.reject";
     public static final String EXPORT_SNAPSHOT_CREATE = "export.snapshot_create";
+    public static final String EXPORT_SNAPSHOT_DELETE = "export.snapshot_delete";
     public static final String EXPORT_SNAPSHOT_DIFF = "export.snapshot_diff";                // DEFERRED: implementation in future phase
 
     private AuditActions() {}
