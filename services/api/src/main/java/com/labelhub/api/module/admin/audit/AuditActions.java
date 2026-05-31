@@ -19,7 +19,7 @@ public final class AuditActions {
     public static final String SCHEMA_ARCHIVE = "schema.archive";                            // DEFERRED: implementation in future phase
     public static final String SCHEMA_VERSION_CREATE = "schema.version_create";
     public static final String SUBMISSION_CREATE = "submission.create";
-    public static final String SUBMISSION_SUPERSEDE = "submission.supersede";                // DEFERRED: implementation in future phase
+    public static final String SUBMISSION_SUPERSEDE = "submission.supersede";
     public static final String AI_REVIEW_FIELD_ASSIST = "ai_review.field_assist";
     public static final String AI_REVIEW_FAILED = "ai_review.failed";                        // REQUIRES_NEW: implementation lands in Cluster 3
     public static final String AI_REVIEW_RECORDED_FAILED_CALL = "ai_review.recorded_failed_call";

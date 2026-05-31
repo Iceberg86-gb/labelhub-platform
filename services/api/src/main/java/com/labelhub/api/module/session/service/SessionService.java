@@ -312,6 +312,17 @@ public class SessionService {
                 submissionMapper.updateSupersededBy(previousReturnedSubmission.getId(), submission.getId()),
                 "supersede previous returned submission"
             );
+            auditLogService.record(
+                AuditEventBuilder.forAction(AuditActions.SUBMISSION_SUPERSEDE)
+                    .actorUser(labelerId)
+                    .resource("submission", previousReturnedSubmission.getId())
+                    .payload("previousSubmissionId", previousReturnedSubmission.getId())
+                    .payload("newSubmissionId", submission.getId())
+                    .payload("sessionId", sessionId)
+                    .payload("taskId", submission.getTaskId())
+                    .payload("fromStatus", previousReturnedSubmission.getStatusCode())
+                    .payload("toStatus", submission.getStatusCode())
+            );
         }
         Long aiReviewRuleId = currentAiReviewRuleId(session.getTaskId());
         enqueueAiReview(submission, aiReviewRuleId);
