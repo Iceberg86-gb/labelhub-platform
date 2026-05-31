@@ -39,6 +39,43 @@ class AiReviewScoringPolicyTest {
         assertThat(score.rejectFloor()).isEqualByComparingTo("0.30");
     }
 
+    @Test
+    void score_uses_task_level_three_zone_thresholds_for_v2_conclusions() {
+        AiCallResult middle = result(List.of(
+            Map.of("dimension", "accuracy", "score", new BigDecimal("0.70")),
+            Map.of("dimension", "format", "score", new BigDecimal("0.60"))
+        ));
+        AiCallResult pass = result(List.of(Map.of("dimension", "accuracy", "score", new BigDecimal("0.80"))));
+        AiCallResult reject = result(List.of(Map.of("dimension", "accuracy", "score", new BigDecimal("0.30"))));
+
+        ScoredAiReview manualReview = policy.score(
+            middle,
+            List.of("accuracy", "format"),
+            new BigDecimal("0.80"),
+            new BigDecimal("0.40")
+        );
+        ScoredAiReview passReview = policy.score(
+            pass,
+            List.of("accuracy"),
+            new BigDecimal("0.80"),
+            new BigDecimal("0.40")
+        );
+        ScoredAiReview rejectReview = policy.score(
+            reject,
+            List.of("accuracy"),
+            new BigDecimal("0.80"),
+            new BigDecimal("0.40")
+        );
+
+        assertThat(manualReview.finalScore()).isEqualByComparingTo("0.6500");
+        assertThat(manualReview.recommendation()).isEqualTo("manual_review");
+        assertThat(manualReview.passThreshold()).isEqualByComparingTo("0.80");
+        assertThat(manualReview.rejectThreshold()).isEqualByComparingTo("0.40");
+        assertThat(manualReview.scoringRuleVersion()).isEqualTo("equal-weight-three-zone-v2");
+        assertThat(passReview.recommendation()).isEqualTo("pass");
+        assertThat(rejectReview.recommendation()).isEqualTo("reject");
+    }
+
     private static AiCallResult result(List<Map<String, Object>> dimensionScores) {
         return new AiCallResult(
             Map.of("dimensionScores", dimensionScores),

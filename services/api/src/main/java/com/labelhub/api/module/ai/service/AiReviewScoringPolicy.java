@@ -19,11 +19,21 @@ public class AiReviewScoringPolicy {
     }
 
     public ScoredAiReview score(AiCallResult result, List<String> configuredDimensions, BigDecimal configuredThreshold) {
+        BigDecimal passThreshold = configuredThreshold == null ? properties.getDefaultThreshold() : configuredThreshold;
+        return score(result, configuredDimensions, passThreshold, properties.getRejectFloor());
+    }
+
+    public ScoredAiReview score(
+        AiCallResult result,
+        List<String> configuredDimensions,
+        BigDecimal configuredPassThreshold,
+        BigDecimal configuredRejectThreshold
+    ) {
         List<String> dimensions = configuredDimensions == null || configuredDimensions.isEmpty()
             ? List.of("overall")
             : configuredDimensions;
-        BigDecimal threshold = configuredThreshold == null ? properties.getDefaultThreshold() : configuredThreshold;
-        BigDecimal rejectFloor = properties.getRejectFloor();
+        BigDecimal passThreshold = configuredPassThreshold == null ? properties.getDefaultThreshold() : configuredPassThreshold;
+        BigDecimal rejectThreshold = configuredRejectThreshold == null ? properties.getRejectFloor() : configuredRejectThreshold;
         Map<String, DimensionScoreValue> providerScores = providerScores(result.output().get("dimensionScores"));
         List<DimensionScoreValue> scoredDimensions = new ArrayList<>();
         for (String dimension : dimensions) {
@@ -37,10 +47,10 @@ public class AiReviewScoringPolicy {
         }
         BigDecimal finalScore = average(scoredDimensions);
         return new ScoredAiReview(
-            recommendation(finalScore, threshold, rejectFloor),
+            recommendation(finalScore, passThreshold, rejectThreshold),
             finalScore,
-            threshold,
-            rejectFloor,
+            passThreshold,
+            rejectThreshold,
             properties.getScoringRuleVersion(),
             scoredDimensions
         );
@@ -79,11 +89,11 @@ public class AiReviewScoringPolicy {
         return sum.divide(new BigDecimal(scores.size()), 4, RoundingMode.HALF_UP);
     }
 
-    private String recommendation(BigDecimal finalScore, BigDecimal threshold, BigDecimal rejectFloor) {
-        if (finalScore.compareTo(threshold) >= 0) {
+    private String recommendation(BigDecimal finalScore, BigDecimal passThreshold, BigDecimal rejectThreshold) {
+        if (finalScore.compareTo(passThreshold) >= 0) {
             return "pass";
         }
-        if (finalScore.compareTo(rejectFloor) <= 0) {
+        if (finalScore.compareTo(rejectThreshold) <= 0) {
             return "reject";
         }
         return "manual_review";
