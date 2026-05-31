@@ -32,6 +32,8 @@ class InternalAiReviewControllerTest {
         assertThat(body).isNotNull();
         assertThat(body.getIdempotencyKey()).isEqualTo("submission:300:ai_review:promptVersionId:7:adapter:agent-default-v1");
         assertThat(body.getDimensions()).containsExactly("quality");
+        assertThat(body.getPassThreshold()).isEqualByComparingTo("0.80");
+        assertThat(body.getRejectThreshold()).isEqualByComparingTo("0.20");
         assertThat(body.getRenderedPrompt()).contains("rendered prompt");
     }
 
@@ -74,7 +76,7 @@ class InternalAiReviewControllerTest {
             List.of("quality"),
             new BigDecimal("0.80"),
             new BigDecimal("0.20"),
-            "equal-weight-threshold-v1",
+            "equal-weight-three-zone-v2",
             "business prompt",
             "rendered prompt"
         );

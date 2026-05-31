@@ -54,6 +54,8 @@ public class InternalAiReviewController implements InternalApi {
         dto.setDimensions(view.dimensions());
         dto.setThreshold(view.threshold());
         dto.setRejectFloor(view.rejectFloor());
+        dto.setPassThreshold(view.threshold());
+        dto.setRejectThreshold(view.rejectFloor());
         dto.setScoringRuleVersion(view.scoringRuleVersion());
         dto.setBusinessPrompt(view.businessPrompt());
         dto.setRenderedPrompt(view.renderedPrompt());

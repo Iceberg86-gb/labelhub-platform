@@ -1488,6 +1488,10 @@ export interface components {
             threshold?: string | null;
             /** Format: decimal */
             rejectFloor?: string | null;
+            /** Format: decimal */
+            passThreshold?: string | null;
+            /** Format: decimal */
+            rejectThreshold?: string | null;
             scoringRuleVersion: string;
             dimensionScores?: components["schemas"]["DimensionScore"][];
             summary?: string | null;
@@ -1686,6 +1690,10 @@ export interface components {
             threshold: string;
             /** Format: decimal */
             rejectFloor: string;
+            /** Format: decimal */
+            passThreshold: string;
+            /** Format: decimal */
+            rejectThreshold: string;
             scoringRuleVersion: string;
             businessPrompt: string;
             renderedPrompt: string;

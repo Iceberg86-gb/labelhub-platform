@@ -2985,6 +2985,14 @@ components:
           type: string
           format: decimal
           nullable: true
+        passThreshold:
+          type: string
+          format: decimal
+          nullable: true
+        rejectThreshold:
+          type: string
+          format: decimal
+          nullable: true
         scoringRuleVersion:
           type: string
         dimensionScores:
@@ -3329,7 +3337,7 @@ components:
           $ref: '#/components/schemas/InternalAiReviewResult'
     InternalAiReviewContext:
       type: object
-      required: [submissionId, idempotencyKey, promptVersion, promptVersionId, providerAdapterVersion, input, inputHash, dimensions, threshold, rejectFloor, scoringRuleVersion, businessPrompt, renderedPrompt]
+      required: [submissionId, idempotencyKey, promptVersion, promptVersionId, providerAdapterVersion, input, inputHash, dimensions, threshold, rejectFloor, passThreshold, rejectThreshold, scoringRuleVersion, businessPrompt, renderedPrompt]
       properties:
         submissionId:
           type: integer
@@ -3360,6 +3368,12 @@ components:
           type: string
           format: decimal
         rejectFloor:
+          type: string
+          format: decimal
+        passThreshold:
+          type: string
+          format: decimal
+        rejectThreshold:
           type: string
           format: decimal
         scoringRuleVersion:

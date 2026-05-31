@@ -16,6 +16,8 @@ public record AiReviewContext(
     List<String> dimensions,
     BigDecimal threshold,
     BigDecimal rejectFloor,
+    BigDecimal passThreshold,
+    BigDecimal rejectThreshold,
     String scoringRuleVersion,
     String businessPrompt,
     String renderedPrompt

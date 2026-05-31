@@ -117,7 +117,9 @@ class OutboxAiReviewWorkerTest {
             List.of("quality"),
             new BigDecimal("0.80"),
             new BigDecimal("0.20"),
-            "equal-weight-threshold-v1",
+            new BigDecimal("0.80"),
+            new BigDecimal("0.20"),
+            "equal-weight-three-zone-v2",
             "business prompt",
             "rendered prompt"
         );
