@@ -78,12 +78,6 @@ public class ExportController implements ExportsApi {
     }
 
     @Override
-    public ResponseEntity<Void> deleteExportSnapshot(@PathVariable("snapshotId") Long snapshotId) {
-        exportService.deleteSnapshotForOwner(snapshotId, currentUserId());
-        return ResponseEntity.noContent().build();
-    }
-
-    @Override
     public ResponseEntity<org.springframework.core.io.Resource> downloadExportSnapshotFile(
         @PathVariable("snapshotId") Long snapshotId,
         @PathVariable("fileName") String fileName
