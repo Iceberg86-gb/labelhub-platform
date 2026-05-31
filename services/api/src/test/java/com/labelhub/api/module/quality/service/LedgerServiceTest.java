@@ -30,6 +30,7 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.security.access.AccessDeniedException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -181,6 +182,68 @@ class LedgerServiceTest {
             .containsEntry("fromSubmissionStatus", "submitted")
             .containsEntry("toSubmissionStatus", "returned_for_revision");
         assertThat(action.getCreatedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void createEntry_senior_approve_requires_senior_role_and_prior_reviewer_approve() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+        when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdictByReviewLevel(SUBMISSION_ID, "reviewer"))
+            .thenReturn(entry(800L, "approve", "reviewer"));
+        doAnswer(invocation -> {
+            QualityLedgerEntryEntity entity = invocation.getArgument(0);
+            entity.setId(902L);
+            return 1;
+        }).when(qualityLedgerEntryMapper).insert(any(QualityLedgerEntryEntity.class));
+
+        QualityLedgerEntryEntity entry = ledgerService.createEntry(
+            SUBMISSION_ID,
+            REVIEWER_ID,
+            "reviewer_overall_verdict",
+            Map.of("verdict", "approve", "reviewLevel", "senior_reviewer"),
+            Set.of("SENIOR_REVIEWER")
+        );
+
+        assertThat(entry.getPayload()).containsEntry("reviewLevel", "senior_reviewer");
+        ArgumentCaptor<ReviewActionEntity> captor = ArgumentCaptor.forClass(ReviewActionEntity.class);
+        verify(reviewActionMapper).insert(captor.capture());
+        assertThat(captor.getValue().getReviewLevel()).isEqualTo("senior_reviewer");
+        assertThat(captor.getValue().getDiffSnapshot())
+            .containsEntry("fromSubmissionStatus", "submitted")
+            .containsEntry("toSubmissionStatus", "submitted")
+            .containsEntry("reviewLevel", "senior_reviewer");
+    }
+
+    @Test
+    void createEntry_rejects_senior_review_without_senior_role() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+
+        assertThatThrownBy(() -> ledgerService.createEntry(
+            SUBMISSION_ID,
+            REVIEWER_ID,
+            "reviewer_overall_verdict",
+            Map.of("verdict", "approve", "reviewLevel", "senior_reviewer"),
+            Set.of("REVIEWER")
+        )).isInstanceOf(AccessDeniedException.class);
+
+        verify(qualityLedgerEntryMapper, never()).insert(any());
+    }
+
+    @Test
+    void createEntry_rejects_senior_review_without_prior_reviewer_approve() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+        when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdictByReviewLevel(SUBMISSION_ID, "reviewer"))
+            .thenReturn(entry(800L, "reject", "reviewer"));
+
+        assertThatThrownBy(() -> ledgerService.createEntry(
+            SUBMISSION_ID,
+            REVIEWER_ID,
+            "reviewer_overall_verdict",
+            Map.of("verdict", "approve", "reviewLevel", "senior_reviewer"),
+            Set.of("SENIOR_REVIEWER")
+        )).isInstanceOf(LedgerEntryPayloadInvalidException.class)
+            .hasMessageContaining("senior review requires reviewer approval");
+
+        verify(qualityLedgerEntryMapper, never()).insert(any());
     }
 
     @Test
@@ -392,6 +455,10 @@ class LedgerServiceTest {
     }
 
     private static QualityLedgerEntryEntity entry(Long id, String verdict) {
+        return entry(id, verdict, "reviewer");
+    }
+
+    private static QualityLedgerEntryEntity entry(Long id, String verdict, String reviewLevel) {
         QualityLedgerEntryEntity entry = new QualityLedgerEntryEntity();
         entry.setId(id);
         entry.setSubmissionId(SUBMISSION_ID);
@@ -399,7 +466,7 @@ class LedgerServiceTest {
         entry.setEvidenceType("reviewer_overall_verdict");
         entry.setActorType("reviewer");
         entry.setActorId(REVIEWER_ID);
-        entry.setPayload(Map.of("verdict", verdict));
+        entry.setPayload(Map.of("verdict", verdict, "reviewLevel", reviewLevel));
         entry.setCreatedAt(NOW);
         return entry;
     }

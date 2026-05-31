@@ -22,7 +22,10 @@ record DerivedVerdictSnapshot(Long submissionId, String status, Long derivedFrom
             return new DerivedVerdictSnapshot(submissionId, "pending", null);
         }
         Object verdict = latest.getPayload().get("verdict");
-        String status = "approve".equals(verdict) ? "approved" : "reject".equals(verdict) ? "rejected" : "pending";
+        Object reviewLevel = latest.getPayload().get("reviewLevel");
+        String status = "approve".equals(verdict) && "senior_reviewer".equals(reviewLevel)
+            ? "approved"
+            : "reject".equals(verdict) ? "rejected" : "pending";
         return new DerivedVerdictSnapshot(submissionId, status, latest.getId());
     }
 }

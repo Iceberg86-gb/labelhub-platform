@@ -12,6 +12,7 @@ const menuIcons = {
   OWNER: <IconChecklistStroked aria-hidden />,
   LABELER: <IconUserGroup aria-hidden />,
   REVIEWER: <IconVerify aria-hidden />,
+  SENIOR_REVIEWER: <IconVerify aria-hidden />,
 };
 
 function menuIconFor(path: string, role: keyof typeof menuIcons) {

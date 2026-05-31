@@ -1,15 +1,17 @@
 import { Button, Card, Empty, Space, Spin, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconClose, IconInfoCircle, IconPlusCircle, IconTickCircle } from '@douyinfe/semi-icons';
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
 import {
   REVIEWER_VERDICT_LABELS,
+  REVIEW_LEVEL_LABELS,
   VERDICT_STATUS_COLORS,
   VERDICT_STATUS_LABELS,
   type QualityLedgerEntry,
+  type ReviewLevel,
   type ReviewerVerdict,
   type VerdictStatus,
 } from '../../entities/quality/qualityTypes';
@@ -19,6 +21,7 @@ import { useSubmissionRenderSchemaQuery } from '../../features/labeling/useSubmi
 import { CreateLedgerEntryFailure, useCreateLedgerEntryMutation } from '../../features/quality/useCreateLedgerEntryMutation';
 import { useLedgerEntriesQuery } from '../../features/quality/useLedgerEntriesQuery';
 import { useSubmissionVerdictQuery } from '../../features/quality/useSubmissionVerdictQuery';
+import { getUser } from '../../shared/api/auth-storage';
 
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   month: '2-digit',
@@ -30,7 +33,11 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
 export function ReviewerSubmissionPage() {
   const navigate = useNavigate();
   const { submissionId: rawSubmissionId } = useParams();
+  const [searchParams] = useSearchParams();
   const submissionId = parseId(rawSubmissionId);
+  const currentUser = getUser();
+  const reviewLevel = parseReviewLevel(searchParams.get('reviewLevel'))
+    ?? (currentUser?.roles.includes('SENIOR_REVIEWER') ? 'senior_reviewer' : 'reviewer');
   const [reason, setReason] = useState('');
   const renderSchemaQuery = useSubmissionRenderSchemaQuery(submissionId ?? 0, { enabled: Boolean(submissionId) });
   const verdictQuery = useSubmissionVerdictQuery(submissionId ?? 0, { enabled: Boolean(submissionId) });
@@ -65,13 +72,17 @@ export function ReviewerSubmissionPage() {
 
   async function createVerdict(verdict: ReviewerVerdict) {
     if (!submissionId) return;
+    if (verdict === 'reject' && !reason.trim()) {
+      Toast.warning('打回必须填写理由');
+      return;
+    }
     try {
       await createLedgerEntry.mutateAsync({
         submissionId,
         entryType: 'reviewer_overall_verdict',
-        payload: { verdict, reason: reason.trim() || null },
+        payload: { verdict, reviewLevel, reason: reason.trim() || null },
       });
-      Toast.success(verdict === 'approve' ? '已通过' : '已拒绝');
+      Toast.success(successMessage(verdict, reviewLevel));
       setReason('');
     } catch (error) {
       const failure = error instanceof CreateLedgerEntryFailure ? error : null;
@@ -83,7 +94,7 @@ export function ReviewerSubmissionPage() {
     <section className="reviewer-submission-page" aria-label="Reviewer submission detail">
       <div className="reviewer-submission-header">
         <div>
-          <Button icon={<IconArrowLeft />} theme="borderless" onClick={() => navigate('/reviewer/submissions')}>
+          <Button icon={<IconArrowLeft />} theme="borderless" onClick={() => navigate(`/reviewer/submissions?reviewLevel=${reviewLevel}`)}>
             返回审核队列
           </Button>
           <Typography.Title heading={3} className="page-title">
@@ -91,6 +102,7 @@ export function ReviewerSubmissionPage() {
           </Typography.Title>
           <Space wrap>
             <Tag color="purple">Schema 版本: {schemaVersionLabel(schemaVersion)}</Tag>
+            <Tag color={reviewLevel === 'senior_reviewer' ? 'purple' : 'blue'}>{REVIEW_LEVEL_LABELS[reviewLevel]}</Tag>
             <VerdictTag status={verdictQuery.data?.status ?? 'pending'} />
           </Space>
         </div>
@@ -116,6 +128,7 @@ export function ReviewerSubmissionPage() {
             onReasonChange={setReason}
             onApprove={() => createVerdict('approve')}
             onReject={() => createVerdict('reject')}
+            reviewLevel={reviewLevel}
           />
           <LedgerEntriesCard entries={ledgerEntries} loading={ledgerQuery.isLoading} error={ledgerQuery.isError} />
         </div>
@@ -132,30 +145,32 @@ function ReviewActionCard({
   onReasonChange,
   onApprove,
   onReject,
+  reviewLevel,
 }: {
   reason: string;
   loading: boolean;
   onReasonChange: (value: string) => void;
   onApprove: () => void;
   onReject: () => void;
+  reviewLevel: ReviewLevel;
 }) {
   return (
-    <Card className="review-actions-card" title="审核操作" bordered={false}>
+    <Card className="review-actions-card" title={`${REVIEW_LEVEL_LABELS[reviewLevel]}操作`} bordered={false}>
       <label className="review-reason-field">
         <Typography.Text strong>审核说明</Typography.Text>
         <textarea
           value={reason}
           onChange={(event) => onReasonChange(event.target.value)}
-          placeholder="可选:补充通过或拒绝的原因"
+          placeholder="通过可选说明;打回必须填写理由"
           rows={4}
         />
       </label>
       <div className="review-actions">
         <Button className="review-approve-button" icon={<IconTickCircle />} type="tertiary" theme="solid" loading={loading} onClick={onApprove}>
-          通过
+          {reviewLevel === 'senior_reviewer' ? '复核通过' : '初审通过'}
         </Button>
         <Button icon={<IconClose />} type="danger" theme="solid" loading={loading} onClick={onReject}>
-          拒绝
+          打回
         </Button>
       </div>
     </Card>
@@ -250,6 +265,15 @@ function VerdictTag({ status }: { status: VerdictStatus }) {
 function parseId(value?: string) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseReviewLevel(value: string | null): ReviewLevel | undefined {
+  return value === 'reviewer' || value === 'senior_reviewer' ? value : undefined;
+}
+
+function successMessage(verdict: ReviewerVerdict, reviewLevel: ReviewLevel) {
+  if (verdict === 'reject') return '已打回';
+  return reviewLevel === 'senior_reviewer' ? '复核已通过' : '初审已通过,已进入复核队列';
 }
 
 function formatDateTime(value?: string) {

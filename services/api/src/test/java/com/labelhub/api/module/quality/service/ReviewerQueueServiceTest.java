@@ -25,10 +25,10 @@ class ReviewerQueueServiceTest {
     @Test
     void listQueue_filters_by_default_submitted_status_when_status_not_provided() {
         ReviewerSubmissionQueueRow row = row(300L, "submitted", null, null);
-        when(qualityLedgerEntryMapper.selectReviewerQueuePage("submitted", null, 0L, 20L)).thenReturn(List.of(row));
-        when(qualityLedgerEntryMapper.selectReviewerQueueCount("submitted", null)).thenReturn(1L);
+        when(qualityLedgerEntryMapper.selectReviewerQueuePage("submitted", null, "reviewer", 0L, 20L)).thenReturn(List.of(row));
+        when(qualityLedgerEntryMapper.selectReviewerQueueCount("submitted", null, "reviewer")).thenReturn(1L);
 
-        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(1, 20, null, null);
+        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(1, 20, null, null, null);
 
         assertThat(result.items()).extracting(ReviewerSubmissionQueueRow::getId).containsExactly(300L);
         assertThat(result.total()).isEqualTo(1L);
@@ -36,10 +36,10 @@ class ReviewerQueueServiceTest {
 
     @Test
     void listQueue_filters_by_explicit_status_filter() {
-        when(qualityLedgerEntryMapper.selectReviewerQueuePage("completed", null, 20L, 10L)).thenReturn(List.of());
-        when(qualityLedgerEntryMapper.selectReviewerQueueCount("completed", null)).thenReturn(0L);
+        when(qualityLedgerEntryMapper.selectReviewerQueuePage("completed", null, "reviewer", 20L, 10L)).thenReturn(List.of());
+        when(qualityLedgerEntryMapper.selectReviewerQueueCount("completed", null, "reviewer")).thenReturn(0L);
 
-        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(3, 10, "completed", null);
+        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(3, 10, "completed", null, null);
 
         assertThat(result.items()).isEmpty();
         assertThat(result.page()).isEqualTo(3L);
@@ -49,20 +49,31 @@ class ReviewerQueueServiceTest {
     @Test
     void listQueue_filters_by_verdict_filter() {
         ReviewerSubmissionQueueRow row = row(301L, "submitted", 501L, "approve");
-        when(qualityLedgerEntryMapper.selectReviewerQueuePage("submitted", "approved", 0L, 20L)).thenReturn(List.of(row));
-        when(qualityLedgerEntryMapper.selectReviewerQueueCount("submitted", "approved")).thenReturn(1L);
+        when(qualityLedgerEntryMapper.selectReviewerQueuePage("submitted", "approved", "senior_reviewer", 0L, 20L)).thenReturn(List.of(row));
+        when(qualityLedgerEntryMapper.selectReviewerQueueCount("submitted", "approved", "senior_reviewer")).thenReturn(1L);
 
-        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(1, 20, "submitted", "approved");
+        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(1, 20, "submitted", "approved", "senior_reviewer");
 
         assertThat(result.items()).extracting(ReviewerSubmissionQueueRow::getDerivedFromEntryId).containsExactly(501L);
     }
 
     @Test
-    void listQueue_returns_paged_result_with_total() {
-        when(qualityLedgerEntryMapper.selectReviewerQueuePage("submitted", "pending", 40L, 20L)).thenReturn(List.of());
-        when(qualityLedgerEntryMapper.selectReviewerQueueCount("submitted", "pending")).thenReturn(42L);
+    void listQueue_defaults_invalid_review_level_to_reviewer_queue() {
+        when(qualityLedgerEntryMapper.selectReviewerQueuePage("submitted", null, "reviewer", 0L, 20L)).thenReturn(List.of());
+        when(qualityLedgerEntryMapper.selectReviewerQueueCount("submitted", null, "reviewer")).thenReturn(0L);
 
-        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(3, 20, "", "pending");
+        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(1, 20, "submitted", null, "owner");
+
+        assertThat(result.items()).isEmpty();
+        assertThat(result.total()).isZero();
+    }
+
+    @Test
+    void listQueue_returns_paged_result_with_total() {
+        when(qualityLedgerEntryMapper.selectReviewerQueuePage("submitted", "pending", "reviewer", 40L, 20L)).thenReturn(List.of());
+        when(qualityLedgerEntryMapper.selectReviewerQueueCount("submitted", "pending", "reviewer")).thenReturn(42L);
+
+        PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(3, 20, "", "pending", "");
 
         assertThat(result.total()).isEqualTo(42L);
         assertThat(result.page()).isEqualTo(3L);

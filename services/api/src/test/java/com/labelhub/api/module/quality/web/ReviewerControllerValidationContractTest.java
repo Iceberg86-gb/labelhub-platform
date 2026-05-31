@@ -2,6 +2,7 @@ package com.labelhub.api.module.quality.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.labelhub.api.generated.model.ReviewLevel;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.lang.annotation.Annotation;
@@ -17,7 +18,8 @@ class ReviewerControllerValidationContractTest {
             Integer.class,
             Integer.class,
             String.class,
-            String.class
+            String.class,
+            ReviewLevel.class
         );
 
         assertThat(parameterAnnotation(method, 0, Min.class).value()).isEqualTo(1);

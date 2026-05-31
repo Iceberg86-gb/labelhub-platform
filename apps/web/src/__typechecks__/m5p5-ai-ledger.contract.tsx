@@ -13,6 +13,7 @@ export function M5P5AiLedgerContract() {
   };
   const reviewerPayload: ReviewerOverallVerdictPayload = {
     verdict: 'approve',
+    reviewLevel: 'reviewer',
   };
   const aiEntry: QualityLedgerEntry = {
     id: 1,

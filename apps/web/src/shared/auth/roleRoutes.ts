@@ -5,6 +5,7 @@ export const roleRoutePriority = [
   { role: 'LABELER', path: '/labeler/marketplace', label: '任务广场' },
   { role: 'LABELER', path: '/labeler/my', label: '我的数据' },
   { role: 'REVIEWER', path: '/reviewer/submissions', label: '审核队列' },
+  { role: 'SENIOR_REVIEWER', path: '/reviewer/submissions?reviewLevel=senior_reviewer', label: '复核队列' },
 ] as const;
 
 export function defaultPathForRoles(roles: string[]) {

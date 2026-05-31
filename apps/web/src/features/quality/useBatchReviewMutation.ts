@@ -1,7 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { components } from '../../shared/api/generated/schema';
 import { apiClient } from '../../shared/api/client';
-import { reviewerQueueQueryKey } from './useReviewerQueueQuery';
 
 export type BatchReviewInput = components['schemas']['BatchReviewRequest'];
 export type BatchReviewResult = components['schemas']['BatchReviewResult'];
@@ -19,7 +18,7 @@ export function useBatchReviewMutation() {
       return data;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: reviewerQueueQueryKey() });
+      await queryClient.invalidateQueries({ queryKey: ['reviewer-queue'] });
     },
   });
 }

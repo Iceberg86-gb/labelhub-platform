@@ -21,14 +21,16 @@ public class ReviewerQueueService {
         long page,
         long size,
         String statusFilter,
-        String verdictFilter
+        String verdictFilter,
+        String reviewLevelFilter
     ) {
         String effectiveStatus = statusFilter == null || statusFilter.isBlank() ? DEFAULT_STATUS : statusFilter;
         String effectiveVerdict = verdictFilter == null || verdictFilter.isBlank() ? null : verdictFilter;
+        String effectiveReviewLevel = ReviewLevels.normalize(reviewLevelFilter);
         long offset = (page - 1) * size;
         List<ReviewerSubmissionQueueRow> items =
-            qualityLedgerEntryMapper.selectReviewerQueuePage(effectiveStatus, effectiveVerdict, offset, size);
-        Long total = qualityLedgerEntryMapper.selectReviewerQueueCount(effectiveStatus, effectiveVerdict);
+            qualityLedgerEntryMapper.selectReviewerQueuePage(effectiveStatus, effectiveVerdict, effectiveReviewLevel, offset, size);
+        Long total = qualityLedgerEntryMapper.selectReviewerQueueCount(effectiveStatus, effectiveVerdict, effectiveReviewLevel);
         return new PagedResult<>(items, total == null ? 0 : total, page, size);
     }
 }

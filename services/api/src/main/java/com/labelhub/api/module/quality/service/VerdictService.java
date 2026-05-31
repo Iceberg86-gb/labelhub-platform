@@ -80,7 +80,7 @@ public class VerdictService {
         }
         Object verdict = payload.get("verdict");
         if ("approve".equals(verdict)) {
-            return "approved";
+            return ReviewLevels.SENIOR_REVIEWER.equals(payload.get("reviewLevel")) ? "approved" : "pending";
         }
         if ("reject".equals(verdict)) {
             return "rejected";

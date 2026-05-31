@@ -8,6 +8,7 @@ const roleMeta: Record<string, { label: string; className: string }> = {
   OWNER: { label: 'OWNER', className: 'role-badge--owner' },
   LABELER: { label: 'LABELER', className: 'role-badge--labeler' },
   REVIEWER: { label: 'REVIEWER', className: 'role-badge--reviewer' },
+  SENIOR_REVIEWER: { label: 'SENIOR', className: 'role-badge--reviewer' },
 };
 
 export function RoleBadge({ role }: RoleBadgeProps) {
