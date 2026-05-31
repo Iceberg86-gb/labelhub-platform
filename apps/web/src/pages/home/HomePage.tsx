@@ -9,6 +9,7 @@ import { useTasksQuery } from '../../features/task/list-tasks/useTasksQuery';
 import { getUser } from '../../shared/api/auth-storage';
 import { roleRoutePriority } from '../../shared/auth/roleRoutes';
 import {
+  IconAiAssist,
   IconAnnotationWorkbench,
   IconDesignerBlock,
   IconReviewFlow,
@@ -30,6 +31,12 @@ const entryMeta = {
     description: '搭建字段、容器和联动规则',
     icon: IconDesignerBlock,
     tone: 'accent',
+  },
+  '/owner/llm': {
+    title: 'LLM 接入',
+    description: '配置 API Key、模型和辅助范围',
+    icon: IconAiAssist,
+    tone: 'info',
   },
   '/owner/audit-logs': {
     title: '审计日志',

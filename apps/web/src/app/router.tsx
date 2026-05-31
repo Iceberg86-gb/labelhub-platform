@@ -14,6 +14,7 @@ import { OwnerSubmissionPage } from '../pages/owner/OwnerSubmissionPage';
 import { OwnerSchemasListPage } from '../pages/owner/OwnerSchemasListPage';
 import { OwnerSchemaDesignerPage } from '../pages/owner/OwnerSchemaDesignerPage';
 import { OwnerAuditLogsPage } from '../pages/owner/OwnerAuditLogsPage';
+import { OwnerLlmSettingsPage } from '../pages/owner/OwnerLlmSettingsPage';
 import { LabelerMarketplacePage } from '../pages/labeler/LabelerMarketplacePage';
 import { LabelerSessionPage } from '../pages/labeler/LabelerSessionPage';
 import { LabelerMySessionsPage } from '../pages/labeler/LabelerMySessionsPage';
@@ -122,6 +123,16 @@ export const router = createBrowserRouter(
             <RequireAuth>
               <RequireRole roles={['OWNER']}>
                 <OwnerSchemaDesignerPage />
+              </RequireRole>
+            </RequireAuth>
+          ),
+        },
+        {
+          path: 'owner/llm',
+          element: (
+            <RequireAuth>
+              <RequireRole roles={['OWNER']}>
+                <OwnerLlmSettingsPage />
               </RequireRole>
             </RequireAuth>
           ),

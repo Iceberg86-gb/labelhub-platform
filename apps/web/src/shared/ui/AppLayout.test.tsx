@@ -74,6 +74,8 @@ describe('AppLayout design shell', () => {
     expect(html).toContain('app-sidebar__header');
     expect(html).toContain('nav-section');
     expect(html).toContain('任务负责人');
+    expect(html).toContain('LLM 接入');
+    expect(html).toContain('模型与 API Key');
     expect(html).toContain('nav-item__hint');
     expect(html).toContain('app-content-shell');
     expect(html).toContain('nav-item__icon lh-icon');

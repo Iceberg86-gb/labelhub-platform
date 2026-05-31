@@ -50,6 +50,19 @@ export function IconDesignerBlock(props: LabelHubIconProps) {
   );
 }
 
+export function IconAiAssist(props: LabelHubIconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="4" y="5" width="16" height="14" rx="3" />
+      <path d="M8 10h5" />
+      <path d="M8 14h3" />
+      <circle className="icon-accent" stroke="currentColor" cx="16" cy="10" r="1.5" />
+      <path className="icon-accent" stroke="currentColor" d="M16 13v2" />
+      <path className="icon-accent" stroke="currentColor" d="M14.5 14h3" />
+    </IconBase>
+  );
+}
+
 export function IconVersionHistory(props: LabelHubIconProps) {
   return (
     <IconBase {...props}>
