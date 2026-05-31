@@ -1,22 +1,35 @@
 import { Button, Typography } from '@douyinfe/semi-ui';
-import { IconChecklistStroked, IconHistory, IconUserGroup, IconVerify, IconUserCircle, IconExit } from '@douyinfe/semi-icons';
+import { IconExit, IconUserCircle } from '@douyinfe/semi-icons';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useLogout } from '../../features/auth/logout/useLogout';
 import { getUser, SESSION_CHANGED_EVENT, type UserProfile } from '../api/auth-storage';
 import { UNAUTHORIZED_EVENT } from '../api/client';
 import { roleRoutePriority } from '../auth/roleRoutes';
+import {
+  IconAnnotationWorkbench,
+  IconDataset,
+  IconDesignerBlock,
+  IconReviewFlow,
+  IconStatusFlow,
+  IconTask,
+  IconVersionHistory,
+} from './LabelHubIcons';
 import { RoleBadge } from './RoleBadge';
 
-const menuIcons = {
-  OWNER: <IconChecklistStroked aria-hidden />,
-  LABELER: <IconUserGroup aria-hidden />,
-  REVIEWER: <IconVerify aria-hidden />,
-  SENIOR_REVIEWER: <IconVerify aria-hidden />,
-};
+const navIconClassName = 'nav-item__icon lh-icon';
 
-function menuIconFor(path: string, role: keyof typeof menuIcons) {
-  return path === '/owner/audit-logs' ? <IconHistory aria-hidden /> : menuIcons[role];
+function menuIconFor(path: string) {
+  if (path === '/owner/schemas') return <IconDesignerBlock className={navIconClassName} />;
+  if (path === '/owner/audit-logs') return <IconVersionHistory className={navIconClassName} />;
+  if (path === '/labeler/marketplace') return <IconTask className={navIconClassName} />;
+  if (path === '/labeler/my') return <IconAnnotationWorkbench className={navIconClassName} />;
+  if (path.startsWith('/reviewer/submissions?reviewLevel=senior_reviewer')) {
+    return <IconStatusFlow className={navIconClassName} />;
+  }
+  if (path === '/reviewer/submissions') return <IconReviewFlow className={navIconClassName} />;
+  if (path.includes('dataset')) return <IconDataset className={navIconClassName} />;
+  return <IconTask className={navIconClassName} />;
 }
 
 export function AppLayout() {
@@ -41,10 +54,12 @@ export function AppLayout() {
   }, []);
 
   return (
-    <div className="app-frame">
-      <header className="app-header">
+    <div className="app-shell app-shell--private">
+      <header className="app-topbar">
         <Link to="/" className="brand-link" aria-label="LabelHub home">
-          <span className="brand-mark">LH</span>
+          <span className="brand-mark" aria-hidden>
+            LH
+          </span>
           <span>
             <Typography.Title heading={4} className="brand-title">
               LabelHub
@@ -65,7 +80,7 @@ export function AppLayout() {
                 size="small"
                 theme="borderless"
                 icon={<IconExit />}
-                className="header-logout-button"
+                className="header-logout-button primary-action-link"
                 onClick={logout}
               >
                 登出
@@ -89,7 +104,7 @@ export function AppLayout() {
                   to={item.path}
                   className={({ isActive }) => (isActive ? 'nav-item is-active' : 'nav-item')}
                 >
-                  {menuIconFor(item.path, item.role)}
+                  {menuIconFor(item.path)}
                   <span>{item.label}</span>
                 </NavLink>
               ))
