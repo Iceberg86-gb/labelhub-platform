@@ -2528,7 +2528,7 @@ components:
       enum: [draft, published]
     AiReviewRuleRequest:
       type: object
-      required: [taskId, promptTemplate, dimensions, threshold]
+      required: [taskId, promptTemplate, dimensions, passThreshold, rejectThreshold]
       properties:
         taskId:
           type: integer
@@ -2541,9 +2541,20 @@ components:
             type: string
         threshold:
           type: number
+          nullable: true
+          deprecated: true
+          description: Legacy pass threshold alias retained for v1 clients. New clients should send passThreshold.
+        passThreshold:
+          type: number
+          minimum: 0
+          maximum: 1
+        rejectThreshold:
+          type: number
+          minimum: 0
+          maximum: 1
     AiReviewRule:
       type: object
-      required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, status, isCurrent, createdAt]
+      required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, passThreshold, rejectThreshold, status, isCurrent, createdAt]
       properties:
         id:
           type: integer
@@ -2564,6 +2575,15 @@ components:
             type: string
         threshold:
           type: number
+          description: Legacy pass threshold alias retained for v1 clients. Mirrors passThreshold when present.
+        passThreshold:
+          type: number
+          minimum: 0
+          maximum: 1
+        rejectThreshold:
+          type: number
+          minimum: 0
+          maximum: 1
         status:
           $ref: '#/components/schemas/AiReviewRuleStatus'
         isCurrent:

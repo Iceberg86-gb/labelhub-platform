@@ -121,14 +121,28 @@ export function AiReviewRuleEditorDrawer({ taskId, open, onClose }: AiReviewRule
           </div>
 
           <label className="ai-review-rule-field">
-            <Typography.Text strong>阈值</Typography.Text>
+            <Typography.Text strong>通过阈值</Typography.Text>
             <Input
               inputMode="decimal"
               placeholder="0 到 1,例如 0.8"
-              value={state.threshold}
-              onChange={(value) => setState((current) => ({ ...current, threshold: value }))}
+              value={state.passThreshold}
+              onChange={(value) => setState((current) => ({ ...current, passThreshold: value }))}
             />
-            {errors.threshold ? <Typography.Text className="ai-review-rule-error">{errors.threshold}</Typography.Text> : null}
+            {errors.passThreshold ? <Typography.Text className="ai-review-rule-error">{errors.passThreshold}</Typography.Text> : null}
+          </label>
+
+          <label className="ai-review-rule-field">
+            <Typography.Text strong>打回阈值</Typography.Text>
+            <Input
+              inputMode="decimal"
+              placeholder="0 到 1,且小于通过阈值,例如 0.2"
+              value={state.rejectThreshold}
+              onChange={(value) => setState((current) => ({ ...current, rejectThreshold: value }))}
+            />
+            {errors.rejectThreshold ? <Typography.Text className="ai-review-rule-error">{errors.rejectThreshold}</Typography.Text> : null}
+            <Typography.Text type="tertiary">
+              分数高于通过阈值会建议通过,低于打回阈值会建议打回,中间区建议人工复核。
+            </Typography.Text>
           </label>
 
           {serverError ? <Typography.Text className="ai-review-rule-error">{serverError}</Typography.Text> : null}

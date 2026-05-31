@@ -5,12 +5,14 @@ export const AI_REVIEW_RULE_FORM_MESSAGES = {
   dimensionsRequired: '评分维度不能为空',
   dimensionsDuplicate: '评分维度不能重复',
   thresholdRange: '阈值必须在 0 到 1 之间',
+  thresholdOrder: '打回阈值必须小于通过阈值',
 } as const;
 
 export type AiReviewRuleFormState = {
   promptTemplate: string;
   dimensions: string[];
-  threshold: string;
+  passThreshold: string;
+  rejectThreshold: string;
 };
 
 export type AiReviewRuleFormErrors = Partial<Record<keyof AiReviewRuleFormState, string>>;
@@ -30,14 +32,16 @@ export function createDefaultAiReviewRuleFormState(): AiReviewRuleFormState {
   return {
     promptTemplate: '',
     dimensions: [''],
-    threshold: '0.8',
+    passThreshold: '0.8',
+    rejectThreshold: '0.2',
   };
 }
 
 export function validateAiReviewRuleForm(state: AiReviewRuleFormState): AiReviewRuleFormErrors {
   const errors: AiReviewRuleFormErrors = {};
   const dimensions = state.dimensions.map((dimension) => dimension.trim());
-  const threshold = Number(state.threshold);
+  const passThreshold = Number(state.passThreshold);
+  const rejectThreshold = Number(state.rejectThreshold);
 
   if (state.promptTemplate.trim().length === 0) {
     errors.promptTemplate = AI_REVIEW_RULE_FORM_MESSAGES.promptRequired;
@@ -49,8 +53,14 @@ export function validateAiReviewRuleForm(state: AiReviewRuleFormState): AiReview
     errors.dimensions = AI_REVIEW_RULE_FORM_MESSAGES.dimensionsDuplicate;
   }
 
-  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
-    errors.threshold = AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange;
+  if (!Number.isFinite(passThreshold) || passThreshold < 0 || passThreshold > 1) {
+    errors.passThreshold = AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange;
+  }
+
+  if (!Number.isFinite(rejectThreshold) || rejectThreshold < 0 || rejectThreshold > 1) {
+    errors.rejectThreshold = AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange;
+  } else if (Number.isFinite(passThreshold) && passThreshold >= 0 && passThreshold <= 1 && rejectThreshold >= passThreshold) {
+    errors.rejectThreshold = AI_REVIEW_RULE_FORM_MESSAGES.thresholdOrder;
   }
 
   return errors;
@@ -68,7 +78,9 @@ export function buildAiReviewRuleRequest(taskId: number, state: AiReviewRuleForm
       taskId,
       promptTemplate: state.promptTemplate,
       dimensions: state.dimensions.map((dimension) => dimension.trim()),
-      threshold: Number(state.threshold),
+      threshold: Number(state.passThreshold),
+      passThreshold: Number(state.passThreshold),
+      rejectThreshold: Number(state.rejectThreshold),
     },
   };
 }

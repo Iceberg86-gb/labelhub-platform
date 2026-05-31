@@ -63,28 +63,30 @@ vi.mock('./AiReviewRuleHistoryPanel', () => ({
 
 describe('aiReviewRuleFormModel', () => {
   it('validates backend-aligned required and duplicate messages', () => {
-    expect(validateAiReviewRuleForm({ promptTemplate: ' ', dimensions: ['准确性'], threshold: '0.8' }).promptTemplate)
+    expect(validateAiReviewRuleForm({ promptTemplate: ' ', dimensions: ['准确性'], passThreshold: '0.8', rejectThreshold: '0.2' }).promptTemplate)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.promptRequired);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: [], threshold: '0.8' }).dimensions)
+    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: [], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.dimensionsRequired);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性', ' '], threshold: '0.8' }).dimensions)
+    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性', ' '], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.dimensionsRequired);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性', ' 准确性 '], threshold: '0.8' }).dimensions)
+    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性', ' 准确性 '], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.dimensionsDuplicate);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], threshold: '1.1' }).threshold)
+    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '1.1', rejectThreshold: '0.2' }).passThreshold)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], threshold: 'abc' }).threshold)
+    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], passThreshold: 'abc', rejectThreshold: '0.2' }).passThreshold)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange);
+    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '0.7', rejectThreshold: '0.7' }).rejectThreshold)
+      .toBe(AI_REVIEW_RULE_FORM_MESSAGES.thresholdOrder);
   });
 
   it('accepts threshold boundaries and maps trimmed dimensions into a request', () => {
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], threshold: '0' })).toEqual({});
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], threshold: '1' })).toEqual({});
+    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '1', rejectThreshold: '0' })).toEqual({});
 
     const result = buildAiReviewRuleRequest(22, {
       promptTemplate: '  review prompt  ',
       dimensions: [' 准确性 ', '完整性'],
-      threshold: '0.75',
+      passThreshold: '0.75',
+      rejectThreshold: '0.25',
     });
 
     expect(result.ok).toBe(true);
@@ -94,6 +96,8 @@ describe('aiReviewRuleFormModel', () => {
         promptTemplate: '  review prompt  ',
         dimensions: ['准确性', '完整性'],
         threshold: 0.75,
+        passThreshold: 0.75,
+        rejectThreshold: 0.25,
       });
     }
   });
@@ -105,20 +109,24 @@ describe('aiReviewRuleFormModel', () => {
     await expect(submitAiReviewRuleForm(22, {
       promptTemplate: 'review prompt',
       dimensions: ['准确性'],
-      threshold: '0.8',
+      passThreshold: '0.8',
+      rejectThreshold: '0.2',
     }, save)).resolves.toEqual({ ok: true, rule });
     expect(save).toHaveBeenCalledWith({
       taskId: 22,
       promptTemplate: 'review prompt',
       dimensions: ['准确性'],
       threshold: 0.8,
+      passThreshold: 0.8,
+      rejectThreshold: 0.2,
     });
 
     const failedSave = vi.fn().mockRejectedValue(new AiReviewRuleMutationFailure(400, 'INVALID_AI_REVIEW_RULE', '评分维度不能重复'));
     await expect(submitAiReviewRuleForm(22, {
       promptTemplate: 'review prompt',
       dimensions: ['准确性'],
-      threshold: '0.8',
+      passThreshold: '0.8',
+      rejectThreshold: '0.2',
     }, failedSave)).resolves.toEqual({ ok: false, errorMessage: '评分维度不能重复' });
   });
 });
@@ -131,7 +139,8 @@ describe('AiReviewRuleEditorDrawer', () => {
     expect(html).toContain('AI 审核规则配置');
     expect(formHtml).toContain('Prompt 模板');
     expect(formHtml).toContain('评分维度');
-    expect(formHtml).toContain('阈值');
+    expect(formHtml).toContain('通过阈值');
+    expect(formHtml).toContain('打回阈值');
     expect(formHtml).toContain('保存草稿');
     expect(formHtml).not.toContain('发布');
     expect(formHtml).not.toContain('版本历史');
@@ -149,6 +158,8 @@ function makeRule(overrides: Partial<AiReviewRule> = {}): AiReviewRule {
     promptTemplate: 'review prompt',
     dimensions: ['准确性'],
     threshold: 0.8,
+    passThreshold: 0.8,
+    rejectThreshold: 0.2,
     status: 'draft',
     isCurrent: false,
     createdAt: '2026-05-28T00:00:00Z',

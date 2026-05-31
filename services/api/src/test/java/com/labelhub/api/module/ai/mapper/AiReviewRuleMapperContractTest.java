@@ -21,6 +21,8 @@ class AiReviewRuleMapperContractTest {
         entity.setCurrentPromptVersionId(5L);
         entity.setDimensionsJson("[\"accuracy\",\"safety\"]");
         entity.setThreshold(new BigDecimal("0.8000"));
+        entity.setPassThreshold(new BigDecimal("0.8000"));
+        entity.setRejectThreshold(new BigDecimal("0.2000"));
         entity.setStatusCode("draft");
         entity.setCreatedBy(1001L);
 
@@ -29,6 +31,8 @@ class AiReviewRuleMapperContractTest {
         assertThat(entity.getCurrentPromptVersionId()).isEqualTo(5L);
         assertThat(entity.getDimensionsJson()).contains("accuracy");
         assertThat(entity.getThreshold()).isEqualByComparingTo("0.8000");
+        assertThat(entity.getPassThreshold()).isEqualByComparingTo("0.8000");
+        assertThat(entity.getRejectThreshold()).isEqualByComparingTo("0.2000");
         assertThat(entity.getStatusCode()).isEqualTo("draft");
         assertThat(entity.getCreatedBy()).isEqualTo(1001L);
     }
@@ -78,7 +82,9 @@ class AiReviewRuleMapperContractTest {
             .contains("task_id")
             .contains("current_prompt_version_id")
             .contains("dimensions_json")
-            .contains("threshold");
+            .contains("threshold")
+            .contains("pass_threshold")
+            .contains("reject_threshold");
         assertThat(selectByIdSql).contains("FROM ai_review_rules").contains("WHERE id = #{id}");
         assertThat(selectByTaskIdSql)
             .contains("FROM ai_review_rules")
