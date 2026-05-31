@@ -533,6 +533,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reviews/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["batchReviewSubmissions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/submissions/{submissionId}/ledger-entries": {
         parameters: {
             query?: never;
@@ -1371,6 +1387,24 @@ export interface components {
             total: number;
             page: number;
             size: number;
+        };
+        BatchReviewRequest: {
+            submissionIds: number[];
+            /** @enum {string} */
+            verdict: "approve" | "reject";
+            reason?: string | null;
+        };
+        BatchReviewResult: {
+            items: components["schemas"]["BatchReviewItemResult"][];
+        };
+        BatchReviewItemResult: {
+            /** Format: int64 */
+            submissionId: number;
+            /** @enum {string} */
+            status: "created" | "self_review_not_allowed" | "not_found";
+            /** Format: int64 */
+            ledgerEntryId?: number | null;
+            error?: string | null;
         };
         RecomputeRuleRequest: {
             /** Format: int64 */
@@ -2688,6 +2722,33 @@ export interface operations {
                     "application/json": components["schemas"]["PagedReviewerSubmissions"];
                 };
             };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+        };
+    };
+    batchReviewSubmissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Per-submission batch review result. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchReviewResult"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];
         };

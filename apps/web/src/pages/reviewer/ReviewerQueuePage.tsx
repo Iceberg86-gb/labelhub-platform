@@ -1,6 +1,6 @@
-import { Button, Empty, Pagination, Select, Spin, Table, Tag, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Button, Empty, Modal, Pagination, Select, Space, Spin, Table, Tag, TextArea, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import { IconInfoCircle, IconPlay, IconRefresh } from '@douyinfe/semi-icons';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   VERDICT_STATUS_COLORS,
@@ -9,6 +9,7 @@ import {
   type VerdictStatus,
 } from '../../entities/quality/qualityTypes';
 import { useReviewerQueueQuery } from '../../features/quality/useReviewerQueueQuery';
+import { useBatchReviewMutation } from '../../features/quality/useBatchReviewMutation';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 20;
@@ -28,7 +29,11 @@ export function ReviewerQueuePage() {
   const size = parsePositiveInt(searchParams.get('size')) ?? DEFAULT_SIZE;
   const verdict = parseVerdict(searchParams.get('verdict'));
   const queueQuery = useReviewerQueueQuery({ page, size, verdict });
+  const batchReviewMutation = useBatchReviewMutation();
   const items = queueQuery.data?.items ?? [];
+  const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<number[]>([]);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
 
   const columns = useMemo(
     () => [
@@ -79,6 +84,32 @@ export function ReviewerQueuePage() {
     setSearchParams(params);
   }
 
+  const runBatchReview = async (verdictValue: 'approve' | 'reject', reason?: string) => {
+    if (selectedSubmissionIds.length === 0) {
+      Toast.warning('请选择要审核的 submission');
+      return;
+    }
+    if (verdictValue === 'reject' && !reason?.trim()) {
+      Toast.warning('批量打回必须填写理由');
+      return;
+    }
+    try {
+      const result = await batchReviewMutation.mutateAsync({
+        submissionIds: selectedSubmissionIds,
+        verdict: verdictValue,
+        reason: reason?.trim() || undefined,
+      });
+      const created = result.items.filter((item) => item.status === 'created').length;
+      Toast.success(`批量审核完成: ${created}/${result.items.length} 条成功`);
+      setSelectedSubmissionIds([]);
+      setRejectReason('');
+      setRejectModalVisible(false);
+      await queueQuery.refetch();
+    } catch (error) {
+      Toast.error(error instanceof Error ? error.message : '批量审核失败');
+    }
+  };
+
   return (
     <section className="reviewer-queue-page" aria-label="Reviewer queue">
       <div className="page-heading">
@@ -110,9 +141,27 @@ export function ReviewerQueuePage() {
 
       <div className="task-toolbar">
         <Typography.Text type="tertiary">共 {queueQuery.data?.total ?? 0} 条 submitted submission</Typography.Text>
-        <Button icon={<IconRefresh />} size="small" onClick={() => queueQuery.refetch()} loading={queueQuery.isFetching}>
-          刷新
-        </Button>
+        <Space>
+          <Button
+            size="small"
+            disabled={selectedSubmissionIds.length === 0}
+            loading={batchReviewMutation.isPending}
+            onClick={() => void runBatchReview('approve')}
+          >
+            批量通过
+          </Button>
+          <Button
+            size="small"
+            disabled={selectedSubmissionIds.length === 0}
+            loading={batchReviewMutation.isPending}
+            onClick={() => setRejectModalVisible(true)}
+          >
+            批量打回
+          </Button>
+          <Button icon={<IconRefresh />} size="small" onClick={() => queueQuery.refetch()} loading={queueQuery.isFetching}>
+            刷新
+          </Button>
+        </Space>
       </div>
 
       <div className="task-table-surface">
@@ -133,7 +182,16 @@ export function ReviewerQueuePage() {
         ) : null}
         {items.length > 0 ? (
           <>
-            <Table columns={columns} dataSource={items} rowKey="id" pagination={false} />
+            <Table
+              columns={columns}
+              dataSource={items}
+              rowKey="id"
+              pagination={false}
+              rowSelection={{
+                selectedRowKeys: selectedSubmissionIds,
+                onChange: (keys) => setSelectedSubmissionIds((keys ?? []).map((key) => Number(key))),
+              }}
+            />
             <div className="task-pagination">
               <Pagination
                 total={queueQuery.data?.total ?? 0}
@@ -147,6 +205,22 @@ export function ReviewerQueuePage() {
           </>
         ) : null}
       </div>
+      <Modal
+        title="批量打回"
+        visible={rejectModalVisible}
+        okText="确认打回"
+        cancelText="取消"
+        confirmLoading={batchReviewMutation.isPending}
+        onCancel={() => setRejectModalVisible(false)}
+        onOk={() => void runBatchReview('reject', rejectReason)}
+      >
+        <TextArea
+          value={rejectReason}
+          placeholder="填写本次批量打回理由"
+          autosize
+          onChange={setRejectReason}
+        />
+      </Modal>
     </section>
   );
 }
