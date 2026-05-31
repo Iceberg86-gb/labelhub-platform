@@ -134,6 +134,29 @@ public class TaskService {
         return new PagedResult<>(result.getRecords(), result.getTotal(), result.getCurrent(), result.getSize());
     }
 
+    @Transactional
+    public TaskEntity updateTask(Long taskId, Long ownerId, TaskUpdateCommand command) {
+        TaskEntity task = taskMapper.selectByIdForUpdate(taskId);
+        if (task == null || !Objects.equals(task.getOwnerId(), ownerId)) {
+            throw new TaskNotFoundException(taskId);
+        }
+        TaskStatus status = task.getStatus();
+        if (status != TaskStatus.DRAFT && status != TaskStatus.PAUSED) {
+            throw new TaskEditingLockedException(status);
+        }
+
+        task.setTitle(command.title());
+        task.setDescription(command.description());
+        task.setInstructionRichText(command.instructionRichText());
+        task.setTags(command.tags());
+        task.setRewardRule(command.rewardRule());
+        task.setDeadlineAt(command.deadlineAt());
+        task.setQuotaTotal(command.quotaTotal());
+        task.setUpdatedAt(LocalDateTime.now(clock));
+        requireOneRow(taskMapper.updateById(task), "update task basic fields");
+        return task;
+    }
+
     public TaskEntity getById(Long ownerId, Long taskId) {
         TaskEntity task = requireTask(taskId);
         if (!Objects.equals(task.getOwnerId(), ownerId)) {

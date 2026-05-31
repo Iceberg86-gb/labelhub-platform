@@ -6,6 +6,8 @@ import { useCreateTask, type CreateTaskFailure } from './useCreateTask';
 type CreateTaskFormValues = {
   title: string;
   description?: string;
+  instructionRichText?: string;
+  rewardRuleJson?: string;
   quotaTotal?: number;
   deadlineAt?: Date | string;
   tags?: string[];
@@ -28,6 +30,18 @@ function isPastDate(value?: Date | string) {
   return deadline ? deadline.getTime() <= Date.now() : false;
 }
 
+function parseRewardRule(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parsed = JSON.parse(trimmed) as unknown;
+  if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+    throw new Error('奖励规则必须是 JSON object');
+  }
+  return parsed as Record<string, unknown>;
+}
+
 function applyFieldErrors(formApi: FormApi<CreateTaskFormValues> | undefined, error: CreateTaskFailure) {
   error.fieldErrors?.forEach((fieldError) => {
     formApi?.setError(fieldError.field as keyof CreateTaskFormValues, fieldError.message);
@@ -44,11 +58,20 @@ export function CreateTaskModal({ visible, onClose }: CreateTaskModalProps) {
       formApiRef.current?.setError('deadlineAt', '请选择截止时间');
       return;
     }
+    let rewardRule: Record<string, unknown> | undefined;
+    try {
+      rewardRule = parseRewardRule(values.rewardRuleJson);
+    } catch (error) {
+      formApiRef.current?.setError('rewardRuleJson', error instanceof Error ? error.message : '奖励规则 JSON 无效');
+      return;
+    }
 
     try {
       await createTask.mutateAsync({
         title: values.title,
         description: values.description,
+        instructionRichText: values.instructionRichText,
+        rewardRule,
         quotaTotal: Number(values.quotaTotal),
         deadlineAt,
         tags: values.tags?.filter(Boolean),
@@ -91,6 +114,8 @@ export function CreateTaskModal({ visible, onClose }: CreateTaskModalProps) {
       >
         <Form.Input field="title" label="任务标题" rules={[{ required: true, message: '请输入任务标题' }]} />
         <Form.TextArea field="description" label="任务描述" autosize placeholder="给标注员的简短任务背景。" />
+        <Form.TextArea field="instructionRichText" label="富文本说明" autosize placeholder="支持 Markdown/富文本序列化内容,会在作答页展示。" />
+        <Form.TextArea field="rewardRuleJson" label="奖励规则 JSON" autosize placeholder='例如 {"type":"fixed","amount":10}' />
         <Form.InputNumber
           field="quotaTotal"
           label="配额"

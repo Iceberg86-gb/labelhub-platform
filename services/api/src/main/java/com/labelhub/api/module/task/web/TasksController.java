@@ -12,6 +12,7 @@ import com.labelhub.api.generated.model.TaskStatus;
 import com.labelhub.api.generated.model.TaskTransition;
 import com.labelhub.api.generated.model.TaskTransitionRequest;
 import com.labelhub.api.generated.model.UpdateTaskCurrentDatasetRequest;
+import com.labelhub.api.generated.model.UpdateTaskRequest;
 import com.labelhub.api.generated.web.TasksApi;
 import com.labelhub.api.module.session.entity.SessionEntity;
 import com.labelhub.api.module.session.service.SessionService;
@@ -24,6 +25,7 @@ import com.labelhub.api.module.task.entity.TaskTransitionEntity;
 import com.labelhub.api.module.task.service.PagedResult;
 import com.labelhub.api.module.task.service.TaskCreateCommand;
 import com.labelhub.api.module.task.service.TaskService;
+import com.labelhub.api.module.task.service.TaskUpdateCommand;
 import com.labelhub.api.security.JwtPrincipal;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -104,6 +106,22 @@ public class TasksController implements TasksApi {
     @GetMapping(path = "/{taskId}", produces = "application/json")
     public ResponseEntity<Task> getTask(@PathVariable("taskId") Long taskId) {
         return ResponseEntity.ok(toDto(taskService.getById(currentUserId(), taskId)));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @PatchMapping(path = "/{taskId}", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<Task> updateTask(@PathVariable("taskId") Long taskId, @Valid @RequestBody UpdateTaskRequest request) {
+        TaskEntity updated = taskService.updateTask(taskId, currentUserId(), TaskUpdateCommand.builder()
+            .title(request.getTitle())
+            .description(request.getDescription())
+            .instructionRichText(request.getInstructionRichText())
+            .tags(request.getTags())
+            .rewardRule(request.getRewardRule())
+            .deadlineAt(request.getDeadlineAt().toLocalDateTime())
+            .quotaTotal(request.getQuotaTotal())
+            .build());
+        return ResponseEntity.ok(toDto(updated));
     }
 
     @Override

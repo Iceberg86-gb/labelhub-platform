@@ -93,7 +93,7 @@ export interface paths {
         delete: operations["deleteTask"];
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["updateTask"];
         trace?: never;
     };
     "/tasks/{taskId}/submissions": {
@@ -742,6 +742,18 @@ export interface components {
             derivedAt: string;
         };
         CreateTaskRequest: {
+            title: string;
+            description?: string;
+            instructionRichText?: string;
+            tags?: string[];
+            rewardRule?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            deadlineAt: string;
+            quotaTotal: number;
+        };
+        UpdateTaskRequest: {
             title: string;
             description?: string;
             instructionRichText?: string;
@@ -1817,6 +1829,37 @@ export interface operations {
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    updateTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated task detail. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+            409: components["responses"]["ErrorStateConflict"];
         };
     };
     listOwnerTaskSubmissions: {
