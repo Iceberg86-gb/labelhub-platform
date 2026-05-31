@@ -18,21 +18,27 @@ a {
   text-decoration: none;
 }
 
-.semi-button-primary.semi-button-solid {
+.semi-button-primary.semi-button-solid,
+.semi-button.semi-button-primary.semi-button-solid:not(.semi-button-borderless):not(.semi-button-light):not(.semi-button-outline) {
   border-color: var(--color-primary-black);
   background: var(--color-primary-black);
+  background-color: var(--color-primary-black);
   color: var(--color-text-inverse);
 }
 
-.semi-button-primary.semi-button-solid:not(.semi-button-disabled):hover {
+.semi-button-primary.semi-button-solid:not(.semi-button-disabled):hover,
+.semi-button.semi-button-primary.semi-button-solid:not(.semi-button-disabled):not(.semi-button-borderless):not(.semi-button-light):not(.semi-button-outline):hover {
   border-color: var(--color-primary-black-hover);
   background: var(--color-primary-black-hover);
+  background-color: var(--color-primary-black-hover);
   color: var(--color-text-inverse);
 }
 
-.semi-button-primary.semi-button-solid:not(.semi-button-disabled):active {
+.semi-button-primary.semi-button-solid:not(.semi-button-disabled):active,
+.semi-button.semi-button-primary.semi-button-solid:not(.semi-button-disabled):not(.semi-button-borderless):not(.semi-button-light):not(.semi-button-outline):active {
   border-color: var(--color-primary-black-pressed);
   background: var(--color-primary-black-pressed);
+  background-color: var(--color-primary-black-pressed);
   color: var(--color-text-inverse);
 }
 
