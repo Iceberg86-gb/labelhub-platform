@@ -40,8 +40,15 @@ public class ExportFactCollector {
     }
 
     public ExportFactBundle collectForTask(Long taskId) {
+        return collectForTask(taskId, ExportDataScope.APPROVED_ONLY);
+    }
+
+    public ExportFactBundle collectForTask(Long taskId, ExportDataScope dataScope) {
         TaskEntity task = taskMapper.selectById(taskId);
-        List<SubmissionEntity> submissions = submissionMapper.selectSubmittedByTaskOrderedById(taskId);
+        ExportDataScope effectiveScope = dataScope == null ? ExportDataScope.APPROVED_ONLY : dataScope;
+        List<SubmissionEntity> submissions = effectiveScope == ExportDataScope.FULL
+            ? submissionMapper.selectSubmittedByTaskOrderedById(taskId)
+            : submissionMapper.selectApprovedByTaskOrderedById(taskId);
         List<Long> submissionIds = submissions.stream().map(SubmissionEntity::getId).toList();
 
         TreeSet<Long> schemaVersionIds = new TreeSet<>();
@@ -68,6 +75,16 @@ public class ExportFactCollector {
             verdicts.put(submission.getId(), DerivedVerdictSnapshot.derive(submission.getId(), latest));
         }
 
-        return new ExportFactBundle(task, schemaVersions, datasetItems, submissions, aiCalls, aiCallInFields, ledgerEntries, verdicts);
+        return new ExportFactBundle(
+            task,
+            schemaVersions,
+            datasetItems,
+            submissions,
+            aiCalls,
+            aiCallInFields,
+            ledgerEntries,
+            verdicts,
+            effectiveScope
+        );
     }
 }

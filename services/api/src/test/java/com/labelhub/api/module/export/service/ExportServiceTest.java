@@ -94,7 +94,9 @@ class ExportServiceTest {
         );
         baseBundle = bundleWithLedgerEntries(List.of(ledgerEntry(700L, "approve")));
         when(taskMapper.selectById(TASK_ID)).thenReturn(task(OWNER_ID));
-        when(factCollector.collectForTask(TASK_ID)).thenReturn(baseBundle);
+        when(factCollector.collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY)).thenReturn(baseBundle);
+        when(factCollector.collectForTask(TASK_ID, ExportDataScope.FULL))
+            .thenReturn(bundleWithLedgerEntries(List.of(ledgerEntry(700L, "approve")), ExportDataScope.FULL));
         stubGeneratedIds();
     }
 
@@ -133,7 +135,7 @@ class ExportServiceTest {
     void export_hash_changes_when_new_ledger_entry_appended() {
         ExportSnapshotEntity snap1 = exportService.createSnapshot(TASK_ID, OWNER_ID);
 
-        when(factCollector.collectForTask(TASK_ID))
+        when(factCollector.collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY))
             .thenReturn(bundleWithLedgerEntries(List.of(
                 ledgerEntry(700L, "approve"),
                 ledgerEntry(701L, "reject")
@@ -160,8 +162,37 @@ class ExportServiceTest {
     }
 
     @Test
+    void createSnapshot_defaults_to_approved_only_export_scope() throws Exception {
+        ExportSnapshotEntity snapshot = exportService.createSnapshot(TASK_ID, OWNER_ID);
+
+        verify(factCollector).collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY);
+        assertThat(snapshot.getDataScope())
+            .containsEntry("type", "approved_only")
+            .containsEntry("mode", "approved_only")
+            .containsEntry("verdict", "approved");
+        Map<String, Object> manifest = json(writtenUtf8("manifest.json"));
+        Map<String, Object> content = castMap(manifest.get("content"));
+        assertThat(castMap(content.get("dataScope")))
+            .containsEntry("type", "approved_only")
+            .containsEntry("mode", "approved_only");
+    }
+
+    @Test
+    void createSnapshot_accepts_full_compatibility_scope() throws Exception {
+        ExportSnapshotEntity snapshot = exportService.createSnapshot(TASK_ID, OWNER_ID, ExportDataScope.FULL);
+
+        verify(factCollector).collectForTask(TASK_ID, ExportDataScope.FULL);
+        assertThat(snapshot.getDataScope())
+            .containsEntry("type", "task_complete")
+            .containsEntry("mode", "full");
+        Map<String, Object> manifest = json(writtenUtf8("manifest.json"));
+        Map<String, Object> content = castMap(manifest.get("content"));
+        assertThat(castMap(content.get("dataScope"))).containsEntry("mode", "full");
+    }
+
+    @Test
     void export_omits_null_prompt_and_rule_evidence_fields_from_ai_calls() throws Exception {
-        when(factCollector.collectForTask(TASK_ID))
+        when(factCollector.collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY))
             .thenReturn(bundleWithAiCall(legacyAiCallWithoutEvidenceBindings()));
 
         exportService.createSnapshot(TASK_ID, OWNER_ID);
@@ -179,7 +210,7 @@ class ExportServiceTest {
     void export_includes_non_null_prompt_and_rule_evidence_fields_in_ai_calls() throws Exception {
         AiCallEntity ruleBound = aiCall();
         ruleBound.setAiReviewRuleId(19L);
-        when(factCollector.collectForTask(TASK_ID)).thenReturn(bundleWithAiCall(ruleBound));
+        when(factCollector.collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY)).thenReturn(bundleWithAiCall(ruleBound));
 
         exportService.createSnapshot(TASK_ID, OWNER_ID);
 
@@ -221,7 +252,7 @@ class ExportServiceTest {
 
     @Test
     void export_with_no_submissions_creates_empty_jsonl_files() throws Exception {
-        when(factCollector.collectForTask(TASK_ID)).thenReturn(emptyBundle());
+        when(factCollector.collectForTask(TASK_ID, ExportDataScope.APPROVED_ONLY)).thenReturn(emptyBundle());
 
         exportService.createSnapshot(TASK_ID, OWNER_ID);
 
@@ -410,7 +441,8 @@ class ExportServiceTest {
             List.of(),
             List.of(),
             List.of(),
-            Map.of()
+            Map.of(),
+            ExportDataScope.APPROVED_ONLY
         );
     }
 
@@ -426,11 +458,19 @@ class ExportServiceTest {
             List.of(aiCall),
             List.of(aiCallInField()),
             List.of(latest),
-            verdicts
+            verdicts,
+            ExportDataScope.APPROVED_ONLY
         );
     }
 
     private static ExportFactBundle bundleWithLedgerEntries(List<QualityLedgerEntryEntity> ledgerEntries) {
+        return bundleWithLedgerEntries(ledgerEntries, ExportDataScope.APPROVED_ONLY);
+    }
+
+    private static ExportFactBundle bundleWithLedgerEntries(
+        List<QualityLedgerEntryEntity> ledgerEntries,
+        ExportDataScope dataScope
+    ) {
         LinkedHashMap<Long, DerivedVerdictSnapshot> verdicts = new LinkedHashMap<>();
         QualityLedgerEntryEntity latest = ledgerEntries.get(ledgerEntries.size() - 1);
         verdicts.put(SUBMISSION_ID, DerivedVerdictSnapshot.derive(SUBMISSION_ID, latest));
@@ -442,7 +482,8 @@ class ExportServiceTest {
             List.of(aiCall()),
             List.of(aiCallInField()),
             ledgerEntries,
-            verdicts
+            verdicts,
+            dataScope
         );
     }
 

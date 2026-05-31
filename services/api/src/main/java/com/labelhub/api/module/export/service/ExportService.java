@@ -67,6 +67,12 @@ public class ExportService {
 
     @Transactional
     public ExportSnapshotEntity createSnapshot(Long taskId, Long ownerUserId) {
+        return createSnapshot(taskId, ownerUserId, ExportDataScope.APPROVED_ONLY);
+    }
+
+    @Transactional
+    public ExportSnapshotEntity createSnapshot(Long taskId, Long ownerUserId, ExportDataScope dataScope) {
+        ExportDataScope effectiveScope = dataScope == null ? ExportDataScope.APPROVED_ONLY : dataScope;
         TaskEntity task = taskMapper.selectById(taskId);
         if (task == null || !Objects.equals(task.getOwnerId(), ownerUserId)) {
             throw new TaskNotFoundException(taskId);
@@ -78,7 +84,7 @@ public class ExportService {
         job.setRequestedBy(ownerUserId);
         job.setFormat("jsonl-bundle");
         job.setStatus("created");
-        job.setParameters(Map.of());
+        job.setParameters(Map.of("mode", effectiveScope.mode()));
         job.setCreatedAt(now);
         job.setStartedAt(now);
         job.setDownloadCount(0);
@@ -86,7 +92,7 @@ public class ExportService {
 
         List<String> writtenKeys = new ArrayList<>();
         try {
-            ExportFactBundle bundle = factCollector.collectForTask(taskId);
+            ExportFactBundle bundle = factCollector.collectForTask(taskId, effectiveScope);
             ExportArtifact artifact = artifactBuilder.build(bundle);
             String objectKeyPrefix = "exports/tasks/" + taskId + "/jobs/" + job.getId() + "/";
 
@@ -108,7 +114,7 @@ public class ExportService {
             snapshot.setRecordCounts(artifact.recordCounts());
             snapshot.setSchemaVersionIds(bundle.schemaVersions().stream().map(SchemaVersionEntity::getId).toList());
             snapshot.setVerdictRuleVersionId(null);
-            snapshot.setDataScope(Map.of("type", "task_complete"));
+            snapshot.setDataScope(effectiveScope.toSnapshotDataScope());
             snapshot.setFieldMappingSnapshot(Map.of());
             snapshot.setCanonicalizationVersion(artifact.canonicalizationVersion());
             snapshot.setGeneratedAt(now);
@@ -124,6 +130,7 @@ public class ExportService {
                     .payload("manifestHash", snapshot.getManifestHash())
                     .payload("sourceStateHash", snapshot.getSourceStateHash())
                     .payload("objectKey", snapshot.getObjectKey())
+                    .payload("mode", effectiveScope.mode())
             );
             return snapshot;
         } catch (RuntimeException e) {

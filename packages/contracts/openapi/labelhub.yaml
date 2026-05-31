@@ -294,8 +294,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              additionalProperties: false
+              $ref: '#/components/schemas/CreateTaskExportRequest'
       responses:
         '201':
           description: Synchronous immutable export snapshot.
@@ -2782,6 +2781,15 @@ components:
         error:
           type: string
           nullable: true
+    CreateTaskExportRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        mode:
+          type: string
+          description: Export data scope. Defaults to approved_only.
+          enum: [approved_only, full]
+          default: approved_only
     RecomputeRuleRequest:
       type: object
       properties:

@@ -53,6 +53,7 @@ public class ExportArtifactBuilder {
         Map<String, Object> manifestContent = new LinkedHashMap<>();
         manifestContent.put("taskId", bundle.task().getId());
         manifestContent.put("canonicalizationVersion", CANONICALIZATION_VERSION);
+        manifestContent.put("dataScope", bundle.dataScope().toSnapshotDataScope());
         manifestContent.put("exportedAtSourceState", sourceState);
         manifestContent.put("files", files.stream().map(ArtifactFile::toManifestEntry).toList());
         manifestContent.put("recordCounts", recordCounts);
@@ -106,7 +107,8 @@ public class ExportArtifactBuilder {
     }
 
     private Map<String, Object> buildSourceStateRef(ExportFactBundle bundle) {
-        return map("lastSchemaVersionId", maxId(bundle.schemaVersions().stream().map(SchemaVersionEntity::getId).toList()),
+        return map("dataScope", bundle.dataScope().toSnapshotDataScope(),
+            "lastSchemaVersionId", maxId(bundle.schemaVersions().stream().map(SchemaVersionEntity::getId).toList()),
             "lastDatasetItemId", maxId(bundle.datasetItems().stream().map(DatasetItemEntity::getId).toList()),
             "lastSubmissionId", maxId(bundle.submissions().stream().map(SubmissionEntity::getId).toList()),
             "lastAiCallId", maxId(bundle.aiCalls().stream().map(AiCallEntity::getId).toList()),

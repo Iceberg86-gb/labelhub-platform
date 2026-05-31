@@ -74,6 +74,32 @@ public interface SubmissionMapper {
     List<SubmissionEntity> selectSubmittedByTaskOrderedById(@Param("taskId") Long taskId);
 
     @Select("""
+        SELECT s.id, s.session_id, s.task_id, s.dataset_item_id, s.labeler_id, s.schema_version_id,
+               s.answer_payload, s.provenance, s.content_hash, s.status AS status_code,
+               s.created_at, s.superseded_by_id
+        FROM submissions s
+        JOIN (
+            SELECT ranked.*
+            FROM (
+                SELECT qle.*,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY qle.submission_id
+                           ORDER BY qle.created_at DESC, qle.id DESC
+                       ) AS rn
+                FROM quality_ledger_entries qle
+                WHERE qle.evidence_type = 'reviewer_overall_verdict'
+            ) ranked
+            WHERE ranked.rn = 1
+        ) latest ON latest.submission_id = s.id
+        WHERE s.task_id = #{taskId}
+          AND s.status = 'submitted'
+          AND JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) = 'approve'
+        ORDER BY s.id ASC
+        """)
+    @ResultMap("submissionResultMap")
+    List<SubmissionEntity> selectApprovedByTaskOrderedById(@Param("taskId") Long taskId);
+
+    @Select("""
         SELECT id, session_id, task_id, dataset_item_id, labeler_id, schema_version_id,
                answer_payload, provenance, content_hash, status AS status_code,
                created_at, superseded_by_id

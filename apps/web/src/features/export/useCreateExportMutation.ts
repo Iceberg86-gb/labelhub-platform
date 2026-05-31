@@ -23,7 +23,7 @@ export function useCreateExportMutation() {
     mutationFn: async ({ taskId }) => {
       const { data, error, response } = await apiClient.POST('/tasks/{taskId}/exports', {
         params: { path: { taskId } },
-        body: {},
+        body: { mode: 'approved_only' },
       });
       if (error || !data) {
         const body = error as { code?: string; message?: string } | undefined;
