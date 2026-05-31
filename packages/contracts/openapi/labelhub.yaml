@@ -799,6 +799,11 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/SessionStatus'
+        - name: workStatus
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/LabelerSessionWorkStatus'
       responses:
         '200':
           description: Sessions claimed by the authenticated labeler.
@@ -2092,9 +2097,31 @@ components:
     SessionStatus:
       type: string
       enum: [claimed, submitted, returned_for_revision, abandoned]
+    LabelerSessionWorkStatus:
+      type: string
+      enum: [in_progress, submitted, approved, rejected, returned_for_revision, abandoned]
+    SessionFinalVerdict:
+      type: string
+      enum: [pending, approved, rejected]
+    LabelerSessionSummary:
+      type: object
+      required: [submitted, approved, rejected, returnedForRevision]
+      properties:
+        submitted:
+          type: integer
+          format: int64
+        approved:
+          type: integer
+          format: int64
+        rejected:
+          type: integer
+          format: int64
+        returnedForRevision:
+          type: integer
+          format: int64
     Session:
       type: object
-      required: [id, taskId, datasetItemId, labelerId, schemaVersionId, status]
+      required: [id, taskId, datasetItemId, labelerId, schemaVersionId, status, workStatus]
       properties:
         id:
           type: integer
@@ -2113,6 +2140,10 @@ components:
           format: int64
         status:
           $ref: '#/components/schemas/SessionStatus'
+        workStatus:
+          $ref: '#/components/schemas/LabelerSessionWorkStatus'
+        finalVerdict:
+          $ref: '#/components/schemas/SessionFinalVerdict'
         claimSnapshot:
           type: object
           additionalProperties: true
@@ -2183,7 +2214,7 @@ components:
           format: date-time
     PagedSessions:
       type: object
-      required: [items, total, page, size]
+      required: [items, total, page, size, summary]
       properties:
         items:
           type: array
@@ -2196,6 +2227,8 @@ components:
           type: integer
         size:
           type: integer
+        summary:
+          $ref: '#/components/schemas/LabelerSessionSummary'
     SaveDraftRequest:
       type: object
       required: [payload]

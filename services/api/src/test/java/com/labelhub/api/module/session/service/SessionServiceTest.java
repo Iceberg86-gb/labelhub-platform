@@ -349,32 +349,62 @@ class SessionServiceTest {
         Page<SessionEntity> page = new Page<>(1, 20);
         page.setTotal(1);
         page.setRecords(List.of(claimedSession(900L, 1002L)));
-        when(sessionMapper.selectByLabeler(any(Page.class), any(), any())).thenReturn(page);
+        when(sessionMapper.selectByLabeler(any(Page.class), any(), any(), any())).thenReturn(page);
 
         Page<SessionEntity> result = sessionService.listMySessions(1002L, null, 1, 20);
 
         assertThat(result.getRecords()).singleElement().extracting(SessionEntity::getLabelerId).isEqualTo(1002L);
-        verify(sessionMapper).selectByLabeler(any(Page.class), org.mockito.ArgumentMatchers.eq(1002L), org.mockito.ArgumentMatchers.isNull());
+        verify(sessionMapper).selectByLabeler(
+            any(Page.class),
+            org.mockito.ArgumentMatchers.eq(1002L),
+            org.mockito.ArgumentMatchers.isNull(),
+            org.mockito.ArgumentMatchers.isNull()
+        );
     }
 
     @Test
     void listMySessions_applies_status_filter() {
         Page<SessionEntity> page = new Page<>(1, 20);
-        when(sessionMapper.selectByLabeler(any(Page.class), any(), any())).thenReturn(page);
+        when(sessionMapper.selectByLabeler(any(Page.class), any(), any(), any())).thenReturn(page);
 
         sessionService.listMySessions(1002L, "claimed", 1, 20);
 
-        verify(sessionMapper).selectByLabeler(any(Page.class), org.mockito.ArgumentMatchers.eq(1002L), org.mockito.ArgumentMatchers.eq("claimed"));
+        verify(sessionMapper).selectByLabeler(
+            any(Page.class),
+            org.mockito.ArgumentMatchers.eq(1002L),
+            org.mockito.ArgumentMatchers.eq("claimed"),
+            org.mockito.ArgumentMatchers.isNull()
+        );
+    }
+
+    @Test
+    void listMySessions_applies_labeler_work_status_filter() {
+        Page<SessionEntity> page = new Page<>(1, 20);
+        when(sessionMapper.selectByLabeler(any(Page.class), any(), any(), any())).thenReturn(page);
+
+        sessionService.listMySessions(1002L, null, "approved", 1, 20);
+
+        verify(sessionMapper).selectByLabeler(
+            any(Page.class),
+            org.mockito.ArgumentMatchers.eq(1002L),
+            org.mockito.ArgumentMatchers.isNull(),
+            org.mockito.ArgumentMatchers.eq("approved")
+        );
     }
 
     @Test
     void listMySessions_orders_by_claimed_at_desc_at_mapper_boundary() {
         Page<SessionEntity> page = new Page<>(1, 20);
-        when(sessionMapper.selectByLabeler(any(Page.class), any(), any())).thenReturn(page);
+        when(sessionMapper.selectByLabeler(any(Page.class), any(), any(), any())).thenReturn(page);
 
         sessionService.listMySessions(1002L, null, 1, 20);
 
-        verify(sessionMapper).selectByLabeler(any(Page.class), org.mockito.ArgumentMatchers.eq(1002L), org.mockito.ArgumentMatchers.isNull());
+        verify(sessionMapper).selectByLabeler(
+            any(Page.class),
+            org.mockito.ArgumentMatchers.eq(1002L),
+            org.mockito.ArgumentMatchers.isNull(),
+            org.mockito.ArgumentMatchers.isNull()
+        );
     }
 
     @Test

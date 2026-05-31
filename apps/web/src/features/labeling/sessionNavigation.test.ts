@@ -10,6 +10,7 @@ function session(id: number, taskId: number, status: Session['status'], ordinal:
     labelerId: 7,
     schemaVersionId: 3,
     status,
+    workStatus: status === 'claimed' ? 'in_progress' : status,
     claimSnapshot: { datasetItemOrdinal: ordinal },
   };
 }

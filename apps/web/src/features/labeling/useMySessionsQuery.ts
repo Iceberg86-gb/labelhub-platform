@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import type { PagedSessions, SessionStatus } from '../../entities/submission/submissionTypes';
+import type { LabelerSessionWorkStatus, PagedSessions, SessionStatus } from '../../entities/submission/submissionTypes';
 import { apiClient } from '../../shared/api/client';
 
 export type MySessionsQueryParams = {
   page: number;
   size: number;
   status?: SessionStatus;
+  workStatus?: LabelerSessionWorkStatus;
 };
 
 export const mySessionsQueryKey = (params: MySessionsQueryParams) => ['my', 'sessions', params] as const;

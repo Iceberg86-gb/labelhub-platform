@@ -1021,6 +1021,20 @@ export interface components {
         };
         /** @enum {string} */
         SessionStatus: "claimed" | "submitted" | "returned_for_revision" | "abandoned";
+        /** @enum {string} */
+        LabelerSessionWorkStatus: "in_progress" | "submitted" | "approved" | "rejected" | "returned_for_revision" | "abandoned";
+        /** @enum {string} */
+        SessionFinalVerdict: "pending" | "approved" | "rejected";
+        LabelerSessionSummary: {
+            /** Format: int64 */
+            submitted: number;
+            /** Format: int64 */
+            approved: number;
+            /** Format: int64 */
+            rejected: number;
+            /** Format: int64 */
+            returnedForRevision: number;
+        };
         Session: {
             /** Format: int64 */
             id: number;
@@ -1033,6 +1047,8 @@ export interface components {
             /** Format: int64 */
             schemaVersionId: number;
             status: components["schemas"]["SessionStatus"];
+            workStatus: components["schemas"]["LabelerSessionWorkStatus"];
+            finalVerdict?: components["schemas"]["SessionFinalVerdict"];
             claimSnapshot?: {
                 [key: string]: unknown;
             };
@@ -1082,6 +1098,7 @@ export interface components {
             total: number;
             page: number;
             size: number;
+            summary: components["schemas"]["LabelerSessionSummary"];
         };
         SaveDraftRequest: {
             payload: {
@@ -2354,6 +2371,7 @@ export interface operations {
                 page?: number;
                 size?: number;
                 status?: components["schemas"]["SessionStatus"];
+                workStatus?: components["schemas"]["LabelerSessionWorkStatus"];
             };
             header?: never;
             path?: never;

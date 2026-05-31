@@ -33,6 +33,7 @@ import com.labelhub.api.module.session.mapper.DraftMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskFilter;
+import com.labelhub.api.module.session.service.view.LabelerSessionWorkStatusCount;
 import com.labelhub.api.module.session.service.view.SessionDetailView;
 import com.labelhub.api.module.session.service.view.SessionReviewFeedbackView;
 import com.labelhub.api.module.submission.SubmissionStatusCodes;
@@ -253,7 +254,26 @@ public class SessionService {
     }
 
     public Page<SessionEntity> listMySessions(Long labelerId, String statusFilter, long page, long size) {
-        return (Page<SessionEntity>) sessionMapper.selectByLabeler(Page.of(page, size), labelerId, statusFilter);
+        return listMySessions(labelerId, statusFilter, null, page, size);
+    }
+
+    public Page<SessionEntity> listMySessions(
+        Long labelerId,
+        String statusFilter,
+        String workStatusFilter,
+        long page,
+        long size
+    ) {
+        return (Page<SessionEntity>) sessionMapper.selectByLabeler(
+            Page.of(page, size),
+            labelerId,
+            statusFilter,
+            workStatusFilter
+        );
+    }
+
+    public List<LabelerSessionWorkStatusCount> listMySessionWorkStatusCounts(Long labelerId) {
+        return sessionMapper.selectLabelerWorkStatusCounts(labelerId);
     }
 
     @Transactional
