@@ -1,5 +1,5 @@
-import { Button, Card, Checkbox, Empty, Input, Pagination, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconRefresh, IconUpload } from '@douyinfe/semi-icons';
+import { Button, Card, Checkbox, Empty, Input, Pagination, Popconfirm, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { IconDelete, IconRefresh, IconUpload } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ExportFieldMapping, ExportSnapshot } from '../../entities/export/exportTypes';
@@ -8,6 +8,7 @@ import { CreateExportFailure, useCreateExportMutation } from './useCreateExportM
 import { ExportSnapshotDiffModal } from './ExportSnapshotDiffModal';
 import { useTaskExportsQuery } from './useTaskExportsQuery';
 import { useDownloadExportFileMutation } from './useDownloadExportFileMutation';
+import { useDeleteExportSnapshotMutation } from './useDeleteExportSnapshotMutation';
 
 type TrustedExportCardProps = {
   taskId: number;
@@ -45,12 +46,14 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [mappingRows, setMappingRows] = useState<FieldMappingDraftRow[]>(DEFAULT_FIELD_MAPPING_ROWS);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
+  const [deletingSnapshotId, setDeletingSnapshotId] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePositiveInt(searchParams.get('exportPage')) ?? DEFAULT_PAGE;
   const size = parsePositiveInt(searchParams.get('exportSize')) ?? DEFAULT_SIZE;
   const exportsQuery = useTaskExportsQuery(taskId, { page, size });
   const createExport = useCreateExportMutation();
   const downloadExportFile = useDownloadExportFileMutation();
+  const deleteExportSnapshot = useDeleteExportSnapshotMutation();
   const items = exportsQuery.data?.items ?? [];
   const manifestHashCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -112,8 +115,31 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
           </Space>
         ),
       },
+      {
+        title: '操作',
+        width: 100,
+        render: (_: unknown, record: ExportSnapshot) => (
+          <Popconfirm
+            title="删除导出快照?"
+            content={
+              <Typography.Text style={{ display: 'block', maxWidth: 320, lineHeight: 1.6 }}>
+                此操作会从列表移除该快照,并清理对应导出文件。删除后不可恢复。
+              </Typography.Text>
+            }
+            position="leftTop"
+            okText="删除"
+            cancelText="取消"
+            okType="danger"
+            onConfirm={() => handleDeleteSnapshot(record)}
+          >
+            <Button icon={<IconDelete />} size="small" theme="borderless" type="danger" loading={deletingSnapshotId === record.id}>
+              删除
+            </Button>
+          </Popconfirm>
+        ),
+      },
     ],
-    [downloadExportFile, manifestHashCounts, selectedIds],
+    [deleteExportSnapshot, deletingSnapshotId, downloadExportFile, manifestHashCounts, selectedIds, taskId],
   );
 
   async function handleCreateExport() {
@@ -145,6 +171,19 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
       if (current.length >= 2) return [current[1], snapshotId];
       return [...current, snapshotId];
     });
+  }
+
+  async function handleDeleteSnapshot(snapshot: ExportSnapshot) {
+    setDeletingSnapshotId(snapshot.id);
+    try {
+      await deleteExportSnapshot.mutateAsync({ taskId, snapshotId: snapshot.id });
+      setSelectedIds((current) => current.filter((id) => id !== snapshot.id));
+      Toast.success(`已删除导出快照 #${snapshot.id}`);
+    } catch (error) {
+      Toast.error(error instanceof Error ? error.message : '删除失败,请稍后重试');
+    } finally {
+      setDeletingSnapshotId(null);
+    }
   }
 
   function updateParams(next: { page?: number; size?: number }) {

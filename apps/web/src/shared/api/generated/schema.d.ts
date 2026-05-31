@@ -639,7 +639,7 @@ export interface paths {
         get: operations["getExportSnapshot"];
         put?: never;
         post?: never;
-        delete?: never;
+        delete: operations["deleteExportSnapshot"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3140,6 +3140,29 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ExportSnapshot"];
                 };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    deleteExportSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshotId: components["parameters"]["SnapshotId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Export snapshot deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];
