@@ -82,6 +82,11 @@ export function LoginPage() {
             htmlType="submit"
             theme="solid"
             type="primary"
+            style={{
+              background: 'var(--color-primary-black)',
+              borderColor: 'var(--color-primary-black)',
+              color: 'var(--color-text-inverse)',
+            }}
             loading={login.isPending}
             block
           >
