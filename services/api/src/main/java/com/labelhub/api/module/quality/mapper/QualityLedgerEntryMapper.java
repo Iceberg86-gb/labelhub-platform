@@ -71,6 +71,21 @@ public interface QualityLedgerEntryMapper {
     QualityLedgerEntryEntity selectLatestReviewerOverallVerdict(@Param("submissionId") Long submissionId);
 
     @Select("""
+        SELECT id, submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at
+        FROM quality_ledger_entries
+        WHERE submission_id = #{submissionId}
+          AND evidence_type = 'reviewer_overall_verdict'
+          AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.reviewLevel')), 'reviewer') = #{reviewLevel}
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+        """)
+    @ResultMap("qualityLedgerEntryResultMap")
+    QualityLedgerEntryEntity selectLatestReviewerOverallVerdictByReviewLevel(
+        @Param("submissionId") Long submissionId,
+        @Param("reviewLevel") String reviewLevel
+    );
+
+    @Select("""
         SELECT qle.id, qle.submission_id, qle.task_id, qle.evidence_type, qle.actor_type,
                qle.actor_id, qle.ai_call_id, qle.payload, qle.created_at
         FROM quality_ledger_entries qle
@@ -87,8 +102,12 @@ public interface QualityLedgerEntryMapper {
     @Select("""
         SELECT s.id, s.task_id, t.title AS task_title, s.labeler_id, s.schema_version_id,
                s.status AS status_code, s.created_at AS submitted_at,
-               latest.id AS derived_from_entry_id,
-               JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) AS reviewer_verdict,
+               CASE WHEN #{reviewLevel} = 'senior_reviewer' THEN latest_senior.id ELSE latest_reviewer.id END AS derived_from_entry_id,
+               CASE WHEN #{reviewLevel} = 'senior_reviewer'
+                    THEN JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict'))
+                    ELSE JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict'))
+               END AS reviewer_verdict,
+               #{reviewLevel} AS review_level,
                JSON_UNQUOTE(JSON_EXTRACT(latest_ai.payload, '$.recommendation')) AS ai_recommendation
         FROM submissions s
         JOIN tasks t ON t.id = s.task_id
@@ -102,9 +121,24 @@ public interface QualityLedgerEntryMapper {
                        ) AS rn
                 FROM quality_ledger_entries qle
                 WHERE qle.evidence_type = 'reviewer_overall_verdict'
+                  AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')), 'reviewer') = 'reviewer'
             ) ranked
             WHERE ranked.rn = 1
-        ) latest ON latest.submission_id = s.id
+        ) latest_reviewer ON latest_reviewer.submission_id = s.id
+        LEFT JOIN (
+            SELECT ranked.*
+            FROM (
+                SELECT qle.*,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY qle.submission_id
+                           ORDER BY qle.created_at DESC, qle.id DESC
+                       ) AS rn
+                FROM quality_ledger_entries qle
+                WHERE qle.evidence_type = 'reviewer_overall_verdict'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')) = 'senior_reviewer'
+            ) ranked
+            WHERE ranked.rn = 1
+        ) latest_senior ON latest_senior.submission_id = s.id
         LEFT JOIN (
             SELECT ranked_ai.*
             FROM (
@@ -120,10 +154,21 @@ public interface QualityLedgerEntryMapper {
         ) latest_ai ON latest_ai.submission_id = s.id
         WHERE s.status = #{status}
           AND (
+              (#{reviewLevel} = 'reviewer' AND latest_reviewer.id IS NULL)
+              OR (
+                  #{reviewLevel} = 'senior_reviewer'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict')) = 'approve'
+              )
+          )
+          AND (
               #{verdict} IS NULL
-              OR (#{verdict} = 'pending' AND latest.id IS NULL)
-              OR (#{verdict} = 'approved' AND JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) = 'approve')
-              OR (#{verdict} = 'rejected' AND JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) = 'reject')
+              OR (#{verdict} = 'pending' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer' THEN latest_senior.id ELSE latest_reviewer.id END) IS NULL)
+              OR (#{verdict} = 'approved' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer'
+                    THEN JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict'))
+                    ELSE JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict')) END) = 'approve')
+              OR (#{verdict} = 'rejected' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer'
+                    THEN JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict'))
+                    ELSE JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict')) END) = 'reject')
           )
         ORDER BY s.created_at DESC, s.id DESC
         LIMIT #{size} OFFSET #{offset}
@@ -137,11 +182,13 @@ public interface QualityLedgerEntryMapper {
         @Result(column = "submitted_at", property = "submittedAt"),
         @Result(column = "derived_from_entry_id", property = "derivedFromEntryId"),
         @Result(column = "reviewer_verdict", property = "reviewerVerdict"),
+        @Result(column = "review_level", property = "reviewLevel"),
         @Result(column = "ai_recommendation", property = "aiRecommendation")
     })
     List<ReviewerSubmissionQueueRow> selectReviewerQueuePage(
         @Param("status") String status,
         @Param("verdict") String verdict,
+        @Param("reviewLevel") String reviewLevel,
         @Param("offset") Long offset,
         @Param("size") Long size
     );
@@ -159,20 +206,47 @@ public interface QualityLedgerEntryMapper {
                        ) AS rn
                 FROM quality_ledger_entries qle
                 WHERE qle.evidence_type = 'reviewer_overall_verdict'
+                  AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')), 'reviewer') = 'reviewer'
             ) ranked
             WHERE ranked.rn = 1
-        ) latest ON latest.submission_id = s.id
+        ) latest_reviewer ON latest_reviewer.submission_id = s.id
+        LEFT JOIN (
+            SELECT ranked.*
+            FROM (
+                SELECT qle.*,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY qle.submission_id
+                           ORDER BY qle.created_at DESC, qle.id DESC
+                       ) AS rn
+                FROM quality_ledger_entries qle
+                WHERE qle.evidence_type = 'reviewer_overall_verdict'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')) = 'senior_reviewer'
+            ) ranked
+            WHERE ranked.rn = 1
+        ) latest_senior ON latest_senior.submission_id = s.id
         WHERE s.status = #{status}
           AND (
+              (#{reviewLevel} = 'reviewer' AND latest_reviewer.id IS NULL)
+              OR (
+                  #{reviewLevel} = 'senior_reviewer'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict')) = 'approve'
+              )
+          )
+          AND (
               #{verdict} IS NULL
-              OR (#{verdict} = 'pending' AND latest.id IS NULL)
-              OR (#{verdict} = 'approved' AND JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) = 'approve')
-              OR (#{verdict} = 'rejected' AND JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) = 'reject')
+              OR (#{verdict} = 'pending' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer' THEN latest_senior.id ELSE latest_reviewer.id END) IS NULL)
+              OR (#{verdict} = 'approved' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer'
+                    THEN JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict'))
+                    ELSE JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict')) END) = 'approve')
+              OR (#{verdict} = 'rejected' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer'
+                    THEN JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict'))
+                    ELSE JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict')) END) = 'reject')
           )
         """)
     Long selectReviewerQueueCount(
         @Param("status") String status,
-        @Param("verdict") String verdict
+        @Param("verdict") String verdict,
+        @Param("reviewLevel") String reviewLevel
     );
 
     @Select("""

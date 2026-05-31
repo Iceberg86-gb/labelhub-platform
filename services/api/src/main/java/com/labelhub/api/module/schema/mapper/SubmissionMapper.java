@@ -88,6 +88,7 @@ public interface SubmissionMapper {
                        ) AS rn
                 FROM quality_ledger_entries qle
                 WHERE qle.evidence_type = 'reviewer_overall_verdict'
+                  AND JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')) = 'senior_reviewer'
             ) ranked
             WHERE ranked.rn = 1
         ) latest ON latest.submission_id = s.id

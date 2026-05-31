@@ -9,6 +9,7 @@ export type PagedQualityLedgerEntries = components['schemas']['PagedQualityLedge
 export type Verdict = components['schemas']['Verdict'];
 export type ReviewerSubmissionSummary = components['schemas']['ReviewerSubmissionSummary'];
 export type PagedReviewerSubmissions = components['schemas']['PagedReviewerSubmissions'];
+export type ReviewLevel = components['schemas']['ReviewLevel'];
 
 export type VerdictStatus = Verdict['status'];
 export type ReviewerVerdict = ReviewerOverallVerdictPayload['verdict'];
@@ -28,4 +29,9 @@ export const VERDICT_STATUS_COLORS = {
 export const REVIEWER_VERDICT_LABELS: Record<ReviewerVerdict, string> = {
   approve: '通过',
   reject: '拒绝',
+};
+
+export const REVIEW_LEVEL_LABELS: Record<ReviewLevel, string> = {
+  reviewer: '初审',
+  senior_reviewer: '复核',
 };

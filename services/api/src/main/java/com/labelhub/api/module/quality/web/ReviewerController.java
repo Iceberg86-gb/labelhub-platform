@@ -9,6 +9,7 @@ import com.labelhub.api.generated.model.PagedReviewerSubmissions;
 import com.labelhub.api.generated.model.QualityLedgerEntry;
 import com.labelhub.api.generated.model.RecomputeJob;
 import com.labelhub.api.generated.model.RecomputeRuleRequest;
+import com.labelhub.api.generated.model.ReviewLevel;
 import com.labelhub.api.generated.model.Verdict;
 import com.labelhub.api.generated.web.ReviewsApi;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
@@ -62,13 +63,15 @@ public class ReviewerController implements ReviewsApi {
         @Min(1) @Valid @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
         @Min(1) @Max(100) @Valid @RequestParam(value = "size", required = false, defaultValue = "20") Integer size,
         @Valid @RequestParam(value = "status", required = false, defaultValue = "submitted") String status,
-        @Valid @RequestParam(value = "verdict", required = false) String verdict
+        @Valid @RequestParam(value = "verdict", required = false) String verdict,
+        @Valid @RequestParam(value = "reviewLevel", required = false, defaultValue = "reviewer") ReviewLevel reviewLevel
     ) {
         PagedResult<ReviewerSubmissionQueueRow> result = reviewerQueueService.listQueue(
             clampMin(page, 1),
             clampSize(size, 20, 100),
             status,
-            verdict
+            verdict,
+            reviewLevel == null ? null : reviewLevel.getValue()
         );
         return ResponseEntity.ok(qualityDtoMapper.toPagedReviewerSubmissions(result));
     }
@@ -82,7 +85,8 @@ public class ReviewerController implements ReviewsApi {
             submissionId,
             currentUserId(),
             createLedgerEntryRequest.getEntryType().getValue(),
-            qualityDtoMapper.toPayloadMap(createLedgerEntryRequest.getPayload())
+            qualityDtoMapper.toPayloadMap(createLedgerEntryRequest.getPayload()),
+            currentUserRoles()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(qualityDtoMapper.toQualityLedgerEntry(entity));
     }
@@ -96,7 +100,9 @@ public class ReviewerController implements ReviewsApi {
                 request.getSubmissionIds(),
                 currentUserId(),
                 request.getVerdict().getValue(),
-                request.getReason()
+                request.getReason(),
+                request.getReviewLevel().getValue(),
+                currentUserRoles()
             );
         BatchReviewResult dto = new BatchReviewResult();
         dto.setItems(result.items().stream().map(item -> {

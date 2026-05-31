@@ -1325,9 +1325,12 @@ export interface components {
          */
         QualityLedgerEntryType: "reviewer_overall_verdict" | "ai_field_finding" | "ai_overall_recommendation";
         QualityLedgerEntryPayload: components["schemas"]["ReviewerOverallVerdictPayload"] | components["schemas"]["AiFieldFindingPayload"] | components["schemas"]["AiOverallRecommendationPayload"];
+        /** @enum {string} */
+        ReviewLevel: "reviewer" | "senior_reviewer";
         ReviewerOverallVerdictPayload: {
             /** @enum {string} */
             verdict: "approve" | "reject";
+            reviewLevel: components["schemas"]["ReviewLevel"];
             reason?: string | null;
         };
         AiFieldFindingPayload: {
@@ -1378,6 +1381,7 @@ export interface components {
             /** Format: date-time */
             submittedAt: string;
             verdict: components["schemas"]["Verdict"];
+            reviewLevel: components["schemas"]["ReviewLevel"];
             /** @enum {string|null} */
             aiRecommendation?: "pass" | "reject" | "manual_review" | null;
         };
@@ -1392,6 +1396,7 @@ export interface components {
             submissionIds: number[];
             /** @enum {string} */
             verdict: "approve" | "reject";
+            reviewLevel: components["schemas"]["ReviewLevel"];
             reason?: string | null;
         };
         BatchReviewResult: {
@@ -2714,6 +2719,7 @@ export interface operations {
                 size?: number;
                 status?: string;
                 verdict?: "pending" | "approved" | "rejected";
+                reviewLevel?: components["schemas"]["ReviewLevel"];
             };
             header?: never;
             path?: never;

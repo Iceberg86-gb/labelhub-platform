@@ -1101,6 +1101,11 @@ paths:
           schema:
             type: string
             enum: [pending, approved, rejected]
+        - name: reviewLevel
+          in: query
+          schema:
+            $ref: '#/components/schemas/ReviewLevel'
+            default: reviewer
       responses:
         '200':
           description: Reviewer queue over submitted annotations with real-time derived verdicts.
@@ -2615,13 +2620,18 @@ components:
         - $ref: '#/components/schemas/ReviewerOverallVerdictPayload'
         - $ref: '#/components/schemas/AiFieldFindingPayload'
         - $ref: '#/components/schemas/AiOverallRecommendationPayload'
+    ReviewLevel:
+      type: string
+      enum: [reviewer, senior_reviewer]
     ReviewerOverallVerdictPayload:
       type: object
-      required: [verdict]
+      required: [verdict, reviewLevel]
       properties:
         verdict:
           type: string
           enum: [approve, reject]
+        reviewLevel:
+          $ref: '#/components/schemas/ReviewLevel'
         reason:
           type: string
           nullable: true
@@ -2697,7 +2707,7 @@ components:
           type: integer
     ReviewerSubmissionSummary:
       type: object
-      required: [id, taskId, taskTitle, labelerId, schemaVersionId, status, submittedAt, verdict]
+      required: [id, taskId, taskTitle, labelerId, schemaVersionId, status, submittedAt, verdict, reviewLevel]
       properties:
         id:
           type: integer
@@ -2720,6 +2730,8 @@ components:
           format: date-time
         verdict:
           $ref: '#/components/schemas/Verdict'
+        reviewLevel:
+          $ref: '#/components/schemas/ReviewLevel'
         aiRecommendation:
           type: string
           enum: [pass, reject, manual_review]
@@ -2741,7 +2753,7 @@ components:
           type: integer
     BatchReviewRequest:
       type: object
-      required: [submissionIds, verdict]
+      required: [submissionIds, verdict, reviewLevel]
       properties:
         submissionIds:
           type: array
@@ -2753,6 +2765,8 @@ components:
         verdict:
           type: string
           enum: [approve, reject]
+        reviewLevel:
+          $ref: '#/components/schemas/ReviewLevel'
         reason:
           type: string
           nullable: true

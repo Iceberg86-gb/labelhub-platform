@@ -5,15 +5,19 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   VERDICT_STATUS_COLORS,
   VERDICT_STATUS_LABELS,
+  REVIEW_LEVEL_LABELS,
+  type ReviewLevel,
   type ReviewerSubmissionSummary,
   type VerdictStatus,
 } from '../../entities/quality/qualityTypes';
 import { useReviewerQueueQuery } from '../../features/quality/useReviewerQueueQuery';
 import { useBatchReviewMutation } from '../../features/quality/useBatchReviewMutation';
+import { getUser } from '../../shared/api/auth-storage';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 20;
 const VERDICT_FILTERS: VerdictStatus[] = ['pending', 'approved', 'rejected'];
+const REVIEW_LEVELS: ReviewLevel[] = ['reviewer', 'senior_reviewer'];
 
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   month: '2-digit',
@@ -28,7 +32,10 @@ export function ReviewerQueuePage() {
   const page = parsePositiveInt(searchParams.get('page')) ?? DEFAULT_PAGE;
   const size = parsePositiveInt(searchParams.get('size')) ?? DEFAULT_SIZE;
   const verdict = parseVerdict(searchParams.get('verdict'));
-  const queueQuery = useReviewerQueueQuery({ page, size, verdict });
+  const currentUser = getUser();
+  const canSeniorReview = currentUser?.roles.includes('SENIOR_REVIEWER') ?? false;
+  const reviewLevel = canSeniorReview ? parseReviewLevel(searchParams.get('reviewLevel')) ?? 'reviewer' : 'reviewer';
+  const queueQuery = useReviewerQueueQuery({ page, size, verdict, reviewLevel });
   const batchReviewMutation = useBatchReviewMutation();
   const items = queueQuery.data?.items ?? [];
   const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<number[]>([]);
@@ -63,10 +70,15 @@ export function ReviewerQueuePage() {
         render: (_: unknown, record: ReviewerSubmissionSummary) => <VerdictTag status={record.verdict.status} />,
       },
       {
+        title: '层级',
+        width: 90,
+        render: (_: unknown, record: ReviewerSubmissionSummary) => <Tag color={record.reviewLevel === 'senior_reviewer' ? 'purple' : 'blue'}>{REVIEW_LEVEL_LABELS[record.reviewLevel]}</Tag>,
+      },
+      {
         title: '操作',
         width: 130,
         render: (_: unknown, record: ReviewerSubmissionSummary) => (
-          <Button size="small" icon={<IconPlay />} onClick={() => navigate(`/reviewer/submissions/${record.id}`)}>
+          <Button size="small" icon={<IconPlay />} onClick={() => navigate(`/reviewer/submissions/${record.id}?reviewLevel=${record.reviewLevel}`)}>
             开始审核
           </Button>
         ),
@@ -75,12 +87,13 @@ export function ReviewerQueuePage() {
     [navigate],
   );
 
-  function updateParams(next: { page?: number; size?: number; verdict?: VerdictStatus | null }) {
+  function updateParams(next: { page?: number; size?: number; verdict?: VerdictStatus | null; reviewLevel?: ReviewLevel }) {
     const params = new URLSearchParams(searchParams);
     params.set('page', String(next.page ?? page));
     params.set('size', String(next.size ?? size));
     if (next.verdict === null) params.delete('verdict');
     if (next.verdict) params.set('verdict', next.verdict);
+    if (next.reviewLevel) params.set('reviewLevel', next.reviewLevel);
     setSearchParams(params);
   }
 
@@ -97,6 +110,7 @@ export function ReviewerQueuePage() {
       const result = await batchReviewMutation.mutateAsync({
         submissionIds: selectedSubmissionIds,
         verdict: verdictValue,
+        reviewLevel,
         reason: reason?.trim() || undefined,
       });
       const created = result.items.filter((item) => item.status === 'created').length;
@@ -124,19 +138,35 @@ export function ReviewerQueuePage() {
             </Tooltip>
           </div>
         </div>
-        <Select
-          className="reviewer-filter-select"
-          size="small"
-          value={verdict ?? 'all'}
-          onChange={(value) => updateParams({ page: 1, verdict: value === 'all' ? null : (value as VerdictStatus) })}
-        >
-          <Select.Option value="all">全部 Verdict</Select.Option>
-          {VERDICT_FILTERS.map((item) => (
-            <Select.Option key={item} value={item}>
-              {VERDICT_STATUS_LABELS[item]}
-            </Select.Option>
-          ))}
-        </Select>
+        <Space>
+          {canSeniorReview ? (
+            <Select
+              className="reviewer-filter-select"
+              size="small"
+              value={reviewLevel}
+              onChange={(value) => updateParams({ page: 1, reviewLevel: value as ReviewLevel })}
+            >
+              {REVIEW_LEVELS.map((item) => (
+                <Select.Option key={item} value={item}>
+                  {REVIEW_LEVEL_LABELS[item]}
+                </Select.Option>
+              ))}
+            </Select>
+          ) : null}
+          <Select
+            className="reviewer-filter-select"
+            size="small"
+            value={verdict ?? 'all'}
+            onChange={(value) => updateParams({ page: 1, verdict: value === 'all' ? null : (value as VerdictStatus) })}
+          >
+            <Select.Option value="all">全部 Verdict</Select.Option>
+            {VERDICT_FILTERS.map((item) => (
+              <Select.Option key={item} value={item}>
+                {VERDICT_STATUS_LABELS[item]}
+              </Select.Option>
+            ))}
+          </Select>
+        </Space>
       </div>
 
       <div className="task-toolbar">
@@ -236,6 +266,10 @@ function parsePositiveInt(value: string | null) {
 
 function parseVerdict(value: string | null): VerdictStatus | undefined {
   return VERDICT_FILTERS.includes(value as VerdictStatus) ? (value as VerdictStatus) : undefined;
+}
+
+function parseReviewLevel(value: string | null): ReviewLevel | undefined {
+  return REVIEW_LEVELS.includes(value as ReviewLevel) ? (value as ReviewLevel) : undefined;
 }
 
 function formatDateTime(value?: string) {

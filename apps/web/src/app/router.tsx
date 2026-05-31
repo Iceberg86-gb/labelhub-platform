@@ -181,7 +181,7 @@ export const router = createBrowserRouter(
           path: 'reviewer/submissions',
           element: (
             <RequireAuth>
-              <RequireRole roles={['REVIEWER']}>
+              <RequireRole roles={['REVIEWER', 'SENIOR_REVIEWER']}>
                 <ReviewerQueuePage />
               </RequireRole>
             </RequireAuth>
@@ -191,7 +191,7 @@ export const router = createBrowserRouter(
           path: 'reviewer/submissions/:submissionId',
           element: (
             <RequireAuth>
-              <RequireRole roles={['REVIEWER']}>
+              <RequireRole roles={['REVIEWER', 'SENIOR_REVIEWER']}>
                 <ReviewerSubmissionPage />
               </RequireRole>
             </RequireAuth>
@@ -201,7 +201,7 @@ export const router = createBrowserRouter(
           path: 'reviewer/placeholder',
           element: (
             <RequireAuth>
-              <RequireRole roles={['REVIEWER']}>
+              <RequireRole roles={['REVIEWER', 'SENIOR_REVIEWER']}>
                 <ReviewerPlaceholderPage />
               </RequireRole>
             </RequireAuth>

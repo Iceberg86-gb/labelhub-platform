@@ -8,6 +8,7 @@ import com.labelhub.api.generated.model.PagedReviewerSubmissions;
 import com.labelhub.api.generated.model.QualityLedgerEntry;
 import com.labelhub.api.generated.model.QualityLedgerEntryPayload;
 import com.labelhub.api.generated.model.QualityLedgerEntryType;
+import com.labelhub.api.generated.model.ReviewLevel;
 import com.labelhub.api.generated.model.ReviewerOverallVerdictPayload;
 import com.labelhub.api.generated.model.ReviewerSubmissionSummary;
 import com.labelhub.api.generated.model.Verdict;
@@ -78,6 +79,10 @@ public class QualityDtoMapper {
         Object reason = raw.get("reason");
         if (reason != null) {
             dto.setReason(String.valueOf(reason));
+        }
+        Object reviewLevel = raw.get("reviewLevel");
+        if (reviewLevel != null) {
+            dto.setReviewLevel(ReviewLevel.fromValue(String.valueOf(reviewLevel)));
         }
         return dto;
     }
@@ -187,6 +192,9 @@ public class QualityDtoMapper {
         if (dto.getReason() != null) {
             payload.put("reason", dto.getReason());
         }
+        if (dto.getReviewLevel() != null) {
+            payload.put("reviewLevel", dto.getReviewLevel().getValue());
+        }
         return payload;
     }
 
@@ -223,6 +231,7 @@ public class QualityDtoMapper {
             row.getDerivedFromEntryId(),
             LocalDateTime.now(clock)
         )));
+        dto.setReviewLevel(ReviewLevel.fromValue(row.getReviewLevel()));
         if (row.getAiRecommendation() != null) {
             dto.setAiRecommendation(ReviewerSubmissionSummary.AiRecommendationEnum.fromValue(row.getAiRecommendation()));
         }

@@ -593,7 +593,7 @@ class ExportServiceTest {
         entry.setEvidenceType("reviewer_overall_verdict");
         entry.setActorType("reviewer");
         entry.setActorId(3003L);
-        entry.setPayload(Map.of("verdict", verdict));
+        entry.setPayload(Map.of("verdict", verdict, "reviewLevel", "senior_reviewer"));
         entry.setCreatedAt(CREATED_AT.plusMinutes(id - 700L));
         return entry;
     }

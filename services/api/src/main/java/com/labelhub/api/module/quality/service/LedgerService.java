@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,6 +93,17 @@ public class LedgerService {
         String entryType,
         Map<String, Object> payload
     ) {
+        return createEntry(submissionId, reviewerUserId, entryType, payload, Set.of());
+    }
+
+    @Transactional
+    public QualityLedgerEntryEntity createEntry(
+        Long submissionId,
+        Long reviewerUserId,
+        String entryType,
+        Map<String, Object> payload,
+        Set<String> reviewerRoles
+    ) {
         if (!REVIEWER_OVERALL_VERDICT.equals(entryType)) {
             throw new LedgerEntryTypeNotSupportedException(entryType);
         }
@@ -105,6 +117,8 @@ public class LedgerService {
         }
 
         validateReviewerOverallVerdictPayload(payload);
+        String reviewLevel = reviewLevel(payload);
+        requireReviewLevelAllowed(submissionId, reviewLevel, reviewerRoles);
 
         QualityLedgerEntryEntity entity = new QualityLedgerEntryEntity();
         entity.setSubmissionId(submissionId);
@@ -113,7 +127,7 @@ public class LedgerService {
         entity.setActorType("reviewer");
         entity.setActorId(reviewerUserId);
         entity.setAiCallId(null);
-        entity.setPayload(payload);
+        entity.setPayload(normalizedReviewerPayload(payload, reviewLevel));
         entity.setCreatedAt(LocalDateTime.now(clock));
         requireOneRow(qualityLedgerEntryMapper.insert(entity), "insert quality ledger entry");
         String verdict = String.valueOf(payload.get("verdict"));
@@ -157,6 +171,7 @@ public class LedgerService {
         diffSnapshot.put("fromSubmissionStatus", submission.getStatusCode());
         diffSnapshot.put("toSubmissionStatus", toSubmissionStatus);
         diffSnapshot.put("reviewerVerdict", verdict);
+        diffSnapshot.put("reviewLevel", reviewLevel);
         action.setDiffSnapshot(diffSnapshot);
         action.setCreatedAt(entity.getCreatedAt());
         requireOneRow(reviewActionMapper.insert(action), "insert review action");
@@ -292,6 +307,7 @@ public class LedgerService {
             .payload("taskId", submission.getTaskId())
             .payload("ledgerEntryId", entity.getId())
             .payload("reviewerUserId", reviewerUserId)
+            .payload("reviewLevel", stringPayload(entity.getPayload(), "reviewLevel", ReviewLevels.REVIEWER))
             .payload("verdict", verdict);
     }
 
@@ -303,11 +319,41 @@ public class LedgerService {
         if (!"approve".equals(verdict) && !"reject".equals(verdict)) {
             throw new LedgerEntryPayloadInvalidException("payload.verdict must be 'approve' or 'reject'");
         }
+        Object reviewLevel = payload.get("reviewLevel");
+        if (reviewLevel != null && !ReviewLevels.isValid(String.valueOf(reviewLevel))) {
+            throw new LedgerEntryPayloadInvalidException("payload.reviewLevel must be 'reviewer' or 'senior_reviewer'");
+        }
         if ("reject".equals(verdict)) {
             Object reason = payload.get("reason");
             if (!(reason instanceof String text) || text.isBlank()) {
                 throw new LedgerEntryPayloadInvalidException("payload.reason is required when verdict is 'reject'");
             }
+        }
+    }
+
+    private String reviewLevel(Map<String, Object> payload) {
+        return ReviewLevels.normalize(stringPayload(payload, "reviewLevel", ReviewLevels.REVIEWER));
+    }
+
+    private Map<String, Object> normalizedReviewerPayload(Map<String, Object> payload, String reviewLevel) {
+        Map<String, Object> normalized = new LinkedHashMap<>(payload);
+        normalized.put("reviewLevel", reviewLevel);
+        return normalized;
+    }
+
+    private void requireReviewLevelAllowed(Long submissionId, String reviewLevel, Set<String> reviewerRoles) {
+        if (!ReviewLevels.SENIOR_REVIEWER.equals(reviewLevel)) {
+            return;
+        }
+        if (!hasRole(reviewerRoles, "SENIOR_REVIEWER")) {
+            throw new AccessDeniedException("SENIOR_REVIEWER role is required for senior review");
+        }
+        QualityLedgerEntryEntity reviewerVerdict =
+            qualityLedgerEntryMapper.selectLatestReviewerOverallVerdictByReviewLevel(submissionId, ReviewLevels.REVIEWER);
+        if (reviewerVerdict == null
+            || reviewerVerdict.getPayload() == null
+            || !"approve".equals(reviewerVerdict.getPayload().get("verdict"))) {
+            throw new LedgerEntryPayloadInvalidException("senior review requires reviewer approval");
         }
     }
 

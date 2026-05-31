@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,22 +25,33 @@ public class ReviewerBatchService {
         List<Long> submissionIds,
         Long reviewerUserId,
         String verdict,
-        String reason
+        String reason,
+        String reviewLevel,
+        Set<String> reviewerRoles
     ) {
         List<ReviewerBatchItemResult> items = new ArrayList<>();
+        String effectiveReviewLevel = ReviewLevels.normalize(reviewLevel);
         for (Long submissionId : submissionIds == null ? List.<Long>of() : submissionIds) {
-            items.add(reviewOne(submissionId, reviewerUserId, verdict, reason));
+            items.add(reviewOne(submissionId, reviewerUserId, verdict, reason, effectiveReviewLevel, reviewerRoles));
         }
         return new ReviewerBatchResult(items);
     }
 
-    private ReviewerBatchItemResult reviewOne(Long submissionId, Long reviewerUserId, String verdict, String reason) {
+    private ReviewerBatchItemResult reviewOne(
+        Long submissionId,
+        Long reviewerUserId,
+        String verdict,
+        String reason,
+        String reviewLevel,
+        Set<String> reviewerRoles
+    ) {
         try {
             QualityLedgerEntryEntity entity = ledgerService.createEntry(
                 submissionId,
                 reviewerUserId,
                 "reviewer_overall_verdict",
-                payload(verdict, reason)
+                payload(verdict, reason, reviewLevel),
+                reviewerRoles
             );
             return new ReviewerBatchItemResult(submissionId, "created", entity.getId(), null);
         } catch (SelfReviewNotAllowedException exception) {
@@ -49,9 +61,10 @@ public class ReviewerBatchService {
         }
     }
 
-    private Map<String, Object> payload(String verdict, String reason) {
+    private Map<String, Object> payload(String verdict, String reason, String reviewLevel) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("verdict", verdict);
+        payload.put("reviewLevel", reviewLevel);
         if (reason != null) {
             payload.put("reason", reason);
         }

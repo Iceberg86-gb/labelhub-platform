@@ -12,6 +12,7 @@ public class ReviewerSubmissionQueueRow {
     private LocalDateTime submittedAt;
     private Long derivedFromEntryId;
     private String reviewerVerdict;
+    private String reviewLevel;
     private String aiRecommendation;
 
     public Long getId() { return id; }
@@ -32,6 +33,8 @@ public class ReviewerSubmissionQueueRow {
     public void setDerivedFromEntryId(Long derivedFromEntryId) { this.derivedFromEntryId = derivedFromEntryId; }
     public String getReviewerVerdict() { return reviewerVerdict; }
     public void setReviewerVerdict(String reviewerVerdict) { this.reviewerVerdict = reviewerVerdict; }
+    public String getReviewLevel() { return reviewLevel; }
+    public void setReviewLevel(String reviewLevel) { this.reviewLevel = reviewLevel; }
     public String getAiRecommendation() { return aiRecommendation; }
     public void setAiRecommendation(String aiRecommendation) { this.aiRecommendation = aiRecommendation; }
 }

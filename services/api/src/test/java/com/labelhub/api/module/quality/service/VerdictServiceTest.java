@@ -60,23 +60,36 @@ class VerdictServiceTest {
     }
 
     @Test
-    void deriveCurrentVerdict_derives_approved_from_latest_approve_entry() {
+    void deriveCurrentVerdict_keeps_pending_from_initial_reviewer_approve_entry() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
         when(taskMapper.selectById(TASK_ID)).thenReturn(task());
         when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID))
-            .thenReturn(entry(101L, "approve"));
+            .thenReturn(entry(101L, "approve", "reviewer"));
+
+        VerdictView verdict = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
+
+        assertThat(verdict.status()).isEqualTo("pending");
+        assertThat(verdict.derivedFromEntryId()).isEqualTo(101L);
+    }
+
+    @Test
+    void deriveCurrentVerdict_derives_approved_only_from_senior_reviewer_approve_entry() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task());
+        when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID))
+            .thenReturn(entry(103L, "approve", "senior_reviewer"));
 
         VerdictView verdict = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
 
         assertThat(verdict.status()).isEqualTo("approved");
-        assertThat(verdict.derivedFromEntryId()).isEqualTo(101L);
+        assertThat(verdict.derivedFromEntryId()).isEqualTo(103L);
     }
 
     @Test
     void deriveCurrentVerdict_derives_rejected_from_latest_reject_entry() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
         when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID))
-            .thenReturn(entry(102L, "reject"));
+            .thenReturn(entry(102L, "reject", "reviewer"));
 
         VerdictView verdict = verdictService.deriveCurrentVerdict(SUBMISSION_ID, REVIEWER_ID, Set.of("ROLE_REVIEWER"));
 
@@ -90,26 +103,31 @@ class VerdictServiceTest {
         when(taskMapper.selectById(TASK_ID)).thenReturn(task());
         when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID))
             .thenReturn(null)
-            .thenReturn(entry(101L, "approve"))
-            .thenReturn(entry(102L, "reject"));
+            .thenReturn(entry(101L, "approve", "reviewer"))
+            .thenReturn(entry(103L, "approve", "senior_reviewer"))
+            .thenReturn(entry(102L, "reject", "senior_reviewer"));
 
         VerdictView v0 = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
         assertThat(v0.status()).isEqualTo("pending");
         assertThat(v0.derivedFromEntryId()).isNull();
 
         VerdictView v1 = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
-        assertThat(v1.status()).isEqualTo("approved");
+        assertThat(v1.status()).isEqualTo("pending");
         assertThat(v1.derivedFromEntryId()).isEqualTo(101L);
 
         VerdictView v2 = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
-        assertThat(v2.status()).isEqualTo("rejected");
-        assertThat(v2.derivedFromEntryId()).isEqualTo(102L);
+        assertThat(v2.status()).isEqualTo("approved");
+        assertThat(v2.derivedFromEntryId()).isEqualTo(103L);
+
+        VerdictView v3 = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
+        assertThat(v3.status()).isEqualTo("rejected");
+        assertThat(v3.derivedFromEntryId()).isEqualTo(102L);
     }
 
     @Test
     void verdict_tie_breaks_by_id_when_created_at_equal() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
-        QualityLedgerEntryEntity higherIdEntry = entry(202L, "reject");
+        QualityLedgerEntryEntity higherIdEntry = entry(202L, "reject", "senior_reviewer");
         higherIdEntry.setCreatedAt(NOW);
         when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID)).thenReturn(higherIdEntry);
 
@@ -148,6 +166,10 @@ class VerdictServiceTest {
     }
 
     private static QualityLedgerEntryEntity entry(Long id, String verdict) {
+        return entry(id, verdict, "reviewer");
+    }
+
+    private static QualityLedgerEntryEntity entry(Long id, String verdict, String reviewLevel) {
         QualityLedgerEntryEntity entry = new QualityLedgerEntryEntity();
         entry.setId(id);
         entry.setSubmissionId(SUBMISSION_ID);
@@ -155,7 +177,7 @@ class VerdictServiceTest {
         entry.setEvidenceType("reviewer_overall_verdict");
         entry.setActorType("reviewer");
         entry.setActorId(REVIEWER_ID);
-        entry.setPayload(Map.of("verdict", verdict));
+        entry.setPayload(Map.of("verdict", verdict, "reviewLevel", reviewLevel));
         entry.setCreatedAt(NOW);
         return entry;
     }
