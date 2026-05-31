@@ -14,7 +14,7 @@ import java.util.Map;
 record ExportFactBundle(TaskEntity task, List<SchemaVersionEntity> schemaVersions, List<DatasetItemEntity> datasetItems,
                         List<SubmissionEntity> submissions, List<AiCallEntity> aiCalls,
                         List<AiCallInFieldEntity> aiCallInFields, List<QualityLedgerEntryEntity> ledgerEntries,
-                        Map<Long, DerivedVerdictSnapshot> verdicts) {}
+                        Map<Long, DerivedVerdictSnapshot> verdicts, ExportDataScope dataScope) {}
 
 record DerivedVerdictSnapshot(Long submissionId, String status, Long derivedFromEntryId) {
     static DerivedVerdictSnapshot derive(Long submissionId, QualityLedgerEntryEntity latest) {

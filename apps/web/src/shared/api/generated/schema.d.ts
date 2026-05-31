@@ -1406,6 +1406,14 @@ export interface components {
             ledgerEntryId?: number | null;
             error?: string | null;
         };
+        CreateTaskExportRequest: {
+            /**
+             * @description Export data scope. Defaults to approved_only.
+             * @default approved_only
+             * @enum {string}
+             */
+            mode: "approved_only" | "full";
+        };
         RecomputeRuleRequest: {
             /** Format: int64 */
             taskId?: number;
@@ -1856,7 +1864,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": Record<string, never>;
+                "application/json": components["schemas"]["CreateTaskExportRequest"];
             };
         };
         responses: {
