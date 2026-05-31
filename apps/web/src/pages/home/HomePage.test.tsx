@@ -113,6 +113,8 @@ describe('HomePage', () => {
     expect(html).toContain('LABELER');
     expect(html).toContain('任务管理');
     expect(html).toContain('Designer 画布');
+    expect(html).toContain('LLM 接入');
+    expect(html).toContain('配置 API Key、模型和辅助范围');
     expect(html).toContain('标注工作台');
     expect(html).toContain('任务广场');
     expect(html).not.toContain('审核队列');
