@@ -1513,6 +1513,19 @@ export interface components {
              * @enum {string}
              */
             mode: "approved_only" | "full";
+            fieldMapping?: components["schemas"]["ExportFieldMapping"];
+        };
+        /** @description Export business-table column selection and renaming. The resolved mapping is snapshotted into the export manifest. */
+        ExportFieldMapping: {
+            columns?: components["schemas"]["ExportFieldMappingColumn"][];
+        };
+        ExportFieldMappingColumn: {
+            /** @description Canonical business export source column, for example task_id, item.prompt, or answer.label. */
+            source: string;
+            /** @description Output column name written to CSV/Excel. */
+            columnName: string;
+            /** @default true */
+            included: boolean;
         };
         RecomputeRuleRequest: {
             /** Format: int64 */
@@ -1547,6 +1560,9 @@ export interface components {
             fileManifest: components["schemas"]["ExportFileEntry"][];
             recordCounts: {
                 [key: string]: number;
+            };
+            fieldMappingSnapshot?: {
+                [key: string]: unknown;
             };
             canonicalizationVersion: string;
             generatedAt: string;

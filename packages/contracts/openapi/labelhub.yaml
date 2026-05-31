@@ -3046,6 +3046,33 @@ components:
           description: Export data scope. Defaults to approved_only.
           enum: [approved_only, full]
           default: approved_only
+        fieldMapping:
+          $ref: '#/components/schemas/ExportFieldMapping'
+    ExportFieldMapping:
+      type: object
+      additionalProperties: false
+      description: Export business-table column selection and renaming. The resolved mapping is snapshotted into the export manifest.
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportFieldMappingColumn'
+    ExportFieldMappingColumn:
+      type: object
+      additionalProperties: false
+      required: [source, columnName]
+      properties:
+        source:
+          type: string
+          minLength: 1
+          description: Canonical business export source column, for example task_id, item.prompt, or answer.label.
+        columnName:
+          type: string
+          minLength: 1
+          description: Output column name written to CSV/Excel.
+        included:
+          type: boolean
+          default: true
     RecomputeRuleRequest:
       type: object
       properties:
@@ -3105,6 +3132,9 @@ components:
           type: object
           additionalProperties:
             type: integer
+        fieldMappingSnapshot:
+          type: object
+          additionalProperties: true
         canonicalizationVersion:
           type: string
         generatedAt:

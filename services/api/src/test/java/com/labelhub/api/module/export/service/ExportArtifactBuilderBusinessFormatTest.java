@@ -55,6 +55,24 @@ class ExportArtifactBuilderBusinessFormatTest {
         }
     }
 
+    @Test
+    void build_applies_field_mapping_to_business_formats_and_manifest_hash() {
+        ExportArtifact defaultArtifact = builder.build(bundle());
+        ExportArtifact mappedArtifact = builder.build(bundle(), new ExportFieldMapping(List.of(
+            new ExportFieldMappingColumn("item.prompt", "prompt_text", true),
+            new ExportFieldMappingColumn("answer.label", "gold_label", true),
+            new ExportFieldMappingColumn("answer.notes", "hidden_notes", false)
+        )));
+
+        String csv = utf8(file(mappedArtifact, "training-results.csv"));
+
+        assertThat(csv).startsWith("prompt_text,gold_label\n");
+        assertThat(csv).contains("hello world,positive");
+        assertThat(csv).doesNotContain("hidden_notes");
+        assertThat(mappedArtifact.manifestContent()).containsKey("fieldMappingSnapshot");
+        assertThat(mappedArtifact.manifestHash()).isNotEqualTo(defaultArtifact.manifestHash());
+    }
+
     private static ArtifactFile file(ExportArtifact artifact, String name) {
         return artifact.files().stream()
             .filter(file -> name.equals(file.name()))

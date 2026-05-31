@@ -6,6 +6,8 @@ import com.labelhub.api.generated.model.ExportSnapshotDiff;
 import com.labelhub.api.generated.model.PagedExportSnapshots;
 import com.labelhub.api.generated.web.ExportsApi;
 import com.labelhub.api.module.export.entity.ExportSnapshotEntity;
+import com.labelhub.api.module.export.service.ExportFieldMapping;
+import com.labelhub.api.module.export.service.ExportFieldMappingColumn;
 import com.labelhub.api.module.export.service.ExportDataScope;
 import com.labelhub.api.module.export.service.ExportService;
 import com.labelhub.api.module.export.service.ExportSnapshotDiffView;
@@ -15,6 +17,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -42,7 +45,7 @@ public class ExportController implements ExportsApi {
         ExportDataScope dataScope = ExportDataScope.fromMode(
             body == null || body.getMode() == null ? null : body.getMode().getValue()
         );
-        ExportSnapshotEntity snapshot = exportService.createSnapshot(taskId, currentUserId(), dataScope);
+        ExportSnapshotEntity snapshot = exportService.createSnapshot(taskId, currentUserId(), dataScope, toFieldMapping(body));
         return ResponseEntity.status(HttpStatus.CREATED).body(dtoMapper.toExportSnapshot(snapshot));
     }
 
@@ -97,5 +100,19 @@ public class ExportController implements ExportsApi {
             return jwtPrincipal.userId();
         }
         throw new IllegalStateException("Authenticated principal is not a JwtPrincipal");
+    }
+
+    private ExportFieldMapping toFieldMapping(CreateTaskExportRequest body) {
+        if (body == null || body.getFieldMapping() == null || body.getFieldMapping().getColumns() == null) {
+            return ExportFieldMapping.empty();
+        }
+        List<ExportFieldMappingColumn> columns = body.getFieldMapping().getColumns().stream()
+            .map(column -> new ExportFieldMappingColumn(
+                column.getSource(),
+                column.getColumnName(),
+                column.getIncluded() == null || column.getIncluded()
+            ))
+            .toList();
+        return new ExportFieldMapping(columns);
     }
 }
