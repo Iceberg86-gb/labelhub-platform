@@ -1917,6 +1917,14 @@ export interface operations {
             query?: {
                 page?: number;
                 size?: number;
+                /** @description Search task title, description, and tags. */
+                q?: string;
+                /** @description Match a published task tag exactly. */
+                tag?: string;
+                /** @description When true, only return tasks with a reward rule. */
+                hasReward?: boolean;
+                /** @description Limit to tasks whose deadline is within one day or one week. */
+                deadline?: "day" | "week";
             };
             header?: never;
             path?: never;

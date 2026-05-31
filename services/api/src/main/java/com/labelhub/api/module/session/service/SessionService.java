@@ -32,6 +32,7 @@ import com.labelhub.api.module.session.exception.TaskNotAvailableException;
 import com.labelhub.api.module.session.mapper.DraftMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
+import com.labelhub.api.module.session.service.view.MarketplaceTaskFilter;
 import com.labelhub.api.module.session.service.view.SessionDetailView;
 import com.labelhub.api.module.session.service.view.SessionReviewFeedbackView;
 import com.labelhub.api.module.submission.SubmissionStatusCodes;
@@ -178,7 +179,11 @@ public class SessionService {
     }
 
     public Page<MarketplaceTaskView> listMarketplace(Long labelerId, long page, long size) {
-        Page<TaskEntity> tasks = (Page<TaskEntity>) taskMapper.selectMarketplace(Page.of(page, size));
+        return listMarketplace(labelerId, page, size, MarketplaceTaskFilter.empty());
+    }
+
+    public Page<MarketplaceTaskView> listMarketplace(Long labelerId, long page, long size, MarketplaceTaskFilter filter) {
+        Page<TaskEntity> tasks = (Page<TaskEntity>) taskMapper.selectMarketplace(Page.of(page, size), filter);
         Page<MarketplaceTaskView> result = Page.of(tasks.getCurrent(), tasks.getSize());
         result.setTotal(tasks.getTotal());
         result.setRecords(tasks.getRecords().stream()

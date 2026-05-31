@@ -1,6 +1,6 @@
-import { Button, Empty, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconChevronLeft, IconChevronRight, IconPlay, IconRefresh } from '@douyinfe/semi-icons';
-import { useMemo, useState } from 'react';
+import { Button, Empty, Input, Select, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { IconChevronLeft, IconChevronRight, IconPlay, IconRefresh, IconSearch } from '@douyinfe/semi-icons';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { MarketplaceTask } from '../../entities/submission/submissionTypes';
 import { ClaimTaskFailure, useClaimMutation } from '../../features/labeling/useClaimMutation';
@@ -22,18 +22,81 @@ function formatDateTime(value?: string) {
     : '-';
 }
 
+function optionalParam(value: string) {
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function marketplaceDeadline(value: string | null): 'day' | 'week' | undefined {
+  return value === 'day' || value === 'week' ? value : undefined;
+}
+
 export function LabelerMarketplacePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePositiveInt(searchParams.get('page'), DEFAULT_PAGE);
   const size = parsePositiveInt(searchParams.get('size'), DEFAULT_SIZE);
-  const marketplaceQuery = useMarketplaceQuery({ page, size });
+  const q = searchParams.get('q') ?? '';
+  const tag = searchParams.get('tag') ?? '';
+  const hasReward = searchParams.get('hasReward') === 'true';
+  const deadline = marketplaceDeadline(searchParams.get('deadline'));
+  const marketplaceQuery = useMarketplaceQuery({
+    page,
+    size,
+    q: optionalParam(q),
+    tag: optionalParam(tag),
+    hasReward: hasReward || undefined,
+    deadline,
+  });
   const claimMutation = useClaimMutation();
   const [claimingTaskId, setClaimingTaskId] = useState<number | null>(null);
+  const [draftSearch, setDraftSearch] = useState({ q, tag });
+
+  useEffect(() => {
+    setDraftSearch({ q, tag });
+  }, [q, tag]);
 
   const updatePage = (nextPage: number) => {
     const next = new URLSearchParams(searchParams);
     next.set('page', String(nextPage));
+    next.set('size', String(size));
+    setSearchParams(next);
+  };
+
+  const setFilterParam = (key: string, value: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('page', '1');
+    next.set('size', String(size));
+    if (value && value.trim().length > 0) {
+      next.set(key, value);
+    } else {
+      next.delete(key);
+    }
+    setSearchParams(next);
+  };
+
+  const applySearchFilters = () => {
+    const next = new URLSearchParams(searchParams);
+    next.set('page', '1');
+    next.set('size', String(size));
+    const normalizedQ = optionalParam(draftSearch.q);
+    const normalizedTag = optionalParam(draftSearch.tag);
+    if (normalizedQ) {
+      next.set('q', normalizedQ);
+    } else {
+      next.delete('q');
+    }
+    if (normalizedTag) {
+      next.set('tag', normalizedTag);
+    } else {
+      next.delete('tag');
+    }
+    setSearchParams(next);
+  };
+
+  const resetFilters = () => {
+    const next = new URLSearchParams();
+    next.set('page', '1');
     next.set('size', String(size));
     setSearchParams(next);
   };
@@ -55,53 +118,10 @@ export function LabelerMarketplacePage() {
     }
   };
 
-  const columns = useMemo(
-    () => [
-      {
-        title: '任务',
-        dataIndex: 'title',
-        render: (_: unknown, record: MarketplaceTask) => (
-          <div className="schema-title-cell">
-            <Typography.Text strong>{record.title}</Typography.Text>
-            <Typography.Text type="tertiary">{record.description || '暂无描述'}</Typography.Text>
-          </div>
-        ),
-      },
-      {
-        title: '可用数据',
-        width: 110,
-        render: (_: unknown, record: MarketplaceTask) => <Tag color="green">{record.availableItemCount}</Tag>,
-      },
-      {
-        title: '配额',
-        width: 140,
-        render: (_: unknown, record: MarketplaceTask) => `${record.quotaClaimed}/${record.quotaTotal}`,
-      },
-      {
-        title: '截止时间',
-        width: 150,
-        render: (_: unknown, record: MarketplaceTask) => formatDateTime(record.deadlineAt),
-      },
-      {
-        title: '操作',
-        width: 130,
-        render: (_: unknown, record: MarketplaceTask) => (
-          <Button
-            icon={<IconPlay />}
-            loading={claimingTaskId === record.id && claimMutation.isPending}
-            onClick={() => handleClaim(record.id)}
-          >
-            领取
-          </Button>
-        ),
-      },
-    ],
-    [claimMutation.isPending, claimingTaskId],
-  );
-
   const data = marketplaceQuery.data;
   const items = data?.items ?? [];
   const hasNext = page * size < (data?.total ?? 0);
+  const hasActiveFilters = Boolean(q || tag || hasReward || deadline);
 
   return (
     <section className="labeler-page" aria-label="Labeler marketplace">
@@ -116,6 +136,41 @@ export function LabelerMarketplacePage() {
         </div>
         <Button icon={<IconRefresh />} onClick={() => marketplaceQuery.refetch()} loading={marketplaceQuery.isFetching}>
           刷新
+        </Button>
+      </div>
+
+      <div className="marketplace-filter-bar" aria-label="任务广场筛选">
+        <Input
+          prefix={<IconSearch />}
+          value={draftSearch.q}
+          placeholder="搜索标题、描述或标签"
+          onChange={(value) => setDraftSearch((current) => ({ ...current, q: value }))}
+          onEnterPress={applySearchFilters}
+        />
+        <Input
+          value={draftSearch.tag}
+          placeholder="标签"
+          onChange={(value) => setDraftSearch((current) => ({ ...current, tag: value }))}
+          onEnterPress={applySearchFilters}
+        />
+        <Select
+          value={deadline ?? 'all'}
+          onChange={(value) => setFilterParam('deadline', value === 'all' ? null : String(value))}
+          style={{ width: 132 }}
+          aria-label="截止时间筛选"
+        >
+          <Select.Option value="all">全部截止</Select.Option>
+          <Select.Option value="day">24 小时内</Select.Option>
+          <Select.Option value="week">7 天内</Select.Option>
+        </Select>
+        <Button type={hasReward ? 'primary' : 'tertiary'} onClick={() => setFilterParam('hasReward', hasReward ? null : 'true')}>
+          有奖励
+        </Button>
+        <Button icon={<IconSearch />} theme="solid" type="primary" onClick={applySearchFilters}>
+          查询
+        </Button>
+        <Button disabled={!hasActiveFilters} onClick={resetFilters}>
+          重置
         </Button>
       </div>
 
@@ -149,7 +204,45 @@ export function LabelerMarketplacePage() {
             <Empty title="暂无可领取任务" description="稍后再回来看看。" />
           </div>
         ) : null}
-        {items.length > 0 ? <Table columns={columns} dataSource={items} rowKey="id" pagination={false} /> : null}
+        {items.length > 0 ? (
+          <div className="marketplace-card-grid">
+            {items.map((record: MarketplaceTask) => (
+              <article className="marketplace-task-card" key={record.id}>
+                <div className="marketplace-task-card__main">
+                  <div className="marketplace-task-card__heading">
+                    <Typography.Title heading={5}>{record.title}</Typography.Title>
+                    <Tag color="green">{record.availableItemCount} 可领取</Tag>
+                  </div>
+                  <Typography.Paragraph ellipsis={{ rows: 2 }} type="tertiary">
+                    {record.description || '暂无描述'}
+                  </Typography.Paragraph>
+                  {record.tags && record.tags.length > 0 ? (
+                    <Space wrap spacing={4}>
+                      {record.tags.slice(0, 4).map((item) => (
+                        <Tag key={item} color="blue">
+                          {item}
+                        </Tag>
+                      ))}
+                    </Space>
+                  ) : null}
+                </div>
+                <div className="marketplace-task-card__meta">
+                  <span>配额 {record.quotaClaimed}/{record.quotaTotal}</span>
+                  <span>截止 {formatDateTime(record.deadlineAt)}</span>
+                </div>
+                <Button
+                  icon={<IconPlay />}
+                  theme="solid"
+                  type="primary"
+                  loading={claimingTaskId === record.id && claimMutation.isPending}
+                  onClick={() => handleClaim(record.id)}
+                >
+                  领取
+                </Button>
+              </article>
+            ))}
+          </div>
+        ) : null}
       </div>
     </section>
   );

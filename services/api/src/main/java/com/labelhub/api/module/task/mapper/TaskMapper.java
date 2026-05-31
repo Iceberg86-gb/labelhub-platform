@@ -3,6 +3,7 @@ package com.labelhub.api.module.task.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.labelhub.api.module.session.service.view.MarketplaceTaskFilter;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -16,6 +17,7 @@ import org.apache.ibatis.annotations.Update;
 public interface TaskMapper extends BaseMapper<TaskEntity> {
 
     @Select("""
+        <script>
         SELECT id, title, description, instruction_rich_text, tags, reward_rule,
                deadline_at, quota_total, quota_claimed, status, owner_id,
                current_schema_version_id, current_dataset_id, current_ai_review_rule_id,
@@ -33,7 +35,24 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
               AND di.task_id = tasks.id
               AND di.status = 'available'
           )
+          <if test="filter.query != null">
+            AND (
+              LOWER(title) LIKE CONCAT('%', LOWER(#{filter.query}), '%')
+              OR LOWER(COALESCE(description, '')) LIKE CONCAT('%', LOWER(#{filter.query}), '%')
+              OR JSON_SEARCH(tags, 'one', CONCAT('%', #{filter.query}, '%')) IS NOT NULL
+            )
+          </if>
+          <if test="filter.tag != null">
+            AND JSON_CONTAINS(tags, JSON_QUOTE(#{filter.tag}))
+          </if>
+          <if test="filter.hasReward != null">
+            AND reward_rule IS NOT NULL
+          </if>
+          <if test="filter.deadlineDays != null">
+            AND deadline_at &lt;= DATE_ADD(NOW(3), INTERVAL #{filter.deadlineDays} DAY)
+          </if>
         ORDER BY created_at DESC
+        </script>
         """)
     @Results(id = "taskMarketplaceResultMap", value = {
         @Result(column = "id", property = "id"),
@@ -53,7 +72,7 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
         @Result(column = "created_at", property = "createdAt"),
         @Result(column = "updated_at", property = "updatedAt")
     })
-    IPage<TaskEntity> selectMarketplace(IPage<TaskEntity> page);
+    IPage<TaskEntity> selectMarketplace(IPage<TaskEntity> page, @Param("filter") MarketplaceTaskFilter filter);
 
     @Select("""
         SELECT id, title, description, instruction_rich_text, tags, reward_rule,

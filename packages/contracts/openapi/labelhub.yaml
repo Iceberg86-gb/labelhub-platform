@@ -378,6 +378,27 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search task title, description, and tags.
+        - name: tag
+          in: query
+          schema:
+            type: string
+          description: Match a published task tag exactly.
+        - name: hasReward
+          in: query
+          schema:
+            type: boolean
+          description: When true, only return tasks with a reward rule.
+        - name: deadline
+          in: query
+          schema:
+            type: string
+            enum: [day, week]
+          description: Limit to tasks whose deadline is within one day or one week.
       responses:
         '200':
           description: Available tasks for labelers.

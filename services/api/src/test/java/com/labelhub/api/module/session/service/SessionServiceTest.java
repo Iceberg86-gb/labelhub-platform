@@ -31,6 +31,7 @@ import com.labelhub.api.module.session.exception.TaskNotAvailableException;
 import com.labelhub.api.module.session.mapper.DraftMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
+import com.labelhub.api.module.session.service.view.MarketplaceTaskFilter;
 import com.labelhub.api.module.session.service.view.SessionDetailView;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
@@ -181,15 +182,30 @@ class SessionServiceTest {
         Page<TaskEntity> page = new Page<>(1, 20);
         page.setTotal(1);
         page.setRecords(List.of(publishedTask()));
-        when(taskMapper.selectMarketplace(any(Page.class))).thenReturn(page);
+        when(taskMapper.selectMarketplace(any(Page.class), any(MarketplaceTaskFilter.class))).thenReturn(page);
         when(datasetItemMapper.countAvailable(500L, 10L)).thenReturn(3);
 
-        Page<MarketplaceTaskView> result = sessionService.listMarketplace(1002L, 1, 20);
+        Page<MarketplaceTaskView> result = sessionService.listMarketplace(1002L, 1, 20, MarketplaceTaskFilter.empty());
 
         assertThat(result.getTotal()).isEqualTo(1);
         assertThat(result.getRecords()).hasSize(1);
         assertThat(result.getRecords().get(0).availableItemCount()).isEqualTo(3);
         assertThat(result.getRecords().get(0).task().getId()).isEqualTo(10L);
+    }
+
+    @Test
+    void listMarketplace_passes_search_and_filter_criteria_to_mapper() {
+        Page<TaskEntity> page = new Page<>(1, 20);
+        page.setRecords(List.of());
+        when(taskMapper.selectMarketplace(any(Page.class), any(MarketplaceTaskFilter.class))).thenReturn(page);
+
+        MarketplaceTaskFilter filter = new MarketplaceTaskFilter("视觉", "image", true, "week");
+
+        sessionService.listMarketplace(1002L, 1, 20, filter);
+
+        ArgumentCaptor<MarketplaceTaskFilter> filterCaptor = ArgumentCaptor.forClass(MarketplaceTaskFilter.class);
+        verify(taskMapper).selectMarketplace(any(Page.class), filterCaptor.capture());
+        assertThat(filterCaptor.getValue()).isEqualTo(filter);
     }
 
     @Test

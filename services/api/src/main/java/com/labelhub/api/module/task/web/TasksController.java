@@ -15,6 +15,7 @@ import com.labelhub.api.generated.model.UpdateTaskCurrentDatasetRequest;
 import com.labelhub.api.generated.web.TasksApi;
 import com.labelhub.api.module.session.entity.SessionEntity;
 import com.labelhub.api.module.session.service.SessionService;
+import com.labelhub.api.module.session.service.view.MarketplaceTaskFilter;
 import com.labelhub.api.module.submission.service.SubmissionService;
 import com.labelhub.api.module.submission.web.SubmissionDtoMapper;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
@@ -164,9 +165,18 @@ public class TasksController implements TasksApi {
     @GetMapping(path = "/marketplace", produces = "application/json")
     public ResponseEntity<PagedMarketplaceTasks> listMarketplaceTasks(
         @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
-        @RequestParam(value = "size", required = false, defaultValue = "20") Integer size
+        @RequestParam(value = "size", required = false, defaultValue = "20") Integer size,
+        @RequestParam(value = "q", required = false) String q,
+        @RequestParam(value = "tag", required = false) String tag,
+        @RequestParam(value = "hasReward", required = false) Boolean hasReward,
+        @RequestParam(value = "deadline", required = false) String deadline
     ) {
-        var result = sessionService.listMarketplace(currentUserId(), page, size);
+        var result = sessionService.listMarketplace(
+            currentUserId(),
+            page,
+            size,
+            new MarketplaceTaskFilter(q, tag, hasReward, deadline)
+        );
         PagedMarketplaceTasks response = new PagedMarketplaceTasks();
         response.setItems(result.getRecords().stream().map(this::toDto).toList());
         response.setTotal(result.getTotal());
