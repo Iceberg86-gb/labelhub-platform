@@ -1,6 +1,15 @@
 import { Button, Input, Select, Space, Switch, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconRefresh, IconSave, IconTickCircle } from '@douyinfe/semi-icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  useDeleteLlmProviderMutation,
+  useLlmProvidersQuery,
+  useSaveLlmProviderMutation,
+  useTestLlmProviderMutation,
+  type LlmProviderConfig,
+  type LlmProviderConfigRequest,
+  type LlmProviderTestConnectionRequest,
+} from '../../features/llm-provider/useLlmProviders';
 import { IconAiAssist, IconReviewFlow, IconStatusFlow } from '../../shared/ui/LabelHubIcons';
 import { RoleBadge } from '../../shared/ui/RoleBadge';
 
@@ -18,6 +27,7 @@ type LlmConfigState = {
   modelName: string;
   provider: ProviderId;
   providerName: string;
+  secretRef: string;
   systemPrompt: string;
   timeoutSeconds: string;
 };
@@ -77,6 +87,7 @@ const initialConfig: LlmConfigState = {
   estimatedCostPerCall: '0.001',
   maxAttempts: '3',
   provider: 'openai-compatible',
+  secretRef: '',
   systemPrompt: '你是 LabelHub 的标注辅助模型。只给出可审计的参考建议,不要替代人工最终裁决。',
   timeoutSeconds: '30',
 };
@@ -84,7 +95,12 @@ const initialConfig: LlmConfigState = {
 function maskApiKey(apiKey: string) {
   const trimmed = apiKey.trim();
   if (!trimmed) return '未添加';
-  return `已添加 · 尾号 ${trimmed.slice(-4).padStart(4, '•')}`;
+  return `待保存 · 尾号 ${trimmed.slice(-4).padStart(4, '•')}`;
+}
+
+function savedSecretLabel(provider?: LlmProviderConfig) {
+  if (!provider?.hasSecret) return '未添加';
+  return provider.secretLast4 ? `已保存 · 尾号 ${provider.secretLast4.padStart(4, '•')}` : '已保存 · 引用密钥';
 }
 
 function statusLabel(status: ConnectionStatus) {
@@ -94,11 +110,83 @@ function statusLabel(status: ConnectionStatus) {
   return '待测试';
 }
 
+function providerIdFrom(provider: LlmProviderConfig): ProviderId {
+  if (provider.providerType in providerDefaults) {
+    return provider.providerType as ProviderId;
+  }
+  if (provider.providerName === 'deepseek') {
+    return 'deepseek';
+  }
+  return 'custom';
+}
+
+function stateFromProvider(provider: LlmProviderConfig, current: LlmConfigState): LlmConfigState {
+  const providerId = providerIdFrom(provider);
+  return {
+    ...current,
+    apiKey: '',
+    baseUrl: provider.baseUrl ?? '',
+    modelName: provider.modelName,
+    provider: providerId,
+    providerName: provider.providerName,
+    secretRef: provider.secretRef ?? '',
+  };
+}
+
+function requestFromConfig(config: LlmConfigState): LlmProviderConfigRequest {
+  const secret = config.apiKey.trim();
+  const secretRef = config.secretRef.trim();
+  return {
+    providerType: config.provider,
+    providerName: config.providerName,
+    baseUrl: config.baseUrl || undefined,
+    modelName: config.modelName,
+    secret: secret || undefined,
+    secretRef: secretRef || undefined,
+    enabled: true,
+  };
+}
+
+function testRequestFromConfig(config: LlmConfigState): LlmProviderTestConnectionRequest {
+  const secret = config.apiKey.trim();
+  const secretRef = config.secretRef.trim();
+  return {
+    providerType: config.provider,
+    providerName: config.providerName,
+    baseUrl: config.baseUrl || undefined,
+    modelName: config.modelName,
+    secret: secret || undefined,
+    secretRef: secretRef || undefined,
+    timeoutSeconds: Number(config.timeoutSeconds) || 10,
+  };
+}
+
 export function OwnerLlmSettingsPage() {
   const [config, setConfig] = useState<LlmConfigState>(initialConfig);
+  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle');
+  const providersQuery = useLlmProvidersQuery();
+  const saveProviderMutation = useSaveLlmProviderMutation();
+  const deleteProviderMutation = useDeleteLlmProviderMutation();
+  const testProviderMutation = useTestLlmProviderMutation();
   const modelOptions = modelOptionsByProvider[config.provider];
-  const apiKeyLabel = useMemo(() => maskApiKey(config.apiKey), [config.apiKey]);
+  const selectedProvider = useMemo(
+    () => providersQuery.data?.find((provider) => provider.id === selectedProviderId),
+    [providersQuery.data, selectedProviderId],
+  );
+  const apiKeyLabel = useMemo(
+    () => (config.apiKey.trim() ? maskApiKey(config.apiKey) : savedSecretLabel(selectedProvider)),
+    [config.apiKey, selectedProvider],
+  );
+
+  useEffect(() => {
+    if (selectedProviderId != null || !providersQuery.data?.length) {
+      return;
+    }
+    const provider = providersQuery.data[0];
+    setSelectedProviderId(provider.id);
+    setConfig((current) => stateFromProvider(provider, current));
+  }, [providersQuery.data, selectedProviderId]);
 
   const updateConfig = <Key extends keyof LlmConfigState>(key: Key, value: LlmConfigState[Key]) => {
     setConfig((current) => ({ ...current, [key]: value }));
@@ -115,26 +203,65 @@ export function OwnerLlmSettingsPage() {
     setConnectionStatus('idle');
   };
 
-  const testConnection = () => {
-    if (config.provider !== 'mock' && !config.apiKey.trim()) {
+  const testConnection = async () => {
+    if (config.provider !== 'mock' && !config.apiKey.trim() && !config.secretRef.trim() && !selectedProvider?.hasSecret) {
       setConnectionStatus('error');
-      Toast.error('请先添加 API Key');
+      Toast.error('请先添加 API Key 或 Secret Ref');
       return;
     }
 
-    setConnectionStatus('success');
-    Toast.success('连接测试通过');
+    try {
+      const result = await testProviderMutation.mutateAsync({
+        id: config.apiKey.trim() ? undefined : selectedProviderId ?? undefined,
+        body: testRequestFromConfig(config),
+      });
+      setConnectionStatus(result.ok ? 'success' : 'error');
+      if (result.ok) {
+        Toast.success('连接测试通过');
+      } else {
+        Toast.error(result.message ?? '连接测试未通过');
+      }
+    } catch (error) {
+      setConnectionStatus('error');
+      Toast.error(error instanceof Error ? error.message : '连接测试失败');
+    }
   };
 
-  const saveConfig = () => {
-    if (config.provider !== 'mock' && !config.apiKey.trim()) {
+  const saveConfig = async () => {
+    if (config.provider !== 'mock' && !config.apiKey.trim() && !config.secretRef.trim() && !selectedProvider?.hasSecret) {
       setConnectionStatus('error');
-      Toast.error('请先添加 API Key');
+      Toast.error('请先添加 API Key 或 Secret Ref');
       return;
     }
 
-    setConnectionStatus('saved');
-    Toast.success('LLM 接入配置已保存');
+    try {
+      const saved = await saveProviderMutation.mutateAsync({
+        id: selectedProviderId ?? undefined,
+        body: requestFromConfig(config),
+      });
+      setSelectedProviderId(saved.id);
+      setConfig((current) => ({ ...stateFromProvider(saved, current), apiKey: '' }));
+      setConnectionStatus('saved');
+      Toast.success('LLM 接入配置已保存');
+    } catch (error) {
+      setConnectionStatus('error');
+      Toast.error(error instanceof Error ? error.message : 'LLM 接入配置保存失败');
+    }
+  };
+
+  const deleteConfig = async () => {
+    if (selectedProviderId == null) {
+      return;
+    }
+    try {
+      await deleteProviderMutation.mutateAsync(selectedProviderId);
+      setSelectedProviderId(null);
+      setConfig(initialConfig);
+      setConnectionStatus('idle');
+      Toast.success('LLM Provider 已删除');
+    } catch (error) {
+      Toast.error(error instanceof Error ? error.message : 'LLM Provider 删除失败');
+    }
   };
 
   return (
@@ -153,10 +280,10 @@ export function OwnerLlmSettingsPage() {
           </Typography.Text>
         </div>
         <Space>
-          <Button icon={<IconRefresh />} onClick={testConnection}>
+          <Button icon={<IconRefresh />} loading={testProviderMutation.isPending} onClick={testConnection}>
             测试连接
           </Button>
-          <Button icon={<IconSave />} theme="solid" type="primary" onClick={saveConfig}>
+          <Button icon={<IconSave />} loading={saveProviderMutation.isPending} theme="solid" type="primary" onClick={saveConfig}>
             保存配置
           </Button>
         </Space>
@@ -234,7 +361,7 @@ export function OwnerLlmSettingsPage() {
               <Input
                 mode="password"
                 value={config.apiKey}
-                placeholder="粘贴 Provider API Key"
+                placeholder={selectedProvider?.hasSecret ? '留空则沿用已保存密钥' : '粘贴 Provider API Key'}
                 onChange={(apiKey) => updateConfig('apiKey', apiKey)}
               />
               <Typography.Text className="llm-field__hint" type="tertiary">
@@ -261,6 +388,15 @@ export function OwnerLlmSettingsPage() {
             </label>
 
             <label className="llm-field llm-field--wide">
+              <Typography.Text strong>Secret Ref</Typography.Text>
+              <Input
+                value={config.secretRef}
+                placeholder="可选: Vault/KMS/环境变量别名"
+                onChange={(secretRef) => updateConfig('secretRef', secretRef)}
+              />
+            </label>
+
+            <label className="llm-field llm-field--wide">
               <Typography.Text strong>默认系统 Prompt</Typography.Text>
               <TextArea
                 autosize={{ minRows: 4, maxRows: 8 }}
@@ -268,6 +404,15 @@ export function OwnerLlmSettingsPage() {
                 onChange={(systemPrompt) => updateConfig('systemPrompt', systemPrompt)}
               />
             </label>
+          </div>
+
+          <div className="llm-panel-actions">
+            <Button disabled={selectedProviderId == null} loading={deleteProviderMutation.isPending} type="danger" onClick={deleteConfig}>
+              删除配置
+            </Button>
+            <Typography.Text type="tertiary">
+              {providersQuery.isLoading ? '正在读取已保存 Provider...' : `${providersQuery.data?.length ?? 0} 个 Provider 已接入`}
+            </Typography.Text>
           </div>
 
           <div className="llm-advanced-grid" aria-label="高级调用参数">

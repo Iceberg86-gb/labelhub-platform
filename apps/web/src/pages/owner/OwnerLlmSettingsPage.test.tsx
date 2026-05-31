@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@douyinfe/semi-icons', () => ({
@@ -48,7 +49,12 @@ import { OwnerLlmSettingsPage } from './OwnerLlmSettingsPage';
 
 describe('OwnerLlmSettingsPage', () => {
   it('renders the owner LLM connection console with provider, key, model, and assistive scope controls', () => {
-    const html = renderToString(<OwnerLlmSettingsPage />);
+    const queryClient = new QueryClient();
+    const html = renderToString(
+      <QueryClientProvider client={queryClient}>
+        <OwnerLlmSettingsPage />
+      </QueryClientProvider>,
+    );
 
     expect(html).toContain('llm-settings-page');
     expect(html).toContain('LLM 接入');

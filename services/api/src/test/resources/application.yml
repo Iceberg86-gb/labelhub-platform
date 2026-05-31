@@ -1,4 +1,7 @@
 labelhub:
+  ai:
+    provider-secrets:
+      master-key: dev-only-llm-provider-master-key-32b
   object-storage:
     access-key: test-access-key
     secret-key: test-secret-key

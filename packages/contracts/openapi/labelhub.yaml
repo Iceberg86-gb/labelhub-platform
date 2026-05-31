@@ -12,6 +12,7 @@ tags:
   - name: Schemas
   - name: Sessions
   - name: AIReview
+  - name: LLMProviders
   - name: PromptVersions
   - name: Reviews
   - name: Exports
@@ -20,6 +21,161 @@ tags:
 security:
   - bearerAuth: []
 paths:
+  /llm/providers:
+    get:
+      tags: [LLMProviders]
+      operationId: listLlmProviders
+      summary: List owner-managed LLM provider configurations.
+      responses:
+        '200':
+          description: LLM provider configurations visible to the owner.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LlmProviderConfig'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+    post:
+      tags: [LLMProviders]
+      operationId: createLlmProvider
+      summary: Create an owner-managed LLM provider configuration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LlmProviderConfigRequest'
+      responses:
+        '201':
+          description: Created provider configuration. Secret plaintext is never returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmProviderConfig'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /llm/providers:test-connection:
+    post:
+      tags: [LLMProviders]
+      operationId: testUnsavedLlmProvider
+      summary: Test an unsaved LLM provider configuration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LlmProviderTestConnectionRequest'
+      responses:
+        '200':
+          description: Connection test result without secret echo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmProviderTestConnectionResponse'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /llm/providers/{providerConfigId}:
+    get:
+      tags: [LLMProviders]
+      operationId: getLlmProvider
+      summary: Get one owner-managed LLM provider configuration.
+      parameters:
+        - $ref: '#/components/parameters/ProviderConfigId'
+      responses:
+        '200':
+          description: Provider configuration. Secret plaintext is never returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmProviderConfig'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+    patch:
+      tags: [LLMProviders]
+      operationId: updateLlmProvider
+      summary: Update an owner-managed LLM provider configuration.
+      parameters:
+        - $ref: '#/components/parameters/ProviderConfigId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LlmProviderConfigRequest'
+      responses:
+        '200':
+          description: Updated provider configuration. Secret plaintext is never returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmProviderConfig'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+    delete:
+      tags: [LLMProviders]
+      operationId: deleteLlmProvider
+      summary: Delete an owner-managed LLM provider configuration.
+      parameters:
+        - $ref: '#/components/parameters/ProviderConfigId'
+      responses:
+        '204':
+          description: Provider configuration deleted.
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /llm/providers/{providerConfigId}:test-connection:
+    post:
+      tags: [LLMProviders]
+      operationId: testLlmProvider
+      summary: Test a saved LLM provider configuration, optionally overriding the secret for this request.
+      parameters:
+        - $ref: '#/components/parameters/ProviderConfigId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LlmProviderTestConnectionRequest'
+      responses:
+        '200':
+          description: Connection test result without secret echo.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmProviderTestConnectionResponse'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /auth/login:
     post:
       tags: [Auth]
@@ -1535,6 +1691,13 @@ components:
       schema:
         type: integer
         format: int64
+    ProviderConfigId:
+      name: providerConfigId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
   responses:
     ErrorBadRequest:
       description: Request validation failed.
@@ -1573,6 +1736,138 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
   schemas:
+    LlmProviderConfig:
+      type: object
+      required: [id, providerType, providerName, modelName, enabled, hasSecret, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        providerType:
+          type: string
+          minLength: 1
+        providerName:
+          type: string
+          minLength: 1
+        baseUrl:
+          type: string
+          nullable: true
+        modelName:
+          type: string
+          minLength: 1
+        enabled:
+          type: boolean
+        hasSecret:
+          type: boolean
+        secretLast4:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 4
+        secretUpdatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        secretRef:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    LlmProviderConfigRequest:
+      type: object
+      required: [providerType, providerName, modelName]
+      properties:
+        providerType:
+          type: string
+          minLength: 1
+          maxLength: 64
+        providerName:
+          type: string
+          minLength: 1
+          maxLength: 128
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 512
+        modelName:
+          type: string
+          minLength: 1
+          maxLength: 128
+        secret:
+          type: string
+          nullable: true
+          writeOnly: true
+          maxLength: 4096
+        secretRef:
+          type: string
+          nullable: true
+          maxLength: 512
+        enabled:
+          type: boolean
+          default: true
+    LlmProviderTestConnectionRequest:
+      type: object
+      required: [providerType, providerName, modelName]
+      properties:
+        providerType:
+          type: string
+          minLength: 1
+          maxLength: 64
+        providerName:
+          type: string
+          minLength: 1
+          maxLength: 128
+        baseUrl:
+          type: string
+          nullable: true
+          maxLength: 512
+        modelName:
+          type: string
+          minLength: 1
+          maxLength: 128
+        secret:
+          type: string
+          nullable: true
+          writeOnly: true
+          maxLength: 4096
+        secretRef:
+          type: string
+          nullable: true
+          maxLength: 512
+        timeoutSeconds:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 30
+          default: 10
+    LlmProviderTestConnectionResponse:
+      type: object
+      required: [ok, providerName, modelName]
+      properties:
+        ok:
+          type: boolean
+        providerName:
+          type: string
+        modelName:
+          type: string
+        latencyMs:
+          type: integer
+          format: int64
+          nullable: true
+        providerStatus:
+          type: integer
+          format: int32
+          nullable: true
+        providerCode:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
     AuditLog:
       type: object
       required: [id, actorType, action, resourceType, payload, payloadHash, createdAt]

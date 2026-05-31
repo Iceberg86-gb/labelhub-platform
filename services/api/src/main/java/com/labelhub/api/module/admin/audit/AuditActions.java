@@ -28,6 +28,10 @@ public final class AuditActions {
     public static final String EXPORT_SNAPSHOT_CREATE = "export.snapshot_create";
     public static final String EXPORT_SNAPSHOT_ARCHIVE = "export.snapshot_archive";
     public static final String EXPORT_SNAPSHOT_DIFF = "export.snapshot_diff";                // DEFERRED: implementation in future phase
+    public static final String LLM_PROVIDER_CONFIG_CREATE = "llm_provider_config.create";
+    public static final String LLM_PROVIDER_CONFIG_UPDATE = "llm_provider_config.update";
+    public static final String LLM_PROVIDER_CONFIG_DELETE = "llm_provider_config.delete";
+    public static final String LLM_PROVIDER_CONFIG_TEST = "llm_provider_config.test_connection";
 
     private AuditActions() {}
 }

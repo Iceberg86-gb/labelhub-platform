@@ -51,6 +51,8 @@ labelhub:
           input-cache-hit-per-1m-usd: 0.003625
           input-cache-miss-per-1m-usd: 0.435
           output-per-1m-usd: 0.87
+    provider-secrets:
+      master-key: ${LABELHUB_LLM_PROVIDER_MASTER_KEY:}
   security:
     jwt-secret: ${JWT_SECRET:dev-only-32-bytes-minimum-secret-please-change-me}
     jwt-ttl-hours: ${JWT_TTL_HOURS:24}

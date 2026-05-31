@@ -9,6 +9,8 @@ import com.labelhub.api.module.ai.exception.AiProviderFailureException;
 import com.labelhub.api.module.ai.exception.AiReviewRuleNotFoundException;
 import com.labelhub.api.module.ai.exception.InvalidAiReviewRuleException;
 import com.labelhub.api.module.ai.exception.PromptVersionNotFoundException;
+import com.labelhub.api.module.ai.providerconfig.InvalidLlmProviderConfigException;
+import com.labelhub.api.module.ai.providerconfig.LlmProviderConfigNotFoundException;
 import com.labelhub.api.module.dataset.exception.EmptyDatasetException;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetFileException;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetForTaskException;
@@ -178,6 +180,12 @@ public class GlobalExceptionHandler {
             .body(error("INVALID_AI_REVIEW_RULE", "AI review rule is invalid", List.of(fieldError)));
     }
 
+    @ExceptionHandler(InvalidLlmProviderConfigException.class)
+    ResponseEntity<ApiError> invalidLlmProviderConfig(InvalidLlmProviderConfigException exception) {
+        return ResponseEntity.badRequest()
+            .body(error("INVALID_LLM_PROVIDER_CONFIG", exception.getMessage()));
+    }
+
     @ExceptionHandler(SelfReviewNotAllowedException.class)
     ResponseEntity<ApiError> selfReviewNotAllowed(SelfReviewNotAllowedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -251,7 +259,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({TaskNotFoundException.class, SchemaNotFoundException.class, SchemaVersionNotFoundException.class,
         SchemaAccessDeniedException.class, SubmissionNotFoundException.class, SessionNotFoundException.class,
         SessionAccessDeniedException.class, PromptVersionNotFoundException.class, AiReviewRuleNotFoundException.class,
-        NoResourceFoundException.class})
+        LlmProviderConfigNotFoundException.class, NoResourceFoundException.class})
     ResponseEntity<ApiError> notFound(Exception exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("NOT_FOUND", exception.getMessage()));
     }
