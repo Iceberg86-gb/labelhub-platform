@@ -407,7 +407,12 @@ export function OwnerLlmSettingsPage() {
           </div>
 
           <div className="llm-panel-actions">
-            <Button disabled={selectedProviderId == null} loading={deleteProviderMutation.isPending} type="danger" onClick={deleteConfig}>
+            <Button
+              className="llm-delete-button"
+              disabled={selectedProviderId == null}
+              loading={deleteProviderMutation.isPending}
+              onClick={deleteConfig}
+            >
               删除配置
             </Button>
             <Typography.Text type="tertiary">
