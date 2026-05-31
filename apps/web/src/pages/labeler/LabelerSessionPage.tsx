@@ -1,5 +1,5 @@
-import { Button, Card, Empty, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconSend } from '@douyinfe/semi-icons';
+import { Button, Card, Empty, Select, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { IconChevronLeft, IconChevronRight, IconSend } from '@douyinfe/semi-icons';
 import type { Form } from '@formily/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -12,6 +12,7 @@ import { createVisibleSchemaFieldsSelector } from '../../entities/labeling/visib
 import { AutosaveStatusTag } from '../../features/labeling/AutosaveStatusTag';
 import { DatasetItemContextCard, selectDatasetItemPayload } from '../../features/labeling/DatasetItemContextCard';
 import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
+import { buildSessionNavigation } from '../../features/labeling/sessionNavigation';
 import { SubmitConfirmModal } from '../../features/labeling/SubmitConfirmModal';
 import { fieldErrorsToStableIdMap, selectVisibleFieldErrors } from '../../features/labeling/serverValidationErrors';
 import { useAutosave } from '../../features/labeling/useAutosave';
@@ -22,6 +23,7 @@ import {
 } from '../../features/labeling/useOfflineDraftBuffer';
 import { useOfflineDraftSync } from '../../features/labeling/useOfflineDraftSync';
 import { useLatestDraftQuery } from '../../features/labeling/useLatestDraftQuery';
+import { useMySessionsQuery } from '../../features/labeling/useMySessionsQuery';
 import { useSaveDraftMutation } from '../../features/labeling/useSaveDraftMutation';
 import { useSessionDetailQuery } from '../../features/labeling/useSessionDetailQuery';
 import { SubmitValidationError, useSubmitMutation } from '../../features/labeling/useSubmitMutation';
@@ -39,6 +41,9 @@ export function LabelerSessionPage() {
   const sessionId = parseId(params.sessionId);
   const detailQuery = useSessionDetailQuery(sessionId ?? 0, { enabled: Boolean(sessionId) });
   const draftQuery = useLatestDraftQuery(sessionId ?? 0, { enabled: detailQuery.isSuccess });
+  const claimedSessionsQuery = useMySessionsQuery({ page: 1, size: 100, status: 'claimed' });
+  const returnedSessionsQuery = useMySessionsQuery({ page: 1, size: 100, status: 'returned_for_revision' });
+  const submittedSessionsQuery = useMySessionsQuery({ page: 1, size: 100, status: 'submitted' });
   const saveDraftMutation = useSaveDraftMutation();
   const submitMutation = useSubmitMutation();
 
@@ -46,7 +51,9 @@ export function LabelerSessionPage() {
   const [serverErrors, setServerErrors] = useState<Map<string, string[]> | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [navigationBusy, setNavigationBusy] = useState(false);
   const formRef = useRef<Form<Record<string, unknown>> | null>(null);
+  const lastSessionIdRef = useRef<number | null>(sessionId);
   const visibleFieldsSelector = useMemo(() => createVisibleSchemaFieldsSelector(), []);
   const userId = getUser()?.id ?? null;
   const {
@@ -76,6 +83,18 @@ export function LabelerSessionPage() {
         : { payload: null, source: 'none' as const },
     [detail],
   );
+
+  useEffect(() => {
+    if (lastSessionIdRef.current === sessionId) {
+      return;
+    }
+    lastSessionIdRef.current = sessionId;
+    formRef.current = null;
+    setAnswerPayload(null);
+    setServerErrors(null);
+    setHasInitialized(false);
+    setSubmitModalOpen(false);
+  }, [sessionId]);
 
   useEffect(() => {
     const hydrationGuard = createOfflineDraftHydrationGuard();
@@ -141,6 +160,25 @@ export function LabelerSessionPage() {
     () => visibleFieldsSelector(fields, answerPayload ?? EMPTY_ANSWER_PAYLOAD),
     [answerPayload, fields, visibleFieldsSelector],
   );
+  const navigation = useMemo(
+    () =>
+      buildSessionNavigation({
+        currentSessionId: sessionId ?? 0,
+        currentTaskId: detail?.task.id ?? 0,
+        sessions: [
+          ...(claimedSessionsQuery.data?.items ?? []),
+          ...(returnedSessionsQuery.data?.items ?? []),
+          ...(submittedSessionsQuery.data?.items ?? []),
+        ],
+      }),
+    [
+      claimedSessionsQuery.data,
+      detail?.task.id,
+      returnedSessionsQuery.data,
+      sessionId,
+      submittedSessionsQuery.data,
+    ],
+  );
 
   const handleAnswerPayloadChange = useCallback((next: AnswerPayload) => {
     setServerErrors(null);
@@ -150,6 +188,23 @@ export function LabelerSessionPage() {
   const handleFormReady = useCallback((form: Form<Record<string, unknown>>) => {
     formRef.current = form;
   }, []);
+
+  const navigateToSession = async (targetSessionId: number | null) => {
+    if (!targetSessionId || targetSessionId === sessionId || navigationBusy) {
+      return;
+    }
+    setNavigationBusy(true);
+    try {
+      if (isEditable) {
+        await autosave.flush();
+      }
+      navigate(`/labeler/sessions/${targetSessionId}`);
+    } catch {
+      Toast.error('草稿保存失败,已停留在当前题。请稍后重试或等待离线草稿同步。');
+    } finally {
+      setNavigationBusy(false);
+    }
+  };
 
   const handleSubmitClick = () => {
     if (triggerSubmitValidationFeedback({ validationErrors, fields, form: formRef.current })) {
@@ -235,6 +290,41 @@ export function LabelerSessionPage() {
             提交
           </Button>
         </div>
+      </div>
+
+      <div className="labeler-session-navigation" aria-label="Session navigation">
+        <Button
+          icon={<IconChevronLeft />}
+          disabled={!navigation.previousSessionId || navigationBusy}
+          loading={navigationBusy}
+          onClick={() => void navigateToSession(navigation.previousSessionId)}
+        >
+          上一题
+        </Button>
+        <Select
+          value={sessionId}
+          disabled={navigation.total <= 1 || navigationBusy}
+          onChange={(value) => void navigateToSession(Number(value))}
+          style={{ minWidth: 220 }}
+          aria-label="跳题"
+        >
+          {navigation.items.map((item, index) => (
+            <Select.Option key={item.id} value={item.id}>
+              第 {index + 1} 题 · Session #{item.id}
+            </Select.Option>
+          ))}
+        </Select>
+        <Button
+          icon={<IconChevronRight />}
+          disabled={!navigation.nextSessionId || navigationBusy}
+          loading={navigationBusy}
+          onClick={() => void navigateToSession(navigation.nextSessionId)}
+        >
+          下一题
+        </Button>
+        <Typography.Text type="tertiary">
+          {navigation.total > 0 ? `${navigation.position}/${navigation.total}` : '暂无同任务 session'}
+        </Typography.Text>
       </div>
 
       <DatasetItemContextCard itemPayload={datasetItemContext.payload} sourceLabel={datasetItemContext.source} />
