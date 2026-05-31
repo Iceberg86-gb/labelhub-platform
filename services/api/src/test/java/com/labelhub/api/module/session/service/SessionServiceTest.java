@@ -589,6 +589,42 @@ class SessionServiceTest {
     }
 
     @Test
+    void submit_from_returned_for_revision_records_supersede_audit_event() {
+        SessionEntity returned = claimedSession(900L, 1002L);
+        returned.setStatus("returned_for_revision");
+        SubmissionEntity previous = submission(1199L, 1002L);
+        previous.setStatusCode("returned_for_revision");
+        when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(returned);
+        when(submissionMapper.selectLatestBySessionIdForUpdate(900L)).thenReturn(previous);
+        when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
+            SubmissionEntity submission = invocation.getArgument(0);
+            submission.setId(1200L);
+            return 1;
+        });
+        when(submissionMapper.updateSupersededBy(1199L, 1200L)).thenReturn(1);
+        when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
+
+        sessionService.submit(900L, 1002L, Map.of("field_0", "fixed"));
+
+        ArgumentCaptor<AuditEventBuilder> captor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService, org.mockito.Mockito.times(2)).record(captor.capture());
+        assertThat(captor.getAllValues().stream().map(builder -> builder.build().action()))
+            .contains(AuditActions.SUBMISSION_SUPERSEDE, AuditActions.SUBMISSION_CREATE);
+        AuditEvent supersede = captor.getAllValues().stream()
+            .map(AuditEventBuilder::build)
+            .filter(event -> AuditActions.SUBMISSION_SUPERSEDE.equals(event.action()))
+            .findFirst()
+            .orElseThrow();
+        assertThat(supersede.actorId()).isEqualTo(1002L);
+        assertThat(supersede.resourceId()).isEqualTo(1199L);
+        assertThat(supersede.payload())
+            .containsEntry("previousSubmissionId", 1199L)
+            .containsEntry("newSubmissionId", 1200L)
+            .containsEntry("fromStatus", "returned_for_revision")
+            .containsEntry("toStatus", "submitted");
+    }
+
+    @Test
     void submit_rejects_when_session_belongs_to_different_labeler() {
         when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(claimedSession(900L, 2002L));
 

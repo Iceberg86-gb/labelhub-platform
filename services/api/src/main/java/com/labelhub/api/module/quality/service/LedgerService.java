@@ -5,10 +5,12 @@ import com.labelhub.api.module.admin.audit.AuditActions;
 import com.labelhub.api.module.admin.audit.AuditEventBuilder;
 import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
+import com.labelhub.api.module.quality.entity.ReviewActionEntity;
 import com.labelhub.api.module.quality.exception.LedgerEntryPayloadInvalidException;
 import com.labelhub.api.module.quality.exception.LedgerEntryTypeNotSupportedException;
 import com.labelhub.api.module.quality.exception.SelfReviewNotAllowedException;
 import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
+import com.labelhub.api.module.quality.mapper.ReviewActionMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
@@ -40,6 +42,7 @@ public class LedgerService {
     private final SubmissionMapper submissionMapper;
     private final TaskMapper taskMapper;
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper;
+    private final ReviewActionMapper reviewActionMapper;
     private final SessionMapper sessionMapper;
     private final Clock clock;
     private final AuditLogService auditLogService;
@@ -49,6 +52,7 @@ public class LedgerService {
         SubmissionMapper submissionMapper,
         TaskMapper taskMapper,
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
+        ReviewActionMapper reviewActionMapper,
         Clock clock,
         AuditLogService auditLogService,
         SessionMapper sessionMapper
@@ -56,6 +60,7 @@ public class LedgerService {
         this.submissionMapper = submissionMapper;
         this.taskMapper = taskMapper;
         this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
+        this.reviewActionMapper = reviewActionMapper;
         this.sessionMapper = sessionMapper;
         this.clock = clock;
         this.auditLogService = auditLogService;
@@ -68,7 +73,7 @@ public class LedgerService {
         Clock clock,
         AuditLogService auditLogService
     ) {
-        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock, auditLogService, null);
+        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, null, clock, auditLogService, null);
     }
 
     public LedgerService(
@@ -77,7 +82,7 @@ public class LedgerService {
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Clock clock
     ) {
-        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock, AuditLogService.noop(), null);
+        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, null, clock, AuditLogService.noop(), null);
     }
 
     @Transactional
@@ -113,12 +118,53 @@ public class LedgerService {
         requireOneRow(qualityLedgerEntryMapper.insert(entity), "insert quality ledger entry");
         String verdict = String.valueOf(payload.get("verdict"));
         if ("approve".equals(verdict)) {
+            recordReviewAction(submission, entity, reviewerUserId, verdict);
             auditLogService.record(reviewAuditEvent(AuditActions.REVIEW_APPROVE, submission, entity, reviewerUserId, verdict));
         } else {
             markReturnedForRevision(submission);
+            recordReviewAction(submission, entity, reviewerUserId, verdict);
             auditLogService.record(reviewAuditEvent(AuditActions.REVIEW_REJECT, submission, entity, reviewerUserId, verdict));
         }
         return entity;
+    }
+
+    private void recordReviewAction(
+        SubmissionEntity submission,
+        QualityLedgerEntryEntity entity,
+        Long reviewerUserId,
+        String verdict
+    ) {
+        if (reviewActionMapper == null) {
+            return;
+        }
+        String reviewLevel = stringPayload(entity.getPayload(), "reviewLevel", "reviewer");
+        String reason = stringPayload(entity.getPayload(), "reason", null);
+        String toSubmissionStatus = "reject".equals(verdict)
+            ? SubmissionStatusCodes.RETURNED_FOR_REVISION
+            : submission.getStatusCode();
+
+        ReviewActionEntity action = new ReviewActionEntity();
+        action.setSubmissionId(submission.getId());
+        action.setTaskId(submission.getTaskId());
+        action.setReviewerId(reviewerUserId);
+        action.setReviewLevel(reviewLevel);
+        action.setAction(verdict);
+        action.setStructuredReason(reason == null ? null : Map.of("reason", reason));
+        action.setCommentText(reason);
+        action.setRoundNo(reviewActionMapper.selectNextRoundNo(submission.getId()));
+        Map<String, Object> diffSnapshot = new LinkedHashMap<>();
+        diffSnapshot.put("ledgerEntryId", entity.getId());
+        diffSnapshot.put("fromSubmissionStatus", submission.getStatusCode());
+        diffSnapshot.put("toSubmissionStatus", toSubmissionStatus);
+        diffSnapshot.put("reviewerVerdict", verdict);
+        action.setDiffSnapshot(diffSnapshot);
+        action.setCreatedAt(entity.getCreatedAt());
+        requireOneRow(reviewActionMapper.insert(action), "insert review action");
+    }
+
+    private String stringPayload(Map<String, Object> payload, String key, String defaultValue) {
+        Object value = payload == null ? null : payload.get(key);
+        return value instanceof String text && !text.isBlank() ? text : defaultValue;
     }
 
     private void markReturnedForRevision(SubmissionEntity submission) {

@@ -9,7 +9,9 @@ import com.labelhub.api.module.ai.provider.FieldFinding;
 import com.labelhub.api.module.quality.exception.LedgerEntryPayloadInvalidException;
 import com.labelhub.api.module.quality.exception.LedgerEntryTypeNotSupportedException;
 import com.labelhub.api.module.quality.exception.SelfReviewNotAllowedException;
+import com.labelhub.api.module.quality.entity.ReviewActionEntity;
 import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
+import com.labelhub.api.module.quality.mapper.ReviewActionMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
@@ -53,6 +55,7 @@ class LedgerServiceTest {
     private final SessionMapper sessionMapper = mock(SessionMapper.class);
     private final TaskMapper taskMapper = mock(TaskMapper.class);
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper = mock(QualityLedgerEntryMapper.class);
+    private final ReviewActionMapper reviewActionMapper = mock(ReviewActionMapper.class);
     private final AuditLogService auditLogService = mock(AuditLogService.class);
     private LedgerService ledgerService;
 
@@ -63,10 +66,13 @@ class LedgerServiceTest {
             submissionMapper,
             taskMapper,
             qualityLedgerEntryMapper,
+            reviewActionMapper,
             clock,
             auditLogService,
             sessionMapper
         );
+        when(reviewActionMapper.selectNextRoundNo(SUBMISSION_ID)).thenReturn(1);
+        when(reviewActionMapper.insert(any(ReviewActionEntity.class))).thenReturn(1);
     }
 
     @Test
@@ -136,6 +142,45 @@ class LedgerServiceTest {
 
         verify(submissionMapper).updateStatus(SUBMISSION_ID, "returned_for_revision");
         verify(sessionMapper).updateStatus(900L, "returned_for_revision");
+    }
+
+    @Test
+    void createEntry_reject_records_review_action_with_reason_and_round() {
+        SubmissionEntity submission = submission();
+        submission.setSessionId(900L);
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission);
+        doAnswer(invocation -> {
+            QualityLedgerEntryEntity entity = invocation.getArgument(0);
+            entity.setId(901L);
+            return 1;
+        }).when(qualityLedgerEntryMapper).insert(any(QualityLedgerEntryEntity.class));
+        when(submissionMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
+        when(sessionMapper.updateStatus(900L, "returned_for_revision")).thenReturn(1);
+        when(reviewActionMapper.selectNextRoundNo(SUBMISSION_ID)).thenReturn(3);
+        when(reviewActionMapper.insert(any(ReviewActionEntity.class))).thenReturn(1);
+
+        ledgerService.createEntry(
+            SUBMISSION_ID,
+            REVIEWER_ID,
+            "reviewer_overall_verdict",
+            Map.of("verdict", "reject", "reason", "Needs correction")
+        );
+
+        ArgumentCaptor<ReviewActionEntity> captor = ArgumentCaptor.forClass(ReviewActionEntity.class);
+        verify(reviewActionMapper).insert(captor.capture());
+        ReviewActionEntity action = captor.getValue();
+        assertThat(action.getSubmissionId()).isEqualTo(SUBMISSION_ID);
+        assertThat(action.getTaskId()).isEqualTo(TASK_ID);
+        assertThat(action.getReviewerId()).isEqualTo(REVIEWER_ID);
+        assertThat(action.getReviewLevel()).isEqualTo("reviewer");
+        assertThat(action.getAction()).isEqualTo("reject");
+        assertThat(action.getStructuredReason()).containsEntry("reason", "Needs correction");
+        assertThat(action.getCommentText()).isEqualTo("Needs correction");
+        assertThat(action.getRoundNo()).isEqualTo(3);
+        assertThat(action.getDiffSnapshot())
+            .containsEntry("fromSubmissionStatus", "submitted")
+            .containsEntry("toSubmissionStatus", "returned_for_revision");
+        assertThat(action.getCreatedAt()).isEqualTo(NOW);
     }
 
     @Test
