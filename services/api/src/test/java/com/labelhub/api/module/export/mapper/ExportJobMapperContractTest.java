@@ -13,17 +13,17 @@ class ExportJobMapperContractTest {
     }
 
     @Test
-    void export_job_mapper_exposes_only_insert_and_select_methods() {
+    void export_job_mapper_exposes_insert_select_and_status_transition_methods_only() {
         for (Method method : ExportJobMapper.class.getDeclaredMethods()) {
             String name = method.getName();
             assertThat(name)
-                .as("Method " + name + " violates append-only ExportJobMapper contract")
+                .as("Method " + name + " violates export job status-flow contract")
                 .doesNotStartWith("update")
                 .doesNotStartWith("delete")
                 .doesNotStartWith("remove")
                 .doesNotStartWith("save");
-            assertThat(name.startsWith("insert") || name.startsWith("select"))
-                .as("Method " + name + " must be insert/select only")
+            assertThat(name.startsWith("insert") || name.startsWith("select") || name.startsWith("mark"))
+                .as("Method " + name + " must be insert/select/mark only")
                 .isTrue();
         }
     }

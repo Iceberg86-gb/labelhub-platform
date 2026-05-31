@@ -11,6 +11,7 @@ import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface ExportJobMapper {
@@ -63,6 +64,39 @@ public interface ExportJobMapper {
 
     @Select("SELECT COUNT(*) FROM export_jobs WHERE task_id = #{taskId}")
     Long selectCountByTaskId(@Param("taskId") Long taskId);
+
+    @Update("""
+        UPDATE export_jobs
+        SET status = 'queued'
+        WHERE id = #{jobId} AND status = 'created'
+        """)
+    int markQueued(@Param("jobId") Long jobId);
+
+    @Update("""
+        UPDATE export_jobs
+        SET status = 'running', started_at = #{startedAt}
+        WHERE id = #{jobId} AND status IN ('created', 'queued', 'failed')
+        """)
+    int markRunning(@Param("jobId") Long jobId, @Param("startedAt") java.time.LocalDateTime startedAt);
+
+    @Update("""
+        UPDATE export_jobs
+        SET status = 'succeeded', completed_at = #{completedAt}, file_key = #{fileKey}, file_size = #{fileSize}
+        WHERE id = #{jobId} AND status = 'running'
+        """)
+    int markSucceeded(
+        @Param("jobId") Long jobId,
+        @Param("completedAt") java.time.LocalDateTime completedAt,
+        @Param("fileKey") String fileKey,
+        @Param("fileSize") Long fileSize
+    );
+
+    @Update("""
+        UPDATE export_jobs
+        SET status = 'failed', completed_at = #{completedAt}
+        WHERE id = #{jobId} AND status = 'running'
+        """)
+    int markFailed(@Param("jobId") Long jobId, @Param("completedAt") java.time.LocalDateTime completedAt);
 
     @Select("""
         SELECT id, task_id, requested_by, format, status, parameters, created_at, started_at,

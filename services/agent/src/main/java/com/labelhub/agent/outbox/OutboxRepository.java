@@ -7,6 +7,8 @@ public interface OutboxRepository {
 
     List<OutboxEvent> findDueAiReviewEvents(int batchSize, int leaseSeconds);
 
+    List<OutboxEvent> findDueExportEvents(int batchSize, int leaseSeconds);
+
     boolean claim(Long eventId, String workerId, int leaseSeconds);
 
     void markProcessed(Long eventId, String workerId);

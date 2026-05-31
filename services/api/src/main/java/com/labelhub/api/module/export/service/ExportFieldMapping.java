@@ -18,6 +18,35 @@ public record ExportFieldMapping(List<ExportFieldMappingColumn> columns) {
         columns = columns == null ? List.of() : List.copyOf(columns);
     }
 
+    public static ExportFieldMapping fromParameter(Object value) {
+        if (!(value instanceof Map<?, ?> rawMap) || !(rawMap.get("columns") instanceof List<?> rawColumns)) {
+            return empty();
+        }
+        List<ExportFieldMappingColumn> columns = new ArrayList<>();
+        for (Object rawColumn : rawColumns) {
+            if (rawColumn instanceof Map<?, ?> rawColumnMap) {
+                columns.add(new ExportFieldMappingColumn(
+                    stringValue(rawColumnMap.get("source")),
+                    stringValue(rawColumnMap.get("columnName")),
+                    booleanValue(rawColumnMap.get("included"))
+                ));
+            }
+        }
+        return new ExportFieldMapping(columns);
+    }
+
+    public Map<String, Object> toParameter() {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("columns", columns.stream().map(column -> {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("source", column.source());
+            entry.put("columnName", column.columnName());
+            entry.put("included", column.included());
+            return entry;
+        }).toList());
+        return value;
+    }
+
     List<ExportFieldMappingColumn> effectiveColumns(List<String> availableSources) {
         if (columns.isEmpty()) {
             return availableSources.stream()
@@ -50,5 +79,13 @@ public record ExportFieldMapping(List<ExportFieldMappingColumn> columns) {
         snapshot.put("version", VERSION);
         snapshot.put("columns", mappedColumns);
         return snapshot;
+    }
+
+    private static String stringValue(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private static boolean booleanValue(Object value) {
+        return value == null || Boolean.parseBoolean(String.valueOf(value));
     }
 }

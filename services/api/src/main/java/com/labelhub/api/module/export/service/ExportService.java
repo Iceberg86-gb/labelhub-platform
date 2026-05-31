@@ -12,6 +12,7 @@ import com.labelhub.api.module.export.exception.ExportSnapshotNotFoundException;
 import com.labelhub.api.module.export.mapper.ExportJobMapper;
 import com.labelhub.api.module.export.mapper.ExportSnapshotMapper;
 import com.labelhub.api.module.export.storage.ObjectStorageWriter;
+import com.labelhub.api.module.outbox.service.OutboxEventService;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
@@ -47,22 +48,62 @@ public class ExportService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final AuditLogService auditLogService;
+    private final OutboxEventService outboxEventService;
 
     @Autowired
     public ExportService(TaskMapper taskMapper, ExportJobMapper exportJobMapper, ExportSnapshotMapper exportSnapshotMapper,
                          ExportFactCollector factCollector, ExportArtifactBuilder artifactBuilder,
                          ObjectStorageWriter storageWriter, ObjectMapper objectMapper, Clock clock,
-                         AuditLogService auditLogService) {
+                         AuditLogService auditLogService, OutboxEventService outboxEventService) {
         this.taskMapper = taskMapper; this.exportJobMapper = exportJobMapper; this.exportSnapshotMapper = exportSnapshotMapper;
         this.factCollector = factCollector; this.artifactBuilder = artifactBuilder; this.storageWriter = storageWriter;
         this.objectMapper = objectMapper; this.clock = clock; this.auditLogService = auditLogService;
+        this.outboxEventService = outboxEventService;
+    }
+
+    public ExportService(TaskMapper taskMapper, ExportJobMapper exportJobMapper, ExportSnapshotMapper exportSnapshotMapper,
+                         ExportFactCollector factCollector, ExportArtifactBuilder artifactBuilder,
+                         ObjectStorageWriter storageWriter, ObjectMapper objectMapper, Clock clock,
+                         AuditLogService auditLogService) {
+        this(taskMapper, exportJobMapper, exportSnapshotMapper, factCollector, artifactBuilder, storageWriter, objectMapper,
+            clock, auditLogService, null);
     }
 
     public ExportService(TaskMapper taskMapper, ExportJobMapper exportJobMapper, ExportSnapshotMapper exportSnapshotMapper,
                          ExportFactCollector factCollector, ExportArtifactBuilder artifactBuilder,
                          ObjectStorageWriter storageWriter, ObjectMapper objectMapper, Clock clock) {
         this(taskMapper, exportJobMapper, exportSnapshotMapper, factCollector, artifactBuilder, storageWriter, objectMapper,
-            clock, AuditLogService.noop());
+            clock, AuditLogService.noop(), null);
+    }
+
+    @Transactional
+    public ExportJobEntity requestExport(Long taskId, Long ownerUserId, ExportDataScope dataScope, ExportFieldMapping fieldMapping) {
+        ExportDataScope effectiveScope = dataScope == null ? ExportDataScope.APPROVED_ONLY : dataScope;
+        ExportFieldMapping effectiveFieldMapping = fieldMapping == null ? ExportFieldMapping.empty() : fieldMapping;
+        TaskEntity task = taskMapper.selectById(taskId);
+        if (task == null || !Objects.equals(task.getOwnerId(), ownerUserId)) {
+            throw new TaskNotFoundException(taskId);
+        }
+        if (outboxEventService == null) {
+            throw new IllegalStateException("OutboxEventService is required for async export requests");
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        ExportJobEntity job = new ExportJobEntity();
+        job.setTaskId(taskId);
+        job.setRequestedBy(ownerUserId);
+        job.setFormat("jsonl-bundle");
+        job.setStatus("created");
+        job.setParameters(Map.of(
+            "mode", effectiveScope.mode(),
+            "fieldMapping", effectiveFieldMapping.toParameter()
+        ));
+        job.setCreatedAt(now);
+        job.setDownloadCount(0);
+        requireOneRow(exportJobMapper.insert(job), "insert export job");
+        outboxEventService.enqueueExportRequested(job);
+        requireOneRow(exportJobMapper.markQueued(job.getId()), "mark export job queued");
+        job.setStatus("queued");
+        return job;
     }
 
     @Transactional
@@ -95,13 +136,51 @@ public class ExportService {
         job.setStartedAt(now);
         job.setDownloadCount(0);
         requireOneRow(exportJobMapper.insert(job), "insert export job");
+        return writeSnapshotForJob(job, effectiveScope, effectiveFieldMapping);
+    }
 
+    @Transactional
+    public ExportSnapshotEntity processExportJob(Long exportJobId) {
+        ExportJobEntity job = exportJobMapper.selectById(exportJobId);
+        if (job == null) {
+            throw new ExportFailureException(
+                "Export job " + exportJobId + " was not found",
+                new IllegalArgumentException("export job not found")
+            );
+        }
+        LocalDateTime startedAt = LocalDateTime.now(clock);
+        requireOneRow(exportJobMapper.markRunning(job.getId(), startedAt), "mark export job running");
+        job.setStartedAt(startedAt);
+        try {
+            ExportSnapshotEntity snapshot = writeSnapshotForJob(
+                job,
+                dataScopeFromJob(job),
+                ExportFieldMapping.fromParameter(job.getParameters() == null ? null : job.getParameters().get("fieldMapping"))
+            );
+            requireOneRow(exportJobMapper.markSucceeded(
+                job.getId(),
+                LocalDateTime.now(clock),
+                snapshot.getObjectKey(),
+                totalFileSize(snapshot.getFileManifest())
+            ), "mark export job succeeded");
+            return snapshot;
+        } catch (RuntimeException exception) {
+            exportJobMapper.markFailed(job.getId(), LocalDateTime.now(clock));
+            throw exception;
+        }
+    }
+
+    private ExportSnapshotEntity writeSnapshotForJob(ExportJobEntity job, ExportDataScope effectiveScope, ExportFieldMapping effectiveFieldMapping) {
         List<String> writtenKeys = new ArrayList<>();
         try {
-            ExportFactBundle bundle = factCollector.collectForTask(taskId, effectiveScope);
-            ExportArtifact artifact = artifactBuilder.build(bundle, effectiveFieldMapping);
+            ExportFactBundle bundle = factCollector.collectForTask(job.getTaskId(), effectiveScope);
+            ExportFactBundle businessBundle = effectiveScope == ExportDataScope.APPROVED_ONLY
+                ? bundle
+                : factCollector.collectForTask(job.getTaskId(), ExportDataScope.APPROVED_ONLY);
+            ExportArtifact artifact = artifactBuilder.build(bundle, businessBundle, effectiveFieldMapping);
             Map<String, Object> fieldMappingSnapshot = fieldMappingSnapshot(artifact);
-            String objectKeyPrefix = "exports/tasks/" + taskId + "/jobs/" + job.getId() + "/";
+            String objectKeyPrefix = "exports/tasks/" + job.getTaskId() + "/jobs/" + job.getId() + "/";
+            LocalDateTime now = LocalDateTime.now(clock);
 
             for (ArtifactFile file : artifact.files()) {
                 writeObject(objectKeyPrefix + file.name(), file.content(), writtenKeys);
@@ -112,7 +191,7 @@ public class ExportService {
 
             ExportSnapshotEntity snapshot = new ExportSnapshotEntity();
             snapshot.setExportJobId(job.getId());
-            snapshot.setTaskId(taskId);
+            snapshot.setTaskId(job.getTaskId());
             snapshot.setFileHash(artifact.fileHash());
             snapshot.setManifestHash(artifact.manifestHash());
             snapshot.setSourceStateHash(artifact.sourceStateHash());
@@ -128,10 +207,10 @@ public class ExportService {
             requireOneRow(exportSnapshotMapper.insert(snapshot), "insert export snapshot");
             auditLogService.record(
                 AuditEventBuilder.forAction(AuditActions.EXPORT_SNAPSHOT_CREATE)
-                    .actorUser(ownerUserId)
+                    .actorUser(job.getRequestedBy())
                     .resource("export_snapshot", snapshot.getId())
                     .payload("snapshotId", snapshot.getId())
-                    .payload("taskId", taskId)
+                    .payload("taskId", job.getTaskId())
                     .payload("exportJobId", job.getId())
                     .payload("fileHash", snapshot.getFileHash())
                     .payload("manifestHash", snapshot.getManifestHash())
@@ -143,8 +222,26 @@ public class ExportService {
             return snapshot;
         } catch (RuntimeException e) {
             cleanupBestEffort(writtenKeys);
-            throw new ExportFailureException("Export failed for task " + taskId, e);
+            throw new ExportFailureException("Export failed for task " + job.getTaskId(), e);
         }
+    }
+
+    private ExportDataScope dataScopeFromJob(ExportJobEntity job) {
+        Object mode = job.getParameters() == null ? null : job.getParameters().get("mode");
+        return ExportDataScope.fromMode(mode == null ? null : String.valueOf(mode));
+    }
+
+    private Long totalFileSize(Map<String, Object> fileManifest) {
+        long total = 0L;
+        for (Map<String, Object> file : fileEntries(fileManifest)) {
+            Object sizeBytes = file.get("sizeBytes");
+            if (sizeBytes instanceof Number number) {
+                total += number.longValue();
+            } else if (sizeBytes != null) {
+                total += Long.parseLong(String.valueOf(sizeBytes));
+            }
+        }
+        return total;
     }
 
     @SuppressWarnings("unchecked")
