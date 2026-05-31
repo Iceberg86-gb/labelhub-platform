@@ -12,10 +12,11 @@ export type MarketplaceTask = components['schemas']['MarketplaceTask'];
 export type PagedMarketplaceTasks = components['schemas']['PagedMarketplaceTasks'];
 export type PagedSessions = components['schemas']['PagedSessions'];
 
-export const SESSION_STATUSES = ['claimed', 'submitted', 'abandoned'] satisfies SessionStatus[];
+export const SESSION_STATUSES = ['claimed', 'submitted', 'returned_for_revision', 'abandoned'] satisfies SessionStatus[];
 
 export const SESSION_STATUS_LABELS: Record<SessionStatus, string> = {
   claimed: '进行中',
   submitted: '已提交',
+  returned_for_revision: '待修改',
   abandoned: '已放弃',
 };

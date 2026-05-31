@@ -10,6 +10,8 @@ import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.outbox.service.OutboxEventService;
+import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
+import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
@@ -62,6 +64,7 @@ class SessionServiceTest {
     private final SchemaVersionMapper schemaVersionMapper = mock(SchemaVersionMapper.class);
     private final DraftMapper draftMapper = mock(DraftMapper.class);
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
+    private final QualityLedgerEntryMapper qualityLedgerEntryMapper = mock(QualityLedgerEntryMapper.class);
     private final OutboxEventService outboxEventService = mock(OutboxEventService.class);
     private final Canonicalizer canonicalizer = new Canonicalizer(new ObjectMapper());
     private final AuditLogService auditLogService = mock(AuditLogService.class);
@@ -78,6 +81,7 @@ class SessionServiceTest {
             draftMapper,
             submissionMapper,
             outboxEventService,
+            qualityLedgerEntryMapper,
             canonicalizer,
             clock,
             auditLogService
@@ -267,6 +271,29 @@ class SessionServiceTest {
         assertThat(view.getSchemaVersion().getId()).isEqualTo(300L);
         assertThat(view.getDatasetItem().getId()).isEqualTo(700L);
         assertThat(view.getLatestDraft().getRevisionNo()).isEqualTo(2);
+    }
+
+    @Test
+    void getDetail_includes_latest_reviewer_reject_feedback_for_labeler() {
+        SessionEntity session = claimedSession(900L, 1002L);
+        when(sessionMapper.selectById(900L)).thenReturn(session);
+        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+        when(schemaVersionMapper.selectById(300L)).thenReturn(schemaVersion(300L));
+        when(datasetItemMapper.selectById(700L)).thenReturn(item(700L));
+        when(draftMapper.selectLatestBySession(900L)).thenReturn(null);
+        QualityLedgerEntryEntity reject = new QualityLedgerEntryEntity();
+        reject.setId(501L);
+        reject.setActorId(3003L);
+        reject.setPayload(Map.of("verdict", "reject", "reason", "Fix the JSON answer"));
+        reject.setCreatedAt(NOW.minusMinutes(5));
+        when(qualityLedgerEntryMapper.selectLatestReviewerRejectBySessionId(900L)).thenReturn(reject);
+
+        SessionDetailView view = sessionService.getDetail(900L, 1002L);
+
+        assertThat(view.getPreviousReviewFeedback()).isNotNull();
+        assertThat(view.getPreviousReviewFeedback().ledgerEntryId()).isEqualTo(501L);
+        assertThat(view.getPreviousReviewFeedback().reason()).isEqualTo("Fix the JSON answer");
+        assertThat(view.getPreviousReviewFeedback().reviewerUserId()).isEqualTo(3003L);
     }
 
     @Test

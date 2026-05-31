@@ -64,7 +64,7 @@ export function LabelerSessionPage() {
     sessionId,
   });
   const detail = detailQuery.data;
-  const isClaimed = detail?.session.status === 'claimed';
+  const isEditable = detail?.session.status === 'claimed' || detail?.session.status === 'returned_for_revision';
   const fields = schemaFields(detail?.schemaVersion.schemaJson);
   const datasetItemContext = useMemo(
     () =>
@@ -111,7 +111,7 @@ export function LabelerSessionPage() {
 
   const autosave = useAutosave({
     value: answerPayload ?? EMPTY_ANSWER_PAYLOAD,
-    enabled: hasInitialized && isClaimed,
+    enabled: hasInitialized && isEditable,
     onSave: async (payload) => {
       if (!sessionId || !detail) return;
       try {
@@ -214,7 +214,7 @@ export function LabelerSessionPage() {
           </Typography.Title>
           <Space>
             <Tag color="blue">Schema {schemaVersionLabel(detail.schemaVersion)}</Tag>
-            <Tag color={isClaimed ? 'green' : 'grey'}>Session #{detail.session.id}</Tag>
+            <Tag color={isEditable ? 'green' : 'grey'}>Session #{detail.session.id}</Tag>
             <Typography.Text type="tertiary">{detail.task.description || '暂无描述'}</Typography.Text>
           </Space>
         </div>
@@ -228,7 +228,7 @@ export function LabelerSessionPage() {
           <Button
             icon={<IconSend />}
             type="primary"
-            disabled={!isClaimed}
+            disabled={!isEditable}
             loading={submitMutation.isPending}
             onClick={handleSubmitClick}
           >
@@ -239,12 +239,21 @@ export function LabelerSessionPage() {
 
       <DatasetItemContextCard itemPayload={datasetItemContext.payload} sourceLabel={datasetItemContext.source} />
 
+      {detail.previousReviewFeedback ? (
+        <Card className="labeler-session-review-feedback" bodyStyle={{ padding: 16 }}>
+          <Space vertical align="start">
+            <Tag color="red">上一轮打回意见</Tag>
+            <Typography.Text>{detail.previousReviewFeedback.reason}</Typography.Text>
+          </Space>
+        </Card>
+      ) : null}
+
       <Card className="labeler-session-card" bodyStyle={{ padding: 24 }}>
         <SchemaFormilyRenderer
           schemaFields={visibleFields}
           value={answerPayload}
           onChange={handleAnswerPayloadChange}
-          readOnly={!isClaimed}
+          readOnly={!isEditable}
           errors={visibleFieldErrors}
           onFormReady={handleFormReady}
           sessionId={sessionId}

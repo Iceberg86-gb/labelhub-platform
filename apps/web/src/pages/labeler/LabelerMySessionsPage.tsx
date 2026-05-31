@@ -33,6 +33,7 @@ function formatDateTime(value?: string) {
 function statusColor(status: SessionStatus) {
   if (status === 'claimed') return 'blue';
   if (status === 'submitted') return 'green';
+  if (status === 'returned_for_revision') return 'amber';
   return 'grey';
 }
 
@@ -94,7 +95,7 @@ export function LabelerMySessionsPage() {
         width: 120,
         render: (_: unknown, record: Session) => (
           <Button icon={<IconPlay />} onClick={() => navigate(`/labeler/sessions/${record.id}`)}>
-            {record.status === 'claimed' ? '继续作答' : '查看作答'}
+            {record.status === 'claimed' || record.status === 'returned_for_revision' ? '继续作答' : '查看作答'}
           </Button>
         ),
       },

@@ -13,6 +13,7 @@ public class SessionDetailView {
     private final SchemaVersionEntity schemaVersion;
     private final DatasetItemEntity datasetItem;
     private final DraftEntity latestDraft;
+    private final SessionReviewFeedbackView previousReviewFeedback;
 
     public SessionDetailView(
         SessionEntity session,
@@ -21,11 +22,23 @@ public class SessionDetailView {
         DatasetItemEntity datasetItem,
         DraftEntity latestDraft
     ) {
+        this(session, task, schemaVersion, datasetItem, latestDraft, null);
+    }
+
+    public SessionDetailView(
+        SessionEntity session,
+        TaskEntity task,
+        SchemaVersionEntity schemaVersion,
+        DatasetItemEntity datasetItem,
+        DraftEntity latestDraft,
+        SessionReviewFeedbackView previousReviewFeedback
+    ) {
         this.session = session;
         this.task = task;
         this.schemaVersion = schemaVersion;
         this.datasetItem = datasetItem;
         this.latestDraft = latestDraft;
+        this.previousReviewFeedback = previousReviewFeedback;
     }
 
     public SessionEntity getSession() { return session; }
@@ -33,4 +46,5 @@ public class SessionDetailView {
     public SchemaVersionEntity getSchemaVersion() { return schemaVersion; }
     public DatasetItemEntity getDatasetItem() { return datasetItem; }
     public DraftEntity getLatestDraft() { return latestDraft; }
+    public SessionReviewFeedbackView getPreviousReviewFeedback() { return previousReviewFeedback; }
 }

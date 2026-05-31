@@ -71,6 +71,20 @@ public interface QualityLedgerEntryMapper {
     QualityLedgerEntryEntity selectLatestReviewerOverallVerdict(@Param("submissionId") Long submissionId);
 
     @Select("""
+        SELECT qle.id, qle.submission_id, qle.task_id, qle.evidence_type, qle.actor_type,
+               qle.actor_id, qle.ai_call_id, qle.payload, qle.created_at
+        FROM quality_ledger_entries qle
+        JOIN submissions s ON s.id = qle.submission_id
+        WHERE s.session_id = #{sessionId}
+          AND qle.evidence_type = 'reviewer_overall_verdict'
+          AND JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.verdict')) = 'reject'
+        ORDER BY qle.created_at DESC, qle.id DESC
+        LIMIT 1
+        """)
+    @ResultMap("qualityLedgerEntryResultMap")
+    QualityLedgerEntryEntity selectLatestReviewerRejectBySessionId(@Param("sessionId") Long sessionId);
+
+    @Select("""
         SELECT s.id, s.task_id, t.title AS task_title, s.labeler_id, s.schema_version_id,
                s.status AS status_code, s.created_at AS submitted_at,
                latest.id AS derived_from_entry_id,
