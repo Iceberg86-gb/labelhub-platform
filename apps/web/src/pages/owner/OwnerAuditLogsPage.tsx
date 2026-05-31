@@ -18,6 +18,7 @@ const ACTIONS = [
   ['review.approve', '审核 / 通过'],
   ['review.reject', '审核 / 拒绝'],
   ['export.snapshot_create', '导出 / 快照创建'],
+  ['export.snapshot_archive', '导出 / 快照归档'],
 ] as const;
 const RESOURCES = ['task', 'schema', 'schema_version', 'submission', 'ai_call', 'export_snapshot'];
 const ACTION_OPTIONS = ACTIONS.map(([value, label]) => ({ value, label }));

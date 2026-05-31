@@ -65,6 +65,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/submissions/*/verdict").authenticated()
                 .requestMatchers(HttpMethod.POST, "/tasks/*/exports").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/tasks/*/exports").hasRole("OWNER")
+                .requestMatchers(HttpMethod.POST, "/exports/snapshots/*/archive").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/exports/snapshots/*/diff").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/exports/snapshots/*").hasRole("OWNER")
                 .anyRequest().authenticated())

@@ -395,10 +395,23 @@ class ExportServiceTest {
     @Test
     void listSnapshotsForOwner_enforces_task_ownership_and_returns_page() {
         ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
-        when(exportSnapshotMapper.selectByTaskId(TASK_ID, 0L, 20L)).thenReturn(List.of(snapshot));
-        when(exportSnapshotMapper.selectCountByTaskId(TASK_ID)).thenReturn(1L);
+        when(exportSnapshotMapper.selectByTaskId(TASK_ID, false, 0L, 20L)).thenReturn(List.of(snapshot));
+        when(exportSnapshotMapper.selectCountByTaskId(TASK_ID, false)).thenReturn(1L);
 
-        var page = exportService.listSnapshotsForOwner(TASK_ID, OWNER_ID, 1, 20);
+        var page = exportService.listSnapshotsForOwner(TASK_ID, OWNER_ID, 1, 20, false);
+
+        assertThat(page.items()).containsExactly(snapshot);
+        assertThat(page.total()).isEqualTo(1);
+    }
+
+    @Test
+    void listSnapshotsForOwner_can_query_archived_snapshots() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        snapshot.setArchivedAt(CREATED_AT.plusHours(1));
+        when(exportSnapshotMapper.selectByTaskId(TASK_ID, true, 0L, 20L)).thenReturn(List.of(snapshot));
+        when(exportSnapshotMapper.selectCountByTaskId(TASK_ID, true)).thenReturn(1L);
+
+        var page = exportService.listSnapshotsForOwner(TASK_ID, OWNER_ID, 1, 20, true);
 
         assertThat(page.items()).containsExactly(snapshot);
         assertThat(page.total()).isEqualTo(1);
@@ -447,6 +460,58 @@ class ExportServiceTest {
 
         verify(s3Client, never()).getObjectAsBytes(any(GetObjectRequest.class));
         verify(exportJobMapper, never()).incrementDownloadCount(any());
+    }
+
+    @Test
+    void archiveSnapshotForOwner_setsArchiveMetadata_without_deleting_snapshot_objects() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);
+        when(exportSnapshotMapper.archiveById(eq(100L), any())).thenReturn(1);
+
+        ExportSnapshotEntity archived = exportService.archiveSnapshotForOwner(100L, OWNER_ID);
+
+        assertThat(archived.getArchivedAt()).isEqualTo(LocalDateTime.parse("2026-05-25T10:00"));
+        verify(exportSnapshotMapper).archiveById(100L, LocalDateTime.parse("2026-05-25T10:00"));
+        verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        verify(factCollector, never()).collectForTask(any(), any());
+        ArgumentCaptor<AuditEventBuilder> auditCaptor = ArgumentCaptor.forClass(AuditEventBuilder.class);
+        verify(auditLogService).record(auditCaptor.capture());
+        AuditEvent event = auditCaptor.getValue().build();
+        assertThat(event.action()).isEqualTo(AuditActions.EXPORT_SNAPSHOT_ARCHIVE);
+        assertThat(event.actorType()).isEqualTo("user");
+        assertThat(event.resourceType()).isEqualTo("export_snapshot");
+    }
+
+    @Test
+    void archiveSnapshotForOwner_is_idempotent_for_already_archived_snapshot() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        snapshot.setArchivedAt(CREATED_AT.plusHours(1));
+        when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);
+
+        ExportSnapshotEntity archived = exportService.archiveSnapshotForOwner(100L, OWNER_ID);
+
+        assertThat(archived.getArchivedAt()).isEqualTo(CREATED_AT.plusHours(1));
+        verify(exportSnapshotMapper, never()).archiveById(any(), any());
+        verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
+        verify(auditLogService, never()).record(any());
+    }
+
+    @Test
+    void downloadSnapshotFile_allows_archived_snapshot_without_rebuilding_or_deleting() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        snapshot.setArchivedAt(CREATED_AT.plusHours(1));
+        when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);
+        when(exportJobMapper.incrementDownloadCount(snapshot.getExportJobId())).thenReturn(1);
+        when(s3Client.getObjectAsBytes(any(GetObjectRequest.class)))
+            .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), "csv-bytes".getBytes()));
+
+        ExportDownloadFile file = exportService.downloadSnapshotFile(100L, "answers.jsonl", OWNER_ID);
+
+        assertThat(file.fileName()).isEqualTo("answers.jsonl");
+        verify(s3Client).getObjectAsBytes(any(GetObjectRequest.class));
+        verify(s3Client, never()).deleteObject(any(DeleteObjectRequest.class));
+        verify(factCollector, never()).collectForTask(any(), any());
     }
 
     @Test

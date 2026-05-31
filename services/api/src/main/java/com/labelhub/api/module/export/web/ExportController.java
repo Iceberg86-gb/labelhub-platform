@@ -60,13 +60,15 @@ public class ExportController implements ExportsApi {
     public ResponseEntity<PagedExportSnapshots> listTaskExports(
         @PathVariable("taskId") Long taskId,
         @Min(1) @Valid @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
-        @Min(1) @Max(100) @Valid @RequestParam(value = "size", required = false, defaultValue = "20") Integer size
+        @Min(1) @Max(100) @Valid @RequestParam(value = "size", required = false, defaultValue = "20") Integer size,
+        @Valid @RequestParam(value = "archived", required = false, defaultValue = "false") Boolean archived
     ) {
         PagedResult<ExportSnapshotEntity> result = exportService.listSnapshotsForOwner(
             taskId,
             currentUserId(),
             clampMin(page, 1),
-            clampSize(size, 20, 100)
+            clampSize(size, 20, 100),
+            Boolean.TRUE.equals(archived)
         );
         return ResponseEntity.ok(dtoMapper.toPagedExportSnapshots(result));
     }
@@ -74,6 +76,12 @@ public class ExportController implements ExportsApi {
     @Override
     public ResponseEntity<ExportSnapshot> getExportSnapshot(@PathVariable("snapshotId") Long snapshotId) {
         ExportSnapshotEntity snapshot = exportService.getSnapshotForOwner(snapshotId, currentUserId());
+        return ResponseEntity.ok(dtoMapper.toExportSnapshot(snapshot));
+    }
+
+    @Override
+    public ResponseEntity<ExportSnapshot> archiveExportSnapshot(@PathVariable("snapshotId") Long snapshotId) {
+        ExportSnapshotEntity snapshot = exportService.archiveSnapshotForOwner(snapshotId, currentUserId());
         return ResponseEntity.ok(dtoMapper.toExportSnapshot(snapshot));
     }
 

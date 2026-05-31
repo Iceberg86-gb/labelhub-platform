@@ -645,6 +645,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/exports/snapshots/{snapshotId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["archiveExportSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/snapshots/{snapshotId}/files/{fileName}": {
         parameters: {
             query?: never;
@@ -1582,6 +1598,7 @@ export interface components {
             };
             canonicalizationVersion: string;
             generatedAt: string;
+            archivedAt?: string | null;
         };
         ExportJob: {
             /** Format: int64 */
@@ -2014,6 +2031,8 @@ export interface operations {
             query?: {
                 page?: number;
                 size?: number;
+                /** @description When true, list archived snapshots instead of active snapshots. */
+                archived?: boolean;
             };
             header?: never;
             path: {
@@ -3133,6 +3152,31 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Immutable export snapshot by snapshot id. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportSnapshot"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    archiveExportSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshotId: components["parameters"]["SnapshotId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Export snapshot archived without deleting immutable snapshot data. */
             200: {
                 headers: {
                     [name: string]: unknown;
