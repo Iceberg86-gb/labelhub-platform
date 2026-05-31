@@ -4392,14 +4392,27 @@ a {
 
 .llm-safety-note {
   display: grid;
-  gap: var(--space-8);
-  padding: var(--space-18) var(--space-20);
-  border-radius: var(--radius-card);
-  background: var(--color-info-soft);
+  gap: var(--space-10);
+  padding: var(--space-16) 0 0;
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
 }
 
 .llm-safety-note strong {
-  color: var(--color-text-primary);
+  width: fit-content;
+  padding: var(--space-6) var(--space-12);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-blue-soft);
+  color: var(--color-accent-blue);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-table-header);
+  line-height: var(--line-height-small);
+}
+
+.llm-safety-note .semi-typography-tertiary {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-body);
 }
 
 @media (max-width: 1200px) {
