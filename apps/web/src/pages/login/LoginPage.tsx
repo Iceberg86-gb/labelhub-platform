@@ -42,7 +42,7 @@ export function LoginPage() {
   };
 
   return (
-    <section className="login-shell login-shell--codex-light" aria-label="Login">
+    <section className="login-shell login-shell--codex-light login-shell--constrained" aria-label="Login">
       <div className="login-hero" aria-hidden>
         <img className="welcome-hero" src={welcomeHeroUrl} alt="" />
       </div>

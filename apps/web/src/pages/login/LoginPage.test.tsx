@@ -50,9 +50,9 @@ describe('LoginPage design shell', () => {
     const html = renderToString(<LoginPage />);
 
     expect(html).toContain('login-shell login-shell--codex-light');
+    expect(html).toContain('login-shell--constrained');
     expect(html).toContain('login-hero');
     expect(html).toContain('welcome-hero');
     expect(html).toContain('login-card');
   });
 });
-
