@@ -334,11 +334,14 @@ a {
 
 .login-shell {
   display: grid;
-  min-height: calc(100vh - 88px);
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  width: min(1240px, calc(100vw - var(--space-48)));
+  min-height: calc(100vh - 104px);
+  grid-template-columns: minmax(0, 680px) minmax(360px, 420px);
   gap: var(--space-48);
   align-items: center;
-  padding: var(--space-32) clamp(var(--space-24), 6vw, 96px) var(--space-48);
+  justify-content: center;
+  margin: 0 auto;
+  padding: var(--space-32) 0 var(--space-48);
   box-sizing: border-box;
 }
 
@@ -347,16 +350,24 @@ a {
 }
 
 .login-hero {
+  display: flex;
+  min-height: 440px;
   min-width: 0;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  overflow: hidden;
 }
 
 .welcome-hero {
   display: block;
-  width: min(760px, 100%);
+  width: min(680px, 100%);
   height: auto;
 }
 
 .login-card {
+  width: min(420px, 100%);
+  justify-self: start;
   padding: var(--space-32);
   border-radius: var(--radius-drawer);
   background: var(--color-main-surface);
@@ -430,12 +441,21 @@ a {
   }
 
   .login-shell {
+    width: min(640px, calc(100vw - var(--space-32)));
+    min-height: auto;
     grid-template-columns: 1fr;
     gap: var(--space-24);
+    padding: var(--space-24) 0 var(--space-40);
   }
 
   .login-hero {
     order: 2;
+    min-height: 260px;
+    justify-self: center;
+  }
+
+  .login-card {
+    justify-self: center;
   }
 }
 
