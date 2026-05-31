@@ -10,6 +10,7 @@ import com.labelhub.api.module.export.entity.ExportSnapshotEntity;
 import com.labelhub.api.module.export.service.ExportFieldMapping;
 import com.labelhub.api.module.export.service.ExportFieldMappingColumn;
 import com.labelhub.api.module.export.service.ExportDataScope;
+import com.labelhub.api.module.export.service.ExportDownloadFile;
 import com.labelhub.api.module.export.service.ExportService;
 import com.labelhub.api.module.export.service.ExportSnapshotDiffView;
 import com.labelhub.api.module.task.service.PagedResult;
@@ -19,7 +20,11 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -70,6 +75,23 @@ public class ExportController implements ExportsApi {
     public ResponseEntity<ExportSnapshot> getExportSnapshot(@PathVariable("snapshotId") Long snapshotId) {
         ExportSnapshotEntity snapshot = exportService.getSnapshotForOwner(snapshotId, currentUserId());
         return ResponseEntity.ok(dtoMapper.toExportSnapshot(snapshot));
+    }
+
+    @Override
+    public ResponseEntity<org.springframework.core.io.Resource> downloadExportSnapshotFile(
+        @PathVariable("snapshotId") Long snapshotId,
+        @PathVariable("fileName") String fileName
+    ) {
+        ExportDownloadFile downloadFile = exportService.downloadSnapshotFile(snapshotId, fileName, currentUserId());
+        ByteArrayResource resource = new ByteArrayResource(downloadFile.content());
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(downloadFile.contentType()))
+            .contentLength(downloadFile.content().length)
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.attachment().filename(downloadFile.fileName()).build().toString()
+            )
+            .body(resource);
     }
 
     @Override

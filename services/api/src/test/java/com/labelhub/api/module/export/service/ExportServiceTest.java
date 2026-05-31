@@ -39,9 +39,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -410,6 +413,40 @@ class ExportServiceTest {
         assertThatThrownBy(() -> exportService.getSnapshotForOwner(100L, OWNER_ID))
             .isInstanceOf(RuntimeException.class)
             .hasMessageContaining("Export snapshot not found");
+    }
+
+    @Test
+    void downloadSnapshotFile_reads_frozen_object_without_rebuilding_snapshot() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);
+        when(exportJobMapper.incrementDownloadCount(snapshot.getExportJobId())).thenReturn(1);
+        when(s3Client.getObjectAsBytes(any(GetObjectRequest.class)))
+            .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), "csv-bytes".getBytes()));
+
+        ExportDownloadFile file = exportService.downloadSnapshotFile(100L, "answers.jsonl", OWNER_ID);
+
+        assertThat(file.fileName()).isEqualTo("answers.jsonl");
+        assertThat(file.contentType()).isEqualTo("application/json");
+        assertThat(new String(file.content())).isEqualTo("csv-bytes");
+        ArgumentCaptor<GetObjectRequest> requestCaptor = ArgumentCaptor.forClass(GetObjectRequest.class);
+        verify(s3Client).getObjectAsBytes(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().key()).isEqualTo("exports/tasks/100/jobs/1100/answers.jsonl");
+        verify(exportJobMapper).incrementDownloadCount(snapshot.getExportJobId());
+        verify(factCollector, never()).collectForTask(any(), any());
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void downloadSnapshotFile_rejects_names_not_in_manifest() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);
+
+        assertThatThrownBy(() -> exportService.downloadSnapshotFile(100L, "missing.csv", OWNER_ID))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("Export snapshot not found");
+
+        verify(s3Client, never()).getObjectAsBytes(any(GetObjectRequest.class));
+        verify(exportJobMapper, never()).incrementDownloadCount(any());
     }
 
     @Test

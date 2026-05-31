@@ -98,6 +98,13 @@ public interface ExportJobMapper {
         """)
     int markFailed(@Param("jobId") Long jobId, @Param("completedAt") java.time.LocalDateTime completedAt);
 
+    @Update("""
+        UPDATE export_jobs
+        SET download_count = COALESCE(download_count, 0) + 1
+        WHERE id = #{jobId}
+        """)
+    int incrementDownloadCount(@Param("jobId") Long jobId);
+
     @Select("""
         SELECT id, task_id, requested_by, format, status, parameters, created_at, started_at,
                completed_at, file_key, file_size, download_count

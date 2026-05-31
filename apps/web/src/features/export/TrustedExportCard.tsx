@@ -7,6 +7,7 @@ import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { CreateExportFailure, useCreateExportMutation } from './useCreateExportMutation';
 import { ExportSnapshotDiffModal } from './ExportSnapshotDiffModal';
 import { useTaskExportsQuery } from './useTaskExportsQuery';
+import { useDownloadExportFileMutation } from './useDownloadExportFileMutation';
 
 type TrustedExportCardProps = {
   taskId: number;
@@ -49,6 +50,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const size = parsePositiveInt(searchParams.get('exportSize')) ?? DEFAULT_SIZE;
   const exportsQuery = useTaskExportsQuery(taskId, { page, size });
   const createExport = useCreateExportMutation();
+  const downloadExportFile = useDownloadExportFileMutation();
   const items = exportsQuery.data?.items ?? [];
   const manifestHashCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -92,8 +94,26 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         width: 150,
         render: (value: string) => formatDateTime(value),
       },
+      {
+        title: '下载',
+        width: 220,
+        render: (_: unknown, record: ExportSnapshot) => (
+          <Space spacing="tight" wrap>
+            {downloadableFiles(record).map((fileName) => (
+              <Button
+                key={fileName}
+                size="small"
+                loading={downloadExportFile.isPending}
+                onClick={() => downloadExportFile.mutate({ snapshotId: record.id, fileName })}
+              >
+                {downloadLabel(fileName)}
+              </Button>
+            ))}
+          </Space>
+        ),
+      },
     ],
-    [manifestHashCounts, selectedIds],
+    [downloadExportFile, manifestHashCounts, selectedIds],
   );
 
   async function handleCreateExport() {
@@ -245,4 +265,17 @@ function parsePositiveInt(value: string | null) {
 
 function formatDateTime(value?: string) {
   return value ? dateFormatter.format(new Date(value)) : '-';
+}
+
+function downloadableFiles(snapshot: ExportSnapshot) {
+  const manifest = snapshot.fileManifest as { files?: Array<{ name?: string }> } | undefined;
+  const names = manifest?.files?.map((file) => file.name).filter((name): name is string => Boolean(name)) ?? [];
+  const preferred = ['training-results.csv', 'training-results.xlsx', 'manifest.json'];
+  return preferred.filter((name) => names.includes(name));
+}
+
+function downloadLabel(fileName: string) {
+  if (fileName.endsWith('.csv')) return 'CSV';
+  if (fileName.endsWith('.xlsx')) return 'Excel';
+  return 'Manifest';
 }

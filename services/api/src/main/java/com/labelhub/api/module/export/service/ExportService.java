@@ -275,6 +275,16 @@ public class ExportService {
         return snapshot;
     }
 
+    @Transactional
+    public ExportDownloadFile downloadSnapshotFile(Long snapshotId, String fileName, Long ownerUserId) {
+        ExportSnapshotEntity snapshot = getSnapshotForOwner(snapshotId, ownerUserId);
+        String resolvedFileName = requireManifestFile(snapshot, fileName);
+        String objectKey = snapshot.getObjectKey() + resolvedFileName;
+        byte[] content = storageWriter.getObject(objectKey);
+        requireOneRow(exportJobMapper.incrementDownloadCount(snapshot.getExportJobId()), "increment export download count");
+        return new ExportDownloadFile(resolvedFileName, storageWriter.contentTypeFor(resolvedFileName), content);
+    }
+
     public ExportSnapshotDiffView diffSnapshotsForOwner(
         Long baseSnapshotId,
         Long compareSnapshotId,
@@ -303,6 +313,19 @@ public class ExportService {
         if (task == null || !Objects.equals(task.getOwnerId(), ownerUserId)) {
             throw new TaskNotFoundException(taskId);
         }
+    }
+
+    private String requireManifestFile(ExportSnapshotEntity snapshot, String fileName) {
+        if (fileName == null || fileName.isBlank() || fileName.contains("/") || fileName.contains("\\")) {
+            throw new ExportSnapshotNotFoundException(snapshot.getId());
+        }
+        for (Map<String, Object> file : fileEntries(snapshot.getFileManifest())) {
+            String name = String.valueOf(file.get("name"));
+            if (Objects.equals(name, fileName)) {
+                return name;
+            }
+        }
+        throw new ExportSnapshotNotFoundException(snapshot.getId());
     }
 
     private List<ExportSnapshotDiffView.FileLevelMatch> computeFileLevelMatches(
