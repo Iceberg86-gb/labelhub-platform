@@ -446,6 +446,16 @@ a {
   font-size: 13px;
 }
 
+.labeler-session-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #d8dee9;
+  background: #ffffff;
+}
+
 .task-table-surface {
   min-width: 0;
   overflow-x: auto;
