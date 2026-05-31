@@ -26,7 +26,7 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
         WHERE status = 'published'
           AND current_dataset_id IS NOT NULL
           AND current_schema_version_id IS NOT NULL
-          AND quota_claimed < quota_total
+          AND quota_claimed &lt; quota_total
           AND deadline_at > NOW(3)
           AND EXISTS (
             SELECT 1
