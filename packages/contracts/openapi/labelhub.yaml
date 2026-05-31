@@ -1376,6 +1376,31 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /exports/snapshots/{snapshotId}/files/{fileName}:
+    get:
+      tags: [Exports]
+      operationId: downloadExportSnapshotFile
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: fileName
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Download an immutable file from a previously generated export snapshot.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /exports/snapshots/{snapshotId}/diff:
     get:
       tags: [Exports]

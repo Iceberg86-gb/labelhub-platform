@@ -645,6 +645,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/exports/snapshots/{snapshotId}/files/{fileName}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["downloadExportSnapshotFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/exports/snapshots/{snapshotId}/diff": {
         parameters: {
             query?: never;
@@ -3123,6 +3139,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportSnapshot"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    downloadExportSnapshotFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshotId: components["parameters"]["SnapshotId"];
+                fileName: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Download an immutable file from a previously generated export snapshot. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
                 };
             };
             401: components["responses"]["ErrorUnauthorized"];

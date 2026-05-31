@@ -22,8 +22,8 @@ class ExportJobMapperContractTest {
                 .doesNotStartWith("delete")
                 .doesNotStartWith("remove")
                 .doesNotStartWith("save");
-            assertThat(name.startsWith("insert") || name.startsWith("select") || name.startsWith("mark"))
-                .as("Method " + name + " must be insert/select/mark only")
+            assertThat(name.startsWith("insert") || name.startsWith("select") || name.startsWith("mark") || name.startsWith("increment"))
+                .as("Method " + name + " must be insert/select/mark/increment only")
                 .isTrue();
         }
     }
