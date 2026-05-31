@@ -25,10 +25,13 @@ labelhub:
       lease-seconds: ${LABELHUB_AGENT_OUTBOX_LEASE_SECONDS:60}
   llm:
     primary-provider: ${LLM_PRIMARY_PROVIDER:doubao}
+    provider:
+      master-key: ${LABELHUB_LLM_PROVIDER_MASTER_KEY:}
     doubao:
       endpoint: ${DOUBAO_ENDPOINT:}
       api-key: ${DOUBAO_API_KEY:}
       model: ${DOUBAO_MODEL:}
     openai:
+      endpoint: ${OPENAI_ENDPOINT:https://api.openai.com/v1}
       api-key: ${OPENAI_API_KEY:}
       model: ${OPENAI_MODEL:gpt-4.1-mini}
