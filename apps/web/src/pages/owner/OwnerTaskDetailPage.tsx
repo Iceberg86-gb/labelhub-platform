@@ -20,6 +20,7 @@ import { TransitionTaskModal } from '../../features/task/transition-task/Transit
 import { transitionLabels } from '../../features/task/transition-task/transitionRules';
 import { EditTaskModal } from '../../features/task/update-task/EditTaskModal';
 import { getUser } from '../../shared/api/auth-storage';
+import { RoleBadge } from '../../shared/ui/RoleBadge';
 
 function parseTaskId(raw?: string) {
   const taskId = Number(raw);
@@ -153,7 +154,7 @@ export function OwnerTaskDetailPage() {
   }
 
   return (
-    <section className="task-detail-page" aria-label="Owner task detail">
+    <section className="task-detail-page task-detail-page--owner" aria-label="Owner task detail">
       <div className="detail-heading">
         <Button icon={<IconArrowLeft />} theme="borderless" onClick={() => navigate('/owner/tasks')}>
           返回列表
@@ -167,9 +168,13 @@ export function OwnerTaskDetailPage() {
       </div>
 
       <div className="detail-grid">
-        <Card className="detail-main-card">
-          <div className="detail-title-row">
+        <Card className="detail-main-card owner-task-command-center">
+          <div className="owner-task-command-head">
             <div className="detail-title-copy">
+              <div className="owner-page-hero__meta">
+                <RoleBadge role="OWNER" />
+                <Typography.Text>任务命令中心</Typography.Text>
+              </div>
               <Typography.Title heading={3} className="page-title">
                 {task.title}
               </Typography.Title>
@@ -189,7 +194,7 @@ export function OwnerTaskDetailPage() {
             </div>
           </div>
 
-          <dl className="task-meta-grid">
+          <dl className="task-meta-grid owner-task-summary-grid">
             <div>
               <dt>配额</dt>
               <dd>{task.quotaClaimed}/{task.quotaTotal}</dd>
@@ -221,7 +226,7 @@ export function OwnerTaskDetailPage() {
           </div>
         </Card>
 
-        <Card className="detail-timeline-card">
+        <Card className="detail-timeline-card detail-timeline-card--quiet">
           <div className="timeline-heading">
             <Typography.Title heading={5}>状态迁移记录</Typography.Title>
             <Typography.Text type="tertiary">来自 append-only task_transitions。</Typography.Text>
