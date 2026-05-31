@@ -91,9 +91,9 @@ export function ReviewerSubmissionPage() {
   }
 
   return (
-    <section className="reviewer-submission-page" aria-label="Reviewer submission detail">
-      <div className="reviewer-submission-header">
-        <div>
+    <section className="reviewer-submission-page reviewer-submission-page--decision" aria-label="Reviewer submission detail">
+      <header className="reviewer-submission-header reviewer-decision-hero">
+        <div className="reviewer-decision-hero__copy">
           <Button icon={<IconArrowLeft />} theme="borderless" onClick={() => navigate(`/reviewer/submissions?reviewLevel=${reviewLevel}`)}>
             返回审核队列
           </Button>
@@ -101,8 +101,8 @@ export function ReviewerSubmissionPage() {
             Submission #{submissionId}
           </Typography.Title>
           <Space wrap>
-            <Tag color="purple">Schema 版本: {schemaVersionLabel(schemaVersion)}</Tag>
-            <Tag color={reviewLevel === 'senior_reviewer' ? 'purple' : 'blue'}>{REVIEW_LEVEL_LABELS[reviewLevel]}</Tag>
+            <Tag className="reviewer-schema-tag">Schema 版本: {schemaVersionLabel(schemaVersion)}</Tag>
+            <ReviewLevelTag reviewLevel={reviewLevel} />
             <VerdictTag status={verdictQuery.data?.status ?? 'pending'} />
           </Space>
         </div>
@@ -114,14 +114,14 @@ export function ReviewerSubmissionPage() {
             <IconInfoCircle aria-label="Verdict ledger derivation" />
           </Tooltip>
         </div>
-      </div>
+      </header>
 
-      <div className="reviewer-submission-grid">
-        <Card className="reviewer-render-card" title="历史 Schema 作答" bordered={false}>
+      <div className="reviewer-comparison-grid">
+        <Card className="reviewer-render-card reviewer-comparison-panel" title="题目原文与标注员答案" bordered={false}>
           <SchemaFormilyRenderer schemaFields={schemaFields(schemaVersion.schemaJson)} value={answerPayload} onChange={() => {}} readOnly />
         </Card>
 
-        <div className="reviewer-side-stack">
+        <aside className="reviewer-human-decision-panel" aria-label="人工最终裁决">
           <ReviewActionCard
             reason={reason}
             loading={createLedgerEntry.isPending}
@@ -130,10 +130,24 @@ export function ReviewerSubmissionPage() {
             onReject={() => createVerdict('reject')}
             reviewLevel={reviewLevel}
           />
-          <LedgerEntriesCard entries={ledgerEntries} loading={ledgerQuery.isLoading} error={ledgerQuery.isError} />
-        </div>
+          <div className="review-flow-strip" aria-label="状态流转">
+            <span className="review-flow-node review-flow-node--submitted">提交</span>
+            <span className="review-flow-connector" />
+            <span className="review-flow-node review-flow-node--active">{reviewLevel === 'senior_reviewer' ? '高级审核' : '初审'}</span>
+            <span className="review-flow-connector" />
+            <span className="review-flow-node review-flow-node--terminal">人工裁决</span>
+          </div>
+        </aside>
 
-        <AiProvenanceCard submissionId={submissionId} />
+        <section className="reviewer-ai-evidence-panel" aria-label="AI 预审证据">
+          <div className="reviewer-ai-evidence-panel__copy">
+            <Typography.Text strong>AI 预审证据</Typography.Text>
+            <Typography.Text type="tertiary">辅助参考,不作为最终裁决。人工审核结果以右侧操作为准。</Typography.Text>
+          </div>
+          <AiProvenanceCard submissionId={submissionId} className="ai-provenance-card--assistive" />
+        </section>
+
+        <LedgerEntriesCard entries={ledgerEntries} loading={ledgerQuery.isLoading} error={ledgerQuery.isError} />
       </div>
     </section>
   );
@@ -155,8 +169,8 @@ function ReviewActionCard({
   reviewLevel: ReviewLevel;
 }) {
   return (
-    <Card className="review-actions-card" title={`${REVIEW_LEVEL_LABELS[reviewLevel]}操作`} bordered={false}>
-      <label className="review-reason-field">
+    <Card className="review-actions-card review-actions-card--primary" title={`人工最终裁决 · ${REVIEW_LEVEL_LABELS[reviewLevel]}操作`} bordered={false}>
+      <label className="review-reason-field review-reason-field--required">
         <Typography.Text strong>审核说明</Typography.Text>
         <textarea
           value={reason}
@@ -260,6 +274,14 @@ function severityLabel(severity: AiFieldFindingLedgerPayload['severity']) {
 
 function VerdictTag({ status }: { status: VerdictStatus }) {
   return <Tag color={VERDICT_STATUS_COLORS[status]}>{VERDICT_STATUS_LABELS[status]}</Tag>;
+}
+
+function ReviewLevelTag({ reviewLevel }: { reviewLevel: ReviewLevel }) {
+  return (
+    <Tag className={`reviewer-level-tag reviewer-level-tag--${reviewLevel === 'senior_reviewer' ? 'senior' : 'initial'}`}>
+      {REVIEW_LEVEL_LABELS[reviewLevel]}
+    </Tag>
+  );
 }
 
 function parseId(value?: string) {

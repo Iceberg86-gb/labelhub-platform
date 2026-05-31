@@ -5,6 +5,7 @@ import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { useSubmissionAiProvenanceQuery } from './useSubmissionAiProvenanceQuery';
 
 interface AiProvenanceCardProps {
+  className?: string;
   submissionId: number;
 }
 
@@ -15,12 +16,12 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   minute: '2-digit',
 });
 
-export function AiProvenanceCard({ submissionId }: AiProvenanceCardProps) {
+export function AiProvenanceCard({ className, submissionId }: AiProvenanceCardProps) {
   const provenanceQuery = useSubmissionAiProvenanceQuery(submissionId, { enabled: submissionId > 0 });
   const aiCalls = provenanceQuery.data?.aiCalls ?? [];
 
   return (
-    <Card className="ai-provenance-card" title="AI 检查记录" bordered={false}>
+    <Card className={['ai-provenance-card', className].filter(Boolean).join(' ')} title="AI 检查记录" bordered={false}>
       <div className="ai-provenance-toolbar">
         <Typography.Text type="tertiary">共 {aiCalls.length} 次 AI 调用</Typography.Text>
         <Button

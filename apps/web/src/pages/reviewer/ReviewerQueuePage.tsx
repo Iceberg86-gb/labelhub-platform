@@ -13,6 +13,7 @@ import {
 import { useReviewerQueueQuery } from '../../features/quality/useReviewerQueueQuery';
 import { useBatchReviewMutation } from '../../features/quality/useBatchReviewMutation';
 import { getUser } from '../../shared/api/auth-storage';
+import { RoleBadge } from '../../shared/ui/RoleBadge';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 20;
@@ -72,7 +73,7 @@ export function ReviewerQueuePage() {
       {
         title: '层级',
         width: 90,
-        render: (_: unknown, record: ReviewerSubmissionSummary) => <Tag color={record.reviewLevel === 'senior_reviewer' ? 'purple' : 'blue'}>{REVIEW_LEVEL_LABELS[record.reviewLevel]}</Tag>,
+        render: (_: unknown, record: ReviewerSubmissionSummary) => <ReviewLevelTag reviewLevel={record.reviewLevel} />,
       },
       {
         title: '操作',
@@ -125,9 +126,13 @@ export function ReviewerQueuePage() {
   };
 
   return (
-    <section className="reviewer-queue-page" aria-label="Reviewer queue">
-      <div className="page-heading">
-        <div>
+    <section className="reviewer-queue-page reviewer-queue-page--workbench" aria-label="Reviewer queue">
+      <header className="reviewer-workbench-hero">
+        <div className="reviewer-workbench-hero__copy">
+          <div className="reviewer-role-stack" aria-label="当前审核角色">
+            <RoleBadge role="REVIEWER" />
+            {canSeniorReview ? <RoleBadge role="SENIOR_REVIEWER" /> : null}
+          </div>
           <Typography.Title heading={3} className="page-title">
             审核队列
           </Typography.Title>
@@ -138,7 +143,7 @@ export function ReviewerQueuePage() {
             </Tooltip>
           </div>
         </div>
-        <Space>
+        <div className="reviewer-filter-strip">
           {canSeniorReview ? (
             <Select
               className="reviewer-filter-select"
@@ -162,14 +167,24 @@ export function ReviewerQueuePage() {
             <Select.Option value="all">全部 Verdict</Select.Option>
             {VERDICT_FILTERS.map((item) => (
               <Select.Option key={item} value={item}>
-                {VERDICT_STATUS_LABELS[item]}
-              </Select.Option>
-            ))}
+              {VERDICT_STATUS_LABELS[item]}
+            </Select.Option>
+          ))}
           </Select>
-        </Space>
+        </div>
+      </header>
+
+      <div className="reviewer-queue-flow-strip" aria-label="审核流转">
+        <span className="review-flow-node review-flow-node--submitted">提交</span>
+        <span className="review-flow-connector" />
+        <span className="review-flow-node review-flow-node--active">初审</span>
+        <span className="review-flow-connector" />
+        <span className="review-flow-node review-flow-node--senior">高级审核</span>
+        <span className="review-flow-connector" />
+        <span className="review-flow-node review-flow-node--terminal">通过 / 打回</span>
       </div>
 
-      <div className="task-toolbar">
+      <div className="task-toolbar reviewer-queue-toolbar">
         <Typography.Text type="tertiary">共 {queueQuery.data?.total ?? 0} 条 submitted submission</Typography.Text>
         <Space>
           <Button
@@ -194,7 +209,7 @@ export function ReviewerQueuePage() {
         </Space>
       </div>
 
-      <div className="task-table-surface">
+      <div className="task-table-surface task-table-surface--reviewer">
         {queueQuery.isLoading ? (
           <div className="task-state-panel">
             <Spin size="large" />
@@ -257,6 +272,14 @@ export function ReviewerQueuePage() {
 
 function VerdictTag({ status }: { status: VerdictStatus }) {
   return <Tag color={VERDICT_STATUS_COLORS[status]}>{VERDICT_STATUS_LABELS[status]}</Tag>;
+}
+
+function ReviewLevelTag({ reviewLevel }: { reviewLevel: ReviewLevel }) {
+  return (
+    <Tag className={`reviewer-level-tag reviewer-level-tag--${reviewLevel === 'senior_reviewer' ? 'senior' : 'initial'}`}>
+      {REVIEW_LEVEL_LABELS[reviewLevel]}
+    </Tag>
+  );
 }
 
 function parsePositiveInt(value: string | null) {
