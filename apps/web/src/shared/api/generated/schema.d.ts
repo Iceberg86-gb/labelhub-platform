@@ -4,6 +4,77 @@
  */
 
 export interface paths {
+    "/llm/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List owner-managed LLM provider configurations. */
+        get: operations["listLlmProviders"];
+        put?: never;
+        /** Create an owner-managed LLM provider configuration. */
+        post: operations["createLlmProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/llm/providers:test-connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test an unsaved LLM provider configuration. */
+        post: operations["testUnsavedLlmProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/llm/providers/{providerConfigId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one owner-managed LLM provider configuration. */
+        get: operations["getLlmProvider"];
+        put?: never;
+        post?: never;
+        /** Delete an owner-managed LLM provider configuration. */
+        delete: operations["deleteLlmProvider"];
+        options?: never;
+        head?: never;
+        /** Update an owner-managed LLM provider configuration. */
+        patch: operations["updateLlmProvider"];
+        trace?: never;
+    };
+    "/llm/providers/{providerConfigId}:test-connection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test a saved LLM provider configuration, optionally overriding the secret for this request. */
+        post: operations["testLlmProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/login": {
         parameters: {
             query?: never;
@@ -729,6 +800,58 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        LlmProviderConfig: {
+            /** Format: int64 */
+            id: number;
+            providerType: string;
+            providerName: string;
+            baseUrl?: string | null;
+            modelName: string;
+            enabled: boolean;
+            hasSecret: boolean;
+            secretLast4?: string | null;
+            /** Format: date-time */
+            secretUpdatedAt?: string | null;
+            secretRef?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        LlmProviderConfigRequest: {
+            providerType: string;
+            providerName: string;
+            baseUrl?: string | null;
+            modelName: string;
+            secret?: string | null;
+            secretRef?: string | null;
+            /** @default true */
+            enabled: boolean;
+        };
+        LlmProviderTestConnectionRequest: {
+            providerType: string;
+            providerName: string;
+            baseUrl?: string | null;
+            modelName: string;
+            secret?: string | null;
+            secretRef?: string | null;
+            /**
+             * Format: int32
+             * @default 10
+             */
+            timeoutSeconds: number;
+        };
+        LlmProviderTestConnectionResponse: {
+            ok: boolean;
+            providerName: string;
+            modelName: string;
+            /** Format: int64 */
+            latencyMs?: number | null;
+            /** Format: int32 */
+            providerStatus?: number | null;
+            providerCode?: string | null;
+            message?: string | null;
+        };
         AuditLog: {
             /** Format: int64 */
             id: number;
@@ -1782,6 +1905,7 @@ export interface components {
         SubmissionId: number;
         RuleId: number;
         SnapshotId: number;
+        ProviderConfigId: number;
     };
     requestBodies: never;
     headers: never;
@@ -1789,6 +1913,190 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listLlmProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description LLM provider configurations visible to the owner. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmProviderConfig"][];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+        };
+    };
+    createLlmProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LlmProviderConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description Created provider configuration. Secret plaintext is never returned. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmProviderConfig"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+        };
+    };
+    testUnsavedLlmProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LlmProviderTestConnectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Connection test result without secret echo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmProviderTestConnectionResponse"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+        };
+    };
+    getLlmProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerConfigId: components["parameters"]["ProviderConfigId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider configuration. Secret plaintext is never returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmProviderConfig"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    deleteLlmProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerConfigId: components["parameters"]["ProviderConfigId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Provider configuration deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    updateLlmProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerConfigId: components["parameters"]["ProviderConfigId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LlmProviderConfigRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated provider configuration. Secret plaintext is never returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmProviderConfig"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    testLlmProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerConfigId: components["parameters"]["ProviderConfigId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LlmProviderTestConnectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Connection test result without secret echo. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmProviderTestConnectionResponse"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
     login: {
         parameters: {
             query?: never;
