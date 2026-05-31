@@ -1,6 +1,7 @@
 import { Button, Form, Toast, Typography } from '@douyinfe/semi-ui';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import { useEffect, useRef } from 'react';
+import welcomeHeroUrl from '../../../../../docs/design-assets/hero/welcome-hero.svg';
 import { useLogin, type LoginValues } from '../../features/auth/login/useLogin';
 import { clearSession } from '../../shared/api/auth-storage';
 
@@ -41,11 +42,15 @@ export function LoginPage() {
   };
 
   return (
-    <section className="login-shell" aria-label="Login">
-      <div className="login-panel">
+    <section className="login-shell login-shell--codex-light" aria-label="Login">
+      <div className="login-hero" aria-hidden>
+        <img className="welcome-hero" src={welcomeHeroUrl} alt="" />
+      </div>
+
+      <div className="login-card">
         <div className="login-copy">
           <Typography.Title heading={3}>登录 LabelHub</Typography.Title>
-          <Typography.Text type="tertiary">登录以继续</Typography.Text>
+          <Typography.Text type="tertiary">进入任务、标注、审核与导出工作台</Typography.Text>
         </div>
 
         <Form<LoginValues>

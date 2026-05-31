@@ -3,7 +3,7 @@ import { Link, Outlet } from 'react-router-dom';
 
 export function PublicLayout() {
   return (
-    <div className="public-shell">
+    <div className="public-shell public-shell--minimal">
       <header className="public-brand">
         <Link to="/" className="brand-link" aria-label="LabelHub home">
           <span className="brand-mark">LH</span>
@@ -13,7 +13,7 @@ export function PublicLayout() {
         </Link>
       </header>
 
-      <main className="public-card" aria-label="Public content">
+      <main className="public-content" aria-label="Public content">
         <Outlet />
       </main>
     </div>

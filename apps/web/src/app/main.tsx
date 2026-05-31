@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import '@douyinfe/semi-ui/lib/es/_base/base.css';
+import '../../../../docs/design-assets/tokens/tokens.css';
 import { AppProviders } from './providers';
 import { router } from './router';
 import './styles.css';

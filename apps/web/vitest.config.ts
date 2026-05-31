@@ -19,6 +19,8 @@ export default defineConfig({
       'src/features/schema-design/**/*.test.{ts,tsx}',
       'src/entities/labeling/**/*.test.ts',
       'src/entities/schema/**/*.test.ts',
+      'src/pages/**/*.test.{ts,tsx}',
+      'src/shared/**/*.test.{ts,tsx}',
     ],
     benchmark: {
       include: ['src/features/labeling/__benchmarks__/**/*.bench.tsx'],
