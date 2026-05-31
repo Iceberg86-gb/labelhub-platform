@@ -3,7 +3,6 @@ import { IconInfoCircle, IconPlay, IconRefresh } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  VERDICT_STATUS_COLORS,
   VERDICT_STATUS_LABELS,
   REVIEW_LEVEL_LABELS,
   type ReviewLevel,
@@ -271,7 +270,13 @@ export function ReviewerQueuePage() {
 }
 
 function VerdictTag({ status }: { status: VerdictStatus }) {
-  return <Tag color={VERDICT_STATUS_COLORS[status]}>{VERDICT_STATUS_LABELS[status]}</Tag>;
+  return <Tag className={`semantic-tag semantic-tag--${verdictTone(status)}`}>{VERDICT_STATUS_LABELS[status]}</Tag>;
+}
+
+function verdictTone(status: VerdictStatus) {
+  if (status === 'approved') return 'success';
+  if (status === 'rejected') return 'danger';
+  return 'warning';
 }
 
 function ReviewLevelTag({ reviewLevel }: { reviewLevel: ReviewLevel }) {

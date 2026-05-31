@@ -19,7 +19,7 @@ export function SelectFieldRenderer({
       return (
         <div className="labeling-select-tags">
           {values.map((item) => (
-            <Tag key={item} color="blue">
+            <Tag key={item} className="semantic-tag semantic-tag--accent">
               {options.find((option) => option.value === item)?.label ?? item}
             </Tag>
           ))}

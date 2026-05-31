@@ -13,7 +13,7 @@ export function LabelerPlaceholderPage() {
   return (
     <section className="placeholder-page" aria-label="Labeler placeholder">
       <div className="placeholder-hero">
-        <Tag color="green">LABELER</Tag>
+        <Tag className="semantic-tag semantic-tag--success">LABELER</Tag>
         <Typography.Title heading={3} className="page-title">
           标注员工作台正在开发中
         </Typography.Title>

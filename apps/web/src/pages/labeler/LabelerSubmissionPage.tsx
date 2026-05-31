@@ -71,9 +71,9 @@ export function LabelerSubmissionPage() {
             Submission #{submission.id}
           </Typography.Title>
           <Space wrap>
-            <Tag color="green">已提交</Tag>
-            <Tag color="blue">Session #{submission.sessionId}</Tag>
-            <Tag color="purple">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
+            <Tag className="semantic-tag semantic-tag--success">已提交</Tag>
+            <Tag className="semantic-tag semantic-tag--accent">Session #{submission.sessionId}</Tag>
+            <Tag className="semantic-tag semantic-tag--info">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
           </Space>
         </div>
         <Typography.Text type="tertiary">提交时间: {formatDateTime(submission.createdAt)}</Typography.Text>

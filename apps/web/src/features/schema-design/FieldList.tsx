@@ -100,7 +100,7 @@ function PlainFieldListItem({
         <Typography.Text strong ellipsis={{ showTooltip: true }}>
           {field.label || '未命名字段'}
         </Typography.Text>
-        <Tag size="small" color={hasError ? 'red' : 'blue'}>
+        <Tag className={`semantic-tag semantic-tag--${hasError ? 'danger' : 'accent'}`} size="small">
           {SCHEMA_FIELD_TYPE_LABELS[field.type]}
         </Tag>
       </div>
@@ -163,7 +163,7 @@ export function SortableFieldItem({ field, selected, hasError, onSelect, onDelet
         <Typography.Text strong ellipsis={{ showTooltip: true }}>
           {field.label || '未命名字段'}
         </Typography.Text>
-        <Tag size="small" color={hasError ? 'red' : 'blue'}>
+        <Tag className={`semantic-tag semantic-tag--${hasError ? 'danger' : 'accent'}`} size="small">
           {SCHEMA_FIELD_TYPE_LABELS[field.type]}
         </Tag>
       </div>

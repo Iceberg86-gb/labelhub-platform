@@ -268,8 +268,8 @@ export function LabelerSessionPage() {
             {detail.task.title}
           </Typography.Title>
           <Space>
-            <Tag color="blue">Schema {schemaVersionLabel(detail.schemaVersion)}</Tag>
-            <Tag color={isEditable ? 'green' : 'grey'}>Session #{detail.session.id}</Tag>
+            <Tag className="semantic-tag semantic-tag--accent">Schema {schemaVersionLabel(detail.schemaVersion)}</Tag>
+            <Tag className={`semantic-tag semantic-tag--${isEditable ? 'success' : 'neutral'}`}>Session #{detail.session.id}</Tag>
             <Typography.Text type="tertiary">{detail.task.description || '暂无描述'}</Typography.Text>
           </Space>
         </div>
@@ -334,7 +334,7 @@ export function LabelerSessionPage() {
           {detail.previousReviewFeedback ? (
             <Card className="labeler-session-review-feedback" bodyStyle={{ padding: 16 }}>
               <Space vertical align="start">
-                <Tag color="red">上一轮打回意见</Tag>
+                <Tag className="semantic-tag semantic-tag--danger">上一轮打回意见</Tag>
                 <Typography.Text>{detail.previousReviewFeedback.reason}</Typography.Text>
               </Space>
             </Card>

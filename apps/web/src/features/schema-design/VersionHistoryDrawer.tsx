@@ -39,7 +39,7 @@ export function VersionHistoryDrawer({ visible, schemaId, currentVersionId, onCl
       title="Schema 版本历史"
       visible={visible}
       width={640}
-      maskStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+      maskStyle={{ backgroundColor: 'color-mix(in srgb, var(--color-primary-black) 34%, transparent)' }}
       onCancel={onClose}
     >
       {versionsQuery.isLoading ? (
@@ -89,7 +89,7 @@ function VersionCard({ version, expanded, current, onToggle }: VersionCardProps)
           <Typography.Title heading={5}>v{version.versionNumber}</Typography.Title>
           <Typography.Text type="tertiary">{formatDateTime(version.publishedAt)}</Typography.Text>
         </div>
-        {current ? <Tag color="blue">当前版本</Tag> : null}
+        {current ? <Tag className="semantic-tag semantic-tag--accent">当前版本</Tag> : null}
       </div>
 
       <div className="version-history-meta">

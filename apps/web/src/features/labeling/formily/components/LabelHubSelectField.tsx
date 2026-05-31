@@ -63,7 +63,7 @@ function renderReadOnlyValue({
     return (
       <div className="labeling-select-tags">
         {values.map((item) => (
-          <Tag key={item} color="blue">
+          <Tag key={item} className="semantic-tag semantic-tag--accent">
             {options.find((option) => option.value === item)?.label ?? item}
           </Tag>
         ))}
@@ -74,4 +74,3 @@ function renderReadOnlyValue({
   const selected = typeof value === 'string' ? options.find((option) => option.value === value) : undefined;
   return <ReadOnlyValue value={selected?.label ?? value} />;
 }
-

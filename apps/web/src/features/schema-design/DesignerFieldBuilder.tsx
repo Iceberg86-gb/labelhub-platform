@@ -171,7 +171,7 @@ function PaletteItem({ type }: { type: SchemaFieldType }) {
       role="button"
       tabIndex={0}
     >
-      <Tag color="blue" size="small">
+      <Tag className="semantic-tag semantic-tag--accent" size="small">
         {SCHEMA_FIELD_TYPE_LABELS[type]}
       </Tag>
     </div>
@@ -283,7 +283,7 @@ function CanvasFieldChildren({
 function PaletteDragPreview({ type }: { type: SchemaFieldType }) {
   return (
     <div className="field-drag-preview">
-      <Tag color="blue">{SCHEMA_FIELD_TYPE_LABELS[type]}</Tag>
+      <Tag className="semantic-tag semantic-tag--accent">{SCHEMA_FIELD_TYPE_LABELS[type]}</Tag>
     </div>
   );
 }
@@ -292,7 +292,7 @@ function FieldDragPreview({ field, hasError }: { field: SchemaField; hasError: b
   return (
     <div className={['field-drag-preview', hasError ? 'field-drag-preview--error' : ''].join(' ')}>
       <strong>{field.label || '未命名字段'}</strong>
-      <Tag color={hasError ? 'red' : 'blue'}>{SCHEMA_FIELD_TYPE_LABELS[field.type]}</Tag>
+      <Tag className={`semantic-tag semantic-tag--${hasError ? 'danger' : 'accent'}`}>{SCHEMA_FIELD_TYPE_LABELS[field.type]}</Tag>
     </div>
   );
 }

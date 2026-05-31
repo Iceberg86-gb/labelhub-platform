@@ -54,7 +54,7 @@ function AiCallItem({ call }: { call: AiCall }) {
     <div className="ai-call-item">
       <div className="ai-call-item__head">
         <Typography.Text strong>{call.providerName} / {call.modelName}</Typography.Text>
-        <Tag color={call.status === 'completed' ? 'green' : 'red'}>{call.status}</Tag>
+        <Tag className={`semantic-tag semantic-tag--${call.status === 'completed' ? 'success' : 'danger'}`}>{call.status}</Tag>
       </div>
       <Typography.Text type="tertiary">Prompt: {call.promptVersion}</Typography.Text>
       {call.promptVersionId != null ? (
