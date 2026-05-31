@@ -15,6 +15,7 @@ const formatOptions: Array<{ label: string; value: FormatChoice }> = [
   { label: '自动', value: 'auto' },
   { label: 'JSON', value: 'json' },
   { label: 'JSONL', value: 'jsonl' },
+  { label: 'Excel', value: 'excel' },
 ];
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
@@ -72,8 +73,8 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
       Toast.error('文件过大,单次上传不能超过 10MB');
       return false;
     }
-    if (!/\.(json|jsonl)$/.test(fileName)) {
-      Toast.error('仅支持 .json / .jsonl 格式');
+    if (!/\.(json|jsonl|xlsx)$/.test(fileName)) {
+      Toast.error('仅支持 .json / .jsonl / .xlsx 格式');
       return false;
     }
     return true;
@@ -135,7 +136,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
       <div className="dataset-section-header">
         <div>
           <Typography.Title heading={5}>数据集</Typography.Title>
-          <Typography.Text type="tertiary">上传 JSON / JSONL 文件后,显式选择当前数据集。</Typography.Text>
+          <Typography.Text type="tertiary">上传 JSON / JSONL / Excel 文件后,显式选择当前数据集。</Typography.Text>
         </div>
         <Tag color={task.currentDatasetId ? 'green' : 'grey'}>
           {task.currentDatasetId ? `当前: Dataset #${currentDataset?.id ?? task.currentDatasetId}` : '当前: 未设置'}
@@ -150,7 +151,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
           />
           <Upload
             action="/datasets"
-            accept=".json,.jsonl"
+            accept=".json,.jsonl,.xlsx"
             limit={1}
             draggable
             showUploadList
@@ -159,7 +160,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
             disabled={uploadDataset.isPending}
             dragIcon={<IconUpload />}
             dragMainText="上传数据集文件"
-            dragSubText="支持 .json / .jsonl,单文件不超过 10MB"
+            dragSubText="支持 .json / .jsonl / .xlsx,单文件不超过 10MB"
           />
         </Space>
       </div>
@@ -176,7 +177,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
         <Empty title="数据集列表加载失败" description={datasetsQuery.error instanceof Error ? datasetsQuery.error.message : '请稍后重试。'} />
       ) : null}
       {!datasetsQuery.isLoading && !datasetsQuery.isError && datasets.length === 0 ? (
-        <Empty title="暂无数据集" description="上传第一个 JSON 或 JSONL 文件后,可将它设为当前数据集。" />
+        <Empty title="暂无数据集" description="上传第一个 JSON、JSONL 或 Excel 文件后,可将它设为当前数据集。" />
       ) : null}
       {datasets.length > 0 ? <Table columns={columns} dataSource={datasets} rowKey="id" pagination={false} /> : null}
     </div>

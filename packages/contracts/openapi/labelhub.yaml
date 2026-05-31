@@ -1807,7 +1807,7 @@ components:
           format: date-time
     DatasetImportFormat:
       type: string
-      enum: [json, jsonl]
+      enum: [json, jsonl, excel]
     Dataset:
       type: object
       required: [id, taskId, sourceType, itemCount, importStatus, createdAt]

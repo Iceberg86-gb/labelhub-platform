@@ -4,10 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.generated.model.DatasetImportFormat;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetFileException;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,12 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DatasetParserTest {
 
-    private DatasetParser parser;
-
-    @BeforeEach
-    void setUp() {
-        parser = new DatasetParser(new ObjectMapper());
-    }
+    private final DatasetParser parser = new DatasetParser(new ObjectMapper());
 
     @Test
     void parseJsonArray_returns_items_in_order() {
@@ -85,7 +84,74 @@ class DatasetParserTest {
             .hasMessageContaining("blank");
     }
 
+    @Test
+    void parseExcel_uses_first_sheet_header_row_and_skips_blank_rows() {
+        List<Map<String, Object>> items = parser.parse(workbookBytes(workbook -> {
+            Row header = workbook.getSheetAt(0).createRow(0);
+            header.createCell(0).setCellValue("prompt");
+            header.createCell(1).setCellValue("score");
+            header.createCell(2).setCellValue("active");
+
+            Row first = workbook.getSheetAt(0).createRow(1);
+            first.createCell(0).setCellValue("hello");
+            first.createCell(1).setCellValue(3.5);
+            first.createCell(2).setCellValue(true);
+
+            workbook.getSheetAt(0).createRow(2);
+
+            Row second = workbook.getSheetAt(0).createRow(3);
+            second.createCell(0).setCellValue("bye");
+            second.createCell(1).setCellValue(7);
+            second.createCell(2).setCellValue(false);
+        }), DatasetImportFormat.EXCEL);
+
+        assertThat(items).containsExactly(
+            Map.of("prompt", "hello", "score", 3.5, "active", true),
+            Map.of("prompt", "bye", "score", 7.0, "active", false)
+        );
+    }
+
+    @Test
+    void parseExcel_rejects_duplicate_or_blank_headers() {
+        assertThatThrownBy(() -> parser.parse(workbookBytes(workbook -> {
+            Row header = workbook.getSheetAt(0).createRow(0);
+            header.createCell(0).setCellValue("prompt");
+            header.createCell(1).setCellValue("prompt");
+        }), DatasetImportFormat.EXCEL))
+            .isInstanceOf(InvalidDatasetFileException.class)
+            .hasMessageContaining("duplicate");
+    }
+
+    @Test
+    void parseExcel_rejects_formula_cells() {
+        assertThatThrownBy(() -> parser.parse(workbookBytes(workbook -> {
+            Row header = workbook.getSheetAt(0).createRow(0);
+            header.createCell(0).setCellValue("value");
+            Row row = workbook.getSheetAt(0).createRow(1);
+            Cell cell = row.createCell(0);
+            cell.setCellFormula("1+1");
+        }), DatasetImportFormat.EXCEL))
+            .isInstanceOf(InvalidDatasetFileException.class)
+            .hasMessageContaining("Formula cells are not supported");
+    }
+
+    private ByteArrayInputStream workbookBytes(WorkbookConfigurer configurer) {
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            workbook.createSheet("items");
+            configurer.configure(workbook);
+            workbook.write(output);
+            return new ByteArrayInputStream(output.toByteArray());
+        } catch (IOException exception) {
+            throw new IllegalStateException("Failed to create workbook", exception);
+        }
+    }
+
     private ByteArrayInputStream stream(String content) {
         return new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @FunctionalInterface
+    private interface WorkbookConfigurer {
+        void configure(XSSFWorkbook workbook);
     }
 }
