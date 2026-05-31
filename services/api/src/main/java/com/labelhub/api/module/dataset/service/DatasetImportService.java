@@ -118,13 +118,16 @@ public class DatasetImportService {
             return format;
         }
         String normalized = sourceName == null ? "" : sourceName.toLowerCase();
+        if (normalized.endsWith(".xlsx")) {
+            return DatasetImportFormat.EXCEL;
+        }
         if (normalized.endsWith(".jsonl")) {
             return DatasetImportFormat.JSONL;
         }
         if (normalized.endsWith(".json")) {
             return DatasetImportFormat.JSON;
         }
-        throw new InvalidDatasetFileException("Dataset import format is required when filename is not .json or .jsonl");
+        throw new InvalidDatasetFileException("Dataset import format is required when filename is not .json, .jsonl, or .xlsx");
     }
 
     private void requireOneRow(int affectedRows, String action) {

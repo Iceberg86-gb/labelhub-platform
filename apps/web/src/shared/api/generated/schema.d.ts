@@ -857,7 +857,7 @@ export interface components {
             createdAt: string;
         };
         /** @enum {string} */
-        DatasetImportFormat: "json" | "jsonl";
+        DatasetImportFormat: "json" | "jsonl" | "excel";
         Dataset: {
             /** Format: int64 */
             id: number;
