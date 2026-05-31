@@ -1,20 +1,7 @@
 import { Button, Tag, Typography } from '@douyinfe/semi-ui';
 import { IconDelete, IconHandle } from '@douyinfe/semi-icons';
 import {
-  DndContext,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import type { CSSProperties } from 'react';
 import type { SchemaField } from '../../entities/schema/schemaTypes';
@@ -31,18 +18,12 @@ type FieldListProps = {
 };
 
 export function FieldList({ fields, onChange, selectedStableId, onSelect, onDelete, errors }: FieldListProps) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = fields.findIndex((field) => field.stableId === active.id);
-    const newIndex = fields.findIndex((field) => field.stableId === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-    onChange(arrayMove(fields, oldIndex, newIndex));
+  const moveField = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= fields.length) return;
+    const next = [...fields];
+    const [field] = next.splice(from, 1);
+    next.splice(to, 0, field);
+    onChange(next);
   };
 
   if (fields.length === 0) {
@@ -54,22 +35,87 @@ export function FieldList({ fields, onChange, selectedStableId, onSelect, onDele
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={fields.map((field) => field.stableId)} strategy={verticalListSortingStrategy}>
-        <div className="field-list">
-          {fields.map((field) => (
-            <SortableFieldItem
-              key={field.stableId}
-              field={field}
-              selected={field.stableId === selectedStableId}
-              hasError={errors.has(field.stableId)}
-              onSelect={onSelect}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
-      </SortableContext>
-    </DndContext>
+    <div className="field-list">
+      {fields.map((field, index) => (
+        <PlainFieldListItem
+          key={field.stableId}
+          field={field}
+          selected={field.stableId === selectedStableId}
+          hasError={errors.has(field.stableId)}
+          isFirst={index === 0}
+          isLast={index === fields.length - 1}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onMoveUp={() => moveField(index, index - 1)}
+          onMoveDown={() => moveField(index, index + 1)}
+        />
+      ))}
+    </div>
+  );
+}
+
+type PlainFieldListItemProps = SortableFieldItemProps & {
+  isFirst: boolean;
+  isLast: boolean;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+};
+
+function PlainFieldListItem({
+  field,
+  selected,
+  hasError,
+  isFirst,
+  isLast,
+  onSelect,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+}: PlainFieldListItemProps) {
+  return (
+    <div
+      className={[
+        'field-list-item',
+        'field-list-item--plain',
+        selected ? 'field-list-item--selected' : '',
+        hasError ? 'field-list-item--error' : '',
+      ].join(' ')}
+      onClick={() => onSelect(field.stableId)}
+    >
+      <div className="field-list-item__order-controls" aria-label="字段顺序调整">
+        <Button size="small" theme="borderless" disabled={isFirst} onClick={(event) => {
+          event.stopPropagation();
+          onMoveUp();
+        }}>
+          上移
+        </Button>
+        <Button size="small" theme="borderless" disabled={isLast} onClick={(event) => {
+          event.stopPropagation();
+          onMoveDown();
+        }}>
+          下移
+        </Button>
+      </div>
+      <div className="field-list-item__main">
+        <Typography.Text strong ellipsis={{ showTooltip: true }}>
+          {field.label || '未命名字段'}
+        </Typography.Text>
+        <Tag size="small" color={hasError ? 'red' : 'blue'}>
+          {SCHEMA_FIELD_TYPE_LABELS[field.type]}
+        </Tag>
+      </div>
+      <Button
+        icon={<IconDelete />}
+        type="danger"
+        theme="borderless"
+        size="small"
+        aria-label="删除字段"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDelete(field.stableId);
+        }}
+      />
+    </div>
   );
 }
 
@@ -105,6 +151,8 @@ export function SortableFieldItem({ field, selected, hasError, onSelect, onDelet
         className="field-list-item__drag-handle"
         {...attributes}
         {...listeners}
+        draggable={false}
+        onDragStart={(event) => event.preventDefault()}
         role="button"
         tabIndex={0}
         aria-label="拖拽字段排序"

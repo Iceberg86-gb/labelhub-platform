@@ -55,11 +55,7 @@ describe('DesignerFieldBuilder drag wiring', () => {
     view.unmount();
   });
 
-  it('keeps the real dnd-kit palette to root drop path wired to onAddField when jsdom pointer events are available', async () => {
-    if (typeof PointerEvent === 'undefined') {
-      return;
-    }
-
+  it('keeps the real dnd-kit palette to root drop path wired to onAddField through mouse events', async () => {
     const onAddField = vi.fn<(_: SchemaFieldType, _parentStableId?: string, _index?: number) => null>(() => null);
     const view = renderClient(
       <DesignerFieldBuilder
@@ -82,19 +78,19 @@ describe('DesignerFieldBuilder drag wiring', () => {
     setRect(fieldItem, rect(210, 20, 360, 52));
 
     await act(async () => {
-      paletteItem.dispatchEvent(pointerEvent('pointerdown', { clientX: 20, clientY: 20 }));
+      paletteItem.dispatchEvent(mouseEvent('mousedown', { clientX: 20, clientY: 20 }));
     });
     await act(async () => {
-      document.dispatchEvent(pointerEvent('pointermove', { clientX: 230, clientY: 38 }));
+      document.dispatchEvent(mouseEvent('mousemove', { clientX: 230, clientY: 38 }));
     });
     await act(async () => {
-      document.dispatchEvent(pointerEvent('pointermove', { clientX: 232, clientY: 40 }));
+      document.dispatchEvent(mouseEvent('mousemove', { clientX: 232, clientY: 40 }));
     });
     await act(async () => {
-      fieldItem.dispatchEvent(pointerEvent('pointerover', { clientX: 230, clientY: 38 }));
+      fieldItem.dispatchEvent(mouseEvent('mouseover', { clientX: 230, clientY: 38 }));
     });
     await act(async () => {
-      document.dispatchEvent(pointerEvent('pointerup', { clientX: 230, clientY: 38 }));
+      document.dispatchEvent(mouseEvent('mouseup', { clientX: 230, clientY: 38 }));
     });
 
     expect(onAddField).toHaveBeenCalledWith('text', undefined, 0);
@@ -120,15 +116,12 @@ function setRect(element: HTMLElement, value: DOMRect) {
   element.getBoundingClientRect = () => value;
 }
 
-function pointerEvent(type: string, init: PointerEventInit): PointerEvent {
-  return new PointerEvent(type, {
+function mouseEvent(type: string, init: MouseEventInit): MouseEvent {
+  return new MouseEvent(type, {
     bubbles: true,
     cancelable: true,
-    pointerId: 1,
-    pointerType: 'mouse',
-    isPrimary: true,
     button: 0,
-    buttons: type === 'pointerup' ? 0 : 1,
+    buttons: type === 'mouseup' ? 0 : 1,
     ...init,
   });
 }

@@ -1056,6 +1056,8 @@ a {
   background: #ffffff;
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .field-type-palette__item:hover {
@@ -1181,6 +1183,8 @@ a {
     border-color 120ms ease,
     box-shadow 120ms ease;
   touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .field-list-item::before {
@@ -1226,6 +1230,18 @@ a {
   opacity: 0.72;
 }
 
+.field-list-item--plain {
+  grid-template-columns: 84px minmax(0, 1fr) 32px;
+}
+
+.field-list-item__order-controls {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .field-list-item__drag-handle {
   position: relative;
   z-index: 1;
@@ -1239,6 +1255,8 @@ a {
   color: #64748b;
   cursor: grab;
   touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .field-list-item__drag-handle:active {

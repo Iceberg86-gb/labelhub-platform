@@ -3,7 +3,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useDraggable,
   useDroppable,
@@ -17,7 +18,6 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import type { CSSProperties } from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import { findFieldByStableId } from '../../entities/schema/fieldFactory';
 import type { SchemaField, SchemaFieldType } from '../../entities/schema/schemaTypes';
@@ -55,7 +55,8 @@ export function DesignerFieldBuilder({
   validationErrorCount,
 }: DesignerFieldBuilderProps) {
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -81,8 +82,18 @@ export function DesignerFieldBuilder({
     }
   };
 
+  const handleDragCancel = () => {
+    setActiveDragId(null);
+  };
+
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={() => setActiveDragId(null)}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
       <Card className="schema-designer-panel schema-material-panel">
         <div className="schema-designer-panel__header">
           <div>
@@ -135,7 +146,7 @@ function FieldTypePalette() {
 }
 
 function PaletteItem({ type }: { type: SchemaFieldType }) {
-  const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setActivatorNodeRef, setNodeRef, isDragging } = useDraggable({
     id: `${PALETTE_PREFIX}${type}`,
   });
   const setPaletteRef = useCallback(
@@ -145,17 +156,15 @@ function PaletteItem({ type }: { type: SchemaFieldType }) {
     },
     [setActivatorNodeRef, setNodeRef],
   );
-  const style: CSSProperties = transform
-    ? { transform: `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)` }
-    : {};
 
   return (
     <div
       ref={setPaletteRef}
       className={['field-type-palette__item', isDragging ? 'field-type-palette__item--dragging' : ''].join(' ')}
-      style={style}
       {...attributes}
       {...listeners}
+      draggable={false}
+      onDragStart={(event) => event.preventDefault()}
       role="button"
       tabIndex={0}
     >
