@@ -53,6 +53,7 @@ public class SessionService {
 
     private static final String SESSION_CLAIMED = "claimed";
     private static final String SESSION_SUBMITTED = "submitted";
+    private static final String SESSION_RETURNED_FOR_REVISION = "returned_for_revision";
     private static final String ITEM_CLAIMED = "claimed";
 
     private final TaskMapper taskMapper;
@@ -220,7 +221,7 @@ public class SessionService {
         if (session == null || !Objects.equals(session.getLabelerId(), labelerId)) {
             throw new SessionNotFoundException(sessionId);
         }
-        if (!SESSION_CLAIMED.equals(session.getStatus())) {
+        if (!isEditableSessionStatus(session.getStatus())) {
             throw new SessionNotEditableException(sessionId, session.getStatus());
         }
 
@@ -251,13 +252,17 @@ public class SessionService {
         if (session == null || !Objects.equals(session.getLabelerId(), labelerId)) {
             throw new SessionNotFoundException(sessionId);
         }
-        if (!SESSION_CLAIMED.equals(session.getStatus())) {
+        if (!isEditableSessionStatus(session.getStatus())) {
             throw new SessionAlreadySubmittedException(sessionId, session.getStatus());
         }
         if (answerPayload == null) {
             throw new InvalidSubmissionPayloadException("answerPayload is required");
         }
         validateAnswerPayload(session, answerPayload);
+
+        SubmissionEntity previousReturnedSubmission = SESSION_RETURNED_FOR_REVISION.equals(session.getStatus())
+            ? submissionMapper.selectLatestBySessionIdForUpdate(sessionId)
+            : null;
 
         SubmissionEntity submission = new SubmissionEntity();
         submission.setSessionId(sessionId);
@@ -271,6 +276,12 @@ public class SessionService {
         submission.setStatusCode(SubmissionStatusCodes.SUBMITTED);
         submission.setCreatedAt(LocalDateTime.now(clock));
         requireOneRow(submissionMapper.insert(submission), "insert submission");
+        if (previousReturnedSubmission != null) {
+            requireOneRow(
+                submissionMapper.updateSupersededBy(previousReturnedSubmission.getId(), submission.getId()),
+                "supersede previous returned submission"
+            );
+        }
         Long aiReviewRuleId = currentAiReviewRuleId(session.getTaskId());
         enqueueAiReview(submission, aiReviewRuleId);
 
@@ -294,6 +305,10 @@ public class SessionService {
     private Long currentAiReviewRuleId(Long taskId) {
         TaskEntity task = taskMapper.selectById(taskId);
         return task == null ? null : task.getCurrentAiReviewRuleId();
+    }
+
+    private boolean isEditableSessionStatus(String status) {
+        return SESSION_CLAIMED.equals(status) || SESSION_RETURNED_FOR_REVISION.equals(status);
     }
 
     private void enqueueAiReview(SubmissionEntity submission, Long aiReviewRuleId) {

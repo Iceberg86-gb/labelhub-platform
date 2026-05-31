@@ -368,6 +368,20 @@ class SessionServiceTest {
     }
 
     @Test
+    void saveDraft_allows_returned_for_revision_session() {
+        SessionEntity returned = claimedSession(900L, 1002L);
+        returned.setStatus("returned_for_revision");
+        when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(returned);
+        when(draftMapper.selectMaxRevisionNumber(900L)).thenReturn(2);
+        when(draftMapper.insert(any(DraftEntity.class))).thenReturn(1);
+
+        DraftEntity draft = sessionService.saveDraft(900L, 1002L, Map.of("field_0", "fixed"));
+
+        assertThat(draft.getRevisionNo()).isEqualTo(3);
+        assertThat(draft.getDraftPayload()).containsEntry("field_0", "fixed");
+    }
+
+    @Test
     void saveDraft_rejects_when_session_belongs_to_different_labeler() {
         when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(claimedSession(900L, 2002L));
 
@@ -520,6 +534,31 @@ class SessionServiceTest {
             .isInstanceOf(SessionAlreadySubmittedException.class);
 
         verify(submissionMapper, never()).insert(any(SubmissionEntity.class));
+    }
+
+    @Test
+    void submit_from_returned_for_revision_creates_new_submission_and_supersedes_previous_returned_submission() {
+        SessionEntity returned = claimedSession(900L, 1002L);
+        returned.setStatus("returned_for_revision");
+        SubmissionEntity previous = submission(1199L, 1002L);
+        previous.setStatusCode("returned_for_revision");
+        when(sessionMapper.selectByIdForUpdate(900L)).thenReturn(returned);
+        when(submissionMapper.selectLatestBySessionIdForUpdate(900L)).thenReturn(previous);
+        when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
+            SubmissionEntity submission = invocation.getArgument(0);
+            submission.setId(1200L);
+            return 1;
+        });
+        when(submissionMapper.updateSupersededBy(1199L, 1200L)).thenReturn(1);
+        when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
+
+        SubmissionEntity submission = sessionService.submit(900L, 1002L, Map.of("field_0", "fixed"));
+
+        assertThat(submission.getId()).isEqualTo(1200L);
+        assertThat(submission.getStatusCode()).isEqualTo("submitted");
+        verify(submissionMapper).updateSupersededBy(1199L, 1200L);
+        verify(outboxEventService).enqueueSubmissionAiReview(any(SubmissionEntity.class), any());
+        assertThat(returned.getStatus()).isEqualTo("submitted");
     }
 
     @Test
