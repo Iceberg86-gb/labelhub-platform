@@ -16,6 +16,7 @@ import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
+import com.labelhub.api.module.schema.mapper.SubmissionMutationMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
 import com.labelhub.api.module.schema.runtime.SchemaRuntimeAdapter;
 import com.labelhub.api.module.session.entity.DraftEntity;
@@ -65,6 +66,7 @@ public class SessionService {
     private final SchemaVersionMapper schemaVersionMapper;
     private final DraftMapper draftMapper;
     private final SubmissionMapper submissionMapper;
+    private final SubmissionMutationMapper submissionMutationMapper;
     private final OutboxEventService outboxEventService;
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper;
     private final Canonicalizer canonicalizer;
@@ -82,6 +84,7 @@ public class SessionService {
         SchemaVersionMapper schemaVersionMapper,
         DraftMapper draftMapper,
         SubmissionMapper submissionMapper,
+        SubmissionMutationMapper submissionMutationMapper,
         OutboxEventService outboxEventService,
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Canonicalizer canonicalizer,
@@ -97,6 +100,7 @@ public class SessionService {
         this.schemaVersionMapper = schemaVersionMapper;
         this.draftMapper = draftMapper;
         this.submissionMapper = submissionMapper;
+        this.submissionMutationMapper = submissionMutationMapper;
         this.outboxEventService = outboxEventService;
         this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
         this.canonicalizer = canonicalizer;
@@ -114,6 +118,7 @@ public class SessionService {
         SchemaVersionMapper schemaVersionMapper,
         DraftMapper draftMapper,
         SubmissionMapper submissionMapper,
+        SubmissionMutationMapper submissionMutationMapper,
         OutboxEventService outboxEventService,
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Canonicalizer canonicalizer,
@@ -121,8 +126,8 @@ public class SessionService {
         AuditLogService auditLogService
     ) {
         this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper,
-            outboxEventService, qualityLedgerEntryMapper, canonicalizer, clock, auditLogService, new ObjectMapper(),
-            new AnswerPayloadValidator(), new SchemaRuntimeAdapter(new ObjectMapper()));
+            submissionMutationMapper, outboxEventService, qualityLedgerEntryMapper, canonicalizer, clock,
+            auditLogService, new ObjectMapper(), new AnswerPayloadValidator(), new SchemaRuntimeAdapter(new ObjectMapper()));
     }
 
     public SessionService(
@@ -138,7 +143,7 @@ public class SessionService {
         AuditLogService auditLogService
     ) {
         this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper,
-            outboxEventService, null, canonicalizer, clock, auditLogService, new ObjectMapper(),
+            null, outboxEventService, null, canonicalizer, clock, auditLogService, new ObjectMapper(),
             new AnswerPayloadValidator(), new SchemaRuntimeAdapter(new ObjectMapper()));
     }
 
@@ -154,7 +159,7 @@ public class SessionService {
         AuditLogService auditLogService
     ) {
         this(taskMapper, datasetItemMapper, sessionMapper, schemaVersionMapper, draftMapper, submissionMapper, null,
-            null, canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator(),
+            null, null, canonicalizer, clock, auditLogService, new ObjectMapper(), new AnswerPayloadValidator(),
             new SchemaRuntimeAdapter(new ObjectMapper()));
     }
 
@@ -309,7 +314,7 @@ public class SessionService {
         requireOneRow(submissionMapper.insert(submission), "insert submission");
         if (previousReturnedSubmission != null) {
             requireOneRow(
-                submissionMapper.updateSupersededBy(previousReturnedSubmission.getId(), submission.getId()),
+                submissionMutationMapper.updateSupersededBy(previousReturnedSubmission.getId(), submission.getId()),
                 "supersede previous returned submission"
             );
             auditLogService.record(

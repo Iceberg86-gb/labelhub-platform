@@ -14,6 +14,7 @@ import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
+import com.labelhub.api.module.schema.mapper.SubmissionMutationMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
@@ -64,6 +65,7 @@ class SessionServiceTest {
     private final SchemaVersionMapper schemaVersionMapper = mock(SchemaVersionMapper.class);
     private final DraftMapper draftMapper = mock(DraftMapper.class);
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
+    private final SubmissionMutationMapper submissionMutationMapper = mock(SubmissionMutationMapper.class);
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper = mock(QualityLedgerEntryMapper.class);
     private final OutboxEventService outboxEventService = mock(OutboxEventService.class);
     private final Canonicalizer canonicalizer = new Canonicalizer(new ObjectMapper());
@@ -80,6 +82,7 @@ class SessionServiceTest {
             schemaVersionMapper,
             draftMapper,
             submissionMapper,
+            submissionMutationMapper,
             outboxEventService,
             qualityLedgerEntryMapper,
             canonicalizer,
@@ -576,14 +579,14 @@ class SessionServiceTest {
             submission.setId(1200L);
             return 1;
         });
-        when(submissionMapper.updateSupersededBy(1199L, 1200L)).thenReturn(1);
+        when(submissionMutationMapper.updateSupersededBy(1199L, 1200L)).thenReturn(1);
         when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
 
         SubmissionEntity submission = sessionService.submit(900L, 1002L, Map.of("field_0", "fixed"));
 
         assertThat(submission.getId()).isEqualTo(1200L);
         assertThat(submission.getStatusCode()).isEqualTo("submitted");
-        verify(submissionMapper).updateSupersededBy(1199L, 1200L);
+        verify(submissionMutationMapper).updateSupersededBy(1199L, 1200L);
         verify(outboxEventService).enqueueSubmissionAiReview(any(SubmissionEntity.class), any());
         assertThat(returned.getStatus()).isEqualTo("submitted");
     }
@@ -601,7 +604,7 @@ class SessionServiceTest {
             submission.setId(1200L);
             return 1;
         });
-        when(submissionMapper.updateSupersededBy(1199L, 1200L)).thenReturn(1);
+        when(submissionMutationMapper.updateSupersededBy(1199L, 1200L)).thenReturn(1);
         when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
 
         sessionService.submit(900L, 1002L, Map.of("field_0", "fixed"));

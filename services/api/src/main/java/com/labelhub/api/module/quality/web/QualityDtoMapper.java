@@ -231,7 +231,7 @@ public class QualityDtoMapper {
             row.getDerivedFromEntryId(),
             LocalDateTime.now(clock)
         )));
-        dto.setReviewLevel(ReviewLevel.fromValue(row.getReviewLevel()));
+        dto.setReviewLevel(ReviewLevel.fromValue(reviewLevelOrDefault(row.getReviewLevel())));
         if (row.getAiRecommendation() != null) {
             dto.setAiRecommendation(ReviewerSubmissionSummary.AiRecommendationEnum.fromValue(row.getAiRecommendation()));
         }
@@ -246,6 +246,10 @@ public class QualityDtoMapper {
             return "rejected";
         }
         return "pending";
+    }
+
+    private String reviewLevelOrDefault(String reviewLevel) {
+        return reviewLevel == null || reviewLevel.isBlank() ? "reviewer" : reviewLevel;
     }
 
     private OffsetDateTime offset(LocalDateTime value) {

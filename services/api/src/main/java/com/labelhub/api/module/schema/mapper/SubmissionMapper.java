@@ -11,7 +11,6 @@ import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface SubmissionMapper {
@@ -115,9 +114,4 @@ public interface SubmissionMapper {
     @ResultMap("submissionResultMap")
     SubmissionEntity selectLatestBySessionIdForUpdate(@Param("sessionId") Long sessionId);
 
-    @Update("UPDATE submissions SET status = #{status} WHERE id = #{id}")
-    int updateStatus(@Param("id") Long id, @Param("status") String status);
-
-    @Update("UPDATE submissions SET superseded_by_id = #{supersededById} WHERE id = #{id}")
-    int updateSupersededBy(@Param("id") Long id, @Param("supersededById") Long supersededById);
 }
