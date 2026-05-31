@@ -33,6 +33,7 @@ public class ExportDtoMapper {
         dto.setFieldMappingSnapshot(entity.getFieldMappingSnapshot());
         dto.setCanonicalizationVersion(entity.getCanonicalizationVersion());
         dto.setGeneratedAt(entity.getGeneratedAt() == null ? null : entity.getGeneratedAt().toString());
+        dto.setArchivedAt(entity.getArchivedAt() == null ? null : entity.getArchivedAt().toString());
         return dto;
     }
 

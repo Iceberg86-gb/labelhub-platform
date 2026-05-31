@@ -354,6 +354,12 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+        - name: archived
+          in: query
+          description: When true, list archived snapshots instead of active snapshots.
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Export snapshots for the task.
@@ -1366,6 +1372,25 @@ paths:
       responses:
         '200':
           description: Immutable export snapshot by snapshot id.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportSnapshot'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /exports/snapshots/{snapshotId}/archive:
+    post:
+      tags: [Exports]
+      operationId: archiveExportSnapshot
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+      responses:
+        '200':
+          description: Export snapshot archived without deleting immutable snapshot data.
           content:
             application/json:
               schema:
@@ -3164,6 +3189,9 @@ components:
           type: string
         generatedAt:
           type: string
+        archivedAt:
+          type: string
+          nullable: true
     ExportJob:
       type: object
       required: [id, taskId, requestedBy, format, status, downloadCount, createdAt]

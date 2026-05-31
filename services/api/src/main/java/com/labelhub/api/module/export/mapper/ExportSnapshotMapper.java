@@ -11,6 +11,7 @@ import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface ExportSnapshotMapper {
@@ -36,7 +37,7 @@ public interface ExportSnapshotMapper {
     @Select("""
         SELECT id, export_job_id, task_id, file_hash, manifest_hash, source_state_hash, object_key,
                file_manifest, record_counts, schema_version_ids, verdict_rule_version_id,
-               data_scope, field_mapping_snapshot, canonicalization_version, generated_at
+               data_scope, field_mapping_snapshot, canonicalization_version, generated_at, archived_at
         FROM export_snapshots
         WHERE id = #{id}
         """)
@@ -54,33 +55,50 @@ public interface ExportSnapshotMapper {
         @Result(column = "data_scope", property = "dataScope", typeHandler = JacksonTypeHandler.class),
         @Result(column = "field_mapping_snapshot", property = "fieldMappingSnapshot", typeHandler = JacksonTypeHandler.class),
         @Result(column = "canonicalization_version", property = "canonicalizationVersion"),
-        @Result(column = "generated_at", property = "generatedAt")
+        @Result(column = "generated_at", property = "generatedAt"),
+        @Result(column = "archived_at", property = "archivedAt")
     })
     ExportSnapshotEntity selectById(@Param("id") Long id);
 
     @Select("""
         SELECT id, export_job_id, task_id, file_hash, manifest_hash, source_state_hash, object_key,
                file_manifest, record_counts, schema_version_ids, verdict_rule_version_id,
-               data_scope, field_mapping_snapshot, canonicalization_version, generated_at
+               data_scope, field_mapping_snapshot, canonicalization_version, generated_at, archived_at
         FROM export_snapshots
         WHERE task_id = #{taskId}
+          AND ((#{archived} = TRUE AND archived_at IS NOT NULL)
+            OR (#{archived} = FALSE AND archived_at IS NULL))
         ORDER BY generated_at DESC, id DESC
         LIMIT #{size} OFFSET #{offset}
         """)
     @ResultMap("exportSnapshotResultMap")
     List<ExportSnapshotEntity> selectByTaskId(
         @Param("taskId") Long taskId,
+        @Param("archived") boolean archived,
         @Param("offset") Long offset,
         @Param("size") Long size
     );
 
-    @Select("SELECT COUNT(*) FROM export_snapshots WHERE task_id = #{taskId}")
-    Long selectCountByTaskId(@Param("taskId") Long taskId);
+    @Select("""
+        SELECT COUNT(*)
+        FROM export_snapshots
+        WHERE task_id = #{taskId}
+          AND ((#{archived} = TRUE AND archived_at IS NOT NULL)
+            OR (#{archived} = FALSE AND archived_at IS NULL))
+        """)
+    Long selectCountByTaskId(@Param("taskId") Long taskId, @Param("archived") boolean archived);
+
+    @Update("""
+        UPDATE export_snapshots
+        SET archived_at = #{archivedAt}
+        WHERE id = #{id} AND archived_at IS NULL
+        """)
+    int archiveById(@Param("id") Long id, @Param("archivedAt") java.time.LocalDateTime archivedAt);
 
     @Select("""
         SELECT id, export_job_id, task_id, file_hash, manifest_hash, source_state_hash, object_key,
                file_manifest, record_counts, schema_version_ids, verdict_rule_version_id,
-               data_scope, field_mapping_snapshot, canonicalization_version, generated_at
+               data_scope, field_mapping_snapshot, canonicalization_version, generated_at, archived_at
         FROM export_snapshots
         WHERE task_id = #{taskId}
         ORDER BY id ASC
@@ -91,7 +109,7 @@ public interface ExportSnapshotMapper {
     @Select("""
         SELECT id, export_job_id, task_id, file_hash, manifest_hash, source_state_hash, object_key,
                file_manifest, record_counts, schema_version_ids, verdict_rule_version_id,
-               data_scope, field_mapping_snapshot, canonicalization_version, generated_at
+               data_scope, field_mapping_snapshot, canonicalization_version, generated_at, archived_at
         FROM export_snapshots
         WHERE manifest_hash = #{manifestHash}
         ORDER BY generated_at DESC, id DESC

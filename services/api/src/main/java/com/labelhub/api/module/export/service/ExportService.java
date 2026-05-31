@@ -254,12 +254,13 @@ public class ExportService {
         Long taskId,
         Long ownerUserId,
         long page,
-        long size
+        long size,
+        boolean archived
     ) {
         requireOwnedTask(taskId, ownerUserId);
         long offset = (page - 1) * size;
-        List<ExportSnapshotEntity> items = exportSnapshotMapper.selectByTaskId(taskId, offset, size);
-        Long total = exportSnapshotMapper.selectCountByTaskId(taskId);
+        List<ExportSnapshotEntity> items = exportSnapshotMapper.selectByTaskId(taskId, archived, offset, size);
+        Long total = exportSnapshotMapper.selectCountByTaskId(taskId, archived);
         return new PagedResult<>(items, total == null ? 0 : total, page, size);
     }
 
@@ -272,6 +273,31 @@ public class ExportService {
         if (task == null || !Objects.equals(task.getOwnerId(), ownerUserId)) {
             throw new ExportSnapshotNotFoundException(snapshotId);
         }
+        return snapshot;
+    }
+
+    @Transactional
+    public ExportSnapshotEntity archiveSnapshotForOwner(Long snapshotId, Long ownerUserId) {
+        ExportSnapshotEntity snapshot = getSnapshotForOwner(snapshotId, ownerUserId);
+        if (snapshot.getArchivedAt() != null) {
+            return snapshot;
+        }
+        LocalDateTime archivedAt = LocalDateTime.now(clock);
+        requireOneRow(exportSnapshotMapper.archiveById(snapshot.getId(), archivedAt), "archive export snapshot");
+        snapshot.setArchivedAt(archivedAt);
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.EXPORT_SNAPSHOT_ARCHIVE)
+                .actorUser(ownerUserId)
+                .resource("export_snapshot", snapshot.getId())
+                .payload("snapshotId", snapshot.getId())
+                .payload("taskId", snapshot.getTaskId())
+                .payload("exportJobId", snapshot.getExportJobId())
+                .payload("fileHash", snapshot.getFileHash())
+                .payload("manifestHash", snapshot.getManifestHash())
+                .payload("sourceStateHash", snapshot.getSourceStateHash())
+                .payload("objectKey", snapshot.getObjectKey())
+                .payload("archivedAt", archivedAt.toString())
+        );
         return snapshot;
     }
 

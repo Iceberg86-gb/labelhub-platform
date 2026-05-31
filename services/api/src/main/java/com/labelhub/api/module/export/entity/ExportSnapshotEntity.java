@@ -33,6 +33,7 @@ public class ExportSnapshotEntity {
     private Map<String, Object> fieldMappingSnapshot;
     private String canonicalizationVersion;
     private LocalDateTime generatedAt;
+    private LocalDateTime archivedAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -64,4 +65,6 @@ public class ExportSnapshotEntity {
     public void setCanonicalizationVersion(String canonicalizationVersion) { this.canonicalizationVersion = canonicalizationVersion; }
     public LocalDateTime getGeneratedAt() { return generatedAt; }
     public void setGeneratedAt(LocalDateTime generatedAt) { this.generatedAt = generatedAt; }
+    public LocalDateTime getArchivedAt() { return archivedAt; }
+    public void setArchivedAt(LocalDateTime archivedAt) { this.archivedAt = archivedAt; }
 }

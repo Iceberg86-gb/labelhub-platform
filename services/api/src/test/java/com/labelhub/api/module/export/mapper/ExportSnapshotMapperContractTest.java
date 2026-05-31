@@ -13,7 +13,7 @@ class ExportSnapshotMapperContractTest {
     }
 
     @Test
-    void export_snapshot_mapper_exposes_only_insert_and_select_methods() {
+    void export_snapshot_mapper_exposes_only_insert_select_and_archive_methods() {
         for (Method method : ExportSnapshotMapper.class.getDeclaredMethods()) {
             String name = method.getName();
             assertThat(name)
@@ -22,8 +22,8 @@ class ExportSnapshotMapperContractTest {
                 .doesNotStartWith("delete")
                 .doesNotStartWith("remove")
                 .doesNotStartWith("save");
-            assertThat(name.startsWith("insert") || name.startsWith("select"))
-                .as("Method " + name + " must be insert/select only")
+            assertThat(name.startsWith("insert") || name.startsWith("select") || name.startsWith("archive"))
+                .as("Method " + name + " must be insert/select/archive only")
                 .isTrue();
         }
     }

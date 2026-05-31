@@ -1,5 +1,5 @@
-import { Button, Card, Checkbox, Empty, Input, Pagination, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconRefresh, IconUpload } from '@douyinfe/semi-icons';
+import { Button, Card, Checkbox, Empty, Input, Pagination, Popconfirm, Select, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { IconArchive, IconRefresh, IconUpload } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ExportFieldMapping, ExportSnapshot } from '../../entities/export/exportTypes';
@@ -8,6 +8,7 @@ import { CreateExportFailure, useCreateExportMutation } from './useCreateExportM
 import { ExportSnapshotDiffModal } from './ExportSnapshotDiffModal';
 import { useTaskExportsQuery } from './useTaskExportsQuery';
 import { useDownloadExportFileMutation } from './useDownloadExportFileMutation';
+import { useArchiveExportSnapshotMutation } from './useArchiveExportSnapshotMutation';
 
 type TrustedExportCardProps = {
   taskId: number;
@@ -45,12 +46,15 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [mappingRows, setMappingRows] = useState<FieldMappingDraftRow[]>(DEFAULT_FIELD_MAPPING_ROWS);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
+  const [archivingSnapshotId, setArchivingSnapshotId] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePositiveInt(searchParams.get('exportPage')) ?? DEFAULT_PAGE;
   const size = parsePositiveInt(searchParams.get('exportSize')) ?? DEFAULT_SIZE;
-  const exportsQuery = useTaskExportsQuery(taskId, { page, size });
+  const showArchived = searchParams.get('exportArchived') === 'true';
+  const exportsQuery = useTaskExportsQuery(taskId, { page, size, archived: showArchived });
   const createExport = useCreateExportMutation();
   const downloadExportFile = useDownloadExportFileMutation();
+  const archiveExportSnapshot = useArchiveExportSnapshotMutation();
   const items = exportsQuery.data?.items ?? [];
   const manifestHashCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -94,6 +98,16 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         width: 150,
         render: (value: string) => formatDateTime(value),
       },
+      ...(showArchived
+        ? [
+            {
+              title: '归档时间',
+              dataIndex: 'archivedAt',
+              width: 150,
+              render: (value?: string) => formatDateTime(value),
+            },
+          ]
+        : []),
       {
         title: '下载',
         width: 220,
@@ -112,8 +126,35 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
           </Space>
         ),
       },
+      ...(showArchived
+        ? []
+        : [
+            {
+              title: '操作',
+              width: 100,
+              render: (_: unknown, record: ExportSnapshot) => (
+                <Popconfirm
+                  title="归档导出快照?"
+                  content={
+                    <Typography.Text style={{ display: 'block', maxWidth: 340, lineHeight: 1.6 }}>
+                      归档后该快照会从默认列表隐藏,但快照记录和导出文件仍会保留,可在已归档视图中下载审计。
+                    </Typography.Text>
+                  }
+                  position="leftTop"
+                  okText="归档"
+                  cancelText="取消"
+                  okType="warning"
+                  onConfirm={() => handleArchiveSnapshot(record)}
+                >
+                  <Button icon={<IconArchive />} size="small" theme="borderless" loading={archivingSnapshotId === record.id}>
+                    归档
+                  </Button>
+                </Popconfirm>
+              ),
+            },
+          ]),
     ],
-    [downloadExportFile, manifestHashCounts, selectedIds],
+    [archiveExportSnapshot, archivingSnapshotId, downloadExportFile, manifestHashCounts, selectedIds, showArchived, taskId],
   );
 
   async function handleCreateExport() {
@@ -147,10 +188,24 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
     });
   }
 
-  function updateParams(next: { page?: number; size?: number }) {
+  async function handleArchiveSnapshot(snapshot: ExportSnapshot) {
+    setArchivingSnapshotId(snapshot.id);
+    try {
+      await archiveExportSnapshot.mutateAsync({ taskId, snapshotId: snapshot.id });
+      setSelectedIds((current) => current.filter((id) => id !== snapshot.id));
+      Toast.success(`已归档导出快照 #${snapshot.id}`);
+    } catch (error) {
+      Toast.error(error instanceof Error ? error.message : '归档失败,请稍后重试');
+    } finally {
+      setArchivingSnapshotId(null);
+    }
+  }
+
+  function updateParams(next: { page?: number; size?: number; archived?: boolean }) {
     const params = new URLSearchParams(searchParams);
     params.set('exportPage', String(next.page ?? page));
     params.set('exportSize', String(next.size ?? size));
+    params.set('exportArchived', String(next.archived ?? showArchived));
     setSearchParams(params);
   }
 
@@ -167,9 +222,22 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 
       <div className="trusted-export-toolbar">
         <Typography.Text type="tertiary">
-          共 {exportsQuery.data?.total ?? 0} 个快照{selectedIds.length > 0 ? `,已选 ${selectedIds.length}/2` : ''}
+          共 {exportsQuery.data?.total ?? 0} 个{showArchived ? '已归档' : '活跃'}快照
+          {selectedIds.length > 0 ? `,已选 ${selectedIds.length}/2` : ''}
         </Typography.Text>
         <Space>
+          <Select
+            size="small"
+            value={showArchived ? 'archived' : 'active'}
+            onChange={(value) => {
+              setSelectedIds([]);
+              updateParams({ page: 1, archived: value === 'archived' });
+            }}
+            optionList={[
+              { value: 'active', label: '活跃快照' },
+              { value: 'archived', label: '已归档快照' },
+            ]}
+          />
           <Button icon={<IconRefresh />} disabled={!canDiff} onClick={() => setDiffModalOpen(true)}>
             对比所选
           </Button>
@@ -221,7 +289,10 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         <Empty title="导出列表加载失败" description={exportsQuery.error instanceof Error ? exportsQuery.error.message : '请稍后重试。'} />
       ) : null}
       {!exportsQuery.isLoading && !exportsQuery.isError && items.length === 0 ? (
-        <Empty title="尚未导出" description={'点击"导出"按钮创建可信训练数据集快照。'} />
+        <Empty
+          title={showArchived ? '暂无已归档快照' : '尚未导出'}
+          description={showArchived ? '归档后的快照会保留在这里,仍可下载审计。' : '点击"导出"按钮创建可信训练数据集快照。'}
+        />
       ) : null}
       {items.length > 0 ? (
         <>
