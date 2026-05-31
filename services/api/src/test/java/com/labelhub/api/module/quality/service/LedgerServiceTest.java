@@ -14,6 +14,7 @@ import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
 import com.labelhub.api.module.quality.mapper.ReviewActionMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
+import com.labelhub.api.module.schema.mapper.SubmissionMutationMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.task.entity.TaskEntity;
@@ -53,6 +54,7 @@ class LedgerServiceTest {
     private static final LocalDateTime NOW = LocalDateTime.parse("2026-05-25T09:30:00");
 
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
+    private final SubmissionMutationMapper submissionMutationMapper = mock(SubmissionMutationMapper.class);
     private final SessionMapper sessionMapper = mock(SessionMapper.class);
     private final TaskMapper taskMapper = mock(TaskMapper.class);
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper = mock(QualityLedgerEntryMapper.class);
@@ -65,6 +67,7 @@ class LedgerServiceTest {
         Clock clock = Clock.fixed(Instant.parse("2026-05-25T09:30:00Z"), ZoneOffset.UTC);
         ledgerService = new LedgerService(
             submissionMapper,
+            submissionMutationMapper,
             taskMapper,
             qualityLedgerEntryMapper,
             reviewActionMapper,
@@ -109,7 +112,7 @@ class LedgerServiceTest {
     void createEntry_sets_task_id_from_submission_to_align_indexing() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
         doAnswer(invocation -> 1).when(qualityLedgerEntryMapper).insert(any(QualityLedgerEntryEntity.class));
-        when(submissionMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
+        when(submissionMutationMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
         when(sessionMapper.updateStatus(900L, "returned_for_revision")).thenReturn(1);
 
         ledgerService.createEntry(
@@ -131,7 +134,7 @@ class LedgerServiceTest {
         submission.setSessionId(900L);
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission);
         doAnswer(invocation -> 1).when(qualityLedgerEntryMapper).insert(any(QualityLedgerEntryEntity.class));
-        when(submissionMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
+        when(submissionMutationMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
         when(sessionMapper.updateStatus(900L, "returned_for_revision")).thenReturn(1);
 
         ledgerService.createEntry(
@@ -141,7 +144,7 @@ class LedgerServiceTest {
             Map.of("verdict", "reject", "reason", "Needs correction")
         );
 
-        verify(submissionMapper).updateStatus(SUBMISSION_ID, "returned_for_revision");
+        verify(submissionMutationMapper).updateStatus(SUBMISSION_ID, "returned_for_revision");
         verify(sessionMapper).updateStatus(900L, "returned_for_revision");
     }
 
@@ -155,7 +158,7 @@ class LedgerServiceTest {
             entity.setId(901L);
             return 1;
         }).when(qualityLedgerEntryMapper).insert(any(QualityLedgerEntryEntity.class));
-        when(submissionMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
+        when(submissionMutationMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
         when(sessionMapper.updateStatus(900L, "returned_for_revision")).thenReturn(1);
         when(reviewActionMapper.selectNextRoundNo(SUBMISSION_ID)).thenReturn(3);
         when(reviewActionMapper.insert(any(ReviewActionEntity.class))).thenReturn(1);
@@ -328,7 +331,7 @@ class LedgerServiceTest {
             .hasMessageContaining("reason");
 
         verify(qualityLedgerEntryMapper, never()).insert(any());
-        verify(submissionMapper, never()).updateStatus(any(), any());
+        verify(submissionMutationMapper, never()).updateStatus(any(), any());
     }
 
     @Test

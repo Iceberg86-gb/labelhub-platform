@@ -13,6 +13,7 @@ import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
 import com.labelhub.api.module.quality.mapper.ReviewActionMapper;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
+import com.labelhub.api.module.schema.mapper.SubmissionMutationMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
 import com.labelhub.api.module.submission.SubmissionStatusCodes;
@@ -41,6 +42,7 @@ public class LedgerService {
     static final String AI_OVERALL_RECOMMENDATION = "ai_overall_recommendation";
 
     private final SubmissionMapper submissionMapper;
+    private final SubmissionMutationMapper submissionMutationMapper;
     private final TaskMapper taskMapper;
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper;
     private final ReviewActionMapper reviewActionMapper;
@@ -51,6 +53,7 @@ public class LedgerService {
     @Autowired
     public LedgerService(
         SubmissionMapper submissionMapper,
+        SubmissionMutationMapper submissionMutationMapper,
         TaskMapper taskMapper,
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         ReviewActionMapper reviewActionMapper,
@@ -59,6 +62,7 @@ public class LedgerService {
         SessionMapper sessionMapper
     ) {
         this.submissionMapper = submissionMapper;
+        this.submissionMutationMapper = submissionMutationMapper;
         this.taskMapper = taskMapper;
         this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
         this.reviewActionMapper = reviewActionMapper;
@@ -69,12 +73,13 @@ public class LedgerService {
 
     public LedgerService(
         SubmissionMapper submissionMapper,
+        SubmissionMutationMapper submissionMutationMapper,
         TaskMapper taskMapper,
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Clock clock,
         AuditLogService auditLogService
     ) {
-        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, null, clock, auditLogService, null);
+        this(submissionMapper, submissionMutationMapper, taskMapper, qualityLedgerEntryMapper, null, clock, auditLogService, null);
     }
 
     public LedgerService(
@@ -83,7 +88,7 @@ public class LedgerService {
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Clock clock
     ) {
-        this(submissionMapper, taskMapper, qualityLedgerEntryMapper, null, clock, AuditLogService.noop(), null);
+        this(submissionMapper, null, taskMapper, qualityLedgerEntryMapper, null, clock, AuditLogService.noop(), null);
     }
 
     @Transactional
@@ -184,7 +189,7 @@ public class LedgerService {
 
     private void markReturnedForRevision(SubmissionEntity submission) {
         requireOneRow(
-            submissionMapper.updateStatus(submission.getId(), SubmissionStatusCodes.RETURNED_FOR_REVISION),
+            submissionMutationMapper.updateStatus(submission.getId(), SubmissionStatusCodes.RETURNED_FOR_REVISION),
             "mark submission returned for revision"
         );
         if (sessionMapper != null && submission.getSessionId() != null) {
