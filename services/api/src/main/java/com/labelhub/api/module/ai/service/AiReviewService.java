@@ -379,7 +379,7 @@ public class AiReviewService {
         Map<String, Object> input = buildInput(submission, schemaVersion, datasetItem, task);
         String businessPrompt = promptVersion.getContent();
         List<String> dimensions = dimensionsOf(activeRule);
-        BigDecimal threshold = thresholdOf(activeRule);
+        ScoredAiReview contextScore = score(emptyResult(input), activeRule);
         return new InternalAiReviewContextView(
             submissionId,
             internalIdempotencyKey(submissionId, promptVersion.getId(), aiReviewRuleId),
@@ -390,9 +390,9 @@ public class AiReviewService {
             input,
             hash(input),
             dimensions,
-            threshold,
-            scoringPolicy.score(emptyResult(input), dimensions, threshold).rejectFloor(),
-            scoringPolicy.score(emptyResult(input), dimensions, threshold).scoringRuleVersion(),
+            contextScore.passThreshold(),
+            contextScore.rejectThreshold(),
+            contextScore.scoringRuleVersion(),
             businessPrompt,
             PromptTemplate.build(businessPrompt, input, objectMapper)
         );
@@ -432,7 +432,7 @@ public class AiReviewService {
         }
 
         String businessPrompt = promptVersion.getContent();
-        AiCallResult result = internalCommandResult(command);
+        AiCallResult result = internalCommandResult(command, activeRule);
         Map<String, Object> responsePayload = persistedJsonShape(result.output());
         LocalDateTime now = LocalDateTime.now(clock);
         AiCallEntity aiCall = new AiCallEntity();
@@ -452,8 +452,8 @@ public class AiReviewService {
             result.output()
         ));
         aiCall.setResponsePayload(responsePayload);
-        aiCall.setScores(scoreMap(command.dimensionScores(), command.finalScore()));
-        aiCall.setVerdict(command.recommendation());
+        aiCall.setScores(normalizedScoreMap(result));
+        aiCall.setVerdict(result.overallSuggestion());
         aiCall.setTokenInput(command.tokenInput() == null ? 0 : command.tokenInput());
         aiCall.setTokenOutput(command.tokenOutput() == null ? 0 : command.tokenOutput());
         aiCall.setCostDecimal(costCalculator.computeCost(aiCall.getModelName(), command.usage()));
@@ -513,8 +513,7 @@ public class AiReviewService {
     }
 
     private AiCallResult normalizedResult(AiCallResult result, AiReviewRuleEntity activeRule) {
-        List<String> dimensions = dimensionsOf(activeRule);
-        ScoredAiReview score = scoringPolicy.score(result, dimensions, thresholdOf(activeRule));
+        ScoredAiReview score = score(result, activeRule);
         Map<String, Object> output = new LinkedHashMap<>(result.output());
         output.put("overallSuggestion", score.recommendation());
         output.put("confidence", score.finalScore());
@@ -522,6 +521,8 @@ public class AiReviewService {
         output.put("dimensionScores", dimensionScoreMaps(score.dimensionScores()));
         output.put("threshold", score.threshold());
         output.put("rejectFloor", score.rejectFloor());
+        output.put("passThreshold", score.passThreshold());
+        output.put("rejectThreshold", score.rejectThreshold());
         output.put("scoringRuleVersion", score.scoringRuleVersion());
         return new AiCallResult(
             output,
@@ -537,18 +538,17 @@ public class AiReviewService {
         );
     }
 
-    private AiCallResult internalCommandResult(InternalAiReviewResultCommand command) {
+    private AiCallResult internalCommandResult(InternalAiReviewResultCommand command, AiReviewRuleEntity activeRule) {
         List<FieldFinding> findings = command.fieldFindings() == null ? List.of() : command.fieldFindings();
         Map<String, Object> output = command.responsePayload() == null
             ? new LinkedHashMap<>()
             : new LinkedHashMap<>(command.responsePayload());
-        output.put("overallSuggestion", command.recommendation());
         output.put("confidence", command.finalScore());
         output.put("finalScore", command.finalScore());
         output.put("summary", command.summary());
         output.put("dimensionScores", dimensionScoreMaps(command.dimensionScores()));
         output.put("fieldFindings", findings.stream().map(this::fieldFindingMap).toList());
-        return new AiCallResult(
+        AiCallResult agentRawResult = new AiCallResult(
             output,
             command.recommendation(),
             command.finalScore(),
@@ -560,6 +560,7 @@ public class AiReviewService {
             command.latencyMs() == null ? 0 : command.latencyMs(),
             command.rawResponse()
         );
+        return normalizedResult(agentRawResult, activeRule);
     }
 
     private Map<String, Object> aiRequestPayload(
@@ -582,6 +583,8 @@ public class AiReviewService {
         payload.put("finalScore", result.confidence());
         payload.put("threshold", result.output().get("threshold"));
         payload.put("rejectFloor", result.output().get("rejectFloor"));
+        payload.put("passThreshold", result.output().get("passThreshold"));
+        payload.put("rejectThreshold", result.output().get("rejectThreshold"));
         payload.put("scoringRuleVersion", result.output().get("scoringRuleVersion"));
         payload.put("dimensionScores", result.output().getOrDefault("dimensionScores", List.of()));
         payload.put("summary", result.summary());
@@ -615,6 +618,13 @@ public class AiReviewService {
         Map<String, Object> scores = new LinkedHashMap<>();
         scores.put("finalScore", finalScore);
         scores.put("dimensionScores", dimensionScoreMaps(dimensionScores));
+        return scores;
+    }
+
+    private Map<String, Object> normalizedScoreMap(AiCallResult result) {
+        Map<String, Object> scores = new LinkedHashMap<>();
+        scores.put("finalScore", result.confidence());
+        scores.put("dimensionScores", result.output().getOrDefault("dimensionScores", List.of()));
         return scores;
     }
 
@@ -795,10 +805,28 @@ public class AiReviewService {
     }
 
     private BigDecimal thresholdOf(AiReviewRuleEntity rule) {
-        if (rule == null || rule.getThreshold() == null) {
-            return scoringPolicy.score(emptyResult(Map.of()), List.of("overall"), null).threshold();
+        return score(emptyResult(Map.of()), rule).threshold();
+    }
+
+    private ScoredAiReview score(AiCallResult result, AiReviewRuleEntity rule) {
+        return scoringPolicy.score(result, dimensionsOf(rule), passThresholdOf(rule), rejectThresholdOf(rule));
+    }
+
+    private BigDecimal passThresholdOf(AiReviewRuleEntity rule) {
+        if (rule == null) {
+            return null;
+        }
+        if (rule.getPassThreshold() != null) {
+            return rule.getPassThreshold();
         }
         return rule.getThreshold();
+    }
+
+    private BigDecimal rejectThresholdOf(AiReviewRuleEntity rule) {
+        if (rule == null) {
+            return null;
+        }
+        return rule.getRejectThreshold();
     }
 
     private String internalIdempotencyKey(Long submissionId, Long promptVersionId, Long aiReviewRuleId) {
