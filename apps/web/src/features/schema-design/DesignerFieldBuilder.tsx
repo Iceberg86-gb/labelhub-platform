@@ -94,17 +94,20 @@ export function DesignerFieldBuilder({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <Card className="schema-designer-panel schema-material-panel">
+      <Card className="schema-designer-panel schema-material-panel schema-material-panel--rail">
         <div className="schema-designer-panel__header">
           <div>
             <Typography.Title heading={5}>物料区</Typography.Title>
             <Typography.Text type="tertiary">拖入画布创建字段。</Typography.Text>
           </div>
         </div>
+        <div className="field-type-palette__drag-hint">
+          <Typography.Text type="tertiary">按住物料拖到中间画布，蓝色落点出现后松开。</Typography.Text>
+        </div>
         <FieldTypePalette />
       </Card>
 
-      <Card className="schema-designer-panel schema-canvas-panel">
+      <Card className="schema-designer-panel schema-canvas-panel schema-canvas-panel--workspace">
         <div className="schema-designer-panel__header">
           <div>
             <Typography.Title heading={5}>画布</Typography.Title>

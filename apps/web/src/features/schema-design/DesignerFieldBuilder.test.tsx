@@ -98,6 +98,30 @@ describe('DesignerFieldBuilder nested canvas rendering', () => {
     expect(view.html()).toContain('field-list-item--error');
     view.unmount();
   });
+
+  it('exposes the workspace visual hooks for material rail, canvas, and drag feedback', () => {
+    const view = renderClient(
+      <DesignerFieldBuilder
+        fields={makeFields()}
+        onChange={() => {}}
+        onAddField={() => null}
+        selectedStableId="child"
+        onSelect={() => {}}
+        onDelete={() => {}}
+        errors={new Map([['child', [{ fieldPath: 'fields[1].children[0]', stableId: 'child', reason: 'required' }]]])}
+        validationErrorCount={1}
+      />,
+    );
+
+    expect(view.html()).toContain('schema-material-panel schema-material-panel--rail');
+    expect(view.html()).toContain('field-type-palette__drag-hint');
+    expect(view.html()).toContain('schema-canvas-panel schema-canvas-panel--workspace');
+    expect(view.html()).toContain('schema-canvas-dropzone--root');
+    expect(view.html()).toContain('schema-canvas-child-container');
+    expect(view.html()).toContain('schema-canvas-tab-pane__label');
+    expect(view.html()).toContain('field-list-item--selected');
+    view.unmount();
+  });
 });
 
 function makeFields(): SchemaField[] {
