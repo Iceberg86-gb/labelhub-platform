@@ -257,6 +257,12 @@ public class LedgerService {
         if (!"approve".equals(verdict) && !"reject".equals(verdict)) {
             throw new LedgerEntryPayloadInvalidException("payload.verdict must be 'approve' or 'reject'");
         }
+        if ("reject".equals(verdict)) {
+            Object reason = payload.get("reason");
+            if (!(reason instanceof String text) || text.isBlank()) {
+                throw new LedgerEntryPayloadInvalidException("payload.reason is required when verdict is 'reject'");
+            }
+        }
     }
 
     private void validateAiOverallRecommendationPayload(Map<String, Object> payload) {

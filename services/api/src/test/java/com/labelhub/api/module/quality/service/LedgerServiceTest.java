@@ -105,7 +105,12 @@ class LedgerServiceTest {
         when(submissionMapper.updateStatus(SUBMISSION_ID, "returned_for_revision")).thenReturn(1);
         when(sessionMapper.updateStatus(900L, "returned_for_revision")).thenReturn(1);
 
-        ledgerService.createEntry(SUBMISSION_ID, REVIEWER_ID, "reviewer_overall_verdict", Map.of("verdict", "reject"));
+        ledgerService.createEntry(
+            SUBMISSION_ID,
+            REVIEWER_ID,
+            "reviewer_overall_verdict",
+            Map.of("verdict", "reject", "reason", "Needs correction")
+        );
 
         ArgumentCaptor<QualityLedgerEntryEntity> captor = ArgumentCaptor.forClass(QualityLedgerEntryEntity.class);
         verify(qualityLedgerEntryMapper).insert(captor.capture());
@@ -200,6 +205,22 @@ class LedgerServiceTest {
         )).isInstanceOf(LedgerEntryPayloadInvalidException.class);
 
         verify(qualityLedgerEntryMapper, never()).insert(any());
+    }
+
+    @Test
+    void createEntry_rejects_reject_verdict_without_non_blank_reason() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+
+        assertThatThrownBy(() -> ledgerService.createEntry(
+            SUBMISSION_ID,
+            REVIEWER_ID,
+            "reviewer_overall_verdict",
+            Map.of("verdict", "reject", "reason", " ")
+        )).isInstanceOf(LedgerEntryPayloadInvalidException.class)
+            .hasMessageContaining("reason");
+
+        verify(qualityLedgerEntryMapper, never()).insert(any());
+        verify(submissionMapper, never()).updateStatus(any(), any());
     }
 
     @Test
