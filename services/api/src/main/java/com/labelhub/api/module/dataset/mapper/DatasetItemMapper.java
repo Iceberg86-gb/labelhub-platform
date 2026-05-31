@@ -1,9 +1,11 @@
 package com.labelhub.api.module.dataset.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import java.util.List;
+import java.util.Map;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Result;
@@ -66,4 +68,35 @@ public interface DatasetItemMapper extends BaseMapper<DatasetItemEntity> {
         """)
     @ResultMap("datasetItemResultMap")
     List<DatasetItemEntity> selectByIdsOrdered(@Param("ids") List<Long> ids);
+
+    @Select("""
+        SELECT id, dataset_id, task_id, ordinal, item_payload, item_hash, status, created_at
+        FROM dataset_items
+        WHERE dataset_id = #{datasetId}
+          AND task_id = #{taskId}
+        ORDER BY ordinal ASC, id ASC
+        """)
+    @ResultMap("datasetItemResultMap")
+    IPage<DatasetItemEntity> selectPageByDataset(
+        IPage<DatasetItemEntity> page,
+        @Param("datasetId") Long datasetId,
+        @Param("taskId") Long taskId
+    );
+
+    @Update("""
+        UPDATE dataset_items
+        SET item_payload = #{itemPayload,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler},
+            item_hash = #{itemHash}
+        WHERE id = #{id}
+          AND dataset_id = #{datasetId}
+          AND task_id = #{taskId}
+          AND status = 'available'
+        """)
+    int updatePayloadIfAvailable(
+        @Param("id") Long id,
+        @Param("datasetId") Long datasetId,
+        @Param("taskId") Long taskId,
+        @Param("itemPayload") Map<String, Object> itemPayload,
+        @Param("itemHash") String itemHash
+    );
 }
