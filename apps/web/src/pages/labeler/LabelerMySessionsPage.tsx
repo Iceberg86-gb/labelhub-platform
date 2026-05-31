@@ -31,13 +31,13 @@ function formatDateTime(value?: string) {
     : '—';
 }
 
-function statusColor(status: LabelerSessionWorkStatus) {
-  if (status === 'in_progress') return 'blue';
-  if (status === 'submitted') return 'teal';
-  if (status === 'approved') return 'green';
-  if (status === 'rejected') return 'red';
-  if (status === 'returned_for_revision') return 'amber';
-  return 'grey';
+function statusTone(status: LabelerSessionWorkStatus) {
+  if (status === 'in_progress') return 'accent';
+  if (status === 'submitted') return 'info';
+  if (status === 'approved') return 'success';
+  if (status === 'rejected') return 'danger';
+  if (status === 'returned_for_revision') return 'warning';
+  return 'neutral';
 }
 
 export function LabelerMySessionsPage() {
@@ -75,13 +75,13 @@ export function LabelerMySessionsPage() {
       {
         title: 'Schema',
         width: 130,
-        render: (_: unknown, record: Session) => <Tag color="blue">Schema #{record.schemaVersionId}</Tag>,
+        render: (_: unknown, record: Session) => <Tag className="semantic-tag semantic-tag--accent">Schema #{record.schemaVersionId}</Tag>,
       },
       {
         title: '状态',
         width: 110,
         render: (_: unknown, record: Session) => (
-          <Tag color={statusColor(record.workStatus)}>{LABELER_WORK_STATUS_LABELS[record.workStatus]}</Tag>
+          <Tag className={`semantic-tag semantic-tag--${statusTone(record.workStatus)}`}>{LABELER_WORK_STATUS_LABELS[record.workStatus]}</Tag>
         ),
       },
       {

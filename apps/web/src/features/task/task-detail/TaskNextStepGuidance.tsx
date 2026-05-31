@@ -23,14 +23,14 @@ type TaskNextStepGuidanceProps = {
 
 function statusTag(status: SetupStep['status']) {
   if (status === 'done') {
-    return <Tag color="green">已完成</Tag>;
+    return <Tag className="semantic-tag semantic-tag--success">已完成</Tag>;
   }
 
   if (status === 'blocked') {
     return <Tag className="task-setup-step__blocked-tag" prefixIcon={<IconLockStroked />}>待前置</Tag>;
   }
 
-  return <Tag color="blue">待处理</Tag>;
+  return <Tag className="semantic-tag semantic-tag--accent">待处理</Tag>;
 }
 
 export function TaskNextStepGuidance({
@@ -80,7 +80,7 @@ export function TaskNextStepGuidance({
           <Typography.Title heading={5}>任务设置进度</Typography.Title>
           <Typography.Text type="tertiary">完成 Schema、数据集、发布三步后,labeler 才能开始领取。</Typography.Text>
         </div>
-        <Tag color="blue">3 步</Tag>
+        <Tag className="semantic-tag semantic-tag--accent">3 步</Tag>
       </div>
 
       <div className="task-setup-guidance__steps">

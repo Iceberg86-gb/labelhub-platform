@@ -8,7 +8,6 @@ import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submis
 import {
   REVIEWER_VERDICT_LABELS,
   REVIEW_LEVEL_LABELS,
-  VERDICT_STATUS_COLORS,
   VERDICT_STATUS_LABELS,
   type QualityLedgerEntry,
   type ReviewLevel,
@@ -218,8 +217,8 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
             <IconPlusCircle /> Ledger #{entry.id}
           </Typography.Text>
           <Space>
-            <Tag color="blue" size="small">AI</Tag>
-            <Tag color={severityColor(payload.severity)} size="small">{severityLabel(payload.severity)}</Tag>
+            <Tag className="semantic-tag semantic-tag--accent" size="small">AI</Tag>
+            <Tag className={`semantic-tag semantic-tag--${severityTone(payload.severity)}`} size="small">{severityLabel(payload.severity)}</Tag>
           </Space>
         </div>
         <Typography.Text type="tertiary">
@@ -247,7 +246,7 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
         <Typography.Text strong>
           <IconPlusCircle /> Ledger #{entry.id}
         </Typography.Text>
-        <Tag color={verdict === 'approve' ? 'green' : 'red'}>{REVIEWER_VERDICT_LABELS[verdict]}</Tag>
+        <Tag className={`semantic-tag semantic-tag--${verdict === 'approve' ? 'success' : 'danger'}`}>{REVIEWER_VERDICT_LABELS[verdict]}</Tag>
       </div>
       <Typography.Text type="tertiary">
         {entry.actorType} #{entry.actorUserId} · {formatDateTime(entry.createdAt)}
@@ -260,10 +259,10 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
 type ReviewerVerdictLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { verdict: ReviewerVerdict }>;
 type AiFieldFindingLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { fieldPath: string }>;
 
-function severityColor(severity: AiFieldFindingLedgerPayload['severity']) {
-  if (severity === 'error') return 'red';
-  if (severity === 'warning') return 'orange';
-  return 'blue';
+function severityTone(severity: AiFieldFindingLedgerPayload['severity']) {
+  if (severity === 'error') return 'danger';
+  if (severity === 'warning') return 'warning';
+  return 'accent';
 }
 
 function severityLabel(severity: AiFieldFindingLedgerPayload['severity']) {
@@ -273,7 +272,13 @@ function severityLabel(severity: AiFieldFindingLedgerPayload['severity']) {
 }
 
 function VerdictTag({ status }: { status: VerdictStatus }) {
-  return <Tag color={VERDICT_STATUS_COLORS[status]}>{VERDICT_STATUS_LABELS[status]}</Tag>;
+  return <Tag className={`semantic-tag semantic-tag--${verdictStatusTone(status)}`}>{VERDICT_STATUS_LABELS[status]}</Tag>;
+}
+
+function verdictStatusTone(status: VerdictStatus) {
+  if (status === 'approved') return 'success';
+  if (status === 'rejected') return 'danger';
+  return 'warning';
 }
 
 function ReviewLevelTag({ reviewLevel }: { reviewLevel: ReviewLevel }) {

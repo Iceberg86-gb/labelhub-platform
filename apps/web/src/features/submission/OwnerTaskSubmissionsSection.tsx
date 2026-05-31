@@ -43,7 +43,7 @@ export function OwnerTaskSubmissionsSection({ taskId }: OwnerTaskSubmissionsSect
       },
       { title: 'Labeler', dataIndex: 'labelerId', width: 110, render: (value: number) => `#${value}` },
       { title: 'Schema', dataIndex: 'schemaVersionId', width: 110, render: (value: number) => `#${value}` },
-      { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag color="green">{statusLabel(value)}</Tag> },
+      { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag className="semantic-tag semantic-tag--success">{statusLabel(value)}</Tag> },
       { title: '提交时间', dataIndex: 'createdAt', width: 150, render: (value: string) => formatDateTime(value) },
       {
         title: '操作',

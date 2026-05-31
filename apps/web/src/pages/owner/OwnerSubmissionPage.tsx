@@ -85,8 +85,8 @@ export function OwnerSubmissionPage() {
             Submission #{submissionId}
           </Typography.Title>
           <Space wrap>
-            <Tag color="purple">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
-            <Tag color="blue">Task #{taskId}</Tag>
+            <Tag className="semantic-tag semantic-tag--info">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
+            <Tag className="semantic-tag semantic-tag--accent">Task #{taskId}</Tag>
           </Space>
         </div>
         <Button

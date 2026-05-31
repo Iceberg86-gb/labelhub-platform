@@ -59,7 +59,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
         dataIndex: 'importStatus',
         width: 110,
         render: (value: string) => (
-          <Tag color={value === 'completed' ? 'green' : value === 'failed' ? 'red' : 'blue'}>
+          <Tag className={`semantic-tag semantic-tag--${value === 'completed' ? 'success' : value === 'failed' ? 'danger' : 'accent'}`}>
             {DATASET_IMPORT_STATUS_LABELS[value] ?? value}
           </Tag>
         ),
@@ -68,7 +68,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
         title: '当前',
         width: 110,
         render: (_: unknown, record: Dataset) =>
-          record.id === task.currentDatasetId ? <Tag color="green">当前数据集</Tag> : <Typography.Text type="tertiary">-</Typography.Text>,
+          record.id === task.currentDatasetId ? <Tag className="semantic-tag semantic-tag--success">当前数据集</Tag> : <Typography.Text type="tertiary">-</Typography.Text>,
       },
       {
         title: '操作',
@@ -93,7 +93,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
         title: '状态',
         dataIndex: 'status',
         width: 100,
-        render: (value: string) => <Tag color={value === 'available' ? 'green' : 'grey'}>{value}</Tag>,
+        render: (value: string) => <Tag className={`semantic-tag semantic-tag--${value === 'available' ? 'success' : 'neutral'}`}>{value}</Tag>,
       },
       {
         title: '题目预览',
@@ -140,7 +140,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
 
   function renderAction(record: Dataset) {
     if (record.id === task.currentDatasetId) {
-      return <Tag color="green">已为当前</Tag>;
+      return <Tag className="semantic-tag semantic-tag--success">已为当前</Tag>;
     }
     const button = (
       <Button
@@ -225,7 +225,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
           <Typography.Title heading={5}>数据集</Typography.Title>
           <Typography.Text type="tertiary">上传 JSON / JSONL / Excel 文件后,显式选择当前数据集。</Typography.Text>
         </div>
-        <Tag color={task.currentDatasetId ? 'green' : 'grey'}>
+        <Tag className={`semantic-tag semantic-tag--${task.currentDatasetId ? 'success' : 'neutral'}`}>
           {task.currentDatasetId ? `当前: Dataset #${currentDataset?.id ?? task.currentDatasetId}` : '当前: 未设置'}
         </Tag>
       </div>

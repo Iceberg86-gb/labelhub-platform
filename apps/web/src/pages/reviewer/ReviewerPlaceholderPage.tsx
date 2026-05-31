@@ -13,7 +13,7 @@ export function ReviewerPlaceholderPage() {
   return (
     <section className="placeholder-page" aria-label="Reviewer placeholder">
       <div className="placeholder-hero">
-        <Tag color="amber">REVIEWER</Tag>
+        <Tag className="semantic-tag semantic-tag--warning">REVIEWER</Tag>
         <Typography.Title heading={3} className="page-title">
           审核工作台正在开发中
         </Typography.Title>

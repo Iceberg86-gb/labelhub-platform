@@ -59,7 +59,7 @@ export function DatasetItemContextCard({ itemPayload, sourceLabel = 'none' }: Da
           <Typography.Text type="tertiary">请根据领取时冻结的样本内容完成下方评分。</Typography.Text>
         </div>
         {sourceLabel !== 'none' ? (
-          <Tag color={sourceLabel === 'claimSnapshot' ? 'blue' : 'orange'}>
+          <Tag className={`semantic-tag semantic-tag--${sourceLabel === 'claimSnapshot' ? 'accent' : 'warning'}`}>
             {sourceLabel === 'claimSnapshot' ? '领取快照' : '实时数据 fallback'}
           </Tag>
         ) : null}
@@ -101,7 +101,7 @@ function renderKnownSections(payload: Record<string, unknown>) {
       <Space key="tags" spacing={4} wrap>
         <Typography.Text type="tertiary">标签</Typography.Text>
         {tags.map((tag) => (
-          <Tag key={tag} color="green">
+          <Tag key={tag} className="semantic-tag semantic-tag--success">
             {tag}
           </Tag>
         ))}

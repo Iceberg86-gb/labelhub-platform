@@ -215,7 +215,7 @@ export function LabelerMarketplacePage() {
                 <div className="marketplace-task-card__main">
                   <div className="marketplace-task-card__heading">
                     <Typography.Title heading={5}>{record.title}</Typography.Title>
-                    <Tag color="green">{record.availableItemCount} 可领取</Tag>
+                    <Tag className="semantic-tag semantic-tag--success">{record.availableItemCount} 可领取</Tag>
                   </div>
                   <Typography.Paragraph ellipsis={{ rows: 2 }} type="tertiary">
                     {record.description || '暂无描述'}
@@ -223,7 +223,7 @@ export function LabelerMarketplacePage() {
                   {record.tags && record.tags.length > 0 ? (
                     <Space wrap spacing={4}>
                       {record.tags.slice(0, 4).map((item) => (
-                        <Tag key={item} color="blue">
+                        <Tag key={item} className="semantic-tag semantic-tag--accent">
                           {item}
                         </Tag>
                       ))}

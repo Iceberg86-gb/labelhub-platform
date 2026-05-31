@@ -14,7 +14,7 @@ export function FieldTypePicker({ onPick, excludeTypes = [] }: FieldTypePickerPr
     <div className="field-type-picker">
       {types.map((type) => (
         <Button key={type} className="field-type-button" onClick={() => onPick(type)}>
-          <Tag color="blue" size="small">
+          <Tag className="semantic-tag semantic-tag--accent" size="small">
             {SCHEMA_FIELD_TYPE_LABELS[type]}
           </Tag>
         </Button>

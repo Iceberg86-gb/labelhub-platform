@@ -2,9 +2,7 @@ import { Banner, Empty, SideSheet, Spin, Tag, Typography } from '@douyinfe/semi-
 import type { ReactNode } from 'react';
 import type { AiReviewResult, FieldFinding } from '../../entities/ai/aiTypes';
 import {
-  OVERALL_SUGGESTION_COLORS,
   OVERALL_SUGGESTION_LABELS,
-  SEVERITY_COLORS,
   SEVERITY_LABELS,
 } from '../../entities/ai/aiTypes';
 import { TruncatedHash } from '../../shared/ui/TruncatedHash';
@@ -76,7 +74,7 @@ function AiReviewResultPanel({ result }: { result: AiReviewResult }) {
         <MetaItem
           label="AI 建议"
           value={
-            <Tag color={OVERALL_SUGGESTION_COLORS[result.overallSuggestion]}>
+            <Tag className={`semantic-tag semantic-tag--${suggestionTone(result.overallSuggestion)}`}>
               {OVERALL_SUGGESTION_LABELS[result.overallSuggestion]}
             </Tag>
           }
@@ -141,13 +139,25 @@ function FindingItem({ finding }: { finding: FieldFinding }) {
     <div className="ai-finding-item">
       <div className="ai-finding-item__head">
         <Typography.Text className="mono-value" strong>{finding.fieldPath}</Typography.Text>
-        <Tag color={SEVERITY_COLORS[finding.severity]}>{SEVERITY_LABELS[finding.severity]}</Tag>
+        <Tag className={`semantic-tag semantic-tag--${severityTone(finding.severity)}`}>{SEVERITY_LABELS[finding.severity]}</Tag>
       </div>
       {finding.label ? <Typography.Text type="tertiary">{finding.label}</Typography.Text> : null}
       <Typography.Paragraph>{finding.finding}</Typography.Paragraph>
       {finding.confidence ? <Typography.Text type="tertiary">confidence: {finding.confidence}</Typography.Text> : null}
     </div>
   );
+}
+
+function suggestionTone(suggestion: AiReviewResult['overallSuggestion']) {
+  if (suggestion === 'pass') return 'success';
+  if (suggestion === 'reject') return 'danger';
+  return 'warning';
+}
+
+function severityTone(severity: FieldFinding['severity']) {
+  if (severity === 'error') return 'danger';
+  if (severity === 'warning') return 'warning';
+  return 'accent';
 }
 
 function formatDateTime(value?: string | null) {

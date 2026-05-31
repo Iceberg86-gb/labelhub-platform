@@ -31,14 +31,14 @@ function CurrentVersionCell({ schema }: { schema: LabelSchema }) {
   const versionQuery = useSchemaVersionQuery(schema.id, schema.currentVersionId ?? null);
 
   if (!schema.currentVersionId) {
-    return <Tag color="grey">未发布</Tag>;
+    return <Tag className="semantic-tag semantic-tag--neutral">未发布</Tag>;
   }
 
   if (versionQuery.isLoading) {
     return <Typography.Text type="tertiary">加载中</Typography.Text>;
   }
 
-  return <Tag color="blue">v{versionQuery.data?.versionNumber ?? schema.currentVersionId}</Tag>;
+  return <Tag className="semantic-tag semantic-tag--accent">v{versionQuery.data?.versionNumber ?? schema.currentVersionId}</Tag>;
 }
 
 export function OwnerSchemasListPage() {

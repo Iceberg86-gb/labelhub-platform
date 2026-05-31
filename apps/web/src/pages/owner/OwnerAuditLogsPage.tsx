@@ -99,7 +99,7 @@ export function OwnerAuditLogsPage() {
         render: (_: unknown, log: AuditLog) => (
           <span className="audit-action-cell">
             <Tooltip content={<code>{log.action}</code>}>
-              <Tag color="blue">{ACTION_LABELS.get(log.action) ?? log.action}</Tag>
+              <Tag className="semantic-tag semantic-tag--accent">{ACTION_LABELS.get(log.action) ?? log.action}</Tag>
             </Tooltip>
           </span>
         ),

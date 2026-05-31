@@ -213,6 +213,41 @@ a {
   color: var(--color-text-secondary);
 }
 
+.semantic-tag {
+  border: 0;
+  font-weight: var(--font-weight-table-header);
+}
+
+.semantic-tag--accent {
+  background: var(--color-accent-blue-soft);
+  color: var(--color-accent-blue);
+}
+
+.semantic-tag--info {
+  background: var(--color-info-soft);
+  color: var(--color-info);
+}
+
+.semantic-tag--success {
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.semantic-tag--warning {
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.semantic-tag--danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.semantic-tag--neutral {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+}
+
 .truncated-hash {
   display: inline-flex;
   max-width: 100%;
