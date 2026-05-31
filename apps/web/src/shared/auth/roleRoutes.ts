@@ -9,5 +9,5 @@ export const roleRoutePriority = [
 ] as const;
 
 export function defaultPathForRoles(roles: string[]) {
-  return roleRoutePriority.find((item) => roles.includes(item.role))?.path ?? '/forbidden';
+  return roles.length ? '/home' : '/forbidden';
 }
