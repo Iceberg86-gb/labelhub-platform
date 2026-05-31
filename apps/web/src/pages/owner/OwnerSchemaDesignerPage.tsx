@@ -50,9 +50,6 @@ export function OwnerSchemaDesignerPage() {
         previous && containsFieldStableId(schemaFields(currentVersionQuery.document), previous) ? previous : null,
       );
       setIsDirty(false);
-      if (import.meta.env.DEV) {
-        console.log('SchemaDesigner current document', currentVersionQuery.document);
-      }
     }
   }, [currentVersionQuery.document, currentVersionQuery.isLoading]);
 

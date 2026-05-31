@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 import type { AnswerPayload } from '../../../../entities/submission/answerPayload';
 import { SchemaFormilyRenderer } from '../SchemaFormilyRenderer';
@@ -20,9 +20,53 @@ export function createEmptyPreviewPayload(): AnswerPayload {
  */
 export function SchemaFormilyPreviewPanel({ schemaFields }: SchemaFormilyPreviewPanelProps) {
   const [previewValue, setPreviewValue] = useState<AnswerPayload>(() => createEmptyPreviewPayload());
+  const previewValueRef = useRef(previewValue);
+  const pendingPreviewValueRef = useRef<AnswerPayload | null>(null);
+  const previewUpdateTimerRef = useRef<number | null>(null);
   const fieldCount = schemaFields.length;
-  const resetPreview = () => setPreviewValue(createEmptyPreviewPayload());
+  const resetPreview = () => {
+    const emptyPayload = createEmptyPreviewPayload();
+    pendingPreviewValueRef.current = null;
+    if (previewUpdateTimerRef.current != null) {
+      window.clearTimeout(previewUpdateTimerRef.current);
+      previewUpdateTimerRef.current = null;
+    }
+    previewValueRef.current = emptyPayload;
+    setPreviewValue(emptyPayload);
+  };
   const subtitle = useMemo(() => (fieldCount === 0 ? '添加字段后这里会展示运行时表单。' : `${fieldCount} 个字段 · Formily 运行时预览`), [fieldCount]);
+
+  useEffect(() => {
+    previewValueRef.current = previewValue;
+  }, [previewValue]);
+
+  useEffect(() => () => {
+    if (previewUpdateTimerRef.current != null) {
+      window.clearTimeout(previewUpdateTimerRef.current);
+    }
+  }, []);
+
+  const handlePreviewChange = useCallback((nextValue: AnswerPayload) => {
+    if (samePreviewPayload(previewValueRef.current, nextValue)) {
+      return;
+    }
+
+    pendingPreviewValueRef.current = nextValue;
+    if (previewUpdateTimerRef.current != null) {
+      return;
+    }
+
+    previewUpdateTimerRef.current = window.setTimeout(() => {
+      previewUpdateTimerRef.current = null;
+      const pendingValue = pendingPreviewValueRef.current;
+      pendingPreviewValueRef.current = null;
+      if (!pendingValue || samePreviewPayload(previewValueRef.current, pendingValue)) {
+        return;
+      }
+      previewValueRef.current = pendingValue;
+      setPreviewValue(pendingValue);
+    }, 0);
+  }, []);
 
   return (
     <aside className="designer-preview-panel" aria-label="Formily schema preview">
@@ -40,9 +84,13 @@ export function SchemaFormilyPreviewPanel({ schemaFields }: SchemaFormilyPreview
           schemaFields={schemaFields}
           value={previewValue}
           readOnly={false}
-          onChange={setPreviewValue}
+          onChange={handlePreviewChange}
         />
       </div>
     </aside>
   );
+}
+
+function samePreviewPayload(left: AnswerPayload, right: AnswerPayload): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
