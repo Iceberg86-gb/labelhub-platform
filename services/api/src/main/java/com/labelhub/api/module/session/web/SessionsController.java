@@ -4,6 +4,7 @@ import com.labelhub.api.generated.model.Draft;
 import com.labelhub.api.generated.model.PagedSessions;
 import com.labelhub.api.generated.model.SaveDraftRequest;
 import com.labelhub.api.generated.model.SessionDetail;
+import com.labelhub.api.generated.model.LabelerSessionWorkStatus;
 import com.labelhub.api.generated.model.SessionStatus;
 import com.labelhub.api.generated.model.Submission;
 import com.labelhub.api.generated.model.SubmitSessionRequest;
@@ -67,11 +68,14 @@ public class SessionsController implements SessionsApi {
     public ResponseEntity<PagedSessions> listMySessions(
         @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
         @RequestParam(value = "size", required = false, defaultValue = "20") Integer size,
-        @RequestParam(value = "status", required = false) SessionStatus status
+        @RequestParam(value = "status", required = false) SessionStatus status,
+        @RequestParam(value = "workStatus", required = false) LabelerSessionWorkStatus workStatus
     ) {
         String statusFilter = status == null ? null : status.getValue();
+        String workStatusFilter = workStatus == null ? null : workStatus.getValue();
         return ResponseEntity.ok(dtoMapper.toPagedSessions(
-            sessionService.listMySessions(currentUserId(), statusFilter, page, size)
+            sessionService.listMySessions(currentUserId(), statusFilter, workStatusFilter, page, size),
+            sessionService.listMySessionWorkStatusCounts(currentUserId())
         ));
     }
 

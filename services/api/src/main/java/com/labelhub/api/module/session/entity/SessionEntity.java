@@ -20,6 +20,10 @@ public class SessionEntity {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> claimSnapshot;
     private String status;
+    @TableField(exist = false)
+    private String workStatus;
+    @TableField(exist = false)
+    private String finalVerdict;
     private LocalDateTime claimedAt;
     private LocalDateTime submittedAt;
 
@@ -37,6 +41,10 @@ public class SessionEntity {
     public void setClaimSnapshot(Map<String, Object> claimSnapshot) { this.claimSnapshot = claimSnapshot; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getWorkStatus() { return workStatus; }
+    public void setWorkStatus(String workStatus) { this.workStatus = workStatus; }
+    public String getFinalVerdict() { return finalVerdict; }
+    public void setFinalVerdict(String finalVerdict) { this.finalVerdict = finalVerdict; }
     public LocalDateTime getClaimedAt() { return claimedAt; }
     public void setClaimedAt(LocalDateTime claimedAt) { this.claimedAt = claimedAt; }
     public LocalDateTime getSubmittedAt() { return submittedAt; }
