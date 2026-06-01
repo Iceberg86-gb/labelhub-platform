@@ -1270,31 +1270,6 @@ a {
   gap: var(--space-20);
 }
 
-.role-admin-panel {
-  display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(180px, 240px) auto auto;
-  gap: var(--space-16);
-  align-items: end;
-  padding: var(--space-20);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-card);
-  background: var(--color-main-surface);
-}
-
-.role-admin-field,
-.role-admin-switch {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-small);
-}
-
-.role-admin-switch {
-  align-items: flex-start;
-  justify-content: flex-end;
-}
-
 .role-admin-result {
   display: flex;
   flex-wrap: wrap;
@@ -1320,6 +1295,21 @@ a {
 .role-admin-user-cell {
   display: grid;
   gap: var(--space-4);
+}
+
+.role-admin-role-control,
+.role-admin-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.role-admin-role-select {
+  width: 160px;
+}
+
+.role-admin-actions {
+  gap: var(--space-8);
 }
 
 @media (max-width: 960px) {
@@ -1374,9 +1364,6 @@ a {
     justify-self: center;
   }
 
-  .role-admin-panel {
-    grid-template-columns: 1fr;
-  }
 }
 
 .tasks-page {
