@@ -9,6 +9,7 @@ import { defaultPathForRoles } from '../shared/auth/roleRoutes';
 import { LoginPage } from '../pages/login/LoginPage';
 import { RegisterPage } from '../pages/register/RegisterPage';
 import { HomePage } from '../pages/home/HomePage';
+import { UserManagementPage } from '../pages/admin/UserManagementPage';
 import { UserRoleGrantPage } from '../pages/admin/UserRoleGrantPage';
 import { OwnerTasksListPage } from '../pages/owner/OwnerTasksListPage';
 import { OwnerTaskDetailPage } from '../pages/owner/OwnerTaskDetailPage';
@@ -155,6 +156,16 @@ export const router = createBrowserRouter(
             <RequireAuth>
               <RequireRole roles={['OWNER']}>
                 <OwnerAuditLogsPage />
+              </RequireRole>
+            </RequireAuth>
+          ),
+        },
+        {
+          path: 'admin/users',
+          element: (
+            <RequireAuth>
+              <RequireRole roles={['OWNER']}>
+                <UserManagementPage />
               </RequireRole>
             </RequireAuth>
           ),
