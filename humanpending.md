@@ -474,3 +474,8 @@
 - [ ] UserAuth-merged 封板:UI 视觉(注册页/授角色页/用户列表/登录入口)系 owner 手验(D-口径),审计师无 browser 未核视觉
 - [ ] UserAuth-merged 封板:运行态 HTTP(注册201/列表鉴权403/无密码字段)系 owner curl 输出(D-口径采信),与静态 grep 一致
 - [ ] UserAuth-merged 流程偏差:8 个 commit 直接滚 main 未走 feature 分支、范围由"注册+授角色"蔓延至含"登录入口+用户列表",事后以 9b1ca0c 一次性合并补审 PASS;下批起强制 feature 分支审后再 merge
+- [ ] UserAuth-2 封板:Owner-only 账号软删除(UPDATE status='deleted'),审计 grep 实证 S1-S7 全 PASS,merge commit 58008a5 入 main
+- [ ] UserAuth-2 封板:后端测试 664 pass 系 owner 提权复跑(D-口径采信),审计师沙箱无 mvn 未独立复跑
+- [ ] UserAuth-2 封板:/admin/users 页 Owner 可见性 + 软删二次确认弹窗 + 按钮交互 UI 视觉手验为 D-口径未闭项,待 owner 浏览器确认
+- [ ] UserAuth-2 已知限制(S7):软删非紧急封禁,被删账号旧 JWT 至过期(≤24h)仍有效;即时阻断/会话治理归 UserAuth-session 后续批次
+- [ ] UserAuth-2 流程改进:全程 feature 分支 feat/userauth2-soft-delete 实现、审计 PASS 后 --no-ff 合入 main,纠正上批"8 commit 滚 main"偏差
