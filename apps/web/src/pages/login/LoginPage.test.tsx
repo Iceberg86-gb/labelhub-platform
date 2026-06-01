@@ -66,4 +66,11 @@ describe('LoginPage design shell', () => {
     expect(html).toContain('href="/register"');
     expect(html).toContain('创建新账号');
   });
+
+  it('uses account wording for the username field', () => {
+    const html = renderToString(<LoginPage />);
+
+    expect(html).toContain('账号');
+    expect(html).not.toContain('用户名');
+  });
 });

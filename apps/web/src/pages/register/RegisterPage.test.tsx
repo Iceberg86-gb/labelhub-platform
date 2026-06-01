@@ -78,7 +78,8 @@ describe('RegisterPage design shell', () => {
   it('shows one account field instead of separate username and display name fields', () => {
     const html = renderToString(<RegisterPage />);
 
-    expect(html).toContain('账户');
+    expect(html).toContain('账号');
+    expect(html).not.toContain('账户');
     expect(html).not.toContain('用户名');
     expect(html).not.toContain('显示名');
   });
