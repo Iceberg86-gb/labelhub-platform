@@ -319,14 +319,19 @@ a {
 }
 
 .app-sidebar {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 1;
   min-width: 0;
+  height: 100vh;
+  max-height: 100vh;
+  align-self: start;
   background: var(--color-sidebar-gradient);
-  overflow: hidden;
+  overflow: hidden auto;
   transition:
     width 180ms ease,
     transform 180ms ease;
+  scrollbar-gutter: stable;
 }
 
 .app-sidebar__header {
@@ -2976,6 +2981,9 @@ a {
     bottom: 0;
     left: 0;
     width: min(288px, calc(100vw - var(--space-32)));
+    height: auto;
+    max-height: none;
+    align-self: auto;
     transform: translateX(-100%);
     box-shadow: var(--shadow-modal);
   }
