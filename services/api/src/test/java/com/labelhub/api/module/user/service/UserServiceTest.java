@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class UserServiceTest {
@@ -18,7 +20,7 @@ class UserServiceTest {
 
     @Test
     void find_by_username_returns_empty_when_user_missing() {
-        when(userMapper.selectByUsername("missing")).thenReturn(null);
+        when(userMapper.selectActiveByUsername("missing")).thenReturn(null);
 
         Optional<UserEntity> result = userService.findByUsername("missing");
 
@@ -31,11 +33,28 @@ class UserServiceTest {
         user.setId(1001L);
         user.setUsername("owner_demo");
         user.setStatus("active");
-        when(userMapper.selectByUsername("owner_demo")).thenReturn(user);
+        when(userMapper.selectActiveByUsername("owner_demo")).thenReturn(user);
 
         Optional<UserEntity> result = userService.findByUsername("owner_demo");
 
         assertThat(result).contains(user);
+    }
+
+    @Test
+    void find_by_username_uses_active_lookup_when_deleted_rows_share_username() {
+        UserEntity activeUser = new UserEntity();
+        activeUser.setId(1022L);
+        activeUser.setUsername("774670647");
+        activeUser.setStatus("active");
+        when(userMapper.selectActiveByUsername("774670647")).thenReturn(activeUser);
+
+        Optional<UserEntity> result = userService.findByUsername("774670647");
+
+        assertThat(result).contains(activeUser);
+        assertThat(result.get().getId()).isEqualTo(1022L);
+        assertThat(result.get().getStatus()).isEqualTo("active");
+        verify(userMapper).selectActiveByUsername("774670647");
+        verify(userMapper, never()).selectByUsername("774670647");
     }
 
     @Test
