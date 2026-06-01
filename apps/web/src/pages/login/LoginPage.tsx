@@ -1,6 +1,7 @@
 import { Button, Form, Toast, Typography } from '@douyinfe/semi-ui';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import welcomeHeroUrl from '../../../../../docs/design-assets/hero/welcome-hero.svg';
 import { useLogin, type LoginValues } from '../../features/auth/login/useLogin';
 import { clearSession } from '../../shared/api/auth-storage';
@@ -93,6 +94,10 @@ export function LoginPage() {
             登录
           </Button>
         </Form>
+
+        <Typography.Text className="register-login-link" type="tertiary">
+          还没有账号？<Link to="/register">创建新账号</Link>
+        </Typography.Text>
 
         <div className="login-demo-hint" aria-label="Demo accounts">
           <Typography.Text strong>演示账号</Typography.Text>

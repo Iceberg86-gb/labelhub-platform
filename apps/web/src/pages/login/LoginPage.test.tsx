@@ -43,6 +43,10 @@ vi.mock('../../shared/api/auth-storage', () => ({
   clearSession: vi.fn(),
 }));
 
+vi.mock('react-router-dom', () => ({
+  Link: ({ children, to }: { children?: ReactNode; to: string }) => <a href={to}>{children}</a>,
+}));
+
 import { LoginPage } from './LoginPage';
 
 describe('LoginPage design shell', () => {
@@ -54,5 +58,12 @@ describe('LoginPage design shell', () => {
     expect(html).toContain('login-hero');
     expect(html).toContain('welcome-hero');
     expect(html).toContain('login-card');
+  });
+
+  it('links to account registration from the login card', () => {
+    const html = renderToString(<LoginPage />);
+
+    expect(html).toContain('href="/register"');
+    expect(html).toContain('创建新账号');
   });
 });
