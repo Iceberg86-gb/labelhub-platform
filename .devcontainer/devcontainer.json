@@ -23,6 +23,6 @@
       }
     }
   },
-  "postCreateCommand": "corepack enable && corepack prepare pnpm@9.15.0 --activate && mvn -pl services/api dependency:go-offline",
+  "postCreateCommand": "pnpm --version && mvn -pl services/api dependency:go-offline",
   "remoteUser": "vscode"
 }
