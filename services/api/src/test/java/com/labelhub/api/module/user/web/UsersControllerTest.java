@@ -28,4 +28,14 @@ class UsersControllerTest {
         assertThat(preAuthorize).isNotNull();
         assertThat(preAuthorize.value()).isEqualTo("hasAnyRole('OWNER','SENIOR_REVIEWER')");
     }
+
+    @Test
+    void deleteUserEndpointRequiresOwnerOnly() throws Exception {
+        Method method = UsersController.class.getMethod("deleteUser", Long.class);
+
+        PreAuthorize preAuthorize = method.getAnnotation(PreAuthorize.class);
+
+        assertThat(preAuthorize).isNotNull();
+        assertThat(preAuthorize.value()).isEqualTo("hasRole('OWNER')");
+    }
 }

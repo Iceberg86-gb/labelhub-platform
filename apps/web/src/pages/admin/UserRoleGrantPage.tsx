@@ -45,7 +45,7 @@ export function UserRoleGrantPage() {
         userId: user.id,
         body: { role: targetRole, enabled },
       });
-      Toast.success(enabled ? '角色已授权' : '角色已删除');
+      Toast.success(enabled ? '角色已授权' : '角色已撤销');
       await usersQuery.refetch();
     } catch (error) {
       Toast.error(error instanceof Error ? error.message : '用户角色调整失败');
@@ -129,7 +129,7 @@ export function UserRoleGrantPage() {
               disabled={!alreadyHasRole || grantRole.isPending}
               onClick={() => adjustRole(user, false)}
             >
-              删除
+              撤销
             </Button>
           </div>
         );
@@ -152,8 +152,8 @@ export function UserRoleGrantPage() {
       <section className="role-admin-list" aria-label="Registered users">
         <div className="task-toolbar">
           <div>
-            <Typography.Title heading={4}>注册账号列表</Typography.Title>
-            <Typography.Text type="tertiary">直接在账号行内授予或删除 LABELER、REVIEWER 与 SENIOR_REVIEWER。</Typography.Text>
+            <Typography.Title heading={4}>授权账号列表</Typography.Title>
+            <Typography.Text type="tertiary">直接在账号行内授予或撤销 LABELER、REVIEWER 与 SENIOR_REVIEWER。</Typography.Text>
           </div>
           <Space>
             <Typography.Text type="tertiary">共 {usersQuery.data?.total ?? 0} 个账号</Typography.Text>

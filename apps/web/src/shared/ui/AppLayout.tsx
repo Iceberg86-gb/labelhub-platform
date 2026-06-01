@@ -44,6 +44,7 @@ const navItemHints: Record<string, string> = {
   '/owner/schemas': '标注表单搭建',
   '/owner/llm': '模型与 API Key',
   '/owner/audit-logs': '操作留痕追踪',
+  '/admin/users': '停用账号管理',
   '/admin/user-roles': '授予审核权限',
   '/labeler/marketplace': '领取可作答任务',
   '/labeler/my': '继续未完成数据',
@@ -55,7 +56,7 @@ function menuIconFor(path: string) {
   if (path === '/owner/schemas') return <IconDesignerBlock className={navIconClassName} />;
   if (path === '/owner/llm') return <IconAiAssist className={navIconClassName} />;
   if (path === '/owner/audit-logs') return <IconVersionHistory className={navIconClassName} />;
-  if (path === '/admin/user-roles') return <IconUserCircle className={navIconClassName} />;
+  if (path === '/admin/users' || path === '/admin/user-roles') return <IconUserCircle className={navIconClassName} />;
   if (path === '/labeler/marketplace') return <IconTask className={navIconClassName} />;
   if (path === '/labeler/my') return <IconAnnotationWorkbench className={navIconClassName} />;
   if (path.startsWith('/reviewer/submissions?reviewLevel=senior_reviewer')) {
