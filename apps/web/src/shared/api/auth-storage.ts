@@ -5,8 +5,10 @@ export type UserProfile = components['schemas']['LoginUserProfile'];
 const ACCESS_TOKEN_KEY = 'labelhub.access_token';
 const EXPIRES_AT_KEY = 'labelhub.expires_at';
 const USER_KEY = 'labelhub.user';
+const baseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api';
 export const SESSION_CHANGED_EVENT = 'labelhub:session-changed';
 const EXPIRY_BUFFER_MS = 30_000;
+// Refresh tokens are held only in the server-set HttpOnly cookie and are never stored in localStorage.
 
 function notifySessionChanged(): void {
   window.dispatchEvent(new CustomEvent(SESSION_CHANGED_EVENT));
@@ -33,6 +35,11 @@ export function saveSession(accessToken: string, expiresAt: string, user: UserPr
 }
 
 export function clearSession(): void {
+  revokeRefreshCookie();
+  clearStoredSession();
+}
+
+function clearStoredSession(): void {
   try {
     window.localStorage.removeItem(ACCESS_TOKEN_KEY);
     window.localStorage.removeItem(EXPIRES_AT_KEY);
@@ -41,6 +48,21 @@ export function clearSession(): void {
   } catch {
     // Clearing session is best effort; auth middleware will treat missing token as logged out.
   }
+}
+
+function revokeRefreshCookie(): void {
+  void fetch(apiUrl('/auth/logout'), {
+    method: 'POST',
+    credentials: 'include',
+    keepalive: true,
+  }).catch(() => {
+    // Server-side logout is best effort; local session state is still cleared.
+  });
+}
+
+function apiUrl(path: string): string {
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return `${normalizedBase}${path}`;
 }
 
 export function isSessionExpired(now = Date.now()): boolean {
@@ -59,7 +81,7 @@ export function isSessionExpired(now = Date.now()): boolean {
 
 export function getAccessToken(): string | null {
   if (isSessionExpired()) {
-    clearSession();
+    clearStoredSession();
     return null;
   }
 

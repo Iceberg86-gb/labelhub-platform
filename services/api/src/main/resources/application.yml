@@ -55,7 +55,8 @@ labelhub:
       master-key: ${LABELHUB_LLM_PROVIDER_MASTER_KEY:}
   security:
     jwt-secret: ${JWT_SECRET:dev-only-32-bytes-minimum-secret-please-change-me}
-    jwt-ttl-hours: ${JWT_TTL_HOURS:24}
+    jwt-ttl-hours: ${JWT_TTL_HOURS:1}
+    refresh-ttl-days: ${REFRESH_TTL_DAYS:7}
     internal-token: ${LABELHUB_INTERNAL_TOKEN:dev-internal-token}
   object-storage:
     endpoint: ${OBJECT_STORAGE_ENDPOINT:http://localhost:9000}

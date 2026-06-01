@@ -223,6 +223,44 @@ paths:
           $ref: '#/components/responses/ErrorBadRequest'
         '409':
           $ref: '#/components/responses/ErrorStateConflict'
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refresh
+      summary: Refresh the access token using the HttpOnly refresh cookie.
+      description: The refresh token is supplied only through the labelhub_refresh HttpOnly cookie and is never accepted in the request body.
+      security: []
+      parameters:
+        - name: labelhub_refresh
+          in: cookie
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: New access token and role profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current refresh token cookie.
+      description: Revokes the refresh token referenced by the labelhub_refresh HttpOnly cookie when present and clears the cookie.
+      security: []
+      parameters:
+        - name: labelhub_refresh
+          in: cookie
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Refresh token revoked and cookie cleared.
   /users:
     get:
       tags: [Users]
