@@ -30,8 +30,14 @@ const userRolesMocks = vi.hoisted(() => ({
   },
 }));
 
+function textFrom(value: ReactNode) {
+  return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+}
+
 vi.mock('@douyinfe/semi-ui', () => ({
-  Button: ({ children }: { children?: ReactNode }) => <button type="button">{children}</button>,
+  Button: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <button className={className} type="button">{children}</button>
+  ),
   Empty: ({ description, title }: { description?: ReactNode; title?: ReactNode }) => (
     <div>{title}{description}</div>
   ),
@@ -43,18 +49,30 @@ vi.mock('@douyinfe/semi-ui', () => ({
   Space: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Spin: () => <span>loading</span>,
   Switch: ({ checked }: { checked?: boolean }) => <input type="checkbox" checked={checked} readOnly />,
-  Table: ({ dataSource }: { dataSource?: Array<Record<string, unknown>> }) => (
+  Table: ({ columns, dataSource }: { columns?: Array<any>; dataSource?: Array<Record<string, any>> }) => (
     <table>
+      <thead>
+        <tr>
+          {columns?.map((column, index) => (
+            <th key={column.dataIndex ?? index}>{column.title}</th>
+          ))}
+        </tr>
+      </thead>
       <tbody>
         {dataSource?.map((row) => (
           <tr key={String(row.id)}>
-            <td>{String(row.id)}</td>
-            <td>{String(row.displayName)}</td>
-            <td>{Array.isArray(row.roles) ? row.roles.join(',') : ''}</td>
+            {columns?.map((column, index) => (
+              <td key={column.dataIndex ?? index}>
+                {column.render ? column.render(row[column.dataIndex], row) : textFrom(row[column.dataIndex])}
+              </td>
+            ))}
           </tr>
         ))}
       </tbody>
     </table>
+  ),
+  Tag: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <span className={className}>{children}</span>
   ),
   Toast: {
     error: vi.fn(),
@@ -69,6 +87,7 @@ vi.mock('@douyinfe/semi-ui', () => ({
 }));
 
 vi.mock('@douyinfe/semi-icons', () => ({
+  IconDelete: () => <span>delete</span>,
   IconRefresh: () => <span>refresh</span>,
   IconSave: () => <span>save</span>,
 }));
@@ -94,5 +113,11 @@ describe('UserRoleGrantPage', () => {
     expect(html).toContain('注册账号列表');
     expect(html).toContain('774670647');
     expect(html).toContain('LABELER');
+    expect(html).toContain('授权角色');
+    expect(html).toContain('授权');
+    expect(html).toContain('删除');
+    expect(html).toContain('role-admin-actions');
+    expect(html).not.toContain('填入授权');
+    expect(html).not.toContain('保存调整');
   });
 });
