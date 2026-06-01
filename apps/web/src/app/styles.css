@@ -1356,6 +1356,14 @@ a {
   color: var(--color-text-disabled);
 }
 
+.account-admin-delete-popconfirm-content {
+  display: block;
+  max-width: min(360px, calc(100vw - var(--space-32)));
+  line-height: var(--line-height-body);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 960px) {
   .app-topbar {
     grid-template-columns: minmax(0, 1fr) auto;
