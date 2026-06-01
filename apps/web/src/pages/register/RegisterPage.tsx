@@ -6,20 +6,25 @@ import welcomeHeroUrl from '../../../../../docs/design-assets/hero/welcome-hero.
 import { useRegister, type RegisterValues } from '../../features/auth/register/useRegister';
 import { clearSession } from '../../shared/api/auth-storage';
 
+type RegisterFormValues = RegisterValues & {
+  account?: string;
+};
+
 export function RegisterPage() {
   const register = useRegister();
-  const formApiRef = useRef<FormApi<RegisterValues>>();
+  const formApiRef = useRef<FormApi<RegisterFormValues>>();
 
   useEffect(() => {
     clearSession();
   }, []);
 
-  const handleSubmit = async (values: RegisterValues) => {
+  const handleSubmit = async (values: RegisterFormValues) => {
     const formElement = document.querySelector<HTMLFormElement>('form.register-form');
     const formData = formElement ? new FormData(formElement) : null;
+    const account = String(formData?.get('account') || values.account || '');
     const actualValues = {
-      username: String(formData?.get('username') || values.username || ''),
-      displayName: String(formData?.get('displayName') || values.displayName || ''),
+      username: account,
+      displayName: account,
       email: String(formData?.get('email') || values.email || '') || undefined,
       password: String(formData?.get('password') || values.password || ''),
     };
@@ -30,7 +35,9 @@ export function RegisterPage() {
       const registerError = register.normalizeError(error);
 
       if (registerError.field) {
-        formApiRef.current?.setError(registerError.field, registerError.message);
+        const field =
+          registerError.field === 'username' || registerError.field === 'displayName' ? 'account' : registerError.field;
+        formApiRef.current?.setError(field, registerError.message);
         return;
       }
 
@@ -50,7 +57,7 @@ export function RegisterPage() {
           <Typography.Text type="tertiary">默认开通 LABELER 权限，审核权限由负责人单独授予</Typography.Text>
         </div>
 
-        <Form<RegisterValues>
+        <Form<RegisterFormValues>
           className="register-form login-form"
           layout="vertical"
           getFormApi={(formApi) => {
@@ -59,16 +66,10 @@ export function RegisterPage() {
           onSubmit={handleSubmit}
         >
           <Form.Input
-            field="username"
-            label="用户名"
-            placeholder="请输入用户名"
-            rules={[{ required: true, message: '请输入用户名' }]}
-          />
-          <Form.Input
-            field="displayName"
-            label="显示名"
-            placeholder="请输入显示名"
-            rules={[{ required: true, message: '请输入显示名' }]}
+            field="account"
+            label="账户"
+            placeholder="请输入账户"
+            rules={[{ required: true, message: '请输入账户' }]}
           />
           <Form.Input field="email" label="邮箱" placeholder="可选" />
           <Form.Input
