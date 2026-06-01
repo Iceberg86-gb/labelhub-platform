@@ -32,6 +32,8 @@ public final class AuditActions {
     public static final String LLM_PROVIDER_CONFIG_UPDATE = "llm_provider_config.update";
     public static final String LLM_PROVIDER_CONFIG_DELETE = "llm_provider_config.delete";
     public static final String LLM_PROVIDER_CONFIG_TEST = "llm_provider_config.test_connection";
+    public static final String ROLE_GRANTED = "ROLE_GRANTED";
+    public static final String ROLE_REVOKED = "ROLE_REVOKED";
 
     private AuditActions() {}
 }

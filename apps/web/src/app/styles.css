@@ -1255,6 +1255,65 @@ a {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 }
 
+.register-role-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.register-login-link {
+  display: block;
+  margin-top: var(--space-16);
+}
+
+.role-admin-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.role-admin-panel {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) minmax(180px, 240px) auto auto;
+  gap: var(--space-16);
+  align-items: end;
+  padding: var(--space-20);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-main-surface);
+}
+
+.role-admin-field,
+.role-admin-switch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-small);
+}
+
+.role-admin-switch {
+  align-items: flex-start;
+  justify-content: flex-end;
+}
+
+.role-admin-result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-16) var(--space-20);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-subtle);
+}
+
+.role-admin-result__roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
 @media (max-width: 960px) {
   .app-topbar {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1305,6 +1364,10 @@ a {
 
   .login-card {
     justify-self: center;
+  }
+
+  .role-admin-panel {
+    grid-template-columns: 1fr;
   }
 }
 

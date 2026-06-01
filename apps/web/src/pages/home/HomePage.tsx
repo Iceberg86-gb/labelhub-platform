@@ -1,3 +1,4 @@
+import { IconUserCircle } from '@douyinfe/semi-icons';
 import { Spin, Typography } from '@douyinfe/semi-ui';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -42,6 +43,12 @@ const entryMeta = {
     title: '审计日志',
     description: '追踪操作留痕和版本记录',
     icon: IconVersionHistory,
+    tone: 'muted',
+  },
+  '/admin/user-roles': {
+    title: '用户权限',
+    description: '授予或撤销审核角色',
+    icon: IconUserCircle,
     tone: 'muted',
   },
   '/labeler/marketplace': {
@@ -298,11 +305,11 @@ export function HomePage() {
       </section>
 
       <section className="home-entry-grid" aria-label="可用入口">
-        {entries.map(({ path, meta }) => {
+        {entries.map(({ role, path, meta }) => {
           const Icon = meta.icon;
 
           return (
-            <Link className={`home-entry-card home-entry-card--${meta.tone}`} to={path} key={path}>
+            <Link className={`home-entry-card home-entry-card--${meta.tone}`} to={path} key={`${role}-${path}`}>
               <span className="home-entry-card__icon">
                 <Icon />
               </span>

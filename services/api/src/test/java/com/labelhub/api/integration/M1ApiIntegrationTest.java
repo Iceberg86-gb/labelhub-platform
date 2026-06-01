@@ -130,6 +130,85 @@ class M1ApiIntegrationTest {
     }
 
     @Test
+    void register_forces_labeler_role_and_never_persists_plaintext_password() throws Exception {
+        String body = mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "username": "new_labeler_runtime",
+                      "displayName": "New Labeler Runtime",
+                      "email": "new-labeler-runtime@example.test",
+                      "password": "demo1234",
+                      "roles": ["OWNER", "SENIOR_REVIEWER"]
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tokenType").value("Bearer"))
+            .andExpect(jsonPath("$.user.roles[0]").value("LABELER"))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        long userId = objectMapper.readTree(body).get("user").get("id").asLong();
+
+        Integer roleCount = jdbcTemplate.queryForObject(
+            """
+            SELECT COUNT(*)
+            FROM user_roles ur
+            JOIN roles r ON r.id = ur.role_id
+            WHERE ur.user_id = ? AND r.code <> 'LABELER'
+            """,
+            Integer.class,
+            userId
+        );
+        String passwordHash = jdbcTemplate.queryForObject(
+            "SELECT password_hash FROM users WHERE id = ?",
+            String.class,
+            userId
+        );
+        assertThat(roleCount).isZero();
+        assertThat(passwordHash).doesNotContain("demo1234");
+    }
+
+    @Test
+    void role_grant_endpoint_enforces_authorization_and_rejects_forbidden_roles() throws Exception {
+        String labelerToken = login("labeler_demo", "demo1234");
+        mockMvc.perform(post("/users/{userId}/roles", 1002L)
+                .header("Authorization", bearer(labelerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"role":"REVIEWER","enabled":true}
+                    """))
+            .andExpect(status().isForbidden());
+
+        String ownerToken = login("owner_demo", "demo1234");
+        mockMvc.perform(post("/users/{userId}/roles", 1002L)
+                .header("Authorization", bearer(ownerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"role":"OWNER","enabled":true}
+                    """))
+            .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/users/{userId}/roles", 1002L)
+                .header("Authorization", bearer(ownerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"role":"AI_AGENT","enabled":true}
+                    """))
+            .andExpect(status().isBadRequest());
+
+        Integer forbiddenGrantCount = jdbcTemplate.queryForObject(
+            """
+            SELECT COUNT(*)
+            FROM user_roles ur
+            JOIN roles r ON r.id = ur.role_id
+            WHERE ur.user_id = 1002 AND r.code IN ('OWNER', 'AI_AGENT')
+            """,
+            Integer.class
+        );
+        assertThat(forbiddenGrantCount).isZero();
+    }
+
+    @Test
     void internal_routes_require_internal_token_before_reaching_application_routes() throws Exception {
         mockMvc.perform(post("/internal/ai-review/results"))
             .andExpect(status().isUnauthorized());
