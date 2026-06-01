@@ -1,17 +1,12 @@
-import { Button, Empty, Pagination, Select, Space, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconDelete, IconRefresh, IconSave } from '@douyinfe/semi-icons';
+import { Button, Empty, Pagination, Popconfirm, Space, Spin, Table, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { IconDelete, IconRefresh } from '@douyinfe/semi-icons';
 import { useState } from 'react';
-import { useGrantUserRoleMutation } from '../../features/user-roles/useGrantUserRoleMutation';
 import { useUsersQuery, type UserAccountSummary } from '../../features/user-roles/useUsersQuery';
+import { useDeleteUserMutation } from '../../features/users/useDeleteUserMutation';
 import { getUser } from '../../shared/api/auth-storage';
 import { RoleBadge } from '../../shared/ui/RoleBadge';
 
 const PAGE_SIZE = 10;
-const roleOptions = [
-  { label: 'LABELER', value: 'LABELER' },
-  { label: 'REVIEWER', value: 'REVIEWER' },
-  { label: 'SENIOR_REVIEWER', value: 'SENIOR_REVIEWER' },
-];
 
 function formatDateTime(value?: string) {
   return value
@@ -19,36 +14,25 @@ function formatDateTime(value?: string) {
     : '-';
 }
 
-export function UserRoleGrantPage() {
+export function UserManagementPage() {
   const currentUser = getUser();
-  const grantRole = useGrantUserRoleMutation();
   const [page, setPage] = useState(1);
   const [size, setSize] = useState(PAGE_SIZE);
-  const [selectedRoles, setSelectedRoles] = useState<Record<number, string>>({});
+  const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const usersQuery = useUsersQuery({ page, size });
+  const deleteUser = useDeleteUserMutation();
   const users = usersQuery.data?.items ?? [];
 
-  const selectedRoleFor = (user: UserAccountSummary) => selectedRoles[user.id] ?? 'REVIEWER';
-
-  const updateSelectedRole = (userId: number, role: string) => {
-    setSelectedRoles((old) => ({ ...old, [userId]: role }));
-  };
-
-  const adjustRole = async (user: UserAccountSummary, enabled: boolean) => {
-    const targetRole = selectedRoleFor(user);
-    if (!enabled && !user.roles.includes(targetRole)) {
-      Toast.error('该账号当前没有这个角色');
-      return;
-    }
+  const handleDelete = async (user: UserAccountSummary) => {
+    setDeletingUserId(user.id);
     try {
-      await grantRole.mutateAsync({
-        userId: user.id,
-        body: { role: targetRole, enabled },
-      });
-      Toast.success(enabled ? '角色已授权' : '角色已撤销');
+      await deleteUser.mutateAsync(user.id);
+      Toast.success('账号已停用');
       await usersQuery.refetch();
     } catch (error) {
-      Toast.error(error instanceof Error ? error.message : '用户角色调整失败');
+      Toast.error(error instanceof Error ? error.message : '账号停用失败');
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -81,19 +65,11 @@ export function UserRoleGrantPage() {
       ),
     },
     {
-      title: '授权角色',
-      width: 190,
+      title: '状态',
+      dataIndex: 'status',
+      width: 120,
       align: 'center' as const,
-      render: (_: unknown, user: UserAccountSummary) => (
-        <div className="role-admin-role-control">
-          <Select
-            className="role-admin-role-select"
-            value={selectedRoleFor(user)}
-            optionList={roleOptions}
-            onChange={(value) => updateSelectedRole(user.id, String(value))}
-          />
-        </div>
-      ),
+      render: (status: string) => <Typography.Text type="tertiary">{status}</Typography.Text>,
     },
     {
       title: '注册时间',
@@ -103,57 +79,62 @@ export function UserRoleGrantPage() {
     },
     {
       title: '操作',
-      width: 180,
+      width: 150,
       align: 'center' as const,
       render: (_: unknown, user: UserAccountSummary) => {
-        const selectedRole = selectedRoleFor(user);
-        const alreadyHasRole = user.roles.includes(selectedRole);
+        const isSelf = currentUser?.id === user.id;
+        const isOwner = user.roles.includes('OWNER');
+        const disabled = isSelf || isOwner || deleteUser.isPending;
+        const disabledReason = isSelf ? '不能停用当前登录账号' : isOwner ? 'Owner 账号不可停用' : '';
+        const button = (
+          <Button
+            className="account-admin-delete-action"
+            icon={<IconDelete />}
+            size="small"
+            theme="borderless"
+            disabled={disabled}
+            loading={deletingUserId === user.id}
+          >
+            停用
+          </Button>
+        );
+
+        if (disabled) {
+          return <Tooltip content={disabledReason}>{button}</Tooltip>;
+        }
 
         return (
-          <div className="role-admin-actions">
-            <Button
-              className="role-admin-action role-admin-action--grant"
-              icon={<IconSave />}
-              size="small"
-              theme="borderless"
-              disabled={alreadyHasRole || grantRole.isPending}
-              onClick={() => adjustRole(user, true)}
-            >
-              授权
-            </Button>
-            <Button
-              className="role-admin-action role-admin-action--revoke"
-              icon={<IconDelete />}
-              size="small"
-              theme="borderless"
-              disabled={!alreadyHasRole || grantRole.isPending}
-              onClick={() => adjustRole(user, false)}
-            >
-              撤销
-            </Button>
-          </div>
+          <Popconfirm
+            title="停用账号"
+            content={`确认停用 @${user.username}？该账号将不能再次登录，也不会出现在 active 用户列表中。`}
+            okText="停用"
+            cancelText="取消"
+            onConfirm={() => handleDelete(user)}
+          >
+            {button}
+          </Popconfirm>
         );
       },
     },
   ];
 
   return (
-    <section className="role-admin-page" aria-label="User role management">
+    <section className="account-admin-page" aria-label="User account management">
       <header className="page-heading">
         <div>
-          <Typography.Text className="page-eyebrow">用户权限</Typography.Text>
-          <Typography.Title heading={2}>授予审核角色</Typography.Title>
+          <Typography.Text className="page-eyebrow">用户管理</Typography.Text>
+          <Typography.Title heading={2}>账号管理</Typography.Title>
           <Typography.Text type="tertiary">
-            当前操作者 {currentUser?.displayName ?? '-'}，只允许调整 LABELER、REVIEWER 与 SENIOR_REVIEWER。
+            仅 Owner 可停用账号。软删除只改变账号状态，不删除历史审核、ledger 或 submission 证据。
           </Typography.Text>
         </div>
       </header>
 
-      <section className="role-admin-list" aria-label="Registered users">
+      <section className="account-admin-list" aria-label="Active registered users">
         <div className="task-toolbar">
           <div>
-            <Typography.Title heading={4}>授权账号列表</Typography.Title>
-            <Typography.Text type="tertiary">直接在账号行内授予或撤销 LABELER、REVIEWER 与 SENIOR_REVIEWER。</Typography.Text>
+            <Typography.Title heading={4}>Active 账号</Typography.Title>
+            <Typography.Text type="tertiary">停用后账号会从这里消失，删除时间通过审计日志追溯。</Typography.Text>
           </div>
           <Space>
             <Typography.Text type="tertiary">共 {usersQuery.data?.total ?? 0} 个账号</Typography.Text>
@@ -173,7 +154,7 @@ export function UserRoleGrantPage() {
           {usersQuery.isError ? (
             <div className="task-state-panel">
               <Empty
-                title="注册账号加载失败"
+                title="账号列表加载失败"
                 description={usersQuery.error instanceof Error ? usersQuery.error.message : '请稍后重试。'}
               />
               <Button onClick={() => usersQuery.refetch()}>重新加载</Button>
@@ -182,13 +163,13 @@ export function UserRoleGrantPage() {
 
           {!usersQuery.isLoading && !usersQuery.isError && users.length === 0 ? (
             <div className="task-state-panel">
-              <Empty title="暂无注册账号" description="新用户注册后会出现在这里。" />
+              <Empty title="暂无 active 账号" description="新用户注册后会出现在这里。" />
             </div>
           ) : null}
 
           {!usersQuery.isLoading && !usersQuery.isError && users.length > 0 ? (
             <>
-              <Table className="role-admin-table" columns={columns} dataSource={users} rowKey="id" pagination={false} />
+              <Table className="account-admin-table" columns={columns} dataSource={users} rowKey="id" pagination={false} />
               <div className="task-pagination">
                 <Pagination
                   total={usersQuery.data?.total ?? 0}

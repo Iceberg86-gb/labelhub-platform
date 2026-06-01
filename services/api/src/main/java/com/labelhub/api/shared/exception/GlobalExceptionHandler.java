@@ -40,9 +40,12 @@ import com.labelhub.api.module.task.service.TaskAccessDeniedException;
 import com.labelhub.api.module.task.service.TaskEditingLockedException;
 import com.labelhub.api.module.task.service.TaskNotFoundException;
 import com.labelhub.api.module.task.service.TaskPublishGuardException;
+import com.labelhub.api.module.user.service.CannotDeleteOwnerException;
+import com.labelhub.api.module.user.service.CannotDeleteSelfException;
 import com.labelhub.api.module.user.service.DuplicateUserException;
 import com.labelhub.api.module.user.service.InvalidUserRegistrationException;
 import com.labelhub.api.module.user.service.InvalidUserRoleAssignmentException;
+import com.labelhub.api.module.user.service.UserDeletionConflictException;
 import com.labelhub.api.module.user.service.UserNotFoundException;
 import java.util.List;
 import org.slf4j.Logger;
@@ -212,6 +215,24 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> invalidUserRoleAssignment(InvalidUserRoleAssignmentException exception) {
         return ResponseEntity.badRequest()
             .body(error("INVALID_USER_ROLE_ASSIGNMENT", exception.getMessage()));
+    }
+
+    @ExceptionHandler(CannotDeleteSelfException.class)
+    ResponseEntity<ApiError> cannotDeleteSelf(CannotDeleteSelfException exception) {
+        return ResponseEntity.badRequest()
+            .body(error("USER_DELETE_SELF_NOT_ALLOWED", exception.getMessage()));
+    }
+
+    @ExceptionHandler(CannotDeleteOwnerException.class)
+    ResponseEntity<ApiError> cannotDeleteOwner(CannotDeleteOwnerException exception) {
+        return ResponseEntity.badRequest()
+            .body(error("USER_DELETE_OWNER_NOT_ALLOWED", exception.getMessage()));
+    }
+
+    @ExceptionHandler(UserDeletionConflictException.class)
+    ResponseEntity<ApiError> userDeletionConflict(UserDeletionConflictException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(error("USER_DELETE_CONFLICT", exception.getMessage()));
     }
 
     @ExceptionHandler(SelfReviewNotAllowedException.class)
