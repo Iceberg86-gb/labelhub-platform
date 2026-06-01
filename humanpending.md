@@ -479,3 +479,4 @@
 - [ ] UserAuth-2 封板:/admin/users 页 Owner 可见性 + 软删二次确认弹窗 + 按钮交互 UI 视觉手验为 D-口径未闭项,待 owner 浏览器确认
 - [ ] UserAuth-2 已知限制(S7):软删非紧急封禁,被删账号旧 JWT 至过期(≤24h)仍有效;即时阻断/会话治理归 UserAuth-session 后续批次
 - [ ] UserAuth-2 流程改进:全程 feature 分支 feat/userauth2-soft-delete 实现、审计 PASS 后 --no-ff 合入 main,纠正上批"8 commit 滚 main"偏差
+- [ ] UserAuth-2 UI fix:用户管理页删除确认弹窗溢出截断修复(Popconfirm 挂 body + leftTop + autoAdjustOverflow + token 约束 class),纯前端样式无承重改动,feature 分支 fix/userauth2-confirm-popover 审计 PASS 后 --no-ff 合入 main(merge 2351de5),MD5 未变,owner 手验成功
