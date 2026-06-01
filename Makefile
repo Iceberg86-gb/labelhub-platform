@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 
 COMPOSE_FILE := infra/docker-compose.yml
+SUREFIRE_GOAL := org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test
 JAVA17_HOME := $(shell \
 	if [ -n "$$JAVA_HOME" ] \
 		&& [ -x "$$JAVA_HOME/bin/java" ] \
@@ -57,7 +58,7 @@ dev-down:
 	@docker compose -f $(COMPOSE_FILE) down
 
 verify: dev-up require-java17
-	@$(JAVA17_ENV) mvn -o -pl services/api test
+	@$(JAVA17_ENV) mvn -o -pl services/api test-compile $(SUREFIRE_GOAL)
 
 migrate-check: dev-up require-java17
-	@$(JAVA17_ENV) mvn -o -pl services/api -Dtest=ApplicationContextStartupTest test
+	@$(JAVA17_ENV) mvn -o -pl services/api -Dtest=ApplicationContextStartupTest test-compile $(SUREFIRE_GOAL)
