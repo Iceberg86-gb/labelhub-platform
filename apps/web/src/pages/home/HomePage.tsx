@@ -187,6 +187,13 @@ export function HomePage() {
   ].filter((query) => query.fetchStatus !== 'idle' || query.data);
   const isDashboardLoading = activeQueries.some((query) => query.isLoading);
   const hasDashboardError = activeQueries.some((query) => query.isError);
+  const dashboardStatusText = hasDashboardError ? '部分数据加载失败' : isDashboardLoading ? '正在同步' : '数据已同步';
+  const dashboardStatusClassName = [
+    'home-dashboard__status',
+    'home-dashboard__status--inline',
+    hasDashboardError ? 'is-error' : '',
+    isDashboardLoading ? 'is-loading' : '',
+  ].filter(Boolean).join(' ');
   const entries = roleRoutePriority
     .filter((item) => roles.includes(item.role))
     .map((item) => ({
@@ -242,15 +249,15 @@ export function HomePage() {
 
       <section className="home-dashboard" aria-label="实时数据看板">
         <div className="home-dashboard__header">
-          <div>
+          <div className="home-dashboard__heading">
             <Typography.Text className="home-dashboard__eyebrow">实时数据看板</Typography.Text>
             <Typography.Title heading={3} className="home-dashboard__title">
               当前账号工作概览
             </Typography.Title>
+            <span className={dashboardStatusClassName}>
+              {dashboardStatusText}
+            </span>
           </div>
-          <span className={hasDashboardError ? 'home-dashboard__status is-error' : 'home-dashboard__status'}>
-            {hasDashboardError ? '部分数据加载失败' : isDashboardLoading ? '正在同步' : '数据已同步'}
-          </span>
         </div>
 
         {isDashboardLoading ? (

@@ -105,6 +105,7 @@ describe('HomePage', () => {
     expect(html).toContain('home-dashboard');
     expect(html).not.toContain('home-product-preview');
     expect(html).toContain('实时数据看板');
+    expect(html).toContain('home-dashboard__status home-dashboard__status--inline');
     expect(html).toContain('任务总数');
     expect(html).toContain('Demo task');
     expect(html).toContain('Marketplace task');
