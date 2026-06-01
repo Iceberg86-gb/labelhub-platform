@@ -2,6 +2,7 @@ package com.labelhub.api.module.user.service;
 
 import com.labelhub.api.module.user.entity.UserEntity;
 import com.labelhub.api.module.user.mapper.UserMapper;
+import com.labelhub.api.module.task.service.PagedResult;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -44,5 +45,24 @@ class UserServiceTest {
         List<String> roles = userService.loadRoles(1001L);
 
         assertThat(roles).containsExactly("OWNER");
+    }
+
+    @Test
+    void list_active_users_returns_registered_accounts_with_roles() {
+        UserEntity registered = new UserEntity();
+        registered.setId(2001L);
+        registered.setUsername("new_labeler");
+        registered.setDisplayName("New Labeler");
+        registered.setStatus("active");
+        when(userMapper.selectActiveUsersPage(0, 20)).thenReturn(List.of(registered));
+        when(userMapper.countActiveUsers()).thenReturn(1L);
+        when(userMapper.selectRoleCodesByUserId(2001L)).thenReturn(List.of("LABELER"));
+
+        PagedResult<UserRoleUpdateResult> result = userService.listActiveUsers(1, 20);
+
+        assertThat(result.total()).isEqualTo(1);
+        assertThat(result.items()).hasSize(1);
+        assertThat(result.items().get(0).user()).isSameAs(registered);
+        assertThat(result.items().get(0).roles()).containsExactly("LABELER");
     }
 }

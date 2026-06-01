@@ -1312,6 +1312,16 @@ a {
   gap: var(--space-8);
 }
 
+.role-admin-list {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.role-admin-user-cell {
+  display: grid;
+  gap: var(--space-4);
+}
+
 @media (max-width: 960px) {
   .app-topbar {
     grid-template-columns: minmax(0, 1fr) auto;

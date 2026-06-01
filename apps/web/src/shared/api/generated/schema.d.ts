@@ -111,6 +111,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List registered user accounts for role administration.
+         * @description Owner and Senior Reviewer can view active registered accounts without password hashes.
+         */
+        get: operations["listUsers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/{userId}/roles": {
         parameters: {
             query?: never;
@@ -953,6 +973,26 @@ export interface components {
             username: string;
             displayName: string;
             roles: string[];
+        };
+        UserAccountSummary: {
+            /** Format: int64 */
+            id: number;
+            username: string;
+            displayName: string;
+            email?: string | null;
+            status: string;
+            roles: string[];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PagedUsers: {
+            items: components["schemas"]["UserAccountSummary"][];
+            /** Format: int64 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            size: number;
         };
         ApiError: {
             code: string;
@@ -2202,6 +2242,32 @@ export interface operations {
             };
             400: components["responses"]["ErrorBadRequest"];
             409: components["responses"]["ErrorStateConflict"];
+        };
+    };
+    listUsers: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Paginated registered users. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedUsers"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
         };
     };
     grantUserRole: {
