@@ -25,6 +25,14 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     @Select("""
         SELECT id, username, display_name, email, password_hash, status, created_at, updated_at
         FROM users
+        WHERE username = #{username} AND status = 'active'
+        LIMIT 1
+        """)
+    UserEntity selectActiveByUsername(String username);
+
+    @Select("""
+        SELECT id, username, display_name, email, password_hash, status, created_at, updated_at
+        FROM users
         WHERE id = #{userId}
         LIMIT 1
         """)
