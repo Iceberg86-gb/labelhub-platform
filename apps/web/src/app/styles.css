@@ -1312,6 +1312,25 @@ a {
   gap: var(--space-8);
 }
 
+.role-admin-action.semi-button {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-card-title);
+}
+
+.role-admin-action.semi-button:not(.semi-button-disabled):hover {
+  background: var(--color-hover-surface);
+  color: var(--color-text-primary);
+}
+
+.role-admin-action--revoke.semi-button:not(.semi-button-disabled):hover {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.role-admin-action.semi-button.semi-button-disabled {
+  color: var(--color-text-disabled);
+}
+
 @media (max-width: 960px) {
   .app-topbar {
     grid-template-columns: minmax(0, 1fr) auto;

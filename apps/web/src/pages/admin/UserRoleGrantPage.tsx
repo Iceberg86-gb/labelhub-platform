@@ -112,6 +112,7 @@ export function UserRoleGrantPage() {
         return (
           <div className="role-admin-actions">
             <Button
+              className="role-admin-action role-admin-action--grant"
               icon={<IconSave />}
               size="small"
               theme="borderless"
@@ -121,10 +122,10 @@ export function UserRoleGrantPage() {
               授权
             </Button>
             <Button
+              className="role-admin-action role-admin-action--revoke"
               icon={<IconDelete />}
               size="small"
               theme="borderless"
-              type="danger"
               disabled={!alreadyHasRole || grantRole.isPending}
               onClick={() => adjustRole(user, false)}
             >
