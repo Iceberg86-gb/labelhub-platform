@@ -40,6 +40,10 @@ import com.labelhub.api.module.task.service.TaskAccessDeniedException;
 import com.labelhub.api.module.task.service.TaskEditingLockedException;
 import com.labelhub.api.module.task.service.TaskNotFoundException;
 import com.labelhub.api.module.task.service.TaskPublishGuardException;
+import com.labelhub.api.module.user.service.DuplicateUserException;
+import com.labelhub.api.module.user.service.InvalidUserRegistrationException;
+import com.labelhub.api.module.user.service.InvalidUserRoleAssignmentException;
+import com.labelhub.api.module.user.service.UserNotFoundException;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,6 +190,30 @@ public class GlobalExceptionHandler {
             .body(error("INVALID_LLM_PROVIDER_CONFIG", exception.getMessage()));
     }
 
+    @ExceptionHandler(InvalidUserRegistrationException.class)
+    ResponseEntity<ApiError> invalidUserRegistration(InvalidUserRegistrationException exception) {
+        ApiFieldError fieldError = new ApiFieldError();
+        fieldError.setField(exception.getField());
+        fieldError.setMessage(exception.getReason());
+        return ResponseEntity.badRequest()
+            .body(error("INVALID_USER_REGISTRATION", "User registration is invalid", List.of(fieldError)));
+    }
+
+    @ExceptionHandler(DuplicateUserException.class)
+    ResponseEntity<ApiError> duplicateUser(DuplicateUserException exception) {
+        ApiFieldError fieldError = new ApiFieldError();
+        fieldError.setField(exception.getField());
+        fieldError.setMessage(exception.getReason());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(error("USER_ALREADY_EXISTS", "User already exists", List.of(fieldError)));
+    }
+
+    @ExceptionHandler(InvalidUserRoleAssignmentException.class)
+    ResponseEntity<ApiError> invalidUserRoleAssignment(InvalidUserRoleAssignmentException exception) {
+        return ResponseEntity.badRequest()
+            .body(error("INVALID_USER_ROLE_ASSIGNMENT", exception.getMessage()));
+    }
+
     @ExceptionHandler(SelfReviewNotAllowedException.class)
     ResponseEntity<ApiError> selfReviewNotAllowed(SelfReviewNotAllowedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -259,7 +287,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({TaskNotFoundException.class, SchemaNotFoundException.class, SchemaVersionNotFoundException.class,
         SchemaAccessDeniedException.class, SubmissionNotFoundException.class, SessionNotFoundException.class,
         SessionAccessDeniedException.class, PromptVersionNotFoundException.class, AiReviewRuleNotFoundException.class,
-        LlmProviderConfigNotFoundException.class, NoResourceFoundException.class})
+        LlmProviderConfigNotFoundException.class, UserNotFoundException.class, NoResourceFoundException.class})
     ResponseEntity<ApiError> notFound(Exception exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("NOT_FOUND", exception.getMessage()));
     }

@@ -91,6 +91,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a new labeler account.
+         * @description Registration always creates a LABELER account; any role fields outside this schema are ignored server-side.
+         */
+        post: operations["register"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{userId}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant or revoke a governed user role.
+         * @description Only LABELER, REVIEWER, and SENIOR_REVIEWER may be adjusted; OWNER and AI_AGENT are never self-service grantable.
+         */
+        post: operations["grantUserRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/audit-logs": {
         parameters: {
             query?: never;
@@ -884,6 +924,20 @@ export interface components {
             username: string;
             /** Format: password */
             password: string;
+        };
+        RegisterRequest: {
+            username: string;
+            displayName: string;
+            /** Format: email */
+            email?: string | null;
+            /** Format: password */
+            password: string;
+        };
+        GrantRoleRequest: {
+            /** @description Only LABELER, REVIEWER, and SENIOR_REVIEWER are accepted by the server. */
+            role: string;
+            /** @default true */
+            enabled: boolean;
         };
         LoginResponse: {
             accessToken: string;
@@ -1906,6 +1960,7 @@ export interface components {
         RuleId: number;
         SnapshotId: number;
         ProviderConfigId: number;
+        UserId: number;
     };
     requestBodies: never;
     headers: never;
@@ -2121,6 +2176,62 @@ export interface operations {
             };
             400: components["responses"]["ErrorBadRequest"];
             401: components["responses"]["ErrorUnauthorized"];
+        };
+    };
+    register: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Created account auth token and role profile. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            409: components["responses"]["ErrorStateConflict"];
+        };
+    };
+    grantUserRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated user role profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginUserProfile"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
         };
     };
     listAuditLogs: {

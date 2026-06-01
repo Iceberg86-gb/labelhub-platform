@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
+                    "/auth/register",
                     "/auth/**",
                     "/actuator/health",
                     "/actuator/info",
@@ -51,6 +52,7 @@ public class SecurityConfig {
                 .requestMatchers("/schemas/**").hasRole("OWNER")
                 .requestMatchers("/datasets/**").hasRole("OWNER")
                 .requestMatchers("/llm/**").hasRole("OWNER")
+                .requestMatchers(HttpMethod.POST, "/users/*/roles").hasAnyRole("OWNER", "SENIOR_REVIEWER")
                 .requestMatchers(HttpMethod.GET, "/tasks/*/submissions").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/tasks/marketplace").hasRole("LABELER")
                 .requestMatchers(HttpMethod.POST, "/tasks/*/claim").hasRole("LABELER")

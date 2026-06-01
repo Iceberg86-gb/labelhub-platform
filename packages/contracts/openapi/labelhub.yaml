@@ -7,6 +7,7 @@ servers:
   - url: http://localhost:8080/api
 tags:
   - name: Auth
+  - name: Users
   - name: Tasks
   - name: Datasets
   - name: Schemas
@@ -198,6 +199,59 @@ paths:
           $ref: '#/components/responses/ErrorBadRequest'
         '401':
           $ref: '#/components/responses/ErrorUnauthorized'
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Register a new labeler account.
+      description: Registration always creates a LABELER account; any role fields outside this schema are ignored server-side.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Created account auth token and role profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+  /users/{userId}/roles:
+    post:
+      tags: [Users]
+      operationId: grantUserRole
+      summary: Grant or revoke a governed user role.
+      description: Only LABELER, REVIEWER, and SENIOR_REVIEWER may be adjusted; OWNER and AI_AGENT are never self-service grantable.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantRoleRequest'
+      responses:
+        '200':
+          description: Updated user role profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginUserProfile'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /audit-logs:
     get:
       tags: [AuditLogs]
@@ -1698,6 +1752,13 @@ components:
       schema:
         type: integer
         format: int64
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
   responses:
     ErrorBadRequest:
       description: Request validation failed.
@@ -1929,6 +1990,40 @@ components:
         password:
           type: string
           format: password
+    RegisterRequest:
+      type: object
+      required: [username, displayName, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 80
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          nullable: true
+          maxLength: 160
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 255
+    GrantRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          description: Only LABELER, REVIEWER, and SENIOR_REVIEWER are accepted by the server.
+          minLength: 1
+          maxLength: 40
+        enabled:
+          type: boolean
+          default: true
     LoginResponse:
       type: object
       required: [accessToken, tokenType, expiresAt, user]

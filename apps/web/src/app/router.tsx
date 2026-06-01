@@ -7,7 +7,9 @@ import { RequireRole } from '../shared/auth/RequireRole';
 import { getAccessToken, getUser } from '../shared/api/auth-storage';
 import { defaultPathForRoles } from '../shared/auth/roleRoutes';
 import { LoginPage } from '../pages/login/LoginPage';
+import { RegisterPage } from '../pages/register/RegisterPage';
 import { HomePage } from '../pages/home/HomePage';
+import { UserRoleGrantPage } from '../pages/admin/UserRoleGrantPage';
 import { OwnerTasksListPage } from '../pages/owner/OwnerTasksListPage';
 import { OwnerTaskDetailPage } from '../pages/owner/OwnerTaskDetailPage';
 import { OwnerSubmissionPage } from '../pages/owner/OwnerSubmissionPage';
@@ -44,6 +46,16 @@ export const router = createBrowserRouter(
         {
           index: true,
           element: <LoginPage />,
+        },
+      ],
+    },
+    {
+      path: '/register',
+      element: <PublicLayout />,
+      children: [
+        {
+          index: true,
+          element: <RegisterPage />,
         },
       ],
     },
@@ -143,6 +155,16 @@ export const router = createBrowserRouter(
             <RequireAuth>
               <RequireRole roles={['OWNER']}>
                 <OwnerAuditLogsPage />
+              </RequireRole>
+            </RequireAuth>
+          ),
+        },
+        {
+          path: 'admin/user-roles',
+          element: (
+            <RequireAuth>
+              <RequireRole roles={['OWNER', 'SENIOR_REVIEWER']}>
+                <UserRoleGrantPage />
               </RequireRole>
             </RequireAuth>
           ),
