@@ -28,7 +28,7 @@ public class UserRegistrationService {
         if (password == null || password.length() < 8) {
             throw new InvalidUserRegistrationException("password", "Password must be at least 8 characters");
         }
-        if (userMapper.selectByUsername(username) != null) {
+        if (userMapper.selectActiveByUsername(username) != null) {
             throw new DuplicateUserException("username", "Username already exists");
         }
         if (email != null && userMapper.selectByEmail(email) != null) {
