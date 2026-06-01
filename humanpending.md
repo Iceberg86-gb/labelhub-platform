@@ -480,3 +480,4 @@
 - [ ] UserAuth-2 已知限制(S7):软删非紧急封禁,被删账号旧 JWT 至过期(≤24h)仍有效;即时阻断/会话治理归 UserAuth-session 后续批次
 - [ ] UserAuth-2 流程改进:全程 feature 分支 feat/userauth2-soft-delete 实现、审计 PASS 后 --no-ff 合入 main,纠正上批"8 commit 滚 main"偏差
 - [ ] UserAuth-2 UI fix:用户管理页删除确认弹窗溢出截断修复(Popconfirm 挂 body + leftTop + autoAdjustOverflow + token 约束 class),纯前端样式无承重改动,feature 分支 fix/userauth2-confirm-popover 审计 PASS 后 --no-ff 合入 main(merge 2351de5),MD5 未变,owner 手验成功
+- [ ] UserAuth-session 封板:refresh token + 服务端 logout 范式 A 合入 main(merge e7a5041, feature df3b712),refresh_tokens 仅存 hash,login/register 发 HttpOnly Secure SameSite=Strict Path=/api/auth cookie,/auth/refresh 轮换,/auth/logout 吊销,软删联动吊销 active refresh;主窗口已闭,残留为 access token ≤1h 内仍有效 + 降权未联动,留待即时阻断/会话治理后续批次
