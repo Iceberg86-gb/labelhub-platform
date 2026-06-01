@@ -6,6 +6,7 @@ import com.labelhub.api.generated.model.PagedUsers;
 import com.labelhub.api.generated.model.UserAccountSummary;
 import com.labelhub.api.generated.web.UsersApi;
 import com.labelhub.api.module.task.service.PagedResult;
+import com.labelhub.api.module.user.service.UserDeletionService;
 import com.labelhub.api.module.user.service.UserRoleCommand;
 import com.labelhub.api.module.user.service.UserRoleService;
 import com.labelhub.api.module.user.service.UserRoleUpdateResult;
@@ -16,6 +17,7 @@ import java.time.ZoneOffset;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,10 +32,12 @@ public class UsersController implements UsersApi {
 
     private final UserService userService;
     private final UserRoleService userRoleService;
+    private final UserDeletionService userDeletionService;
 
-    public UsersController(UserService userService, UserRoleService userRoleService) {
+    public UsersController(UserService userService, UserRoleService userRoleService, UserDeletionService userDeletionService) {
         this.userService = userService;
         this.userRoleService = userRoleService;
+        this.userDeletionService = userDeletionService;
     }
 
     @Override
@@ -50,6 +54,14 @@ public class UsersController implements UsersApi {
         response.setPage((int) result.page());
         response.setSize((int) result.size());
         return ResponseEntity.ok(response);
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @DeleteMapping(path = "/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable("userId") Long userId) {
+        userDeletionService.deleteUser(currentUserId(), userId);
+        return ResponseEntity.noContent().build();
     }
 
     @Override

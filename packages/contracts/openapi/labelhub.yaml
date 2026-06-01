@@ -258,6 +258,25 @@ paths:
           $ref: '#/components/responses/ErrorUnauthorized'
         '403':
           $ref: '#/components/responses/ErrorForbidden'
+  /users/{userId}:
+    delete:
+      tags: [Users]
+      operationId: deleteUser
+      summary: Soft delete an active user account.
+      description: Owner-only soft delete. The user row and historical evidence references are retained; status becomes deleted.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '204':
+          description: User account soft-deleted.
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
   /users/{userId}/roles:
     post:
       tags: [Users]

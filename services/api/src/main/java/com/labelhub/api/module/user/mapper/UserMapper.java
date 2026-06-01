@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 @Mapper
 public interface UserMapper extends BaseMapper<UserEntity> {
@@ -88,4 +89,19 @@ public interface UserMapper extends BaseMapper<UserEntity> {
         WHERE user_id = #{userId} AND role_id = #{roleId}
         """)
     int deleteUserRole(@Param("userId") Long userId, @Param("roleId") Long roleId);
+
+    @Select("""
+        SELECT id, username, display_name, email, status, created_at, updated_at
+        FROM users
+        WHERE id = #{userId} AND status = 'active'
+        LIMIT 1
+        """)
+    UserEntity selectActiveUserById(Long userId);
+
+    @Update("""
+        UPDATE users
+        SET status = 'deleted'
+        WHERE id = #{userId} AND status = 'active'
+        """)
+    int softDeleteUserById(Long userId);
 }
