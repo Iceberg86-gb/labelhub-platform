@@ -209,6 +209,40 @@ class M1ApiIntegrationTest {
     }
 
     @Test
+    void owner_can_list_registered_users_without_password_fields() throws Exception {
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "username": "owner_visible_labeler",
+                      "displayName": "Owner Visible Labeler",
+                      "email": "owner-visible-labeler@example.test",
+                      "password": "demo1234"
+                    }
+                    """))
+            .andExpect(status().isCreated());
+
+        String ownerToken = login("owner_demo", "demo1234");
+        String body = mockMvc.perform(get("/users")
+                .header("Authorization", bearer(ownerToken))
+                .param("page", "1")
+                .param("size", "20"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.total").isNumber())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+        JsonNode root = objectMapper.readTree(body);
+        assertThat(root.get("items").findValuesAsText("username")).contains("owner_visible_labeler");
+        assertThat(body).doesNotContain("password");
+
+        String labelerToken = login("labeler_demo", "demo1234");
+        mockMvc.perform(get("/users").header("Authorization", bearer(labelerToken)))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
     void internal_routes_require_internal_token_before_reaching_application_routes() throws Exception {
         mockMvc.perform(post("/internal/ai-review/results"))
             .andExpect(status().isUnauthorized());

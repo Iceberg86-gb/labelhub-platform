@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .requestMatchers("/schemas/**").hasRole("OWNER")
                 .requestMatchers("/datasets/**").hasRole("OWNER")
                 .requestMatchers("/llm/**").hasRole("OWNER")
+                .requestMatchers(HttpMethod.GET, "/users").hasAnyRole("OWNER", "SENIOR_REVIEWER")
                 .requestMatchers(HttpMethod.POST, "/users/*/roles").hasAnyRole("OWNER", "SENIOR_REVIEWER")
                 .requestMatchers(HttpMethod.GET, "/tasks/*/submissions").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/tasks/marketplace").hasRole("LABELER")

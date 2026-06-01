@@ -45,6 +45,22 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     int insertUser(UserEntity user);
 
     @Select("""
+        SELECT id, username, display_name, email, status, created_at, updated_at
+        FROM users
+        WHERE status = 'active'
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{size} OFFSET #{offset}
+        """)
+    List<UserEntity> selectActiveUsersPage(@Param("offset") long offset, @Param("size") long size);
+
+    @Select("""
+        SELECT COUNT(*)
+        FROM users
+        WHERE status = 'active'
+        """)
+    Long countActiveUsers();
+
+    @Select("""
         SELECT r.code
         FROM user_roles ur
         JOIN roles r ON r.id = ur.role_id
