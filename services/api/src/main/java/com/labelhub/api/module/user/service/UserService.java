@@ -17,7 +17,7 @@ public class UserService {
     }
 
     public Optional<UserEntity> findByUsername(String username) {
-        UserEntity user = userMapper.selectByUsername(username);
+        UserEntity user = userMapper.selectActiveByUsername(username);
         if (user == null || !"active".equals(user.getStatus())) {
             return Optional.empty();
         }
