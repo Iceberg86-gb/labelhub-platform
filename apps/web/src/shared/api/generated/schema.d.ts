@@ -111,6 +111,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh the access token using the HttpOnly refresh cookie.
+         * @description The refresh token is supplied only through the labelhub_refresh HttpOnly cookie and is never accepted in the request body.
+         */
+        post: operations["refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Revoke the current refresh token cookie.
+         * @description Revokes the refresh token referenced by the labelhub_refresh HttpOnly cookie when present and clears the cookie.
+         */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users": {
         parameters: {
             query?: never;
@@ -2262,6 +2302,49 @@ export interface operations {
             };
             400: components["responses"]["ErrorBadRequest"];
             409: components["responses"]["ErrorStateConflict"];
+        };
+    };
+    refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                labelhub_refresh?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description New access token and role profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                labelhub_refresh?: string;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refresh token revoked and cookie cleared. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     listUsers: {
