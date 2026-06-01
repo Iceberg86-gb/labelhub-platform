@@ -106,7 +106,14 @@ export function UserManagementPage() {
         return (
           <Popconfirm
             title="停用账号"
-            content={`确认停用 @${user.username}？该账号将不能再次登录，也不会出现在 active 用户列表中。`}
+            content={
+              <Typography.Text className="account-admin-delete-popconfirm-content">
+                {`确认停用 @${user.username}？该账号将不能再次登录，也不会出现在 active 用户列表中。`}
+              </Typography.Text>
+            }
+            position="leftTop"
+            autoAdjustOverflow
+            getPopupContainer={() => document.body}
             okText="停用"
             cancelText="取消"
             onConfirm={() => handleDelete(user)}
