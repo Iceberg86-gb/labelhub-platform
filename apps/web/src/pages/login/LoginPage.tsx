@@ -64,9 +64,9 @@ export function LoginPage() {
         >
           <Form.Input
             field="username"
-            label="用户名"
-            placeholder="请输入用户名"
-            rules={[{ required: true, message: '请输入用户名' }]}
+            label="账号"
+            placeholder="请输入账号"
+            rules={[{ required: true, message: '请输入账号' }]}
           />
           <Form.Input
             field="password"

@@ -67,9 +67,9 @@ export function RegisterPage() {
         >
           <Form.Input
             field="account"
-            label="账户"
-            placeholder="请输入账户"
-            rules={[{ required: true, message: '请输入账户' }]}
+            label="账号"
+            placeholder="请输入账号"
+            rules={[{ required: true, message: '请输入账号' }]}
           />
           <Form.Input field="email" label="邮箱" placeholder="可选" />
           <Form.Input
