@@ -1481,6 +1481,95 @@ a {
   background: var(--color-main-surface);
 }
 
+.platform-metrics-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.platform-metrics-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: var(--space-12);
+}
+
+.platform-metrics-card {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-6);
+  padding: var(--space-18);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-main-surface);
+}
+
+.platform-metrics-card span,
+.platform-metrics-card small {
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-metrics-card strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-section-title);
+  line-height: var(--line-height-section-title);
+}
+
+.platform-metrics-grid {
+  display: grid;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.platform-metrics-panel {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-14);
+  padding: var(--space-18);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-main-surface);
+}
+
+.platform-metrics-panel__header {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.platform-metrics-person {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.platform-metrics-empty-row {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-tertiary);
+}
+
+.platform-metrics-empty {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-main-surface);
+}
+
+.platform-metrics-table {
+  min-width: 0;
+}
+
+.platform-metrics-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: var(--space-12);
+}
+
 @media (max-width: 960px) {
   .app-topbar {
     grid-template-columns: minmax(0, 1fr) auto;

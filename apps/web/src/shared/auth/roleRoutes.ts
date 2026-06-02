@@ -5,6 +5,8 @@ export const roleRoutePriority = [
   { role: 'PLATFORM_ADMIN', path: '/platform/user-roles', label: '用户权限' },
   { role: 'PLATFORM_ADMIN', path: '/platform/llm', label: 'LLM 接入' },
   { role: 'PLATFORM_ADMIN', path: '/platform/cost-metrics', label: 'Token 成本' },
+  { role: 'PLATFORM_ADMIN', path: '/platform/labor-metrics', label: '人力计量' },
+  { role: 'PLATFORM_ADMIN', path: '/platform/efficiency-metrics', label: 'Token 复用' },
   { role: 'PLATFORM_ADMIN', path: '/platform/audit-logs', label: '审计日志' },
   { role: 'LABELER', path: '/labeler/marketplace', label: '任务广场' },
   { role: 'LABELER', path: '/labeler/my', label: '我的数据' },

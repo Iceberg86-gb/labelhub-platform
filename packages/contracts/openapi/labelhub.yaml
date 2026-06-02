@@ -403,6 +403,40 @@ paths:
           $ref: '#/components/responses/ErrorUnauthorized'
         '403':
           $ref: '#/components/responses/ErrorForbidden'
+  /platform/labor-metrics:
+    get:
+      tags: [PlatformMetrics]
+      operationId: getPlatformLaborMetrics
+      summary: Get platform labor count metrics.
+      description: Platform-admin-only factual counts over submissions, review actions, and three separate rework signals. It does not read submission answers or review text.
+      responses:
+        '200':
+          description: Labor count metrics grouped by user and rework signal.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformLaborMetrics'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /platform/efficiency-metrics:
+    get:
+      tags: [PlatformMetrics]
+      operationId: getPlatformEfficiencyMetrics
+      summary: Get platform token reuse and unit-cost facts.
+      description: Platform-admin-only factual metrics over ai_calls idempotency keys, cache-hit tokens, and stored cost per data item. It does not recalculate pricing.
+      responses:
+        '200':
+          description: Token reuse and unit-cost facts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformEfficiencyMetrics'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
   /audit-logs:
     get:
       tags: [AuditLogs]
@@ -2223,6 +2257,114 @@ components:
           type: integer
           format: int64
         totalCost:
+          type: number
+    PlatformLaborMetrics:
+      type: object
+      required: [generatedAt, submissions, reviews, rework, empty]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformLaborMetricRow'
+        reviews:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformLaborMetricRow'
+        rework:
+          $ref: '#/components/schemas/PlatformReworkMetrics'
+        empty:
+          type: boolean
+    PlatformLaborMetricRow:
+      type: object
+      required: [userId, count, initialReviewCount, seniorReviewCount, approveActionCount, returnActionCount, rejectActionCount]
+      properties:
+        userId:
+          type: integer
+          format: int64
+        displayName:
+          type: string
+          nullable: true
+        username:
+          type: string
+          nullable: true
+        count:
+          type: integer
+          format: int64
+        initialReviewCount:
+          type: integer
+          format: int64
+        seniorReviewCount:
+          type: integer
+          format: int64
+        approveActionCount:
+          type: integer
+          format: int64
+        returnActionCount:
+          type: integer
+          format: int64
+        rejectActionCount:
+          type: integer
+          format: int64
+    PlatformReworkMetrics:
+      type: object
+      required: [supersededSubmissionCount, multiRoundReviewActionCount, returnedForRevisionSubmissionCount]
+      properties:
+        supersededSubmissionCount:
+          type: integer
+          format: int64
+        multiRoundReviewActionCount:
+          type: integer
+          format: int64
+        returnedForRevisionSubmissionCount:
+          type: integer
+          format: int64
+    PlatformEfficiencyMetrics:
+      type: object
+      required: [generatedAt, idempotency, unitCost, empty]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        idempotency:
+          $ref: '#/components/schemas/PlatformIdempotencyMetrics'
+        unitCost:
+          $ref: '#/components/schemas/PlatformUnitCostMetrics'
+        empty:
+          type: boolean
+    PlatformIdempotencyMetrics:
+      type: object
+      required: [callCount, uniqueKeyCount, duplicateKeyCount, cacheHitTokens]
+      properties:
+        callCount:
+          type: integer
+          format: int64
+        uniqueKeyCount:
+          type: integer
+          format: int64
+        duplicateKeyCount:
+          type: integer
+          format: int64
+        cacheHitTokens:
+          type: integer
+          format: int64
+    PlatformUnitCostMetrics:
+      type: object
+      required: [totalCost, distinctSubmissionCount, distinctDatasetItemCount, costPerSubmission, costPerDatasetItem]
+      properties:
+        totalCost:
+          type: number
+        distinctSubmissionCount:
+          type: integer
+          format: int64
+        distinctDatasetItemCount:
+          type: integer
+          format: int64
+        costPerSubmission:
+          type: number
+        costPerDatasetItem:
           type: number
     LoginRequest:
       type: object
