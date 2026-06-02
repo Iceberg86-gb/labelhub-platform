@@ -13,6 +13,7 @@ public class LlmProviderConfigDtoMapper {
     public LlmProviderConfig toDto(LlmProviderConfigEntity entity) {
         LlmProviderConfig dto = new LlmProviderConfig();
         dto.setId(entity.getId());
+        dto.setScope(LlmProviderConfig.ScopeEnum.fromValue(entity.getScope()));
         dto.setProviderType(entity.getProviderType());
         dto.setProviderName(entity.getProviderName());
         dto.setBaseUrl(entity.getBaseUrl());
