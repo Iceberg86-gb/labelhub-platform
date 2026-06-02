@@ -12,8 +12,8 @@ class RuntimeProviderResolverTest {
     private static final String MASTER_KEY = "0123456789abcdef0123456789abcdef";
 
     @Test
-    void resolves_env_fallback_when_owner_has_no_enabled_db_provider() {
-        RuntimeProviderConfigRepository repository = repository(55L, List.of());
+    void resolves_env_fallback_when_no_enabled_platform_provider_exists() {
+        RuntimeProviderConfigRepository repository = repository(List.of());
         RuntimeProviderResolver resolver = new RuntimeProviderResolver(
             repository,
             ciphertext -> {
@@ -30,8 +30,8 @@ class RuntimeProviderResolverTest {
     }
 
     @Test
-    void resolves_single_enabled_db_provider_and_decrypts_secret_in_memory() {
-        RuntimeProviderConfigRepository repository = repository(55L, List.of(config("ciphertext-value")));
+    void resolves_single_enabled_platform_provider_and_decrypts_secret_in_memory() {
+        RuntimeProviderConfigRepository repository = repository(List.of(config("ciphertext-value")));
         RuntimeProviderResolver resolver = new RuntimeProviderResolver(
             repository,
             ciphertext -> "db-secret-value",
@@ -43,12 +43,12 @@ class RuntimeProviderResolverTest {
         assertThat(source.source()).isEqualTo(RuntimeProviderSource.Source.DB);
         assertThat(source.providerConfigId()).isEqualTo(9L);
         assertThat(source.apiKey()).isEqualTo("db-secret-value");
-        assertThat(source.providerName()).isEqualTo("owner-doubao");
+        assertThat(source.providerName()).isEqualTo("platform-deepseek");
     }
 
     @Test
-    void multiple_enabled_db_providers_is_permanent_config_error_without_env_fallback() {
-        RuntimeProviderConfigRepository repository = repository(55L, List.of(config("a"), config("b")));
+    void multiple_enabled_platform_providers_is_permanent_config_error_without_env_fallback() {
+        RuntimeProviderConfigRepository repository = repository(List.of(config("a"), config("b")));
         RuntimeProviderResolver resolver = new RuntimeProviderResolver(
             repository,
             ciphertext -> "db-secret-value",
@@ -63,7 +63,7 @@ class RuntimeProviderResolverTest {
 
     @Test
     void decrypt_failure_is_permanent_config_error_without_env_fallback_or_key_leak() {
-        RuntimeProviderConfigRepository repository = repository(55L, List.of(config("ciphertext-value")));
+        RuntimeProviderConfigRepository repository = repository(List.of(config("ciphertext-value")));
         RuntimeProviderResolver resolver = new RuntimeProviderResolver(
             repository,
             ciphertext -> {
@@ -85,15 +85,15 @@ class RuntimeProviderResolverTest {
             9L,
             55L,
             "openai-compatible",
-            "owner-doubao",
+            "platform-deepseek",
             "https://example.test/v1",
-            "doubao-lite",
+            "deepseek-chat",
             null,
             "vault://future-key",
             true
         );
         RuntimeProviderResolver resolver = new RuntimeProviderResolver(
-            repository(55L, List.of(config)),
+            repository(List.of(config)),
             ciphertext -> "db-secret-value",
             Optional.of(envSource())
         );
@@ -110,9 +110,9 @@ class RuntimeProviderResolverTest {
         RuntimeProviderSource source = RuntimeProviderSource.db(
             9L,
             "openai-compatible",
-            "owner-doubao",
+            "platform-deepseek",
             "https://example.test/v1",
-            "doubao-lite",
+            "deepseek-chat",
             "db-secret-value"
         );
 
@@ -124,15 +124,10 @@ class RuntimeProviderResolverTest {
             .doesNotContain("apiKey");
     }
 
-    private static RuntimeProviderConfigRepository repository(Long ownerId, List<RuntimeProviderConfig> configs) {
+    private static RuntimeProviderConfigRepository repository(List<RuntimeProviderConfig> configs) {
         return new RuntimeProviderConfigRepository() {
             @Override
-            public Optional<Long> findOwnerIdBySubmissionId(Long submissionId) {
-                return Optional.of(ownerId);
-            }
-
-            @Override
-            public List<RuntimeProviderConfig> findEnabledByOwnerId(Long ownerId) {
+            public List<RuntimeProviderConfig> findEnabledPlatformProviders() {
                 return configs;
             }
         };
@@ -143,9 +138,9 @@ class RuntimeProviderResolverTest {
             9L,
             55L,
             "openai-compatible",
-            "owner-doubao",
+            "platform-deepseek",
             "https://example.test/v1",
-            "doubao-lite",
+            "deepseek-chat",
             ciphertext,
             null,
             true

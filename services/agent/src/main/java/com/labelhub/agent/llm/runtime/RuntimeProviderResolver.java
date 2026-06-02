@@ -35,12 +35,7 @@ public class RuntimeProviderResolver {
     }
 
     public RuntimeProviderSource resolve(Long submissionId) {
-        Long ownerId = repository.findOwnerIdBySubmissionId(submissionId)
-            .orElseThrow(() -> new RuntimeProviderResolutionException(
-                "Submission owner not found for AI review provider resolution",
-                "owner_not_found"
-            ));
-        List<RuntimeProviderConfig> configs = repository.findEnabledByOwnerId(ownerId);
+        List<RuntimeProviderConfig> configs = repository.findEnabledPlatformProviders();
         if (configs.isEmpty()) {
             return envFallback.orElseThrow(() -> new RuntimeProviderResolutionException(
                 "No enabled DB provider and env fallback is not configured",
@@ -49,7 +44,7 @@ public class RuntimeProviderResolver {
         }
         if (configs.size() > 1) {
             throw new RuntimeProviderResolutionException(
-                "Owner has multiple enabled LLM provider configs; Batch B runtime supports exactly one enabled provider",
+                "Platform has multiple enabled LLM provider configs; runtime supports exactly one enabled provider",
                 "multiple_enabled_providers"
             );
         }

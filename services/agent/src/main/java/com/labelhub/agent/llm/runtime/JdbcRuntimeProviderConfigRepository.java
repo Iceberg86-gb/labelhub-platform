@@ -3,7 +3,6 @@ package com.labelhub.agent.llm.runtime;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -19,26 +18,15 @@ public class JdbcRuntimeProviderConfigRepository implements RuntimeProviderConfi
     }
 
     @Override
-    public Optional<Long> findOwnerIdBySubmissionId(Long submissionId) {
-        List<Long> rows = jdbcTemplate.query("""
-            SELECT t.owner_id
-            FROM submissions s
-            JOIN tasks t ON t.id = s.task_id
-            WHERE s.id = ?
-            """, (rs, rowNum) -> rs.getLong("owner_id"), submissionId);
-        return rows.stream().findFirst();
-    }
-
-    @Override
-    public List<RuntimeProviderConfig> findEnabledByOwnerId(Long ownerId) {
+    public List<RuntimeProviderConfig> findEnabledPlatformProviders() {
         return jdbcTemplate.query("""
             SELECT id, owner_id, provider_type, provider_name, base_url, model_name,
                    secret_ciphertext, secret_ref, enabled
             FROM llm_provider_configs
-            WHERE owner_id = ?
+            WHERE scope = 'platform'
               AND enabled = TRUE
             ORDER BY id ASC
-            """, this::mapRow, ownerId);
+            """, this::mapRow);
     }
 
     private RuntimeProviderConfig mapRow(ResultSet rs, int rowNum) throws SQLException {
