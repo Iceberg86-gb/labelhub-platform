@@ -2637,6 +2637,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        prereviewStatus:
+          $ref: '#/components/schemas/PrereviewStatus'
+        prereviewSignals:
+          $ref: '#/components/schemas/PrereviewSignals'
     PagedOwnerSubmissions:
       type: object
       required: [items, total, page, size]
@@ -3303,6 +3307,23 @@ components:
         answerPayload:
           type: object
           additionalProperties: true
+    PrereviewStatus:
+      type: string
+      enum: [pending, processing, completed, failed]
+      description: Server-derived AI prereview state. It is computed from outbox, ai_calls, and ledger facts.
+    PrereviewSignals:
+      type: object
+      required: [hasAiOverallRecommendation]
+      description: Narrow debug signals used by the server to derive prereviewStatus. Payload and score content are never exposed here.
+      properties:
+        outboxStatus:
+          type: string
+          nullable: true
+        aiCallStatus:
+          type: string
+          nullable: true
+        hasAiOverallRecommendation:
+          type: boolean
     Submission:
       type: object
       required: [id, sessionId, taskId, datasetItemId, labelerId, schemaVersionId, answerPayload, contentHash, status, createdAt]
@@ -3344,6 +3365,10 @@ components:
           type: integer
           format: int64
           nullable: true
+        prereviewStatus:
+          $ref: '#/components/schemas/PrereviewStatus'
+        prereviewSignals:
+          $ref: '#/components/schemas/PrereviewSignals'
     AiReviewRuleStatus:
       type: string
       enum: [draft, published]
@@ -3877,6 +3902,10 @@ components:
           type: string
           enum: [pass, reject, manual_review]
           nullable: true
+        prereviewStatus:
+          $ref: '#/components/schemas/PrereviewStatus'
+        prereviewSignals:
+          $ref: '#/components/schemas/PrereviewSignals'
     PagedReviewerSubmissions:
       type: object
       required: [items, total, page, size]
