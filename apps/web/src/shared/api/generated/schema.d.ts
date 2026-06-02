@@ -251,6 +251,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/labor-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get platform labor count metrics.
+         * @description Platform-admin-only factual counts over submissions, review actions, and three separate rework signals. It does not read submission answers or review text.
+         */
+        get: operations["getPlatformLaborMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/efficiency-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get platform token reuse and unit-cost facts.
+         * @description Platform-admin-only factual metrics over ai_calls idempotency keys, cache-hit tokens, and stored cost per data item. It does not recalculate pricing.
+         */
+        get: operations["getPlatformEfficiencyMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/audit-logs": {
         parameters: {
             query?: never;
@@ -1084,6 +1124,66 @@ export interface components {
             /** Format: int64 */
             totalTokens: number;
             totalCost: number;
+        };
+        PlatformLaborMetrics: {
+            /** Format: date-time */
+            generatedAt: string;
+            submissions: components["schemas"]["PlatformLaborMetricRow"][];
+            reviews: components["schemas"]["PlatformLaborMetricRow"][];
+            rework: components["schemas"]["PlatformReworkMetrics"];
+            empty: boolean;
+        };
+        PlatformLaborMetricRow: {
+            /** Format: int64 */
+            userId: number;
+            displayName?: string | null;
+            username?: string | null;
+            /** Format: int64 */
+            count: number;
+            /** Format: int64 */
+            initialReviewCount: number;
+            /** Format: int64 */
+            seniorReviewCount: number;
+            /** Format: int64 */
+            approveActionCount: number;
+            /** Format: int64 */
+            returnActionCount: number;
+            /** Format: int64 */
+            rejectActionCount: number;
+        };
+        PlatformReworkMetrics: {
+            /** Format: int64 */
+            supersededSubmissionCount: number;
+            /** Format: int64 */
+            multiRoundReviewActionCount: number;
+            /** Format: int64 */
+            returnedForRevisionSubmissionCount: number;
+        };
+        PlatformEfficiencyMetrics: {
+            /** Format: date-time */
+            generatedAt: string;
+            idempotency: components["schemas"]["PlatformIdempotencyMetrics"];
+            unitCost: components["schemas"]["PlatformUnitCostMetrics"];
+            empty: boolean;
+        };
+        PlatformIdempotencyMetrics: {
+            /** Format: int64 */
+            callCount: number;
+            /** Format: int64 */
+            uniqueKeyCount: number;
+            /** Format: int64 */
+            duplicateKeyCount: number;
+            /** Format: int64 */
+            cacheHitTokens: number;
+        };
+        PlatformUnitCostMetrics: {
+            totalCost: number;
+            /** Format: int64 */
+            distinctSubmissionCount: number;
+            /** Format: int64 */
+            distinctDatasetItemCount: number;
+            costPerSubmission: number;
+            costPerDatasetItem: number;
         };
         LoginRequest: {
             username: string;
@@ -2562,6 +2662,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlatformCostMetrics"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+        };
+    };
+    getPlatformLaborMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Labor count metrics grouped by user and rework signal. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformLaborMetrics"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+        };
+    };
+    getPlatformEfficiencyMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Token reuse and unit-cost facts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformEfficiencyMetrics"];
                 };
             };
             401: components["responses"]["ErrorUnauthorized"];

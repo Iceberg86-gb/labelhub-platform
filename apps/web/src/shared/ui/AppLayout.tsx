@@ -50,6 +50,8 @@ const navItemHints: Record<string, string> = {
   '/platform/user-roles': '授予业务权限',
   '/platform/llm': '模型与 API Key',
   '/platform/cost-metrics': 'Token 与成本事实',
+  '/platform/labor-metrics': '提交、审核与返工计数',
+  '/platform/efficiency-metrics': '复用与单位成本事实',
   '/platform/audit-logs': '操作留痕追踪',
   '/labeler/marketplace': '领取可作答任务',
   '/labeler/my': '继续未完成数据',
@@ -60,7 +62,8 @@ const navItemHints: Record<string, string> = {
 function menuIconFor(path: string) {
   if (path === '/owner/schemas') return <IconDesignerBlock className={navIconClassName} />;
   if (path === '/platform/llm') return <IconAiAssist className={navIconClassName} />;
-  if (path === '/platform/cost-metrics') return <IconStatusFlow className={navIconClassName} />;
+  if (path === '/platform/cost-metrics' || path === '/platform/efficiency-metrics') return <IconStatusFlow className={navIconClassName} />;
+  if (path === '/platform/labor-metrics') return <IconReviewFlow className={navIconClassName} />;
   if (path === '/platform/audit-logs') return <IconVersionHistory className={navIconClassName} />;
   if (path === '/platform/users' || path === '/platform/user-roles') return <IconUserCircle className={navIconClassName} />;
   if (path === '/labeler/marketplace') return <IconTask className={navIconClassName} />;
