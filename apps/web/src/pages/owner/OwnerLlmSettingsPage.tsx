@@ -276,7 +276,7 @@ export function OwnerLlmSettingsPage() {
             LLM 接入
           </Typography.Title>
           <Typography.Text type="tertiary">
-            管理 API Key、Provider、模型与 LabelHub 内部 AI 辅助能力的启用范围。
+            管理平台级 API Key、Provider、模型与 LabelHub 内部 AI 辅助能力的启用范围。
           </Typography.Text>
         </div>
         <Space>
@@ -294,7 +294,7 @@ export function OwnerLlmSettingsPage() {
           <span className="llm-status-card__icon"><IconAiAssist /></span>
           <span>当前 Provider</span>
           <strong>{config.providerName}</strong>
-          <small>{config.modelName}</small>
+          <small>平台级 · {config.modelName}</small>
         </div>
         <div className="llm-status-card">
           <span className="llm-status-card__icon"><IconTickCircle /></span>
@@ -321,7 +321,7 @@ export function OwnerLlmSettingsPage() {
           <div className="llm-panel-head">
             <div>
               <Typography.Title heading={5}>Provider 配置</Typography.Title>
-              <Typography.Text type="tertiary">用于 AI 预审、Designer LLM 字段与字段级建议。</Typography.Text>
+              <Typography.Text type="tertiary">平台统一使用这一组 Provider,用于 AI 预审、Designer LLM 字段与字段级建议。</Typography.Text>
             </div>
             <span className={`llm-connection-pill llm-connection-pill--${connectionStatus}`}>
               {statusLabel(connectionStatus)}
@@ -416,7 +416,7 @@ export function OwnerLlmSettingsPage() {
               删除配置
             </Button>
             <Typography.Text type="tertiary">
-              {providersQuery.isLoading ? '正在读取已保存 Provider...' : `${providersQuery.data?.length ?? 0} 个 Provider 已接入`}
+              {providersQuery.isLoading ? '正在读取已保存 Provider...' : `${providersQuery.data?.length ?? 0} 个平台 Provider 已接入`}
             </Typography.Text>
           </div>
 

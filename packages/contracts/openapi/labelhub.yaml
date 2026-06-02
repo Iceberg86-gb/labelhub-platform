@@ -1984,11 +1984,15 @@ components:
   schemas:
     LlmProviderConfig:
       type: object
-      required: [id, providerType, providerName, modelName, enabled, hasSecret, createdAt, updatedAt]
+      required: [id, scope, providerType, providerName, modelName, enabled, hasSecret, createdAt, updatedAt]
       properties:
         id:
           type: integer
           format: int64
+        scope:
+          type: string
+          enum: [platform, owner]
+          description: Provider ownership scope. Platform-scoped providers are managed by PLATFORM_ADMIN and used across LabelHub.
         providerType:
           type: string
           minLength: 1

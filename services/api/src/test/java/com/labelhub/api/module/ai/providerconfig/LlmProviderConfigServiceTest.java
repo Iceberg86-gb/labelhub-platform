@@ -49,6 +49,8 @@ class LlmProviderConfigServiceTest {
         ArgumentCaptor<LlmProviderConfigEntity> entityCaptor = ArgumentCaptor.forClass(LlmProviderConfigEntity.class);
         verify(mapper).insert(entityCaptor.capture());
         LlmProviderConfigEntity inserted = entityCaptor.getValue();
+        assertThat(inserted.getScope()).isEqualTo("platform");
+        assertThat(inserted.getOwnerId()).isEqualTo(7L);
         assertThat(inserted.getSecretCiphertext()).isNotBlank();
         assertThat(inserted.getSecretCiphertext()).doesNotContain(SECRET);
         assertThat(inserted.getSecretLast4()).isEqualTo("7890");
@@ -62,14 +64,22 @@ class LlmProviderConfigServiceTest {
         Map<String, Object> payload = event.payload();
         assertThat(payload.toString()).doesNotContain(SECRET);
         assertThat(payload.toString()).doesNotContain(inserted.getSecretCiphertext());
+        assertThat(payload).containsEntry("scope", "platform");
         assertThat(payload).containsEntry("hasSecret", true);
         assertThat(payload).containsEntry("secretLast4", "7890");
     }
 
     @Test
+    void listReadsPlatformProvidersRatherThanActorOwnedProviders() {
+        service.list(7L);
+
+        verify(mapper).selectPlatformProviders();
+    }
+
+    @Test
     void updateSecret_overwritesCiphertextAndKeepsPlaintextWriteOnly() {
         LlmProviderConfigEntity existing = existingEntity();
-        when(mapper.selectByIdAndOwner(42L, 7L)).thenReturn(existing);
+        when(mapper.selectPlatformById(42L)).thenReturn(existing);
         when(mapper.update(any())).thenReturn(1);
 
         service.update(7L, 42L, new LlmProviderConfigUpdateCommand(
@@ -85,6 +95,7 @@ class LlmProviderConfigServiceTest {
         ArgumentCaptor<LlmProviderConfigEntity> entityCaptor = ArgumentCaptor.forClass(LlmProviderConfigEntity.class);
         verify(mapper).update(entityCaptor.capture());
         LlmProviderConfigEntity updated = entityCaptor.getValue();
+        assertThat(updated.getScope()).isEqualTo("platform");
         assertThat(updated.getSecretCiphertext()).isNotEqualTo("old-ciphertext");
         assertThat(updated.getSecretCiphertext()).doesNotContain(SECRET);
         assertThat(updated.getSecretLast4()).isEqualTo("7890");
@@ -95,6 +106,7 @@ class LlmProviderConfigServiceTest {
         LlmProviderConfigEntity entity = new LlmProviderConfigEntity();
         entity.setId(42L);
         entity.setOwnerId(7L);
+        entity.setScope("platform");
         entity.setProviderType("openai-compatible");
         entity.setProviderName("deepseek");
         entity.setBaseUrl("https://api.deepseek.test/v1");

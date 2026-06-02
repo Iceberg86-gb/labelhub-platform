@@ -1,6 +1,7 @@
 package com.labelhub.api.module.ai.providerconfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.labelhub.api.generated.model.LlmProviderConfig;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
@@ -16,6 +17,7 @@ class LlmProviderConfigDtoMapperTest {
         LlmProviderConfigEntity entity = new LlmProviderConfigEntity();
         entity.setId(11L);
         entity.setOwnerId(1L);
+        entity.setScope("platform");
         entity.setProviderType("openai-compatible");
         entity.setProviderName("deepseek");
         entity.setBaseUrl("https://api.example.test/v1");
@@ -32,6 +34,7 @@ class LlmProviderConfigDtoMapperTest {
         String json = objectMapper.writeValueAsString(dto);
 
         assertThat(dto.getHasSecret()).isTrue();
+        assertThat(dto.getScope()).isEqualTo(LlmProviderConfig.ScopeEnum.PLATFORM);
         assertThat(dto.getSecretLast4()).isEqualTo("7890");
         assertThat(json).contains("secretLast4");
         assertThat(json).doesNotContain("sk-test-secret");

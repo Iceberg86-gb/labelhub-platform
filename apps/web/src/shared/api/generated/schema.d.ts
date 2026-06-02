@@ -1003,6 +1003,11 @@ export interface components {
         LlmProviderConfig: {
             /** Format: int64 */
             id: number;
+            /**
+             * @description Provider ownership scope. Platform-scoped providers are managed by PLATFORM_ADMIN and used across LabelHub.
+             * @enum {string}
+             */
+            scope: "platform" | "owner";
             providerType: string;
             providerName: string;
             baseUrl?: string | null;
