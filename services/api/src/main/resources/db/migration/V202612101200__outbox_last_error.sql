@@ -1,0 +1,2 @@
+ALTER TABLE outbox
+    ADD COLUMN last_error VARCHAR(1000) NULL;

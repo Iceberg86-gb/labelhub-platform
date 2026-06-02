@@ -15,5 +15,5 @@ public interface OutboxRepository {
 
     void scheduleRetry(Long eventId, String workerId, int retryCount, LocalDateTime nextRetryAt);
 
-    void markDeadLetter(Long eventId, String workerId, int retryCount);
+    void markDeadLetter(Long eventId, String workerId, int retryCount, String lastError);
 }

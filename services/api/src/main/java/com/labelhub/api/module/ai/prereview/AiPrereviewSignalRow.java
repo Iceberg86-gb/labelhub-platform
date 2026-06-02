@@ -7,6 +7,7 @@ public class AiPrereviewSignalRow {
     private Long submissionId;
     private String outboxStatus;
     private LocalDateTime outboxLockedAt;
+    private String outboxLastError;
     private String aiCallStatus;
     private Boolean hasAiOverallRecommendation;
 
@@ -17,12 +18,14 @@ public class AiPrereviewSignalRow {
         Long submissionId,
         String outboxStatus,
         LocalDateTime outboxLockedAt,
+        String outboxLastError,
         String aiCallStatus,
         Boolean hasAiOverallRecommendation
     ) {
         this.submissionId = submissionId;
         this.outboxStatus = outboxStatus;
         this.outboxLockedAt = outboxLockedAt;
+        this.outboxLastError = outboxLastError;
         this.aiCallStatus = aiCallStatus;
         this.hasAiOverallRecommendation = hasAiOverallRecommendation;
     }
@@ -33,6 +36,8 @@ public class AiPrereviewSignalRow {
     public void setOutboxStatus(String outboxStatus) { this.outboxStatus = outboxStatus; }
     public LocalDateTime getOutboxLockedAt() { return outboxLockedAt; }
     public void setOutboxLockedAt(LocalDateTime outboxLockedAt) { this.outboxLockedAt = outboxLockedAt; }
+    public String getOutboxLastError() { return outboxLastError; }
+    public void setOutboxLastError(String outboxLastError) { this.outboxLastError = outboxLastError; }
     public String getAiCallStatus() { return aiCallStatus; }
     public void setAiCallStatus(String aiCallStatus) { this.aiCallStatus = aiCallStatus; }
     public Boolean getHasAiOverallRecommendation() { return hasAiOverallRecommendation; }

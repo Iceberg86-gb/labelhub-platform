@@ -51,7 +51,8 @@ public class AiPrereviewStatusService {
         AiPrereviewSignals signals = new AiPrereviewSignals(
             row.getOutboxStatus(),
             row.getAiCallStatus(),
-            hasRecommendation
+            hasRecommendation,
+            row.getOutboxLastError()
         );
         return new AiPrereviewSignalsView(row.getSubmissionId(), deriveStatus(row, hasRecommendation), signals);
     }
@@ -60,7 +61,7 @@ public class AiPrereviewStatusService {
         return new AiPrereviewSignalsView(
             submissionId,
             "pending",
-            new AiPrereviewSignals(null, null, false)
+            new AiPrereviewSignals(null, null, false, null)
         );
     }
 
