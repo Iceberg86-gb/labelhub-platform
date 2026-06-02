@@ -19,8 +19,15 @@ const ACTIONS = [
   ['review.reject', '审核 / 拒绝'],
   ['export.snapshot_create', '导出 / 快照创建'],
   ['export.snapshot_archive', '导出 / 快照归档'],
+  ['ROLE_GRANTED', '账号 / 授权'],
+  ['ROLE_REVOKED', '账号 / 撤权'],
+  ['USER_DELETED', '账号 / 停用'],
+  ['llm_provider_config.create', '模型 / 新建配置'],
+  ['llm_provider_config.update', '模型 / 更新配置'],
+  ['llm_provider_config.delete', '模型 / 删除配置'],
+  ['llm_provider_config.test_connection', '模型 / 测试连接'],
 ] as const;
-const RESOURCES = ['task', 'schema', 'schema_version', 'submission', 'ai_call', 'export_snapshot'];
+const RESOURCES = ['task', 'schema', 'schema_version', 'submission', 'ai_call', 'export_snapshot', 'USER', 'llm_provider_config'];
 const ACTION_OPTIONS = ACTIONS.map(([value, label]) => ({ value, label }));
 const ACTION_LABELS = new Map<string, string>(ACTIONS.map(([value, label]) => [value, label.split(' / ')[1]]));
 const RESOURCE_OPTIONS = RESOURCES.map((value) => ({ value, label: value }));
@@ -133,11 +140,11 @@ export function OwnerAuditLogsPage() {
   const errorText = logs.error instanceof AuditLogsQueryError && logs.error.status === 403 ? '权限不足' : (logs.error?.message ?? '审计日志加载失败。');
 
   return (
-    <section className="audit-page" aria-label="Owner audit logs">
+    <section className="audit-page" aria-label="Platform audit logs">
       <div className="page-heading">
         <div>
           <Typography.Title heading={3} className="page-title">审计日志</Typography.Title>
-          <Typography.Text type="tertiary">查询所有 Owner 范围内的操作审计证据</Typography.Text>
+          <Typography.Text type="tertiary">查询平台治理范围内的操作审计证据</Typography.Text>
         </div>
         <Button icon={<IconDownload />} loading={exportCsv.isPending} onClick={() => exportCsv.mutate(filters)}>导出 CSV</Button>
       </div>

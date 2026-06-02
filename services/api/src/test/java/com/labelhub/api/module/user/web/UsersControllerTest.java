@@ -10,32 +10,32 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UsersControllerTest {
 
     @Test
-    void roleGrantEndpointRequiresOwnerOrSeniorReviewer() throws Exception {
+    void roleGrantEndpointRequiresPlatformAdmin() throws Exception {
         Method method = UsersController.class.getMethod("grantUserRole", Long.class, GrantRoleRequest.class);
 
         PreAuthorize preAuthorize = method.getAnnotation(PreAuthorize.class);
 
         assertThat(preAuthorize).isNotNull();
-        assertThat(preAuthorize.value()).isEqualTo("hasAnyRole('OWNER','SENIOR_REVIEWER')");
+        assertThat(preAuthorize.value()).isEqualTo("hasRole('PLATFORM_ADMIN')");
     }
 
     @Test
-    void userListEndpointRequiresOwnerOrSeniorReviewer() throws Exception {
+    void userListEndpointRequiresPlatformAdmin() throws Exception {
         Method method = UsersController.class.getMethod("listUsers", Integer.class, Integer.class);
 
         PreAuthorize preAuthorize = method.getAnnotation(PreAuthorize.class);
 
         assertThat(preAuthorize).isNotNull();
-        assertThat(preAuthorize.value()).isEqualTo("hasAnyRole('OWNER','SENIOR_REVIEWER')");
+        assertThat(preAuthorize.value()).isEqualTo("hasRole('PLATFORM_ADMIN')");
     }
 
     @Test
-    void deleteUserEndpointRequiresOwnerOnly() throws Exception {
+    void deleteUserEndpointRequiresPlatformAdmin() throws Exception {
         Method method = UsersController.class.getMethod("deleteUser", Long.class);
 
         PreAuthorize preAuthorize = method.getAnnotation(PreAuthorize.class);
 
         assertThat(preAuthorize).isNotNull();
-        assertThat(preAuthorize.value()).isEqualTo("hasRole('OWNER')");
+        assertThat(preAuthorize.value()).isEqualTo("hasRole('PLATFORM_ADMIN')");
     }
 }

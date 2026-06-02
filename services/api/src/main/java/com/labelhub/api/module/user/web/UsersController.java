@@ -41,7 +41,7 @@ public class UsersController implements UsersApi {
     }
 
     @Override
-    @PreAuthorize("hasAnyRole('OWNER','SENIOR_REVIEWER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @GetMapping(produces = "application/json")
     public ResponseEntity<PagedUsers> listUsers(
         @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
@@ -57,7 +57,7 @@ public class UsersController implements UsersApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @DeleteMapping(path = "/{userId}")
     public ResponseEntity<Void> deleteUser(@PathVariable("userId") Long userId) {
         userDeletionService.deleteUser(currentUserId(), userId);
@@ -65,7 +65,7 @@ public class UsersController implements UsersApi {
     }
 
     @Override
-    @PreAuthorize("hasAnyRole('OWNER','SENIOR_REVIEWER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @PostMapping(path = "/{userId}/roles", consumes = "application/json", produces = "application/json")
     public ResponseEntity<LoginUserProfile> grantUserRole(
         @PathVariable("userId") Long userId,
@@ -84,6 +84,7 @@ public class UsersController implements UsersApi {
         profile.setUsername(result.user().getUsername());
         profile.setDisplayName(result.user().getDisplayName());
         profile.setRoles(result.roles());
+        profile.setMustChangePassword(Boolean.TRUE.equals(result.user().getMustChangePassword()));
         return profile;
     }
 

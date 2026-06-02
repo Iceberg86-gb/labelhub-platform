@@ -265,11 +265,11 @@ export function OwnerLlmSettingsPage() {
   };
 
   return (
-    <section className="llm-settings-page" aria-label="Owner LLM settings">
+    <section className="llm-settings-page" aria-label="Platform LLM settings">
       <header className="owner-page-hero llm-settings-hero">
         <div className="owner-page-hero__copy">
           <div className="owner-page-hero__meta">
-            <RoleBadge role="OWNER" />
+            <RoleBadge role="PLATFORM_ADMIN" />
             <Typography.Text>模型接入与辅助范围</Typography.Text>
           </div>
           <Typography.Title heading={3} className="page-title">
