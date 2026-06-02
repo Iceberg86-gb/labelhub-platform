@@ -50,6 +50,12 @@ public final class AuditEventBuilder {
         return this;
     }
 
+    public AuditEventBuilder actorPlatformAdmin(Long userId) {
+        this.actorType = "platform_admin";
+        this.actorId = userId;
+        return this;
+    }
+
     public AuditEventBuilder resource(String resourceType, Long resourceId) {
         this.resourceType = resourceType;
         this.resourceId = resourceId;

@@ -18,6 +18,7 @@ tags:
   - name: Reviews
   - name: Exports
   - name: AuditLogs
+  - name: Platform
   - name: Internal
 security:
   - bearerAuth: []
@@ -26,10 +27,10 @@ paths:
     get:
       tags: [LLMProviders]
       operationId: listLlmProviders
-      summary: List owner-managed LLM provider configurations.
+      summary: List platform-managed LLM provider configurations.
       responses:
         '200':
-          description: LLM provider configurations visible to the owner.
+          description: LLM provider configurations visible to the platform administrator.
           content:
             application/json:
               schema:
@@ -43,7 +44,7 @@ paths:
     post:
       tags: [LLMProviders]
       operationId: createLlmProvider
-      summary: Create an owner-managed LLM provider configuration.
+      summary: Create a platform-managed LLM provider configuration.
       requestBody:
         required: true
         content:
@@ -91,7 +92,7 @@ paths:
     get:
       tags: [LLMProviders]
       operationId: getLlmProvider
-      summary: Get one owner-managed LLM provider configuration.
+      summary: Get one platform-managed LLM provider configuration.
       parameters:
         - $ref: '#/components/parameters/ProviderConfigId'
       responses:
@@ -110,7 +111,7 @@ paths:
     patch:
       tags: [LLMProviders]
       operationId: updateLlmProvider
-      summary: Update an owner-managed LLM provider configuration.
+      summary: Update a platform-managed LLM provider configuration.
       parameters:
         - $ref: '#/components/parameters/ProviderConfigId'
       requestBody:
@@ -137,7 +138,7 @@ paths:
     delete:
       tags: [LLMProviders]
       operationId: deleteLlmProvider
-      summary: Delete an owner-managed LLM provider configuration.
+      summary: Delete a platform-managed LLM provider configuration.
       parameters:
         - $ref: '#/components/parameters/ProviderConfigId'
       responses:
@@ -265,8 +266,8 @@ paths:
     get:
       tags: [Users]
       operationId: listUsers
-      summary: List registered user accounts for role administration.
-      description: Owner and Senior Reviewer can view active registered accounts without password hashes.
+      summary: List registered user accounts for platform administration.
+      description: Platform administrators can view active registered accounts without password hashes.
       parameters:
         - name: page
           in: query
@@ -301,7 +302,7 @@ paths:
       tags: [Users]
       operationId: deleteUser
       summary: Soft delete an active user account.
-      description: Owner-only soft delete. The user row and historical evidence references are retained; status becomes deleted.
+      description: Platform-admin-only soft delete. The user row and historical evidence references are retained; status becomes deleted.
       parameters:
         - $ref: '#/components/parameters/UserId'
       responses:
@@ -319,8 +320,37 @@ paths:
     post:
       tags: [Users]
       operationId: grantUserRole
-      summary: Grant or revoke a governed user role.
-      description: Only LABELER, REVIEWER, and SENIOR_REVIEWER may be adjusted; OWNER and AI_AGENT are never self-service grantable.
+      summary: Grant or revoke a governed business reviewer role.
+      description: Platform-admin-only legacy reviewer role adjustment. Only LABELER, REVIEWER, and SENIOR_REVIEWER may be adjusted.
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantRoleRequest'
+      responses:
+        '200':
+          description: Updated user role profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginUserProfile'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /platform/users/{userId}/roles:
+    post:
+      tags: [Platform]
+      operationId: grantPlatformUserRole
+      summary: Grant or revoke a platform-governed user role.
+      description: Platform administrators may adjust OWNER, LABELER, REVIEWER, and SENIOR_REVIEWER. PLATFORM_ADMIN and AI_AGENT are never grantable through this endpoint, and platform admins cannot grant roles to themselves.
       parameters:
         - $ref: '#/components/parameters/UserId'
       requestBody:
@@ -349,7 +379,7 @@ paths:
       tags: [AuditLogs]
       operationId: listAuditLogs
       summary: 查询审计日志
-      description: 查询 Owner 可见的审计日志。
+      description: 查询平台管理者可见的审计日志。
       parameters:
         - name: page
           in: query
@@ -414,7 +444,7 @@ paths:
       tags: [AuditLogs]
       operationId: exportAuditLogs
       summary: 导出审计日志 CSV
-      description: 导出 Owner 可见的审计日志 CSV。
+      description: 导出平台管理者可见的审计日志 CSV。
       parameters:
         - name: actionTypes
           in: query
@@ -2030,7 +2060,7 @@ components:
           format: int64
         actorType:
           type: string
-          enum: [user, system, ai]
+          enum: [user, system, ai, platform_admin]
         actorId:
           type: integer
           format: int64
@@ -2132,7 +2162,7 @@ components:
           $ref: '#/components/schemas/LoginUserProfile'
     LoginUserProfile:
       type: object
-      required: [id, username, displayName, roles]
+      required: [id, username, displayName, roles, mustChangePassword]
       properties:
         id:
           type: integer
@@ -2145,6 +2175,8 @@ components:
           type: array
           items:
             type: string
+        mustChangePassword:
+          type: boolean
     UserAccountSummary:
       type: object
       required: [id, username, displayName, status, roles, createdAt]

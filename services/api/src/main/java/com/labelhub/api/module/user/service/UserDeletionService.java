@@ -60,8 +60,7 @@ public class UserDeletionService {
         }
 
         auditLogService.record(AuditEventBuilder.forAction(AuditActions.USER_DELETED)
-            .actorType("USER")
-            .actorId(actorUserId)
+            .actorPlatformAdmin(actorUserId)
             .resource("USER", targetUserId)
             .payload("fromStatus", ACTIVE)
             .payload("toStatus", DELETED)

@@ -11,10 +11,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List owner-managed LLM provider configurations. */
+        /** List platform-managed LLM provider configurations. */
         get: operations["listLlmProviders"];
         put?: never;
-        /** Create an owner-managed LLM provider configuration. */
+        /** Create a platform-managed LLM provider configuration. */
         post: operations["createLlmProvider"];
         delete?: never;
         options?: never;
@@ -46,15 +46,15 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one owner-managed LLM provider configuration. */
+        /** Get one platform-managed LLM provider configuration. */
         get: operations["getLlmProvider"];
         put?: never;
         post?: never;
-        /** Delete an owner-managed LLM provider configuration. */
+        /** Delete a platform-managed LLM provider configuration. */
         delete: operations["deleteLlmProvider"];
         options?: never;
         head?: never;
-        /** Update an owner-managed LLM provider configuration. */
+        /** Update a platform-managed LLM provider configuration. */
         patch: operations["updateLlmProvider"];
         trace?: never;
     };
@@ -159,8 +159,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List registered user accounts for role administration.
-         * @description Owner and Senior Reviewer can view active registered accounts without password hashes.
+         * List registered user accounts for platform administration.
+         * @description Platform administrators can view active registered accounts without password hashes.
          */
         get: operations["listUsers"];
         put?: never;
@@ -183,7 +183,7 @@ export interface paths {
         post?: never;
         /**
          * Soft delete an active user account.
-         * @description Owner-only soft delete. The user row and historical evidence references are retained; status becomes deleted.
+         * @description Platform-admin-only soft delete. The user row and historical evidence references are retained; status becomes deleted.
          */
         delete: operations["deleteUser"];
         options?: never;
@@ -201,10 +201,30 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Grant or revoke a governed user role.
-         * @description Only LABELER, REVIEWER, and SENIOR_REVIEWER may be adjusted; OWNER and AI_AGENT are never self-service grantable.
+         * Grant or revoke a governed business reviewer role.
+         * @description Platform-admin-only legacy reviewer role adjustment. Only LABELER, REVIEWER, and SENIOR_REVIEWER may be adjusted.
          */
         post: operations["grantUserRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/platform/users/{userId}/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant or revoke a platform-governed user role.
+         * @description Platform administrators may adjust OWNER, LABELER, REVIEWER, and SENIOR_REVIEWER. PLATFORM_ADMIN and AI_AGENT are never grantable through this endpoint, and platform admins cannot grant roles to themselves.
+         */
+        post: operations["grantPlatformUserRole"];
         delete?: never;
         options?: never;
         head?: never;
@@ -220,7 +240,7 @@ export interface paths {
         };
         /**
          * 查询审计日志
-         * @description 查询 Owner 可见的审计日志。
+         * @description 查询平台管理者可见的审计日志。
          */
         get: operations["listAuditLogs"];
         put?: never;
@@ -240,7 +260,7 @@ export interface paths {
         };
         /**
          * 导出审计日志 CSV
-         * @description 导出 Owner 可见的审计日志 CSV。
+         * @description 导出平台管理者可见的审计日志 CSV。
          */
         get: operations["exportAuditLogs"];
         put?: never;
@@ -976,7 +996,7 @@ export interface components {
             /** Format: int64 */
             id: number;
             /** @enum {string} */
-            actorType: "user" | "system" | "ai";
+            actorType: "user" | "system" | "ai" | "platform_admin";
             /** Format: int64 */
             actorId?: number | null;
             actorDisplayName?: string | null;
@@ -1033,6 +1053,7 @@ export interface components {
             username: string;
             displayName: string;
             roles: string[];
+            mustChangePassword: boolean;
         };
         UserAccountSummary: {
             /** Format: int64 */
@@ -2077,7 +2098,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description LLM provider configurations visible to the owner. */
+            /** @description LLM provider configurations visible to the platform administrator. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -2398,6 +2419,36 @@ export interface operations {
         };
     };
     grantUserRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: components["parameters"]["UserId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantRoleRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated user role profile. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginUserProfile"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    grantPlatformUserRole: {
         parameters: {
             query?: never;
             header?: never;

@@ -1,4 +1,6 @@
 labelhub:
+  platform-admin:
+    initial-password: test-only-pa-initial-password
   ai:
     provider-secrets:
       master-key: dev-only-llm-provider-master-key-32b

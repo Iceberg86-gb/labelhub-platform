@@ -8,6 +8,7 @@ import { RoleBadge } from '../../shared/ui/RoleBadge';
 
 const PAGE_SIZE = 10;
 const roleOptions = [
+  { label: 'OWNER', value: 'OWNER' },
   { label: 'LABELER', value: 'LABELER' },
   { label: 'REVIEWER', value: 'REVIEWER' },
   { label: 'SENIOR_REVIEWER', value: 'SENIOR_REVIEWER' },
@@ -142,9 +143,9 @@ export function UserRoleGrantPage() {
       <header className="page-heading">
         <div>
           <Typography.Text className="page-eyebrow">用户权限</Typography.Text>
-          <Typography.Title heading={2}>授予审核角色</Typography.Title>
+          <Typography.Title heading={2}>授予业务角色</Typography.Title>
           <Typography.Text type="tertiary">
-            当前操作者 {currentUser?.displayName ?? '-'}，只允许调整 LABELER、REVIEWER 与 SENIOR_REVIEWER。
+            当前操作者 {currentUser?.displayName ?? '-'}，可授予 OWNER、LABELER、REVIEWER 与 SENIOR_REVIEWER。
           </Typography.Text>
         </div>
       </header>
@@ -153,7 +154,7 @@ export function UserRoleGrantPage() {
         <div className="task-toolbar">
           <div>
             <Typography.Title heading={4}>授权账号列表</Typography.Title>
-            <Typography.Text type="tertiary">直接在账号行内授予或撤销 LABELER、REVIEWER 与 SENIOR_REVIEWER。</Typography.Text>
+            <Typography.Text type="tertiary">直接在账号行内授予或撤销 OWNER、LABELER、REVIEWER 与 SENIOR_REVIEWER。</Typography.Text>
           </div>
           <Space>
             <Typography.Text type="tertiary">共 {usersQuery.data?.total ?? 0} 个账号</Typography.Text>

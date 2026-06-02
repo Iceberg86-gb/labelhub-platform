@@ -10,7 +10,7 @@ export function useGrantUserRoleMutation() {
 
   return useMutation<UserRoleProfile, Error, { userId: number; body: GrantRoleRequest }>({
     mutationFn: async ({ userId, body }) => {
-      const { data, error } = await apiClient.POST('/users/{userId}/roles', {
+      const { data, error } = await apiClient.POST('/platform/users/{userId}/roles', {
         params: { path: { userId } },
         body,
       });

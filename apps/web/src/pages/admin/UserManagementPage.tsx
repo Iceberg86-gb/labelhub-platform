@@ -132,7 +132,7 @@ export function UserManagementPage() {
           <Typography.Text className="page-eyebrow">用户管理</Typography.Text>
           <Typography.Title heading={2}>账号管理</Typography.Title>
           <Typography.Text type="tertiary">
-            仅 Owner 可停用账号。软删除只改变账号状态，不删除历史审核、ledger 或 submission 证据。
+            仅 PA 可停用账号。软删除只改变账号状态，不删除历史审核、ledger 或 submission 证据。
           </Typography.Text>
         </div>
       </header>
