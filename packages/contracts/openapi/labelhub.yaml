@@ -19,6 +19,7 @@ tags:
   - name: Exports
   - name: AuditLogs
   - name: Platform
+  - name: PlatformCost
   - name: Internal
 security:
   - bearerAuth: []
@@ -374,6 +375,34 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /platform/cost-metrics:
+    get:
+      tags: [PlatformCost]
+      operationId: getPlatformCostMetrics
+      summary: Get platform AI token and stored-cost metrics.
+      description: Platform-admin-only factual dashboard over stored ai_calls token and cost facts. It does not recalculate pricing, evaluate users, or mutate AI call records.
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Token and stored-cost metrics grouped by day, model, task, and owner.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformCostMetrics'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
   /audit-logs:
     get:
       tags: [AuditLogs]
@@ -2103,6 +2132,98 @@ components:
         size:
           type: integer
           format: int32
+    PlatformCostMetrics:
+      type: object
+      required: [generatedAt, overview, dailyTrend, modelBreakdown, taskBreakdown, ownerBreakdown, empty]
+      properties:
+        generatedAt:
+          type: string
+          format: date-time
+        from:
+          type: string
+          format: date-time
+          nullable: true
+        to:
+          type: string
+          format: date-time
+          nullable: true
+        overview:
+          $ref: '#/components/schemas/PlatformCostOverview'
+        dailyTrend:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformCostBucket'
+        modelBreakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformCostBucket'
+        taskBreakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformCostBucket'
+        ownerBreakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformCostBucket'
+        empty:
+          type: boolean
+    PlatformCostOverview:
+      type: object
+      required: [callCount, totalTokens, totalCost, attributedCallCount, attributedTokens, attributedCost, unattributedCallCount, unattributedTokens, unattributedCost]
+      properties:
+        callCount:
+          type: integer
+          format: int64
+        totalTokens:
+          type: integer
+          format: int64
+        totalCost:
+          type: number
+        attributedCallCount:
+          type: integer
+          format: int64
+        attributedTokens:
+          type: integer
+          format: int64
+        attributedCost:
+          type: number
+        unattributedCallCount:
+          type: integer
+          format: int64
+        unattributedTokens:
+          type: integer
+          format: int64
+        unattributedCost:
+          type: number
+    PlatformCostBucket:
+      type: object
+      required: [callCount, totalTokens, totalCost]
+      properties:
+        date:
+          type: string
+          format: date
+          nullable: true
+        modelProvider:
+          type: string
+          nullable: true
+        modelName:
+          type: string
+          nullable: true
+        groupId:
+          type: integer
+          format: int64
+          nullable: true
+        groupName:
+          type: string
+          nullable: true
+        callCount:
+          type: integer
+          format: int64
+        totalTokens:
+          type: integer
+          format: int64
+        totalCost:
+          type: number
     LoginRequest:
       type: object
       required: [username, password]
