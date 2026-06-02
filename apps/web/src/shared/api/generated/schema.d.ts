@@ -1330,6 +1330,8 @@ export interface components {
             status: string;
             /** Format: date-time */
             createdAt: string;
+            prereviewStatus?: components["schemas"]["PrereviewStatus"];
+            prereviewSignals?: components["schemas"]["PrereviewSignals"];
         };
         PagedOwnerSubmissions: {
             items: components["schemas"]["OwnerSubmissionSummary"][];
@@ -1689,6 +1691,17 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * @description Server-derived AI prereview state. It is computed from outbox, ai_calls, and ledger facts.
+         * @enum {string}
+         */
+        PrereviewStatus: "pending" | "processing" | "completed" | "failed";
+        /** @description Narrow debug signals used by the server to derive prereviewStatus. Payload and score content are never exposed here. */
+        PrereviewSignals: {
+            outboxStatus?: string | null;
+            aiCallStatus?: string | null;
+            hasAiOverallRecommendation: boolean;
+        };
         Submission: {
             /** Format: int64 */
             id: number;
@@ -1715,6 +1728,8 @@ export interface components {
             createdAt: string;
             /** Format: int64 */
             supersededById?: number | null;
+            prereviewStatus?: components["schemas"]["PrereviewStatus"];
+            prereviewSignals?: components["schemas"]["PrereviewSignals"];
         };
         /** @enum {string} */
         AiReviewRuleStatus: "draft" | "published";
@@ -1992,6 +2007,8 @@ export interface components {
             reviewLevel: components["schemas"]["ReviewLevel"];
             /** @enum {string|null} */
             aiRecommendation?: "pass" | "reject" | "manual_review" | null;
+            prereviewStatus?: components["schemas"]["PrereviewStatus"];
+            prereviewSignals?: components["schemas"]["PrereviewSignals"];
         };
         PagedReviewerSubmissions: {
             items: components["schemas"]["ReviewerSubmissionSummary"][];
