@@ -4,3 +4,5 @@ RUN rm -f /etc/apt/sources.list.d/yarn*.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends default-mysql-client maven netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
+
+RUN su vscode -c 'mvn -q dependency:get -Dartifact=org.apache.maven.surefire:surefire-junit-platform:3.2.5'
