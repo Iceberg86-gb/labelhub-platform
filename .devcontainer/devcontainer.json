@@ -23,6 +23,6 @@
       }
     }
   },
-  "postCreateCommand": "pnpm --version && mvn -pl services/api -DskipTests test-compile org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test && mvn dependency:get -Dartifact=org.apache.maven.surefire:surefire-junit-platform:3.2.5",
+  "postCreateCommand": "pnpm --version && mvn -pl services/api -o dependency:go-offline",
   "remoteUser": "vscode"
 }
