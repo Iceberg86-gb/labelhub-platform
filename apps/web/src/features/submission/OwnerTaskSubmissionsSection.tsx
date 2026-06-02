@@ -3,6 +3,7 @@ import { IconRefresh } from '@douyinfe/semi-icons';
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { OwnerSubmissionSummary } from '../../entities/submission/ownerTypes';
+import { PrereviewStatusTag } from '../../entities/submission/PrereviewStatusTag';
 import { useOwnerTaskSubmissionsQuery } from './useOwnerTaskSubmissionsQuery';
 
 type OwnerTaskSubmissionsSectionProps = {
@@ -44,6 +45,7 @@ export function OwnerTaskSubmissionsSection({ taskId }: OwnerTaskSubmissionsSect
       { title: 'Labeler', dataIndex: 'labelerId', width: 110, render: (value: number) => `#${value}` },
       { title: 'Schema', dataIndex: 'schemaVersionId', width: 110, render: (value: number) => `#${value}` },
       { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag className="semantic-tag semantic-tag--success">{statusLabel(value)}</Tag> },
+      { title: 'AI 预审', width: 120, render: (_: unknown, record: OwnerSubmissionSummary) => <PrereviewStatusTag status={record.prereviewStatus} /> },
       { title: '提交时间', dataIndex: 'createdAt', width: 150, render: (value: string) => formatDateTime(value) },
       {
         title: '操作',

@@ -5,6 +5,8 @@ import com.labelhub.api.generated.model.AiOverallRecommendationPayload;
 import com.labelhub.api.generated.model.DimensionScore;
 import com.labelhub.api.generated.model.PagedQualityLedgerEntries;
 import com.labelhub.api.generated.model.PagedReviewerSubmissions;
+import com.labelhub.api.generated.model.PrereviewSignals;
+import com.labelhub.api.generated.model.PrereviewStatus;
 import com.labelhub.api.generated.model.QualityLedgerEntry;
 import com.labelhub.api.generated.model.QualityLedgerEntryPayload;
 import com.labelhub.api.generated.model.QualityLedgerEntryType;
@@ -12,6 +14,8 @@ import com.labelhub.api.generated.model.ReviewLevel;
 import com.labelhub.api.generated.model.ReviewerOverallVerdictPayload;
 import com.labelhub.api.generated.model.ReviewerSubmissionSummary;
 import com.labelhub.api.generated.model.Verdict;
+import com.labelhub.api.module.ai.prereview.AiPrereviewSignalsView;
+import com.labelhub.api.module.ai.prereview.AiPrereviewStatusService;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.quality.mapper.ReviewerSubmissionQueueRow;
 import com.labelhub.api.module.quality.service.view.VerdictView;
@@ -29,9 +33,11 @@ import org.springframework.stereotype.Component;
 public class QualityDtoMapper {
 
     private final Clock clock;
+    private final AiPrereviewStatusService prereviewStatusService;
 
-    public QualityDtoMapper(Clock clock) {
+    public QualityDtoMapper(Clock clock, AiPrereviewStatusService prereviewStatusService) {
         this.clock = clock;
+        this.prereviewStatusService = prereviewStatusService;
     }
 
     public QualityLedgerEntry toQualityLedgerEntry(QualityLedgerEntryEntity entity) {
@@ -209,14 +215,21 @@ public class QualityDtoMapper {
 
     public PagedReviewerSubmissions toPagedReviewerSubmissions(PagedResult<ReviewerSubmissionQueueRow> result) {
         PagedReviewerSubmissions dto = new PagedReviewerSubmissions();
-        dto.setItems(result.items().stream().map(this::toReviewerSubmissionSummary).toList());
+        Map<Long, AiPrereviewSignalsView> prereviewBySubmissionId =
+            prereviewStatusService.viewsFor(result.items().stream().map(ReviewerSubmissionQueueRow::getId).toList());
+        dto.setItems(result.items().stream()
+            .map(row -> toReviewerSubmissionSummary(row, prereviewBySubmissionId))
+            .toList());
         dto.setTotal(result.total());
         dto.setPage(Math.toIntExact(result.page()));
         dto.setSize(Math.toIntExact(result.size()));
         return dto;
     }
 
-    public ReviewerSubmissionSummary toReviewerSubmissionSummary(ReviewerSubmissionQueueRow row) {
+    public ReviewerSubmissionSummary toReviewerSubmissionSummary(
+        ReviewerSubmissionQueueRow row,
+        Map<Long, AiPrereviewSignalsView> prereviewBySubmissionId
+    ) {
         ReviewerSubmissionSummary dto = new ReviewerSubmissionSummary();
         dto.setId(row.getId());
         dto.setTaskId(row.getTaskId());
@@ -235,6 +248,23 @@ public class QualityDtoMapper {
         if (row.getAiRecommendation() != null) {
             dto.setAiRecommendation(ReviewerSubmissionSummary.AiRecommendationEnum.fromValue(row.getAiRecommendation()));
         }
+        applyPrereview(dto, prereviewBySubmissionId.getOrDefault(
+            row.getId(),
+            prereviewStatusService.defaultView(row.getId())
+        ));
+        return dto;
+    }
+
+    private void applyPrereview(ReviewerSubmissionSummary dto, AiPrereviewSignalsView view) {
+        dto.setPrereviewStatus(PrereviewStatus.fromValue(view.status()));
+        dto.setPrereviewSignals(toPrereviewSignals(view));
+    }
+
+    private PrereviewSignals toPrereviewSignals(AiPrereviewSignalsView view) {
+        PrereviewSignals dto = new PrereviewSignals();
+        dto.setOutboxStatus(view.signals().outboxStatus());
+        dto.setAiCallStatus(view.signals().aiCallStatus());
+        dto.setHasAiOverallRecommendation(view.signals().hasAiOverallRecommendation());
         return dto;
     }
 

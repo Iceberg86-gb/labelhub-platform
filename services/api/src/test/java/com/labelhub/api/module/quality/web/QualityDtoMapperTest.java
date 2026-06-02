@@ -4,6 +4,8 @@ import com.labelhub.api.generated.model.AiFieldFindingPayload;
 import com.labelhub.api.generated.model.QualityLedgerEntryType;
 import com.labelhub.api.generated.model.ReviewerOverallVerdictPayload;
 import com.labelhub.api.generated.model.Verdict;
+import com.labelhub.api.module.ai.prereview.AiPrereviewStatusMapper;
+import com.labelhub.api.module.ai.prereview.AiPrereviewStatusService;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.quality.mapper.ReviewerSubmissionQueueRow;
 import com.labelhub.api.module.quality.service.view.VerdictView;
@@ -18,11 +20,20 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class QualityDtoMapperTest {
 
+    private final Clock fixedClock = Clock.fixed(Instant.parse("2026-05-25T12:00:00Z"), ZoneOffset.UTC);
+    private final AiPrereviewStatusMapper prereviewStatusMapper = mock(AiPrereviewStatusMapper.class);
+    private final AiPrereviewStatusService prereviewStatusService = new AiPrereviewStatusService(
+        prereviewStatusMapper,
+        fixedClock
+    );
     private final QualityDtoMapper mapper = new QualityDtoMapper(
-        Clock.fixed(Instant.parse("2026-05-25T12:00:00Z"), ZoneOffset.UTC)
+        fixedClock,
+        prereviewStatusService
     );
 
     @Test
@@ -88,6 +99,7 @@ class QualityDtoMapperTest {
         ReviewerSubmissionQueueRow row = queueRow();
         row.setReviewerVerdict(null);
         row.setDerivedFromEntryId(null);
+        when(prereviewStatusMapper.selectSignalsBySubmissionIds(List.of(900L))).thenReturn(List.of());
 
         var result = mapper.toPagedReviewerSubmissions(new PagedResult<>(List.of(row), 1, 1, 20));
 
@@ -98,6 +110,7 @@ class QualityDtoMapperTest {
                 assertThat(item.getVerdict().getDerivedFromEntryId()).isNull();
                 assertThat(item.getVerdict().getDerivedAt()).isEqualTo(
                     OffsetDateTime.of(2026, 5, 25, 12, 0, 0, 0, ZoneOffset.UTC));
+                assertThat(item.getPrereviewStatus().getValue()).isEqualTo("pending");
             });
     }
 
