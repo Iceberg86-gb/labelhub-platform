@@ -45,6 +45,18 @@ const entryMeta = {
     icon: IconStatusFlow,
     tone: 'info',
   },
+  '/platform/labor-metrics': {
+    title: '人力计量',
+    description: '查看提交、审核与返工数量',
+    icon: IconReviewFlow,
+    tone: 'info',
+  },
+  '/platform/efficiency-metrics': {
+    title: 'Token 复用',
+    description: '查看复用与单位数据成本',
+    icon: IconStatusFlow,
+    tone: 'info',
+  },
   '/platform/audit-logs': {
     title: '审计日志',
     description: '追踪操作留痕和版本记录',
