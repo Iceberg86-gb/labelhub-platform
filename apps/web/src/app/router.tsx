@@ -18,6 +18,7 @@ import { OwnerSchemasListPage } from '../pages/owner/OwnerSchemasListPage';
 import { OwnerSchemaDesignerPage } from '../pages/owner/OwnerSchemaDesignerPage';
 import { OwnerAuditLogsPage } from '../pages/owner/OwnerAuditLogsPage';
 import { OwnerLlmSettingsPage } from '../pages/owner/OwnerLlmSettingsPage';
+import { PlatformCostDashboardPage } from '../pages/platform/PlatformCostDashboardPage';
 import { PlatformPasswordChangePage } from '../pages/platform/PlatformPasswordChangePage';
 import { LabelerMarketplacePage } from '../pages/labeler/LabelerMarketplacePage';
 import { LabelerSessionPage } from '../pages/labeler/LabelerSessionPage';
@@ -151,6 +152,16 @@ export const router = createBrowserRouter(
             <RequireAuth>
               <RequireRole roles={['PLATFORM_ADMIN']}>
                 <OwnerLlmSettingsPage />
+              </RequireRole>
+            </RequireAuth>
+          ),
+        },
+        {
+          path: 'platform/cost-metrics',
+          element: (
+            <RequireAuth>
+              <RequireRole roles={['PLATFORM_ADMIN']}>
+                <PlatformCostDashboardPage />
               </RequireRole>
             </RequireAuth>
           ),
