@@ -231,6 +231,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/platform/cost-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get platform AI token and stored-cost metrics.
+         * @description Platform-admin-only factual dashboard over stored ai_calls token and cost facts. It does not recalculate pricing, evaluate users, or mutate AI call records.
+         */
+        get: operations["getPlatformCostMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/audit-logs": {
         parameters: {
             query?: never;
@@ -1019,6 +1039,51 @@ export interface components {
             page: number;
             /** Format: int32 */
             size: number;
+        };
+        PlatformCostMetrics: {
+            /** Format: date-time */
+            generatedAt: string;
+            /** Format: date-time */
+            from?: string | null;
+            /** Format: date-time */
+            to?: string | null;
+            overview: components["schemas"]["PlatformCostOverview"];
+            dailyTrend: components["schemas"]["PlatformCostBucket"][];
+            modelBreakdown: components["schemas"]["PlatformCostBucket"][];
+            taskBreakdown: components["schemas"]["PlatformCostBucket"][];
+            ownerBreakdown: components["schemas"]["PlatformCostBucket"][];
+            empty: boolean;
+        };
+        PlatformCostOverview: {
+            /** Format: int64 */
+            callCount: number;
+            /** Format: int64 */
+            totalTokens: number;
+            totalCost: number;
+            /** Format: int64 */
+            attributedCallCount: number;
+            /** Format: int64 */
+            attributedTokens: number;
+            attributedCost: number;
+            /** Format: int64 */
+            unattributedCallCount: number;
+            /** Format: int64 */
+            unattributedTokens: number;
+            unattributedCost: number;
+        };
+        PlatformCostBucket: {
+            /** Format: date */
+            date?: string | null;
+            modelProvider?: string | null;
+            modelName?: string | null;
+            /** Format: int64 */
+            groupId?: number | null;
+            groupName?: string | null;
+            /** Format: int64 */
+            callCount: number;
+            /** Format: int64 */
+            totalTokens: number;
+            totalCost: number;
         };
         LoginRequest: {
             username: string;
@@ -2476,6 +2541,31 @@ export interface operations {
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    getPlatformCostMetrics: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Token and stored-cost metrics grouped by day, model, task, and owner. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformCostMetrics"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
         };
     };
     listAuditLogs: {

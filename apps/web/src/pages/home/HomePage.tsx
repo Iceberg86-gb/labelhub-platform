@@ -39,6 +39,12 @@ const entryMeta = {
     icon: IconAiAssist,
     tone: 'info',
   },
+  '/platform/cost-metrics': {
+    title: 'Token 成本',
+    description: '查看 token 与成本事实计量',
+    icon: IconStatusFlow,
+    tone: 'info',
+  },
   '/platform/audit-logs': {
     title: '审计日志',
     description: '追踪操作留痕和版本记录',

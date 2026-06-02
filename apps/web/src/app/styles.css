@@ -1364,6 +1364,123 @@ a {
   overflow-wrap: anywhere;
 }
 
+.platform-cost-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+.platform-cost-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: var(--space-12);
+}
+
+.platform-cost-metric {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-6);
+  padding: var(--space-18);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-main-surface);
+}
+
+.platform-cost-metric span,
+.platform-cost-metric small {
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.platform-cost-metric strong {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-section-title);
+  line-height: var(--line-height-section-title);
+}
+
+.platform-cost-grid {
+  display: grid;
+  gap: var(--space-16);
+  min-width: 0;
+}
+
+.platform-cost-panel {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-14);
+  padding: var(--space-18);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-main-surface);
+}
+
+.platform-cost-panel__header {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.platform-cost-trend {
+  display: grid;
+  gap: var(--space-10);
+}
+
+.platform-cost-trend__row {
+  display: grid;
+  grid-template-columns: minmax(96px, 128px) minmax(120px, 1fr) minmax(80px, auto) minmax(92px, auto);
+  gap: var(--space-12);
+  align-items: center;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.platform-cost-trend__track {
+  overflow: hidden;
+  height: 10px;
+  border-radius: var(--radius-button-default);
+  background: var(--color-surface-subtle);
+}
+
+.platform-cost-trend__track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-accent-blue-soft);
+}
+
+.platform-cost-trend__row strong {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-card-title);
+}
+
+.platform-cost-trend__row small {
+  color: var(--color-text-tertiary);
+}
+
+.platform-cost-group-cell {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.platform-cost-empty-row {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+  border-radius: var(--radius-card);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-tertiary);
+}
+
+.platform-cost-empty {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-main-surface);
+}
+
 @media (max-width: 960px) {
   .app-topbar {
     grid-template-columns: minmax(0, 1fr) auto;
