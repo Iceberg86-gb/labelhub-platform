@@ -13,6 +13,7 @@ import { useReviewerQueueQuery } from '../../features/quality/useReviewerQueueQu
 import { useBatchReviewMutation } from '../../features/quality/useBatchReviewMutation';
 import { getUser } from '../../shared/api/auth-storage';
 import { RoleBadge } from '../../shared/ui/RoleBadge';
+import { PrereviewStatusTag } from '../../entities/submission/PrereviewStatusTag';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 20;
@@ -64,6 +65,11 @@ export function ReviewerQueuePage() {
       },
       { title: 'Schema', width: 110, render: (_: unknown, record: ReviewerSubmissionSummary) => `#${record.schemaVersionId}` },
       { title: '提交时间', width: 150, render: (_: unknown, record: ReviewerSubmissionSummary) => formatDateTime(record.submittedAt) },
+      {
+        title: 'AI 预审',
+        width: 120,
+        render: (_: unknown, record: ReviewerSubmissionSummary) => <PrereviewStatusTag status={record.prereviewStatus} />,
+      },
       {
         title: 'Verdict',
         width: 120,

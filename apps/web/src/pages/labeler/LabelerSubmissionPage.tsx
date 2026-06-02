@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
+import { PrereviewStatusTag } from '../../entities/submission/PrereviewStatusTag';
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
 import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { SubmissionDetailFailure, useSubmissionDetailQuery } from '../../features/labeling/useSubmissionDetailQuery';
@@ -72,6 +73,7 @@ export function LabelerSubmissionPage() {
           </Typography.Title>
           <Space wrap>
             <Tag className="semantic-tag semantic-tag--success">已提交</Tag>
+            <PrereviewStatusTag status={submission.prereviewStatus} />
             <Tag className="semantic-tag semantic-tag--accent">Session #{submission.sessionId}</Tag>
             <Tag className="semantic-tag semantic-tag--info">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
           </Space>
