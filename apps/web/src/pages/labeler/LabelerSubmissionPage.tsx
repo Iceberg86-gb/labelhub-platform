@@ -73,7 +73,7 @@ export function LabelerSubmissionPage() {
           </Typography.Title>
           <Space wrap>
             <Tag className="semantic-tag semantic-tag--success">已提交</Tag>
-            <PrereviewStatusTag status={submission.prereviewStatus} />
+            <PrereviewStatusTag status={submission.prereviewStatus} signals={submission.prereviewSignals} />
             <Tag className="semantic-tag semantic-tag--accent">Session #{submission.sessionId}</Tag>
             <Tag className="semantic-tag semantic-tag--info">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
           </Space>

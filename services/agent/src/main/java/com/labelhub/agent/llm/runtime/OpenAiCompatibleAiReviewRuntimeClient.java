@@ -269,8 +269,21 @@ public class OpenAiCompatibleAiReviewRuntimeClient {
             "AI provider returned HTTP " + statusCode,
             statusCode >= 500,
             errorCode(responseBody, statusCode),
-            statusCode
+            statusCode,
+            null,
+            responseBodySummary(responseBody)
         );
+    }
+
+    private String responseBodySummary(String responseBody) {
+        if (!hasText(responseBody)) {
+            return null;
+        }
+        String normalized = responseBody.replaceAll("\\s+", " ").trim();
+        if (normalized.length() <= 500) {
+            return normalized;
+        }
+        return normalized.substring(0, 499) + "…";
     }
 
     private String errorCode(String body, int statusCode) {

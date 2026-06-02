@@ -21,6 +21,7 @@ public class OutboxExportWorker {
     private final int maxAttempts;
     private final long baseDelayMs;
     private final int leaseSeconds;
+    private final OutboxLastErrorBuilder lastErrorBuilder = new OutboxLastErrorBuilder();
 
     public OutboxExportWorker(
         OutboxRepository outboxRepository,
@@ -68,7 +69,7 @@ public class OutboxExportWorker {
             outboxRepository.markProcessed(event.id(), workerId);
             return true;
         } catch (Exception exception) {
-            handleFailure(event);
+            handleFailure(event, exception);
             return false;
         }
     }
@@ -81,10 +82,10 @@ public class OutboxExportWorker {
         return event.aggregateId();
     }
 
-    private void handleFailure(OutboxEvent event) {
+    private void handleFailure(OutboxEvent event, Exception exception) {
         int nextRetryCount = event.retryCount() + 1;
         if (nextRetryCount >= maxAttempts) {
-            outboxRepository.markDeadLetter(event.id(), workerId, nextRetryCount);
+            outboxRepository.markDeadLetter(event.id(), workerId, nextRetryCount, lastErrorBuilder.buildLastError(exception));
             return;
         }
         long delayMs = baseDelayMs * (1L << Math.max(0, nextRetryCount - 1));

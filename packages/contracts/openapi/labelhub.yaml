@@ -3324,6 +3324,11 @@ components:
           nullable: true
         hasAiOverallRecommendation:
           type: boolean
+        lastError:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: Redacted dead-letter failure summary when prereview failed. Secrets, request bodies, and business content are not exposed.
     Submission:
       type: object
       required: [id, sessionId, taskId, datasetItemId, labelerId, schemaVersionId, answerPayload, contentHash, status, createdAt]

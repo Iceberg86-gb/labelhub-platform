@@ -1701,6 +1701,8 @@ export interface components {
             outboxStatus?: string | null;
             aiCallStatus?: string | null;
             hasAiOverallRecommendation: boolean;
+            /** @description Redacted dead-letter failure summary when prereview failed. Secrets, request bodies, and business content are not exposed. */
+            lastError?: string | null;
         };
         Submission: {
             /** Format: int64 */

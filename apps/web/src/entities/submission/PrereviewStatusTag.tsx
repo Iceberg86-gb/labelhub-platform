@@ -1,10 +1,12 @@
-import { Tag } from '@douyinfe/semi-ui';
+import { Tag, Tooltip } from '@douyinfe/semi-ui';
 import type { components } from '../../shared/api/generated/schema';
 
 type PrereviewStatus = components['schemas']['PrereviewStatus'];
+type PrereviewSignals = components['schemas']['PrereviewSignals'];
 
 type PrereviewStatusTagProps = {
   status?: PrereviewStatus | null;
+  signals?: PrereviewSignals | null;
 };
 
 const STATUS_META: Record<PrereviewStatus, { label: string; tone: 'neutral' | 'info' | 'success' | 'danger' }> = {
@@ -14,7 +16,17 @@ const STATUS_META: Record<PrereviewStatus, { label: string; tone: 'neutral' | 'i
   failed: { label: '预审失败', tone: 'danger' },
 };
 
-export function PrereviewStatusTag({ status }: PrereviewStatusTagProps) {
+export function PrereviewStatusTag({ status, signals }: PrereviewStatusTagProps) {
   const meta = STATUS_META[status ?? 'pending'];
-  return <Tag className={`semantic-tag semantic-tag--${meta.tone}`}>{meta.label}</Tag>;
+  const tag = <Tag className={`semantic-tag semantic-tag--${meta.tone}`}>{meta.label}</Tag>;
+
+  if ((status ?? 'pending') !== 'failed' || !signals?.lastError) {
+    return tag;
+  }
+
+  return (
+    <Tooltip content={`失败原因: ${signals.lastError}`}>
+      <span>{tag}</span>
+    </Tooltip>
+  );
 }
