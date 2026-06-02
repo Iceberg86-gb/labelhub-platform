@@ -45,6 +45,17 @@ class AuditEventBuilderTest {
     }
 
     @Test
+    void build_supportsPlatformAdminActor() {
+        AuditEvent event = AuditEventBuilder.forAction(AuditActions.ROLE_GRANTED)
+            .actorPlatformAdmin(9001L)
+            .resource("USER", 2001L)
+            .build();
+
+        assertThat(event.actorType()).isEqualTo("platform_admin");
+        assertThat(event.actorId()).isEqualTo(9001L);
+    }
+
+    @Test
     void build_requiresActorActionAndResourceType() {
         assertThatThrownBy(() -> AuditEventBuilder.forAction(AuditActions.TASK_DELETE)
             .resource("task", 100L)

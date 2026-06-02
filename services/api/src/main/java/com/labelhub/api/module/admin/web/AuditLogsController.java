@@ -30,7 +30,7 @@ public class AuditLogsController implements AuditLogsApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @GetMapping(path = "/audit-logs/export.csv", produces = "text/csv; charset=utf-8")
     public ResponseEntity<String> exportAuditLogs(
         @Valid @RequestParam(value = "actionTypes", required = false) String actionTypes,
@@ -54,7 +54,7 @@ public class AuditLogsController implements AuditLogsApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @GetMapping(path = "/audit-logs", produces = "application/json")
     public ResponseEntity<PagedAuditLogs> listAuditLogs(
         @Min(1) @Valid @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,

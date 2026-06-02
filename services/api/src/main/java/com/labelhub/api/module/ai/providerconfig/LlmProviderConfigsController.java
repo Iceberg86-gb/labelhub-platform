@@ -38,28 +38,28 @@ public class LlmProviderConfigsController implements LlmProvidersApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @GetMapping(produces = "application/json")
     public ResponseEntity<List<LlmProviderConfig>> listLlmProviders() {
         return ResponseEntity.ok(service.list(currentUserId()).stream().map(dtoMapper::toDto).toList());
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @PostMapping(consumes = "application/json", produces = "application/json")
     public ResponseEntity<LlmProviderConfig> createLlmProvider(@Valid @RequestBody LlmProviderConfigRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(dtoMapper.toDto(service.create(currentUserId(), createCommand(request))));
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @GetMapping(path = "/{providerConfigId}", produces = "application/json")
     public ResponseEntity<LlmProviderConfig> getLlmProvider(@PathVariable("providerConfigId") Long providerConfigId) {
         return ResponseEntity.ok(dtoMapper.toDto(service.get(currentUserId(), providerConfigId)));
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @PatchMapping(path = "/{providerConfigId}", consumes = "application/json", produces = "application/json")
     public ResponseEntity<LlmProviderConfig> updateLlmProvider(
         @PathVariable("providerConfigId") Long providerConfigId,
@@ -69,7 +69,7 @@ public class LlmProviderConfigsController implements LlmProvidersApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @DeleteMapping(path = "/{providerConfigId}")
     public ResponseEntity<Void> deleteLlmProvider(@PathVariable("providerConfigId") Long providerConfigId) {
         service.delete(currentUserId(), providerConfigId);
@@ -77,7 +77,7 @@ public class LlmProviderConfigsController implements LlmProvidersApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @PostMapping(path = "/{providerConfigId}:test-connection", consumes = "application/json", produces = "application/json")
     public ResponseEntity<LlmProviderTestConnectionResponse> testLlmProvider(
         @PathVariable("providerConfigId") Long providerConfigId,
@@ -87,7 +87,7 @@ public class LlmProviderConfigsController implements LlmProvidersApi {
     }
 
     @Override
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @PostMapping(path = ":test-connection", consumes = "application/json", produces = "application/json")
     public ResponseEntity<LlmProviderTestConnectionResponse> testUnsavedLlmProvider(
         @Valid @RequestBody LlmProviderTestConnectionRequest request

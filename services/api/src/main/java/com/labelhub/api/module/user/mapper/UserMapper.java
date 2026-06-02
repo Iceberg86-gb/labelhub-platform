@@ -15,7 +15,7 @@ import org.apache.ibatis.annotations.Update;
 public interface UserMapper extends BaseMapper<UserEntity> {
 
     @Select("""
-        SELECT id, username, display_name, email, password_hash, status, created_at, updated_at
+        SELECT id, username, display_name, email, password_hash, status, must_change_password, created_at, updated_at
         FROM users
         WHERE username = #{username}
         LIMIT 1
@@ -23,7 +23,7 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     UserEntity selectByUsername(String username);
 
     @Select("""
-        SELECT id, username, display_name, email, password_hash, status, created_at, updated_at
+        SELECT id, username, display_name, email, password_hash, status, must_change_password, created_at, updated_at
         FROM users
         WHERE username = #{username} AND status = 'active'
         LIMIT 1
@@ -31,7 +31,7 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     UserEntity selectActiveByUsername(String username);
 
     @Select("""
-        SELECT id, username, display_name, email, password_hash, status, created_at, updated_at
+        SELECT id, username, display_name, email, password_hash, status, must_change_password, created_at, updated_at
         FROM users
         WHERE id = #{userId}
         LIMIT 1
@@ -39,7 +39,7 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     UserEntity selectUserById(Long userId);
 
     @Select("""
-        SELECT id, username, display_name, email, password_hash, status, created_at, updated_at
+        SELECT id, username, display_name, email, password_hash, status, must_change_password, created_at, updated_at
         FROM users
         WHERE email = #{email}
         LIMIT 1
@@ -53,8 +53,15 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertUser(UserEntity user);
 
+    @Insert("""
+        INSERT INTO users (username, display_name, email, password_hash, status, must_change_password)
+        VALUES (#{username}, #{displayName}, #{email}, #{passwordHash}, #{status}, #{mustChangePassword})
+        """)
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    int insertPlatformAdminUser(UserEntity user);
+
     @Select("""
-        SELECT id, username, display_name, email, status, created_at, updated_at
+        SELECT id, username, display_name, email, status, must_change_password, created_at, updated_at
         FROM users
         WHERE status = 'active'
         ORDER BY created_at DESC, id DESC
@@ -99,7 +106,7 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     int deleteUserRole(@Param("userId") Long userId, @Param("roleId") Long roleId);
 
     @Select("""
-        SELECT id, username, display_name, email, status, created_at, updated_at
+        SELECT id, username, display_name, email, status, must_change_password, created_at, updated_at
         FROM users
         WHERE id = #{userId} AND status = 'active'
         LIMIT 1

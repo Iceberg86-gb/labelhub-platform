@@ -43,7 +43,7 @@ export function useLogin() {
       saveSession(data.accessToken, data.expiresAt, data.user);
       queryClient.clear();
       await Promise.resolve();
-      navigate(defaultPathForRoles(data.user.roles), { replace: true });
+      navigate(data.user.mustChangePassword ? '/platform/change-password' : defaultPathForRoles(data.user.roles), { replace: true });
     },
   });
 
