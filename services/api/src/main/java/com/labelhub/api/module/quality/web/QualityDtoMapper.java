@@ -265,6 +265,7 @@ public class QualityDtoMapper {
         dto.setOutboxStatus(view.signals().outboxStatus());
         dto.setAiCallStatus(view.signals().aiCallStatus());
         dto.setHasAiOverallRecommendation(view.signals().hasAiOverallRecommendation());
+        dto.setLastError(view.signals().lastError());
         return dto;
     }
 

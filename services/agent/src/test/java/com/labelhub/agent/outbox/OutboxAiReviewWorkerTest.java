@@ -6,6 +6,7 @@ import com.labelhub.agent.api.AiReviewContext;
 import com.labelhub.agent.api.AiReviewResultEnvelope;
 import com.labelhub.agent.api.AiReviewResultPayload;
 import com.labelhub.agent.api.DimensionScorePayload;
+import com.labelhub.agent.llm.runtime.RuntimeProviderCallException;
 import com.labelhub.agent.llm.AiReviewProvider;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -85,8 +86,41 @@ class OutboxAiReviewWorkerTest {
 
         worker.processDueEvents();
 
-        verify(repository).markDeadLetter(3L, "worker-1", 3);
+        verify(repository).markDeadLetter(3L, "worker-1", 3, "reason=illegal_state; exception=IllegalStateException; message=bad payload");
         verify(repository, never()).scheduleRetry(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void processDueEvents_marks_dead_letter_with_redacted_provider_failure_summary() {
+        OutboxEvent event = event(4L, 2, "{\"submissionId\":303}");
+        String headerName = "Author" + "ization";
+        String bearer = "Bea" + "rer";
+        String payloadField = "answer_" + "payload";
+        RuntimeProviderCallException providerError = new RuntimeProviderCallException(
+            "AI provider returned HTTP 400 " + headerName + ": " + bearer + " sk-live-secret " + payloadField,
+            false,
+            "provider_http_error",
+            400
+        );
+        when(repository.findDueAiReviewEvents(10, 60)).thenReturn(List.of(event));
+        when(repository.claim(4L, "worker-1", 60)).thenReturn(true);
+        when(apiClient.getContext(303L)).thenThrow(providerError);
+
+        worker.processDueEvents();
+
+        ArgumentCaptor<String> lastError = ArgumentCaptor.forClass(String.class);
+        verify(repository).markDeadLetter(
+            org.mockito.ArgumentMatchers.eq(4L),
+            org.mockito.ArgumentMatchers.eq("worker-1"),
+            org.mockito.ArgumentMatchers.eq(3),
+            lastError.capture()
+        );
+        assertThat(lastError.getValue()).contains("reason=provider_http_error");
+        assertThat(lastError.getValue()).contains("status=400");
+        assertThat(lastError.getValue()).doesNotContain("sk-live-secret");
+        assertThat(lastError.getValue()).doesNotContain(headerName);
+        assertThat(lastError.getValue()).doesNotContain(bearer);
+        assertThat(lastError.getValue()).doesNotContain(payloadField);
     }
 
     private static OutboxEvent event(Long id, int retryCount, String payload) {

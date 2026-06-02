@@ -69,7 +69,7 @@ class OutboxExportWorkerTest {
 
         worker.processDueEvents();
 
-        verify(repository).markDeadLetter(3L, "export-worker-1", 3);
+        verify(repository).markDeadLetter(3L, "export-worker-1", 3, "reason=illegal_state; exception=IllegalStateException; message=bad job");
         verify(repository, never()).scheduleRetry(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.any());
     }
 

@@ -68,7 +68,7 @@ export function ReviewerQueuePage() {
       {
         title: 'AI 预审',
         width: 120,
-        render: (_: unknown, record: ReviewerSubmissionSummary) => <PrereviewStatusTag status={record.prereviewStatus} />,
+        render: (_: unknown, record: ReviewerSubmissionSummary) => <PrereviewStatusTag status={record.prereviewStatus} signals={record.prereviewSignals} />,
       },
       {
         title: 'Verdict',

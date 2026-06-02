@@ -16,6 +16,7 @@ public interface AiPrereviewStatusMapper {
           s.id AS submission_id,
           latest_outbox.status AS outbox_status,
           latest_outbox.locked_at AS outbox_locked_at,
+          latest_outbox.last_error AS outbox_last_error,
           latest_ai.status AS ai_call_status,
           EXISTS(
             SELECT 1
@@ -25,7 +26,7 @@ public interface AiPrereviewStatusMapper {
           ) AS has_ai_overall_recommendation
         FROM submissions s
         LEFT JOIN (
-          SELECT o.aggregate_id, o.status, o.locked_at
+          SELECT o.aggregate_id, o.status, o.locked_at, o.last_error
           FROM outbox o
           JOIN (
             SELECT aggregate_id, MAX(id) AS id
@@ -55,6 +56,7 @@ public interface AiPrereviewStatusMapper {
         @Result(column = "submission_id", property = "submissionId"),
         @Result(column = "outbox_status", property = "outboxStatus"),
         @Result(column = "outbox_locked_at", property = "outboxLockedAt"),
+        @Result(column = "outbox_last_error", property = "outboxLastError"),
         @Result(column = "ai_call_status", property = "aiCallStatus"),
         @Result(column = "has_ai_overall_recommendation", property = "hasAiOverallRecommendation")
     })
