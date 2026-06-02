@@ -24,6 +24,7 @@ class AiPrereviewStatusServiceTest {
             7L,
             "dead_letter",
             null,
+            "reason=provider_http_error",
             "completed",
             true
         ));
@@ -32,6 +33,7 @@ class AiPrereviewStatusServiceTest {
         assertThat(result.signals().outboxStatus()).isEqualTo("dead_letter");
         assertThat(result.signals().aiCallStatus()).isEqualTo("completed");
         assertThat(result.signals().hasAiOverallRecommendation()).isTrue();
+        assertThat(result.signals().lastError()).isEqualTo("reason=provider_http_error");
     }
 
     @Test
@@ -40,11 +42,13 @@ class AiPrereviewStatusServiceTest {
             8L,
             "dead_letter",
             null,
+            "reason=provider_http_error",
             null,
             false
         ));
 
         assertThat(result.status()).isEqualTo("failed");
+        assertThat(result.signals().lastError()).isEqualTo("reason=provider_http_error");
     }
 
     @Test
@@ -53,6 +57,7 @@ class AiPrereviewStatusServiceTest {
             9L,
             "processing",
             LocalDateTime.parse("2026-06-02T11:59:30"),
+            null,
             null,
             false
         ));
@@ -64,6 +69,7 @@ class AiPrereviewStatusServiceTest {
     void no_outbox_or_ai_signal_is_pending() {
         AiPrereviewSignalsView result = service.derive(new AiPrereviewSignalRow(
             10L,
+            null,
             null,
             null,
             null,
@@ -82,15 +88,16 @@ class AiPrereviewStatusServiceTest {
         assertThat(result.signals().outboxStatus()).isNull();
         assertThat(result.signals().aiCallStatus()).isNull();
         assertThat(result.signals().hasAiOverallRecommendation()).isFalse();
+        assertThat(result.signals().lastError()).isNull();
     }
 
     @Test
     void status_values_do_not_include_reuse_without_durable_signal() {
         List<String> statuses = List.of(
             service.defaultView(1L).status(),
-            service.derive(new AiPrereviewSignalRow(2L, "processed", null, "completed", true)).status(),
-            service.derive(new AiPrereviewSignalRow(3L, "dead_letter", null, null, false)).status(),
-            service.derive(new AiPrereviewSignalRow(4L, "processing", LocalDateTime.parse("2026-06-02T11:59:30"), null, false)).status()
+            service.derive(new AiPrereviewSignalRow(2L, "processed", null, null, "completed", true)).status(),
+            service.derive(new AiPrereviewSignalRow(3L, "dead_letter", null, "reason=failed", null, false)).status(),
+            service.derive(new AiPrereviewSignalRow(4L, "processing", LocalDateTime.parse("2026-06-02T11:59:30"), null, null, false)).status()
         );
 
         assertThat(statuses).containsExactly("pending", "completed", "failed", "processing");

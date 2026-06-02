@@ -72,12 +72,12 @@ public class JdbcOutboxRepository implements OutboxRepository {
     }
 
     @Override
-    public void markDeadLetter(Long eventId, String workerId, int retryCount) {
+    public void markDeadLetter(Long eventId, String workerId, int retryCount, String lastError) {
         jdbcTemplate.update("""
             UPDATE outbox
-            SET status = 'dead_letter', retry_count = ?, locked_by = NULL, locked_at = NULL
+            SET status = 'dead_letter', retry_count = ?, locked_by = NULL, locked_at = NULL, last_error = ?
             WHERE id = ? AND locked_by = ?
-            """, retryCount, eventId, workerId);
+            """, retryCount, lastError, eventId, workerId);
     }
 
     private OutboxEvent mapRow(ResultSet rs, int rowNum) throws SQLException {

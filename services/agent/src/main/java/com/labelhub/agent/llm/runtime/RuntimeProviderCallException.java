@@ -5,12 +5,10 @@ public class RuntimeProviderCallException extends RuntimeException {
     private final boolean retryable;
     private final String providerCode;
     private final Integer statusCode;
+    private final String providerBodySummary;
 
     public RuntimeProviderCallException(String message, boolean retryable, String providerCode, Integer statusCode) {
-        super(message);
-        this.retryable = retryable;
-        this.providerCode = providerCode;
-        this.statusCode = statusCode;
+        this(message, retryable, providerCode, statusCode, null, null);
     }
 
     public RuntimeProviderCallException(
@@ -20,10 +18,22 @@ public class RuntimeProviderCallException extends RuntimeException {
         Integer statusCode,
         Throwable cause
     ) {
+        this(message, retryable, providerCode, statusCode, cause, null);
+    }
+
+    public RuntimeProviderCallException(
+        String message,
+        boolean retryable,
+        String providerCode,
+        Integer statusCode,
+        Throwable cause,
+        String providerBodySummary
+    ) {
         super(message, cause);
         this.retryable = retryable;
         this.providerCode = providerCode;
         this.statusCode = statusCode;
+        this.providerBodySummary = providerBodySummary;
     }
 
     public boolean isRetryable() {
@@ -36,5 +46,9 @@ public class RuntimeProviderCallException extends RuntimeException {
 
     public Integer getStatusCode() {
         return statusCode;
+    }
+
+    public String getProviderBodySummary() {
+        return providerBodySummary;
     }
 }
