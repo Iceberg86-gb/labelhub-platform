@@ -26,7 +26,7 @@ vi.mock('react-router-dom', () => ({
 vi.mock('../../shared/api/auth-storage', () => ({
   getUser: () => ({
     displayName: 'Multi Role Demo',
-    roles: ['OWNER', 'LABELER'],
+    roles: ['OWNER', 'LABELER', 'PLATFORM_ADMIN'],
   }),
 }));
 
@@ -112,6 +112,7 @@ describe('HomePage', () => {
     expect(html).toContain('Session #31');
     expect(html).toContain('OWNER');
     expect(html).toContain('LABELER');
+    expect(html).toContain('PLATFORM ADMIN');
     expect(html).toContain('任务管理');
     expect(html).toContain('Designer 画布');
     expect(html).toContain('LLM 接入');

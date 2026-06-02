@@ -25,6 +25,10 @@ const roleSectionMeta = {
     title: '任务负责人',
     hint: '任务 / Schema',
   },
+  PLATFORM_ADMIN: {
+    title: '平台治理',
+    hint: '账号 / 权限 / 模型',
+  },
   LABELER: {
     title: '标注员',
     hint: '领取 / 作答',
@@ -42,10 +46,10 @@ const roleSectionMeta = {
 const navItemHints: Record<string, string> = {
   '/owner/tasks': '任务配置与发布',
   '/owner/schemas': '标注表单搭建',
-  '/owner/llm': '模型与 API Key',
-  '/owner/audit-logs': '操作留痕追踪',
-  '/admin/users': '停用账号管理',
-  '/admin/user-roles': '授予审核权限',
+  '/platform/users': '账号生命周期管理',
+  '/platform/user-roles': '授予业务权限',
+  '/platform/llm': '模型与 API Key',
+  '/platform/audit-logs': '操作留痕追踪',
   '/labeler/marketplace': '领取可作答任务',
   '/labeler/my': '继续未完成数据',
   '/reviewer/submissions': '人工初审队列',
@@ -54,9 +58,9 @@ const navItemHints: Record<string, string> = {
 
 function menuIconFor(path: string) {
   if (path === '/owner/schemas') return <IconDesignerBlock className={navIconClassName} />;
-  if (path === '/owner/llm') return <IconAiAssist className={navIconClassName} />;
-  if (path === '/owner/audit-logs') return <IconVersionHistory className={navIconClassName} />;
-  if (path === '/admin/users' || path === '/admin/user-roles') return <IconUserCircle className={navIconClassName} />;
+  if (path === '/platform/llm') return <IconAiAssist className={navIconClassName} />;
+  if (path === '/platform/audit-logs') return <IconVersionHistory className={navIconClassName} />;
+  if (path === '/platform/users' || path === '/platform/user-roles') return <IconUserCircle className={navIconClassName} />;
   if (path === '/labeler/marketplace') return <IconTask className={navIconClassName} />;
   if (path === '/labeler/my') return <IconAnnotationWorkbench className={navIconClassName} />;
   if (path.startsWith('/reviewer/submissions?reviewLevel=senior_reviewer')) {

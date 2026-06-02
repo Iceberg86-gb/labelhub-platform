@@ -121,6 +121,7 @@ public class AuthController implements AuthApi {
         profile.setUsername(user.getUsername());
         profile.setDisplayName(user.getDisplayName());
         profile.setRoles(roles);
+        profile.setMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
 
         LoginResponse response = new LoginResponse();
         response.setAccessToken(issued.accessToken());

@@ -36,7 +36,7 @@ vi.mock('react-router-dom', () => ({
     className?: (state: { isActive: boolean }) => string;
     to: string;
   }) => (
-    <a className={className?.({ isActive: to === '/owner/tasks' })} href={to}>{children}</a>
+    <a className={className?.({ isActive: to === '/platform/users' })} href={to}>{children}</a>
   ),
   Outlet: () => <div data-testid="outlet" />,
 }));
@@ -48,8 +48,8 @@ vi.mock('../../features/auth/logout/useLogout', () => ({
 vi.mock('../api/auth-storage', () => ({
   SESSION_CHANGED_EVENT: 'labelhub-session-changed',
   getUser: () => ({
-    displayName: 'Owner Demo',
-    roles: ['OWNER'],
+    displayName: 'Platform Admin',
+    roles: ['PLATFORM_ADMIN'],
   }),
 }));
 
@@ -60,7 +60,7 @@ vi.mock('../api/client', () => ({
 import { AppLayout } from './AppLayout';
 
 describe('AppLayout design shell', () => {
-  it('renders the token-backed light shell with currentColor sidebar icons', () => {
+  it('renders the token-backed platform admin shell with currentColor sidebar icons', () => {
     const html = renderToString(<AppLayout />);
 
     expect(html).toContain('app-shell app-shell--private');
@@ -73,9 +73,11 @@ describe('AppLayout design shell', () => {
     expect(html).toContain('id="app-sidebar"');
     expect(html).toContain('app-sidebar__header');
     expect(html).toContain('nav-section');
-    expect(html).toContain('任务负责人');
+    expect(html).toContain('平台治理');
     expect(html).toContain('LLM 接入');
     expect(html).toContain('模型与 API Key');
+    expect(html).toContain('用户管理');
+    expect(html).toContain('用户权限');
     expect(html).toContain('nav-item__hint');
     expect(html).toContain('app-content-shell');
     expect(html).toContain('nav-item__icon lh-icon');

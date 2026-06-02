@@ -34,7 +34,7 @@ class UserDeletionServiceTest {
         ArgumentCaptor<AuditEventBuilder> auditCaptor = ArgumentCaptor.forClass(AuditEventBuilder.class);
         verify(auditLogService).record(auditCaptor.capture());
         var event = auditCaptor.getValue().build();
-        assertThat(event.actorType()).isEqualTo("USER");
+        assertThat(event.actorType()).isEqualTo("platform_admin");
         assertThat(event.actorId()).isEqualTo(1001L);
         assertThat(event.action()).isEqualTo("USER_DELETED");
         assertThat(event.resourceType()).isEqualTo("USER");

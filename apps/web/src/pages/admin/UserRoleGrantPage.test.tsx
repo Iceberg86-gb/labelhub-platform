@@ -101,21 +101,21 @@ vi.mock('../../features/user-roles/useUsersQuery', () => ({
 }));
 
 vi.mock('../../shared/api/auth-storage', () => ({
-  getUser: () => ({ displayName: '演示 Owner', roles: ['OWNER'] }),
+  getUser: () => ({ displayName: '平台管理员', roles: ['PLATFORM_ADMIN'] }),
 }));
 
 import { UserRoleGrantPage } from './UserRoleGrantPage';
 
 describe('UserRoleGrantPage', () => {
-  it('shows registered users so owners can grant roles without guessing ids', () => {
+  it('shows registered users so platform admins can grant roles without guessing ids', () => {
     const html = renderToString(<UserRoleGrantPage />);
 
-    expect(html).toContain('注册账号列表');
+    expect(html).toContain('授权账号列表');
     expect(html).toContain('774670647');
     expect(html).toContain('LABELER');
     expect(html).toContain('授权角色');
     expect(html).toContain('授权');
-    expect(html).toContain('删除');
+    expect(html).toContain('撤销');
     expect(html).toContain('role-admin-actions');
     expect(html).not.toContain('填入授权');
     expect(html).not.toContain('保存调整');

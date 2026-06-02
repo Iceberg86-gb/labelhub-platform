@@ -18,6 +18,7 @@ import { OwnerSchemasListPage } from '../pages/owner/OwnerSchemasListPage';
 import { OwnerSchemaDesignerPage } from '../pages/owner/OwnerSchemaDesignerPage';
 import { OwnerAuditLogsPage } from '../pages/owner/OwnerAuditLogsPage';
 import { OwnerLlmSettingsPage } from '../pages/owner/OwnerLlmSettingsPage';
+import { PlatformPasswordChangePage } from '../pages/platform/PlatformPasswordChangePage';
 import { LabelerMarketplacePage } from '../pages/labeler/LabelerMarketplacePage';
 import { LabelerSessionPage } from '../pages/labeler/LabelerSessionPage';
 import { LabelerMySessionsPage } from '../pages/labeler/LabelerMySessionsPage';
@@ -30,6 +31,10 @@ import { ForbiddenPage } from '../pages/forbidden/ForbiddenPage';
 
 function RootRedirect() {
   const user = getUser();
+
+  if (getAccessToken() && user?.mustChangePassword) {
+    return <Navigate to="/platform/change-password" replace />;
+  }
 
   return getAccessToken() && user ? (
     <Navigate to={defaultPathForRoles(user.roles)} replace />
@@ -141,41 +146,51 @@ export const router = createBrowserRouter(
           ),
         },
         {
-          path: 'owner/llm',
+          path: 'platform/llm',
           element: (
             <RequireAuth>
-              <RequireRole roles={['OWNER']}>
+              <RequireRole roles={['PLATFORM_ADMIN']}>
                 <OwnerLlmSettingsPage />
               </RequireRole>
             </RequireAuth>
           ),
         },
         {
-          path: 'owner/audit-logs',
+          path: 'platform/audit-logs',
           element: (
             <RequireAuth>
-              <RequireRole roles={['OWNER']}>
+              <RequireRole roles={['PLATFORM_ADMIN']}>
                 <OwnerAuditLogsPage />
               </RequireRole>
             </RequireAuth>
           ),
         },
         {
-          path: 'admin/users',
+          path: 'platform/users',
           element: (
             <RequireAuth>
-              <RequireRole roles={['OWNER']}>
+              <RequireRole roles={['PLATFORM_ADMIN']}>
                 <UserManagementPage />
               </RequireRole>
             </RequireAuth>
           ),
         },
         {
-          path: 'admin/user-roles',
+          path: 'platform/user-roles',
           element: (
             <RequireAuth>
-              <RequireRole roles={['OWNER', 'SENIOR_REVIEWER']}>
+              <RequireRole roles={['PLATFORM_ADMIN']}>
                 <UserRoleGrantPage />
+              </RequireRole>
+            </RequireAuth>
+          ),
+        },
+        {
+          path: 'platform/change-password',
+          element: (
+            <RequireAuth>
+              <RequireRole roles={['PLATFORM_ADMIN']}>
+                <PlatformPasswordChangePage />
               </RequireRole>
             </RequireAuth>
           ),

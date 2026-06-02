@@ -56,7 +56,10 @@ class LlmProviderConfigServiceTest {
 
         ArgumentCaptor<AuditEventBuilder> auditCaptor = ArgumentCaptor.forClass(AuditEventBuilder.class);
         verify(auditLogService).record(auditCaptor.capture());
-        Map<String, Object> payload = auditCaptor.getValue().build().payload();
+        var event = auditCaptor.getValue().build();
+        assertThat(event.actorType()).isEqualTo("platform_admin");
+        assertThat(event.actorId()).isEqualTo(7L);
+        Map<String, Object> payload = event.payload();
         assertThat(payload.toString()).doesNotContain(SECRET);
         assertThat(payload.toString()).doesNotContain(inserted.getSecretCiphertext());
         assertThat(payload).containsEntry("hasSecret", true);

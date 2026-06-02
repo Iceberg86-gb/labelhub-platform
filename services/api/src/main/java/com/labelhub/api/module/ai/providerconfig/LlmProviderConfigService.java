@@ -133,7 +133,7 @@ public class LlmProviderConfigService {
         payload.put("providerStatus", result.providerStatus());
         payload.put("providerCode", result.providerCode());
         auditLogService.record(AuditEventBuilder.forAction(AuditActions.LLM_PROVIDER_CONFIG_TEST)
-            .actorUser(ownerId)
+            .actorPlatformAdmin(ownerId)
             .resource("llm_provider_config", null)
             .payload(SecretRedactor.redact(payload)));
         return result;
@@ -158,7 +158,7 @@ public class LlmProviderConfigService {
 
     private void audit(String action, Long ownerId, LlmProviderConfigEntity entity) {
         auditLogService.record(AuditEventBuilder.forAction(action)
-            .actorUser(ownerId)
+            .actorPlatformAdmin(ownerId)
             .resource("llm_provider_config", entity.getId())
             .payload(safePayload(entity)));
     }
@@ -169,7 +169,7 @@ public class LlmProviderConfigService {
         payload.put("providerStatus", result.providerStatus());
         payload.put("providerCode", result.providerCode());
         auditLogService.record(AuditEventBuilder.forAction(action)
-            .actorUser(ownerId)
+            .actorPlatformAdmin(ownerId)
             .resource("llm_provider_config", entity.getId())
             .payload(SecretRedactor.redact(payload)));
     }

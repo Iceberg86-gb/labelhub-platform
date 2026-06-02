@@ -33,21 +33,27 @@ const entryMeta = {
     icon: IconDesignerBlock,
     tone: 'accent',
   },
-  '/owner/llm': {
+  '/platform/llm': {
     title: 'LLM 接入',
     description: '配置 API Key、模型和辅助范围',
     icon: IconAiAssist,
     tone: 'info',
   },
-  '/owner/audit-logs': {
+  '/platform/audit-logs': {
     title: '审计日志',
     description: '追踪操作留痕和版本记录',
     icon: IconVersionHistory,
     tone: 'muted',
   },
-  '/admin/user-roles': {
+  '/platform/users': {
+    title: '用户管理',
+    description: '停用账号与查看 active 用户',
+    icon: IconUserCircle,
+    tone: 'muted',
+  },
+  '/platform/user-roles': {
     title: '用户权限',
-    description: '授予或撤销审核角色',
+    description: '授予或撤销业务角色',
     icon: IconUserCircle,
     tone: 'muted',
   },

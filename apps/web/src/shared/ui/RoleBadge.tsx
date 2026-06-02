@@ -6,6 +6,7 @@ type RoleBadgeProps = {
 
 const roleMeta: Record<string, { label: string; className: string }> = {
   OWNER: { label: 'OWNER', className: 'role-badge--owner' },
+  PLATFORM_ADMIN: { label: 'PLATFORM ADMIN', className: 'role-badge--owner' },
   LABELER: { label: 'LABELER', className: 'role-badge--labeler' },
   REVIEWER: { label: 'REVIEWER', className: 'role-badge--reviewer' },
   SENIOR_REVIEWER: { label: 'SENIOR REVIEWER', className: 'role-badge--reviewer' },
