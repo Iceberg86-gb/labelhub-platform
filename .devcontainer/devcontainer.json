@@ -10,19 +10,24 @@
     },
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
   },
+  "runArgs": [
+    "--add-host=host.docker.internal:172.17.0.1"
+  ],
   "customizations": {
     "vscode": {
       "settings": {
         "java.configuration.runtimes": [
           {
             "name": "JavaSE-17",
-            "path": "/usr/local/sdkman/candidates/java/current",
+            "path": "/usr/lib/jvm/msopenjdk-current",
             "default": true
           }
-        ]
+        ],
+        "java.autobuild.enabled": false,
+        "java.configuration.updateBuildConfiguration": "disabled"
       }
     }
   },
-  "postCreateCommand": "pnpm --version && mvn -pl services/api -o dependency:go-offline",
+  "postCreateCommand": "pnpm --version && mvn -pl services/api -DskipTests test-compile org.apache.maven.plugins:maven-surefire-plugin:3.2.5:test && mvn dependency:get -Dartifact=org.apache.maven.surefire:surefire-junit-platform:3.2.5 && mvn dependency:get -Dartifact=org.junit.platform:junit-platform-launcher:1.10.5",
   "remoteUser": "vscode"
 }
