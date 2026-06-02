@@ -19,6 +19,8 @@ import { OwnerSchemaDesignerPage } from '../pages/owner/OwnerSchemaDesignerPage'
 import { OwnerAuditLogsPage } from '../pages/owner/OwnerAuditLogsPage';
 import { OwnerLlmSettingsPage } from '../pages/owner/OwnerLlmSettingsPage';
 import { PlatformCostDashboardPage } from '../pages/platform/PlatformCostDashboardPage';
+import { PlatformEfficiencyMetricsPage } from '../pages/platform/PlatformEfficiencyMetricsPage';
+import { PlatformLaborMetricsPage } from '../pages/platform/PlatformLaborMetricsPage';
 import { PlatformPasswordChangePage } from '../pages/platform/PlatformPasswordChangePage';
 import { LabelerMarketplacePage } from '../pages/labeler/LabelerMarketplacePage';
 import { LabelerSessionPage } from '../pages/labeler/LabelerSessionPage';
@@ -162,6 +164,26 @@ export const router = createBrowserRouter(
             <RequireAuth>
               <RequireRole roles={['PLATFORM_ADMIN']}>
                 <PlatformCostDashboardPage />
+              </RequireRole>
+            </RequireAuth>
+          ),
+        },
+        {
+          path: 'platform/labor-metrics',
+          element: (
+            <RequireAuth>
+              <RequireRole roles={['PLATFORM_ADMIN']}>
+                <PlatformLaborMetricsPage />
+              </RequireRole>
+            </RequireAuth>
+          ),
+        },
+        {
+          path: 'platform/efficiency-metrics',
+          element: (
+            <RequireAuth>
+              <RequireRole roles={['PLATFORM_ADMIN']}>
+                <PlatformEfficiencyMetricsPage />
               </RequireRole>
             </RequireAuth>
           ),

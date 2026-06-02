@@ -57,6 +57,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/users/*/roles").hasRole("PLATFORM_ADMIN")
                 .requestMatchers(HttpMethod.POST, "/platform/users/*/roles").hasRole("PLATFORM_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/platform/cost-metrics").hasRole("PLATFORM_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/platform/labor-metrics").hasRole("PLATFORM_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/platform/efficiency-metrics").hasRole("PLATFORM_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/tasks/*/submissions").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/tasks/marketplace").hasRole("LABELER")
                 .requestMatchers(HttpMethod.POST, "/tasks/*/claim").hasRole("LABELER")
