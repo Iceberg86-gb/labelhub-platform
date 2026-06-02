@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class LlmProviderConfigService {
+    private static final String PLATFORM_SCOPE = "platform";
 
     private final LlmProviderConfigMapper mapper;
     private final LlmSecretEncryptor encryptor;
@@ -37,12 +38,12 @@ public class LlmProviderConfigService {
 
     @Transactional(readOnly = true)
     public List<LlmProviderConfigEntity> list(Long ownerId) {
-        return mapper.selectByOwner(ownerId);
+        return mapper.selectPlatformProviders();
     }
 
     @Transactional(readOnly = true)
     public LlmProviderConfigEntity get(Long ownerId, Long id) {
-        LlmProviderConfigEntity entity = mapper.selectByIdAndOwner(id, ownerId);
+        LlmProviderConfigEntity entity = mapper.selectPlatformById(id);
         if (entity == null) {
             throw new LlmProviderConfigNotFoundException(id);
         }
@@ -57,6 +58,7 @@ public class LlmProviderConfigService {
         LocalDateTime now = now();
         LlmProviderConfigEntity entity = new LlmProviderConfigEntity();
         entity.setOwnerId(ownerId);
+        entity.setScope(PLATFORM_SCOPE);
         entity.setProviderType(command.providerType());
         entity.setProviderName(command.providerName());
         entity.setBaseUrl(blankToNull(command.baseUrl()));
@@ -80,6 +82,7 @@ public class LlmProviderConfigService {
         LocalDateTime now = now();
         existing.setProviderType(command.providerType());
         existing.setProviderName(command.providerName());
+        existing.setScope(PLATFORM_SCOPE);
         existing.setBaseUrl(blankToNull(command.baseUrl()));
         existing.setModelName(command.modelName());
         existing.setSecretRef(blankToNull(command.secretRef()));
@@ -94,7 +97,7 @@ public class LlmProviderConfigService {
     @Transactional
     public void delete(Long ownerId, Long id) {
         LlmProviderConfigEntity existing = get(ownerId, id);
-        mapper.deleteByIdAndOwner(id, ownerId);
+        mapper.deletePlatformById(id);
         audit(AuditActions.LLM_PROVIDER_CONFIG_DELETE, ownerId, existing);
     }
 
@@ -177,6 +180,7 @@ public class LlmProviderConfigService {
     private Map<String, Object> safePayload(LlmProviderConfigEntity entity) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("providerConfigId", entity.getId());
+        payload.put("scope", entity.getScope());
         payload.put("providerType", entity.getProviderType());
         payload.put("providerName", entity.getProviderName());
         payload.put("modelName", entity.getModelName());

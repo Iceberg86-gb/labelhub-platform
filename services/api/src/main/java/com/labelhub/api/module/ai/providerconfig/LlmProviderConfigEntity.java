@@ -6,6 +6,7 @@ public class LlmProviderConfigEntity {
 
     private Long id;
     private Long ownerId;
+    private String scope;
     private String providerType;
     private String providerName;
     private String baseUrl;
@@ -22,6 +23,8 @@ public class LlmProviderConfigEntity {
     public void setId(Long id) { this.id = id; }
     public Long getOwnerId() { return ownerId; }
     public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
+    public String getScope() { return scope; }
+    public void setScope(String scope) { this.scope = scope; }
     public String getProviderType() { return providerType; }
     public void setProviderType(String providerType) { this.providerType = providerType; }
     public String getProviderName() { return providerName; }

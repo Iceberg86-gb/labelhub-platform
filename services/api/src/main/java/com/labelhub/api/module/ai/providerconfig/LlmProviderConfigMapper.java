@@ -14,11 +14,11 @@ public interface LlmProviderConfigMapper {
 
     @Insert("""
         INSERT INTO llm_provider_configs (
-            owner_id, provider_type, provider_name, base_url, model_name,
+            owner_id, scope, provider_type, provider_name, base_url, model_name,
             secret_ciphertext, secret_last4, secret_updated_at, secret_ref, enabled
         )
         VALUES (
-            #{ownerId}, #{providerType}, #{providerName}, #{baseUrl}, #{modelName},
+            #{ownerId}, #{scope}, #{providerType}, #{providerName}, #{baseUrl}, #{modelName},
             #{secretCiphertext}, #{secretLast4}, #{secretUpdatedAt}, #{secretRef}, #{enabled}
         )
         """)
@@ -26,25 +26,25 @@ public interface LlmProviderConfigMapper {
     int insert(LlmProviderConfigEntity entity);
 
     @Select("""
-        SELECT id, owner_id AS ownerId, provider_type AS providerType, provider_name AS providerName,
+        SELECT id, owner_id AS ownerId, scope, provider_type AS providerType, provider_name AS providerName,
                base_url AS baseUrl, model_name AS modelName, secret_ciphertext AS secretCiphertext,
                secret_last4 AS secretLast4, secret_updated_at AS secretUpdatedAt, secret_ref AS secretRef,
                enabled, created_at AS createdAt, updated_at AS updatedAt
         FROM llm_provider_configs
-        WHERE owner_id = #{ownerId}
+        WHERE scope = 'platform'
         ORDER BY created_at DESC, id DESC
         """)
-    List<LlmProviderConfigEntity> selectByOwner(@Param("ownerId") Long ownerId);
+    List<LlmProviderConfigEntity> selectPlatformProviders();
 
     @Select("""
-        SELECT id, owner_id AS ownerId, provider_type AS providerType, provider_name AS providerName,
+        SELECT id, owner_id AS ownerId, scope, provider_type AS providerType, provider_name AS providerName,
                base_url AS baseUrl, model_name AS modelName, secret_ciphertext AS secretCiphertext,
                secret_last4 AS secretLast4, secret_updated_at AS secretUpdatedAt, secret_ref AS secretRef,
                enabled, created_at AS createdAt, updated_at AS updatedAt
         FROM llm_provider_configs
-        WHERE id = #{id} AND owner_id = #{ownerId}
+        WHERE id = #{id} AND scope = 'platform'
         """)
-    LlmProviderConfigEntity selectByIdAndOwner(@Param("id") Long id, @Param("ownerId") Long ownerId);
+    LlmProviderConfigEntity selectPlatformById(@Param("id") Long id);
 
     @Update("""
         UPDATE llm_provider_configs
@@ -57,13 +57,13 @@ public interface LlmProviderConfigMapper {
             secret_updated_at = #{secretUpdatedAt},
             secret_ref = #{secretRef},
             enabled = #{enabled}
-        WHERE id = #{id} AND owner_id = #{ownerId}
+        WHERE id = #{id} AND scope = 'platform'
         """)
     int update(LlmProviderConfigEntity entity);
 
     @Delete("""
         DELETE FROM llm_provider_configs
-        WHERE id = #{id} AND owner_id = #{ownerId}
+        WHERE id = #{id} AND scope = 'platform'
         """)
-    int deleteByIdAndOwner(@Param("id") Long id, @Param("ownerId") Long ownerId);
+    int deletePlatformById(@Param("id") Long id);
 }
