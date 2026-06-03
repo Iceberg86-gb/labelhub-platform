@@ -256,4 +256,74 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('AI 预审证据');
     expect(html).toContain('人工最终裁决');
   });
+
+  it('renders AI recommendation separately from the human final verdict', () => {
+    userMock.mockReturnValue({ id: 1003, roles: ['REVIEWER'] });
+    routeState.searchParams = new URLSearchParams('reviewLevel=reviewer');
+    renderSchemaQueryMock.mockReturnValue({
+      data: renderSchema,
+      isError: false,
+      isLoading: false,
+    });
+    verdictQueryMock.mockReturnValue({
+      data: { derivedAt: '2026-06-02T22:13:00Z', derivedFromEntryId: 26, status: 'approved' },
+    });
+    ledgerEntriesQueryMock.mockReturnValue({
+      data: {
+        items: [
+          {
+            actorType: 'ai_agent',
+            actorUserId: null,
+            aiCallId: 6,
+            createdAt: '2026-06-02T21:30:00Z',
+            entryType: 'ai_overall_recommendation',
+            id: 24,
+            payload: {
+              dimensionScores: [
+                { dimension: 'accuracy', reason: '答案匹配参考结论', score: '0.97' },
+                { dimension: 'safety', reason: '无风险内容', score: '0.93' },
+              ],
+              finalScore: '0.95',
+              passThreshold: '0.80',
+              recommendation: 'pass',
+              rejectThreshold: '0.40',
+              scoringRuleVersion: 'qa-v1',
+              summary: '模型回答覆盖关键答案。',
+            },
+            submissionId: 501,
+            taskId: 22,
+          },
+          {
+            actorType: 'reviewer',
+            actorUserId: 1003,
+            aiCallId: null,
+            createdAt: '2026-06-02T22:10:00Z',
+            entryType: 'reviewer_overall_verdict',
+            id: 26,
+            payload: { reason: '人工复核通过', reviewLevel: 'senior_reviewer', verdict: 'approve' },
+            submissionId: 501,
+            taskId: 22,
+          },
+        ],
+        total: 2,
+      },
+      isError: false,
+      isLoading: false,
+    });
+    createLedgerEntryMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+
+    const html = renderToString(<ReviewerSubmissionPage />);
+
+    expect(html).toContain('AI 综合判定（建议）');
+    expect(html).toContain('非最终裁决');
+    expect(html).toContain('AI 建议');
+    expect(html).toContain('0.95');
+    expect(html).toContain('通过阈值');
+    expect(html).toContain('0.80');
+    expect(html).toContain('accuracy');
+    expect(html).toContain('答案匹配参考结论');
+    expect(html).toContain('人工最终裁决');
+    expect(html).toContain('最终裁决来源');
+    expect(html).toContain('已通过');
+  });
 });
