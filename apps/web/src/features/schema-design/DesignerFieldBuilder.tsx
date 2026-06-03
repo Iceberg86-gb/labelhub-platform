@@ -33,6 +33,26 @@ import {
 } from './designerDragModel';
 import { SortableFieldItem } from './FieldList';
 
+export const FIELD_TYPE_PALETTE_GROUPS: Array<{ title: string; types: SchemaFieldType[] }> = [
+  { title: '只读材料', types: ['show_item'] },
+  { title: '选择与约束', types: ['single_select', 'multi_select', 'date'] },
+  { title: '内容录入', types: ['text', 'number', 'rich_text', 'file_upload'] },
+  { title: '容器与高级组件', types: ['nested_object', 'tab_container', 'json_editor', 'llm_interaction'] },
+];
+
+export function groupPaletteTypes(types: readonly SchemaFieldType[] = SCHEMA_FIELD_TYPES) {
+  const knownTypes = new Set(types);
+  const groupedTypes = new Set(FIELD_TYPE_PALETTE_GROUPS.flatMap((group) => group.types));
+  const groups = FIELD_TYPE_PALETTE_GROUPS
+    .map((group) => ({
+      title: group.title,
+      types: group.types.filter((type) => knownTypes.has(type)),
+    }))
+    .filter((group) => group.types.length > 0);
+  const ungroupedTypes = types.filter((type) => !groupedTypes.has(type));
+  return ungroupedTypes.length > 0 ? [...groups, { title: '其他', types: ungroupedTypes }] : groups;
+}
+
 type DesignerFieldBuilderProps = {
   fields: SchemaField[];
   onChange: (fields: SchemaField[]) => void;
@@ -139,10 +159,20 @@ export function DesignerFieldBuilder({
 }
 
 function FieldTypePalette() {
+  const groups = groupPaletteTypes();
   return (
     <div className="field-type-palette">
-      {SCHEMA_FIELD_TYPES.map((type) => (
-        <PaletteItem key={type} type={type} />
+      {groups.map((group) => (
+        <div key={group.title} className="field-type-palette__group">
+          <Typography.Text className="field-type-palette__group-title" strong>
+            {group.title}
+          </Typography.Text>
+          <div className="field-type-palette__group-items">
+            {group.types.map((type) => (
+              <PaletteItem key={type} type={type} />
+            ))}
+          </div>
+        </div>
       ))}
     </div>
   );
