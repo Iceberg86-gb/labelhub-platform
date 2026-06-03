@@ -6,6 +6,7 @@ import type { MarketplaceTask } from '../../entities/submission/submissionTypes'
 import { ClaimTaskFailure, useClaimMutation } from '../../features/labeling/useClaimMutation';
 import { useMarketplaceQuery } from '../../features/labeling/useMarketplaceQuery';
 import { RoleBadge } from '../../shared/ui/RoleBadge';
+import { LabelerTaskDetailDrawer } from './LabelerTaskDetailDrawer';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 10;
@@ -52,6 +53,7 @@ export function LabelerMarketplacePage() {
   const claimMutation = useClaimMutation();
   const [claimingTaskId, setClaimingTaskId] = useState<number | null>(null);
   const [draftSearch, setDraftSearch] = useState({ q, tag });
+  const [selectedTask, setSelectedTask] = useState<MarketplaceTask | null>(null);
 
   useEffect(() => {
     setDraftSearch({ q, tag });
@@ -107,6 +109,7 @@ export function LabelerMarketplacePage() {
     try {
       const session = await claimMutation.mutateAsync(taskId);
       Toast.success('已领取,开始作答');
+      setSelectedTask(null);
       navigate(`/labeler/sessions/${session.id}`);
     } catch (error) {
       if (error instanceof ClaimTaskFailure) {
@@ -234,21 +237,30 @@ export function LabelerMarketplacePage() {
                   <span>配额 {record.quotaClaimed}/{record.quotaTotal}</span>
                   <span>截止 {formatDateTime(record.deadlineAt)}</span>
                 </div>
-                <Button
-                  className="labeler-task-card__cta"
-                  icon={<IconPlay />}
-                  theme="solid"
-                  type="primary"
-                  loading={claimingTaskId === record.id && claimMutation.isPending}
-                  onClick={() => handleClaim(record.id)}
-                >
-                  领取
-                </Button>
+                <div className="marketplace-task-card__actions">
+                  <Button onClick={() => setSelectedTask(record)}>查看详情</Button>
+                  <Button
+                    className="labeler-task-card__cta"
+                    icon={<IconPlay />}
+                    theme="solid"
+                    type="primary"
+                    loading={claimingTaskId === record.id && claimMutation.isPending}
+                    onClick={() => handleClaim(record.id)}
+                  >
+                    领取
+                  </Button>
+                </div>
               </article>
             ))}
           </div>
         ) : null}
       </div>
+      <LabelerTaskDetailDrawer
+        claiming={selectedTask ? claimingTaskId === selectedTask.id && claimMutation.isPending : false}
+        onClaim={handleClaim}
+        onClose={() => setSelectedTask(null)}
+        task={selectedTask}
+      />
     </section>
   );
 }
