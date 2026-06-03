@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.generated.model.SchemaDocument;
+import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
+import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.admin.audit.AuditActions;
 import com.labelhub.api.module.admin.audit.AuditEventBuilder;
 import com.labelhub.api.module.admin.audit.AuditLogService;
@@ -44,6 +46,7 @@ public class SchemaService {
     private final SchemaVersionMapper schemaVersionMapper;
     private final SubmissionMapper submissionMapper;
     private final TaskMapper taskMapper;
+    private final DatasetItemMapper datasetItemMapper;
     private final SchemaValidator schemaValidator;
     private final StableIdExtractor stableIdExtractor;
     private final SchemaRuntimeAdapter schemaRuntimeAdapter;
@@ -58,6 +61,7 @@ public class SchemaService {
         SchemaVersionMapper schemaVersionMapper,
         SubmissionMapper submissionMapper,
         TaskMapper taskMapper,
+        DatasetItemMapper datasetItemMapper,
         SchemaValidator schemaValidator,
         StableIdExtractor stableIdExtractor,
         SchemaRuntimeAdapter schemaRuntimeAdapter,
@@ -70,6 +74,7 @@ public class SchemaService {
         this.schemaVersionMapper = schemaVersionMapper;
         this.submissionMapper = submissionMapper;
         this.taskMapper = taskMapper;
+        this.datasetItemMapper = datasetItemMapper;
         this.schemaValidator = schemaValidator;
         this.stableIdExtractor = stableIdExtractor;
         this.schemaRuntimeAdapter = schemaRuntimeAdapter;
@@ -84,13 +89,14 @@ public class SchemaService {
         SchemaVersionMapper schemaVersionMapper,
         SubmissionMapper submissionMapper,
         TaskMapper taskMapper,
+        DatasetItemMapper datasetItemMapper,
         SchemaValidator schemaValidator,
         StableIdExtractor stableIdExtractor,
         ObjectMapper objectMapper,
         Canonicalizer canonicalizer,
         Clock clock
     ) {
-        this(labelSchemaMapper, schemaVersionMapper, submissionMapper, taskMapper, schemaValidator,
+        this(labelSchemaMapper, schemaVersionMapper, submissionMapper, taskMapper, datasetItemMapper, schemaValidator,
             stableIdExtractor, new SchemaRuntimeAdapter(objectMapper), objectMapper, canonicalizer, clock, AuditLogService.noop());
     }
 
@@ -99,6 +105,7 @@ public class SchemaService {
         SchemaVersionMapper schemaVersionMapper,
         SubmissionMapper submissionMapper,
         TaskMapper taskMapper,
+        DatasetItemMapper datasetItemMapper,
         SchemaValidator schemaValidator,
         StableIdExtractor stableIdExtractor,
         ObjectMapper objectMapper,
@@ -106,7 +113,7 @@ public class SchemaService {
         Clock clock,
         AuditLogService auditLogService
     ) {
-        this(labelSchemaMapper, schemaVersionMapper, submissionMapper, taskMapper, schemaValidator,
+        this(labelSchemaMapper, schemaVersionMapper, submissionMapper, taskMapper, datasetItemMapper, schemaValidator,
             stableIdExtractor, new SchemaRuntimeAdapter(objectMapper), objectMapper, canonicalizer, clock, auditLogService);
     }
 
@@ -258,6 +265,8 @@ public class SchemaService {
         view.setSchemaVersion(version);
         view.setAnswerPayload(submission.getAnswerPayload());
         view.setProvenance(submission.getProvenance());
+        DatasetItemEntity datasetItem = datasetItemMapper.selectById(submission.getDatasetItemId());
+        view.setDatasetItem(datasetItem);
         return view;
     }
 

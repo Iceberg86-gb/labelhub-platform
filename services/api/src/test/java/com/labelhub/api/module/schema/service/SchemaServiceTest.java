@@ -7,6 +7,8 @@ import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldOption;
 import com.labelhub.api.generated.model.SchemaFieldType;
+import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
+import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.admin.audit.AuditActions;
 import com.labelhub.api.module.admin.audit.AuditEventBuilder;
 import com.labelhub.api.module.admin.audit.AuditLogService;
@@ -61,6 +63,7 @@ class SchemaServiceTest {
     private final SchemaVersionMapper schemaVersionMapper = mock(SchemaVersionMapper.class);
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
     private final TaskMapper taskMapper = mock(TaskMapper.class);
+    private final DatasetItemMapper datasetItemMapper = mock(DatasetItemMapper.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Canonicalizer canonicalizer = new Canonicalizer(objectMapper);
     private final AuditLogService auditLogService = mock(AuditLogService.class);
@@ -75,6 +78,7 @@ class SchemaServiceTest {
                 schemaVersionMapper,
                 submissionMapper,
                 taskMapper,
+                datasetItemMapper,
                 new SchemaValidator(),
                 new StableIdExtractor(),
                 objectMapper,
@@ -409,6 +413,31 @@ class SchemaServiceTest {
     }
 
     @Test
+    void renderForSubmission_includes_dataset_item_payload_for_show_item_fields() {
+        SubmissionEntity submission = submission(700L, 42L, Map.of("score", 5));
+        submission.setDatasetItemId(301L);
+        SchemaVersionEntity historical = version(42L, 5L, 1, schemaJsonWithFieldCount(3));
+        DatasetItemEntity item = datasetItem(301L, Map.of(
+            "prompt", "请判断模型回答是否符合参考答案。",
+            "model_answer", "模型回答内容",
+            "reference", "参考答案内容"
+        ));
+        when(submissionMapper.selectById(700L)).thenReturn(submission);
+        when(taskMapper.selectById(10L)).thenReturn(task(10L, 1001L));
+        when(schemaVersionMapper.selectById(42L)).thenReturn(historical);
+        when(labelSchemaMapper.selectById(5L)).thenReturn(schema(5L, 10L, 1001L));
+        when(datasetItemMapper.selectById(301L)).thenReturn(item);
+
+        SubmissionRenderSchemaView view = schemaService.renderForSubmission(700L, 3003L, Set.of("ROLE_REVIEWER"));
+
+        assertThat(view.getDatasetItem()).isNotNull();
+        assertThat(view.getDatasetItem().getItemPayload())
+            .containsEntry("prompt", "请判断模型回答是否符合参考答案。")
+            .containsEntry("model_answer", "模型回答内容")
+            .containsEntry("reference", "参考答案内容");
+    }
+
+    @Test
     void renderForSubmission_throws_when_submission_not_found() {
         when(submissionMapper.selectById(700L)).thenReturn(null);
 
@@ -508,11 +537,24 @@ class SchemaServiceTest {
         SubmissionEntity submission = new SubmissionEntity();
         submission.setId(id);
         submission.setTaskId(10L);
+        submission.setDatasetItemId(301L);
         submission.setLabelerId(2002L);
         submission.setSchemaVersionId(schemaVersionId);
         submission.setAnswerPayload(answerPayload);
         submission.setProvenance(Map.of("source", "manual"));
         return submission;
+    }
+
+    private static DatasetItemEntity datasetItem(Long id, Map<String, Object> itemPayload) {
+        DatasetItemEntity item = new DatasetItemEntity();
+        item.setId(id);
+        item.setDatasetId(20L);
+        item.setTaskId(10L);
+        item.setOrdinal(1);
+        item.setItemPayload(itemPayload);
+        item.setItemHash("hash");
+        item.setStatus("claimed");
+        return item;
     }
 
     private static SchemaDocument simpleDocument() {

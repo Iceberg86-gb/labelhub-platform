@@ -1,11 +1,13 @@
 package com.labelhub.api.module.schema.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.labelhub.api.generated.model.DatasetItem;
 import com.labelhub.api.generated.model.LabelSchema;
 import com.labelhub.api.generated.model.PagedSchemas;
 import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaVersion;
 import com.labelhub.api.generated.model.SubmissionRenderSchema;
+import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.schema.entity.LabelSchemaEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.service.view.SubmissionRenderSchemaView;
@@ -52,8 +54,25 @@ public class SchemaDtoMapper {
         SubmissionRenderSchema dto = new SubmissionRenderSchema();
         dto.setSubmissionId(view.getSubmissionId());
         dto.setSchemaVersion(toSchemaVersion(view.getSchemaVersion()));
+        dto.setDatasetItem(toDatasetItem(view.getDatasetItem()));
         dto.setAnswerPayload(view.getAnswerPayload());
         dto.setProvenance(view.getProvenance());
+        return dto;
+    }
+
+    private DatasetItem toDatasetItem(DatasetItemEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        DatasetItem dto = new DatasetItem();
+        dto.setId(entity.getId());
+        dto.setDatasetId(entity.getDatasetId());
+        dto.setTaskId(entity.getTaskId());
+        dto.setOrdinal(entity.getOrdinal());
+        dto.setItemPayload(entity.getItemPayload());
+        dto.setItemHash(entity.getItemHash());
+        dto.setStatus(entity.getStatus());
+        dto.setCreatedAt(entity.getCreatedAt() == null ? null : entity.getCreatedAt().atOffset(ZoneOffset.UTC));
         return dto;
     }
 

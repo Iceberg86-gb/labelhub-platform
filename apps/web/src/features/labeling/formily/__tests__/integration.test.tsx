@@ -44,6 +44,13 @@ describe('M7-P2 Formily consumer integration', () => {
     }
   });
 
+  it('passes dataset item payload to historical and review renderers for show_item fields', () => {
+    for (const source of [labelerSubmissionSource, ownerSubmissionSource, reviewerSubmissionSource]) {
+      expect(source).toContain('itemPayload={renderSchema.datasetItem?.itemPayload}');
+    }
+    expect(labelerSessionSource).toContain('itemPayload={datasetItemContext.payload}');
+  });
+
   it('supports LabelerSession editable value persistence', () => {
     let nextPayload: AnswerPayload | undefined;
     const form = createSchemaFormilyForm({

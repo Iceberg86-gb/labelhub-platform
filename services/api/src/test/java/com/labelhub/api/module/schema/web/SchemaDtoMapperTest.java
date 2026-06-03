@@ -6,6 +6,7 @@ import com.labelhub.api.generated.model.PagedSchemas;
 import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaVersion;
 import com.labelhub.api.generated.model.SubmissionRenderSchema;
+import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.schema.entity.LabelSchemaEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.service.view.SubmissionRenderSchemaView;
@@ -67,6 +68,7 @@ class SchemaDtoMapperTest {
         view.setSchemaVersion(version);
         view.setAnswerPayload(Map.of("field-0", "answer"));
         view.setProvenance(Map.of("source", "manual"));
+        view.setDatasetItem(datasetItem(301L, Map.of("prompt", "原始题目")));
 
         SubmissionRenderSchema dto = mapper.toSubmissionRenderSchema(view);
 
@@ -75,6 +77,8 @@ class SchemaDtoMapperTest {
         assertThat(dto.getSchemaVersion().getSchemaJson().getFields()).hasSize(3);
         assertThat(dto.getAnswerPayload()).containsEntry("field-0", "answer");
         assertThat(dto.getProvenance()).containsEntry("source", "manual");
+        assertThat(dto.getDatasetItem()).isNotNull();
+        assertThat(dto.getDatasetItem().getItemPayload()).containsEntry("prompt", "原始题目");
     }
 
     @Test
@@ -112,5 +116,18 @@ class SchemaDtoMapperTest {
         entity.setOwnerId(ownerId);
         entity.setPublishedAt(LocalDateTime.of(2026, 1, 1, 0, 0));
         return entity;
+    }
+
+    private static DatasetItemEntity datasetItem(Long id, Map<String, Object> itemPayload) {
+        DatasetItemEntity item = new DatasetItemEntity();
+        item.setId(id);
+        item.setDatasetId(20L);
+        item.setTaskId(10L);
+        item.setOrdinal(1);
+        item.setItemPayload(itemPayload);
+        item.setItemHash("hash");
+        item.setStatus("claimed");
+        item.setCreatedAt(LocalDateTime.of(2026, 1, 2, 0, 0));
+        return item;
     }
 }
