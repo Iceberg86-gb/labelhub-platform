@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
+import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { SchemaField } from '../../entities/schema/schemaTypes';
 import { renderClient } from '../labeling/formily/__tests__/renderClient';
@@ -10,10 +11,42 @@ vi.mock('@douyinfe/semi-icons', () => ({
 }));
 
 vi.mock('@douyinfe/semi-ui', () => ({
-  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
-    <button type="button" onClick={onClick}>{children}</button>
+  Button: ({
+    children,
+    className,
+    'aria-label': ariaLabel,
+    onClick,
+  }: {
+    children?: ReactNode;
+    className?: string;
+    'aria-label'?: string;
+    onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  }) => (
+    <button aria-label={ariaLabel} className={className} type="button" onClick={onClick}>
+      {children}
+    </button>
   ),
   Card: ({ children, className }: { children?: ReactNode; className?: string }) => <section className={className}>{children}</section>,
+  Popconfirm: ({
+    children,
+    content,
+    onConfirm,
+    title,
+  }: {
+    children?: ReactNode;
+    content?: ReactNode;
+    onConfirm?: () => void;
+    title?: ReactNode;
+  }) => (
+    <span>
+      {children}
+      <span>{title}</span>
+      <span>{content}</span>
+      <button type="button" onClick={onConfirm}>
+        确认删除字段
+      </button>
+    </span>
+  ),
   Popover: ({ children, content }: { children?: ReactNode; content?: ReactNode }) => (
     <div>
       {children}
@@ -120,6 +153,42 @@ describe('DesignerFieldBuilder nested canvas rendering', () => {
     expect(view.html()).toContain('schema-canvas-child-container');
     expect(view.html()).toContain('schema-canvas-tab-pane__label');
     expect(view.html()).toContain('field-list-item--selected');
+    view.unmount();
+  });
+
+  it('keeps field delete actions hidden until row interaction and requires confirmation', () => {
+    const onDelete = vi.fn();
+    const view = renderClient(
+      <DesignerFieldBuilder
+        fields={makeFields()}
+        onChange={() => {}}
+        onAddField={() => null}
+        selectedStableId="child"
+        onSelect={() => {}}
+        onDelete={onDelete}
+        errors={new Map()}
+        validationErrorCount={0}
+      />,
+    );
+
+    expect(view.html()).toContain('field-list-item__delete-action');
+    expect(view.html()).toContain('field-list-item__delete-action--deferred');
+    expect(view.text()).toContain('删除字段?');
+
+    const deleteButton = view.container.querySelector('[aria-label="删除字段"]') as HTMLButtonElement;
+    act(() => {
+      deleteButton.click();
+    });
+    expect(onDelete).not.toHaveBeenCalled();
+
+    const confirmButton = Array.from(view.container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('确认删除字段'),
+    ) as HTMLButtonElement;
+    act(() => {
+      confirmButton.click();
+    });
+
+    expect(onDelete).toHaveBeenCalledWith('title');
     view.unmount();
   });
 });
