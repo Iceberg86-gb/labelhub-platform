@@ -56,7 +56,20 @@ vi.mock('react-router-dom', () => ({
 }));
 
 vi.mock('../../features/schema-design/DesignerFieldBuilder', () => ({
-  DesignerFieldBuilder: () => <section className="designer-builder-stub">Builder</section>,
+  DesignerFieldBuilder: ({
+    fields,
+    onChange,
+  }: {
+    fields: Array<{ stableId: string; label: string; type: string }>;
+    onChange: (fields: Array<{ stableId: string; label: string; type: string }>) => void;
+  }) => (
+    <section className="designer-builder-stub">
+      Builder
+      <button onClick={() => onChange([...fields, { stableId: 'summary', label: 'Summary', type: 'text' }])}>
+        simulate draft change
+      </button>
+    </section>
+  ),
 }));
 
 vi.mock('../../features/schema-design/PublishSchemaModal', () => ({
@@ -81,29 +94,42 @@ vi.mock('../../features/labeling/formily/preview/SchemaFormilyPreviewPanel', () 
 
 import { OwnerSchemaDesignerPage } from './OwnerSchemaDesignerPage';
 
+function mockCurrentVersionQuery({
+  currentVersionId = 3,
+  versionNumber = 2,
+}: {
+  currentVersionId?: number | null;
+  versionNumber?: number | null;
+} = {}) {
+  currentVersionQueryMock.mockReturnValue({
+    document: {
+      fields: [{ stableId: 'title', label: 'Title', type: 'text' }],
+    },
+    error: null,
+    hasCurrentVersion: Boolean(currentVersionId),
+    isError: false,
+    isFetching: false,
+    isLoading: false,
+    refetch: vi.fn(),
+    schema: {
+      currentVersionId,
+      description: '搭建质检表单',
+      id: 8,
+      name: '质检 Designer',
+    },
+    version: versionNumber
+      ? {
+          id: 3,
+          schemaJson: { fields: [] },
+          versionNumber,
+        }
+      : null,
+  });
+}
+
 describe('OwnerSchemaDesignerPage design shell', () => {
   it('renders the Designer workspace as a three-column builder with inspector stack', () => {
-    currentVersionQueryMock.mockReturnValue({
-      document: {
-        fields: [{ stableId: 'title', label: 'Title', type: 'text' }],
-      },
-      error: null,
-      isError: false,
-      isFetching: false,
-      isLoading: false,
-      refetch: vi.fn(),
-      schema: {
-        currentVersionId: 3,
-        description: '搭建质检表单',
-        id: 8,
-        name: '质检 Designer',
-      },
-      version: {
-        id: 3,
-        schemaJson: { fields: [] },
-        versionNumber: 2,
-      },
-    });
+    mockCurrentVersionQuery();
 
     const view = renderClient(<OwnerSchemaDesignerPage />);
     const html = view.html();
@@ -119,31 +145,40 @@ describe('OwnerSchemaDesignerPage design shell', () => {
     view.unmount();
   });
 
-  it('renders the draft warning as a compact dismissible notice', () => {
-    currentVersionQueryMock.mockReturnValue({
-      document: {
-        fields: [{ stableId: 'title', label: 'Title', type: 'text' }],
-      },
-      error: null,
-      isError: false,
-      isFetching: false,
-      isLoading: false,
-      refetch: vi.fn(),
-      schema: {
-        currentVersionId: 3,
-        description: '搭建质检表单',
-        id: 8,
-        name: '质检 Designer',
-      },
-      version: {
-        id: 3,
-        schemaJson: { fields: [] },
-        versionNumber: 2,
-      },
-    });
+  it('renders the published version state when the draft matches the current version', () => {
+    mockCurrentVersionQuery();
 
     const view = renderClient(<OwnerSchemaDesignerPage />);
+    expect(view.text()).toContain('已发布 v2');
+    expect(view.text()).not.toContain('有未发布修改');
+    expect(view.text()).not.toContain('未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。');
+    view.unmount();
+  });
+
+  it('renders the never-published state when no current version exists', () => {
+    mockCurrentVersionQuery({ currentVersionId: null, versionNumber: null });
+
+    const view = renderClient(<OwnerSchemaDesignerPage />);
+    expect(view.text()).toContain('尚未发布');
+    expect(view.text()).not.toContain('已发布 v');
+    expect(view.text()).not.toContain('未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。');
+    view.unmount();
+  });
+
+  it('renders dirty state and keeps the compact warning dismissible without reopening', () => {
+    mockCurrentVersionQuery();
+
+    const view = renderClient(<OwnerSchemaDesignerPage />);
+    const changeButton = view.container.querySelector('.designer-builder-stub button') as HTMLButtonElement;
+    expect(changeButton).toBeTruthy();
+
+    act(() => {
+      changeButton.click();
+    });
+
+    expect(view.text()).toContain('有未发布修改 · 基于 v2');
     expect(view.html()).toContain('schema-designer-session-notice');
+    expect(view.html()).toContain('schema-designer-session-notice__banner');
     expect(view.text()).toContain('未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。');
 
     const closeButton = view.container.querySelector('[aria-label="关闭未发布修改提示"]') as HTMLButtonElement;
@@ -152,6 +187,13 @@ describe('OwnerSchemaDesignerPage design shell', () => {
       closeButton.click();
     });
 
+    expect(view.text()).not.toContain('未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。');
+
+    act(() => {
+      changeButton.click();
+    });
+
+    expect(view.text()).toContain('有未发布修改 · 基于 v2');
     expect(view.text()).not.toContain('未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。');
     view.unmount();
   });
