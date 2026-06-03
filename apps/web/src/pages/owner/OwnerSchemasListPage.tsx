@@ -64,7 +64,7 @@ export function OwnerSchemasListPage() {
   const columns = useMemo(
     () => [
       {
-        title: 'Schema 名称',
+        title: '模板（Schema）名称',
         dataIndex: 'name',
         render: (_: unknown, record: LabelSchema) => (
           <div className="schema-title-cell">
@@ -111,9 +111,9 @@ export function OwnerSchemasListPage() {
       <div className="page-heading">
         <div>
           <Typography.Title heading={3} className="page-title">
-            Schema 管理
+            模板（Schema）管理
           </Typography.Title>
-          <Typography.Text type="tertiary">查看任务绑定的 Schema, 进入 Designer 发布不可变版本。</Typography.Text>
+          <Typography.Text type="tertiary">查看任务绑定的模板（Schema），进入 Designer 发布不可变版本。</Typography.Text>
         </div>
         <Button icon={<IconRefresh />} onClick={() => schemasQuery.refetch()} loading={schemasQuery.isFetching}>
           刷新
@@ -144,7 +144,7 @@ export function OwnerSchemasListPage() {
         {schemasQuery.isError ? (
           <div className="task-state-panel">
             <Empty
-              title="Schema 列表加载失败"
+              title="模板（Schema）列表加载失败"
               description={schemasQuery.error instanceof Error ? schemasQuery.error.message : '请稍后重试。'}
             />
             <Button onClick={() => schemasQuery.refetch()}>重新加载</Button>
@@ -153,7 +153,7 @@ export function OwnerSchemasListPage() {
 
         {isEmpty ? (
           <div className="task-state-panel">
-            <Empty title="暂无 Schema" description="请先进入任务详情页，点击“去设计”创建并绑定 Schema。" />
+            <Empty title="暂无模板（Schema）" description="请先进入任务详情页，点击“去设计”创建并绑定模板（Schema）。" />
           </div>
         ) : null}
 

@@ -100,6 +100,7 @@ describe('OwnerSchemaDesignerPage design shell', () => {
     expect(html).toContain('schema-designer-panel schema-designer-panel--inspector');
     expect(html).toContain('designer-builder-stub');
     expect(html).toContain('designer-preview-panel');
+    expect(html).toContain('返回模板（Schema）列表');
     view.unmount();
   });
 });

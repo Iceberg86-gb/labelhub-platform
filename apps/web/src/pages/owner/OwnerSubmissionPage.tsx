@@ -85,7 +85,7 @@ export function OwnerSubmissionPage() {
             Submission #{submissionId}
           </Typography.Title>
           <Space wrap>
-            <Tag className="semantic-tag semantic-tag--info">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
+            <Tag className="semantic-tag semantic-tag--info">模板（Schema）版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
             <Tag className="semantic-tag semantic-tag--accent">Task #{taskId}</Tag>
           </Space>
         </div>
@@ -102,7 +102,7 @@ export function OwnerSubmissionPage() {
       </div>
 
       <div className="owner-submission-grid">
-        <Card className="owner-submission-render-card" title="历史 Schema 作答" bordered={false}>
+        <Card className="owner-submission-render-card" title="历史模板（Schema）作答" bordered={false}>
           <SchemaFormilyRenderer
             schemaFields={schemaFields(schemaVersion.schemaJson)}
             value={answerPayload}
