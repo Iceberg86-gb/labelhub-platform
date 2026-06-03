@@ -1,9 +1,10 @@
-import { Button, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Popconfirm, Tag, Typography } from '@douyinfe/semi-ui';
 import { IconDelete, IconHandle } from '@douyinfe/semi-icons';
 import {
   useSortable,
 } from '@dnd-kit/sortable';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, FocusEvent } from 'react';
+import { useState } from 'react';
 import type { SchemaField } from '../../entities/schema/schemaTypes';
 import { SCHEMA_FIELD_TYPE_LABELS } from '../../entities/schema/schemaTypes';
 import type { FieldValidationError } from '../../entities/schema/schemaValidation';
@@ -72,6 +73,13 @@ function PlainFieldListItem({
   onMoveUp,
   onMoveDown,
 }: PlainFieldListItemProps) {
+  const [showDeleteAction, setShowDeleteAction] = useState(false);
+
+  const hideDeleteAction = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setShowDeleteAction(false);
+  };
+
   return (
     <div
       className={[
@@ -81,6 +89,10 @@ function PlainFieldListItem({
         hasError ? 'field-list-item--error' : '',
       ].join(' ')}
       onClick={() => onSelect(field.stableId)}
+      onMouseEnter={() => setShowDeleteAction(true)}
+      onMouseLeave={() => setShowDeleteAction(false)}
+      onFocus={() => setShowDeleteAction(true)}
+      onBlur={hideDeleteAction}
     >
       <div className="field-list-item__order-controls" aria-label="字段顺序调整">
         <Button size="small" theme="borderless" disabled={isFirst} onClick={(event) => {
@@ -104,16 +116,10 @@ function PlainFieldListItem({
           {SCHEMA_FIELD_TYPE_LABELS[field.type]}
         </Tag>
       </div>
-      <Button
-        icon={<IconDelete />}
-        type="danger"
-        theme="borderless"
-        size="small"
-        aria-label="删除字段"
-        onClick={(event) => {
-          event.stopPropagation();
-          onDelete(field.stableId);
-        }}
+      <FieldDeleteAction
+        visible={showDeleteAction}
+        fieldLabel={field.label}
+        onDelete={() => onDelete(field.stableId)}
       />
     </div>
   );
@@ -129,10 +135,15 @@ type SortableFieldItemProps = {
 
 export function SortableFieldItem({ field, selected, hasError, onSelect, onDelete }: SortableFieldItemProps) {
   const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.stableId });
+  const [showDeleteAction, setShowDeleteAction] = useState(false);
   const transformStyle = transform
     ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0) scaleX(${transform.scaleX}) scaleY(${transform.scaleY})`
     : undefined;
   const style: CSSProperties = { transform: transformStyle, transition };
+  const hideDeleteAction = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setShowDeleteAction(false);
+  };
 
   return (
     <div
@@ -145,6 +156,10 @@ export function SortableFieldItem({ field, selected, hasError, onSelect, onDelet
         isDragging ? 'field-list-item--dragging' : '',
       ].join(' ')}
       onClick={() => onSelect(field.stableId)}
+      onMouseEnter={() => setShowDeleteAction(true)}
+      onMouseLeave={() => setShowDeleteAction(false)}
+      onFocus={() => setShowDeleteAction(true)}
+      onBlur={hideDeleteAction}
     >
       <div
         ref={setActivatorNodeRef}
@@ -167,17 +182,64 @@ export function SortableFieldItem({ field, selected, hasError, onSelect, onDelet
           {SCHEMA_FIELD_TYPE_LABELS[field.type]}
         </Tag>
       </div>
-      <Button
-        icon={<IconDelete />}
-        type="danger"
-        theme="borderless"
-        size="small"
-        aria-label="删除字段"
-        onClick={(event) => {
-          event.stopPropagation();
-          onDelete(field.stableId);
-        }}
+      <FieldDeleteAction
+        visible={showDeleteAction}
+        fieldLabel={field.label}
+        onDelete={() => onDelete(field.stableId)}
       />
     </div>
   );
+}
+
+function FieldDeleteAction({
+  visible,
+  fieldLabel,
+  onDelete,
+}: {
+  visible: boolean;
+  fieldLabel?: string;
+  onDelete: () => void;
+}) {
+  return (
+    <span
+      className={[
+        'field-list-item__delete-action',
+        'field-list-item__delete-action--deferred',
+        visible ? 'field-list-item__delete-action--visible' : '',
+      ].join(' ')}
+      style={fieldDeleteActionStyle(visible)}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <Popconfirm
+        title="删除字段?"
+        content={fieldLabel ? `确认删除「${fieldLabel}」字段?` : '确认删除该字段?'}
+        okText="删除"
+        cancelText="取消"
+        position="leftTop"
+        autoAdjustOverflow
+        getPopupContainer={() => document.body}
+        onConfirm={onDelete}
+      >
+        <Button
+          icon={<IconDelete />}
+          type="danger"
+          theme="borderless"
+          size="small"
+          aria-label="删除字段"
+        />
+      </Popconfirm>
+    </span>
+  );
+}
+
+function fieldDeleteActionStyle(visible: boolean): CSSProperties {
+  return {
+    position: 'relative',
+    zIndex: 1,
+    opacity: visible ? 1 : 0,
+    pointerEvents: visible ? 'auto' : 'none',
+    transform: visible ? 'none' : 'translateX(4px)',
+    transition: 'opacity 120ms ease, transform 120ms ease',
+  };
 }

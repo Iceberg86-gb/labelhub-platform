@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { renderClient } from '../../features/labeling/formily/__tests__/renderClient';
 
@@ -10,9 +11,23 @@ vi.mock('@douyinfe/semi-icons', () => ({
 }));
 
 vi.mock('@douyinfe/semi-ui', () => ({
-  Banner: ({ description }: { description?: ReactNode }) => <div>{description}</div>,
-  Button: ({ children, className }: { children?: ReactNode; className?: string }) => (
-    <button className={className}>{children}</button>
+  Banner: ({ className, description }: { className?: string; description?: ReactNode }) => (
+    <div className={className}>{description}</div>
+  ),
+  Button: ({
+    children,
+    className,
+    'aria-label': ariaLabel,
+    onClick,
+  }: {
+    children?: ReactNode;
+    className?: string;
+    'aria-label'?: string;
+    onClick?: () => void;
+  }) => (
+    <button aria-label={ariaLabel} className={className} onClick={onClick}>
+      {children}
+    </button>
   ),
   Card: ({ children, className }: { children?: ReactNode; className?: string }) => (
     <section className={className}>{children}</section>
@@ -101,6 +116,43 @@ describe('OwnerSchemaDesignerPage design shell', () => {
     expect(html).toContain('designer-builder-stub');
     expect(html).toContain('designer-preview-panel');
     expect(html).toContain('返回模板（Schema）列表');
+    view.unmount();
+  });
+
+  it('renders the draft warning as a compact dismissible notice', () => {
+    currentVersionQueryMock.mockReturnValue({
+      document: {
+        fields: [{ stableId: 'title', label: 'Title', type: 'text' }],
+      },
+      error: null,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+      schema: {
+        currentVersionId: 3,
+        description: '搭建质检表单',
+        id: 8,
+        name: '质检 Designer',
+      },
+      version: {
+        id: 3,
+        schemaJson: { fields: [] },
+        versionNumber: 2,
+      },
+    });
+
+    const view = renderClient(<OwnerSchemaDesignerPage />);
+    expect(view.html()).toContain('schema-designer-session-notice');
+    expect(view.text()).toContain('未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。');
+
+    const closeButton = view.container.querySelector('[aria-label="关闭未发布修改提示"]') as HTMLButtonElement;
+    expect(closeButton).toBeTruthy();
+    act(() => {
+      closeButton.click();
+    });
+
+    expect(view.text()).not.toContain('未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。');
     view.unmount();
   });
 });

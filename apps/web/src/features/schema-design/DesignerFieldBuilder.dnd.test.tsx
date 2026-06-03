@@ -15,6 +15,7 @@ vi.mock('@douyinfe/semi-ui', () => ({
     <button type="button" onClick={onClick}>{children}</button>
   ),
   Card: ({ children, className }: { children?: ReactNode; className?: string }) => <section className={className}>{children}</section>,
+  Popconfirm: ({ children }: { children?: ReactNode }) => <>{children}</>,
   Popover: ({ children, content }: { children?: ReactNode; content?: ReactNode }) => (
     <div>
       {children}
