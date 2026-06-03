@@ -10,6 +10,9 @@ import {
 } from './LinkageJsonEditor';
 
 vi.mock('@douyinfe/semi-ui', () => ({
+  Button({ children, disabled, onClick }: { children?: ReactNode; disabled?: boolean; onClick?: () => void }) {
+    return <button type="button" disabled={disabled} onClick={onClick}>{children}</button>;
+  },
   Input({ value, onChange }: { value?: string; onChange?: (value: string) => void }) {
     return <input value={value ?? ''} onChange={(event) => onChange?.(event.currentTarget.value)} readOnly />;
   },
@@ -100,6 +103,7 @@ describe('LinkageJsonEditor', () => {
     const html = renderToString(
       <FieldEditor
         field={textField()}
+        availableFields={[textField({ stableId: 'type', label: '类型' })]}
         onChange={() => undefined}
         errors={[]}
         errorsByField={new Map()}

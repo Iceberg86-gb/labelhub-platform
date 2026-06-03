@@ -11,6 +11,7 @@ import { ShowItemFieldEditor } from './ShowItemFieldEditor';
 import { TabContainerFieldEditor } from './TabContainerFieldEditor';
 import { TextFieldEditor } from './TextFieldEditor';
 import { LinkageJsonEditor } from './LinkageJsonEditor';
+import { LinkageConditionBuilder } from './LinkageConditionBuilder';
 
 export function FieldEditor(props: FieldEditorProps) {
   const editor = renderConcreteFieldEditor(props);
@@ -20,6 +21,7 @@ export function FieldEditor(props: FieldEditorProps) {
   return (
     <div className="field-editor">
       {editor}
+      <LinkageConditionBuilder field={props.field} availableFields={props.availableFields} onChange={props.onChange} />
       <LinkageJsonEditor field={props.field} onChange={props.onChange} />
     </div>
   );

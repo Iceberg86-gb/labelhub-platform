@@ -248,6 +248,7 @@ export function OwnerSchemaDesignerPage() {
               {selectedField ? (
                 <FieldEditor
                   field={selectedField}
+                  availableFields={draftFields}
                   onChange={handleSelectedFieldChange}
                   errors={validationErrorsByField.get(selectedField.stableId) ?? []}
                   errorsByField={validationErrorsByField}
