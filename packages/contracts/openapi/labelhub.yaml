@@ -3082,6 +3082,8 @@ components:
           format: int64
         schemaVersion:
           $ref: '#/components/schemas/SchemaVersion'
+        datasetItem:
+          $ref: '#/components/schemas/DatasetItem'
         answerPayload:
           type: object
           additionalProperties: true

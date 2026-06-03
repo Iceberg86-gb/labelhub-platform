@@ -92,6 +92,7 @@ export function LabelerSubmissionPage() {
         <SchemaFormilyRenderer
           schemaFields={schemaFields(schemaVersion.schemaJson)}
           value={answerPayload}
+          itemPayload={renderSchema.datasetItem?.itemPayload}
           onChange={() => {}}
           readOnly
         />

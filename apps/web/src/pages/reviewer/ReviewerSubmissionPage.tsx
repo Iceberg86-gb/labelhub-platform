@@ -121,7 +121,13 @@ export function ReviewerSubmissionPage() {
 
       <div className="reviewer-comparison-grid">
         <Card className="reviewer-render-card reviewer-comparison-panel" title="题目原文与标注员答案" bordered={false}>
-          <SchemaFormilyRenderer schemaFields={schemaFields(schemaVersion.schemaJson)} value={answerPayload} onChange={() => {}} readOnly />
+          <SchemaFormilyRenderer
+            schemaFields={schemaFields(schemaVersion.schemaJson)}
+            value={answerPayload}
+            itemPayload={renderSchema.datasetItem?.itemPayload}
+            onChange={() => {}}
+            readOnly
+          />
         </Card>
 
         <aside className="reviewer-human-decision-panel" aria-label="人工最终裁决">
