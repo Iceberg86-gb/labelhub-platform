@@ -1,5 +1,6 @@
 import { Banner, Button, Card, Empty, Spin, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconRefresh } from '@douyinfe/semi-icons';
+import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
@@ -40,6 +41,7 @@ export function OwnerSchemaDesignerPage() {
   const [draftDocument, setDraftDocument] = useState<SchemaDocument | null>(null);
   const [selectedStableId, setSelectedStableId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [isSessionNoticeVisible, setIsSessionNoticeVisible] = useState(true);
   const [publishModalVisible, setPublishModalVisible] = useState(false);
   const [versionDrawerVisible, setVersionDrawerVisible] = useState(false);
 
@@ -200,11 +202,28 @@ export function OwnerSchemaDesignerPage() {
           </div>
         </div>
 
-        <Banner
-          type="warning"
-          description="未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。"
-          closeIcon={null}
-        />
+        {isSessionNoticeVisible ? (
+          <div className="schema-designer-session-notice" style={sessionNoticeShellStyle}>
+            <Banner
+              className="schema-designer-session-notice__banner"
+              style={sessionNoticeBannerStyle}
+              type="warning"
+              fullMode={false}
+              description="未发布修改仅在当前页面会话中保留。离开页面前请先发布新版本。"
+              closeIcon={null}
+            />
+            <Button
+              className="schema-designer-session-notice__close"
+              aria-label="关闭未发布修改提示"
+              theme="borderless"
+              size="small"
+              style={sessionNoticeCloseStyle}
+              onClick={() => setIsSessionNoticeVisible(false)}
+            >
+              ×
+            </Button>
+          </div>
+        ) : null}
 
         <div className="schema-designer-grid schema-designer-grid--workspace">
           <DesignerFieldBuilder
@@ -270,3 +289,25 @@ export function OwnerSchemaDesignerPage() {
     </section>
   );
 }
+
+const sessionNoticeShellStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-8)',
+  margin: '0 0 var(--space-12)',
+};
+
+const sessionNoticeBannerStyle: CSSProperties = {
+  flex: 1,
+  minHeight: 36,
+  padding: 'var(--space-6) var(--space-10)',
+  border: '1px solid var(--color-warning-soft)',
+  background: 'var(--color-warning-soft)',
+};
+
+const sessionNoticeCloseStyle: CSSProperties = {
+  minWidth: 28,
+  height: 28,
+  padding: 0,
+  color: 'var(--color-text-tertiary)',
+};
