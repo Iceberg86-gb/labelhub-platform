@@ -12,6 +12,7 @@ import {
   type QualityLedgerEntry,
   type ReviewLevel,
   type ReviewerVerdict,
+  type Verdict,
   type VerdictStatus,
 } from '../../entities/quality/qualityTypes';
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
@@ -47,6 +48,9 @@ export function ReviewerSubmissionPage() {
   const schemaVersion = renderSchema?.schemaVersion;
   const answerPayload = coerceAnswerPayload(renderSchema?.answerPayload ?? EMPTY_ANSWER_PAYLOAD);
   const ledgerEntries = ledgerQuery.data?.items ?? [];
+  const aiOverallEntry = latestEntry(ledgerEntries, isAiOverallRecommendationEntry);
+  const aiFindingEntries = ledgerEntries.filter(isAiFieldFindingEntry);
+  const reviewerVerdictEntries = ledgerEntries.filter(isReviewerVerdictEntry);
 
   if (!submissionId) {
     return <Empty title="Submission 地址无效" description="请从审核队列进入 submission 详情。" />;
@@ -129,6 +133,7 @@ export function ReviewerSubmissionPage() {
             onReject={() => createVerdict('reject')}
             reviewLevel={reviewLevel}
           />
+          <HumanFinalVerdictCard verdict={verdictQuery.data ?? null} entries={reviewerVerdictEntries} />
           <div className="review-flow-strip" aria-label="状态流转">
             <span className="review-flow-node review-flow-node--submitted">提交</span>
             <span className="review-flow-connector" />
@@ -143,12 +148,150 @@ export function ReviewerSubmissionPage() {
             <Typography.Text strong>AI 预审证据</Typography.Text>
             <Typography.Text type="tertiary">辅助参考,不作为最终裁决。人工审核结果以右侧操作为准。</Typography.Text>
           </div>
+          <AiRecommendationCard overallEntry={aiOverallEntry} findingEntries={aiFindingEntries} ledgerLoading={ledgerQuery.isLoading} ledgerError={ledgerQuery.isError} />
           <AiProvenanceCard submissionId={submissionId} className="ai-provenance-card--assistive" />
         </section>
 
         <LedgerEntriesCard entries={ledgerEntries} loading={ledgerQuery.isLoading} error={ledgerQuery.isError} />
       </div>
     </section>
+  );
+}
+
+function AiRecommendationCard({
+  overallEntry,
+  findingEntries,
+  ledgerLoading,
+  ledgerError,
+}: {
+  overallEntry?: QualityLedgerEntry;
+  findingEntries: QualityLedgerEntry[];
+  ledgerLoading: boolean;
+  ledgerError: boolean;
+}) {
+  if (ledgerLoading) {
+    return (
+      <Card className="ai-recommendation-card ai-recommendation-card--pending" title="AI 综合判定（建议）" bordered={false}>
+        <Typography.Text type="tertiary">正在读取 AI 预审证据。</Typography.Text>
+      </Card>
+    );
+  }
+
+  if (ledgerError) {
+    return (
+      <Card className="ai-recommendation-card ai-recommendation-card--pending" title="AI 综合判定（建议）" bordered={false}>
+        <Typography.Text type="tertiary">AI 建议加载失败,请稍后重试。</Typography.Text>
+      </Card>
+    );
+  }
+
+  if (!overallEntry) {
+    return (
+      <Card className="ai-recommendation-card ai-recommendation-card--pending" title="AI 综合判定（建议）" bordered={false}>
+        <Typography.Text type="tertiary">预审未完成时不显示判定结论。AI 只提供建议证据,非最终裁决。</Typography.Text>
+      </Card>
+    );
+  }
+
+  const payload = overallEntry.payload as AiOverallRecommendationLedgerPayload;
+  const dimensionScores = payload.dimensionScores ?? [];
+
+  return (
+    <Card className="ai-recommendation-card" title="AI 综合判定（建议）" bordered={false}>
+      <div className="ai-recommendation-card__hero">
+        <div>
+          <Typography.Text type="tertiary">AI 建议 · 非最终裁决</Typography.Text>
+          <div className="ai-recommendation-card__verdict-line">
+            <Tag className={`semantic-tag semantic-tag--${aiRecommendationTone(payload.recommendation)}`}>
+              {AI_RECOMMENDATION_LABELS[payload.recommendation]}
+            </Tag>
+            <Typography.Title heading={4} className="ai-recommendation-card__score">
+              {formatDecimal(payload.finalScore)}
+            </Typography.Title>
+          </div>
+        </div>
+        <div className="ai-recommendation-thresholds" aria-label="AI recommendation thresholds">
+          <MetricPill label="通过阈值" value={formatOptionalDecimal(payload.passThreshold ?? payload.threshold)} />
+          <MetricPill label="拒绝阈值" value={formatOptionalDecimal(payload.rejectThreshold ?? payload.rejectFloor)} />
+          <MetricPill label="规则版本" value={payload.scoringRuleVersion} />
+        </div>
+      </div>
+
+      {payload.summary ? <Typography.Paragraph className="ai-recommendation-summary">{payload.summary}</Typography.Paragraph> : null}
+
+      {dimensionScores.length > 0 ? (
+        <div className="ai-dimension-score-grid" aria-label="AI dimension scores">
+          {dimensionScores.map((dimension) => (
+            <div className="ai-dimension-score" key={dimension.dimension}>
+              <span className="ai-dimension-score__name">{dimension.dimension}</span>
+              <span className="ai-dimension-score__value">{formatDecimal(dimension.score)}</span>
+              {dimension.reason ? <Typography.Text type="tertiary">{dimension.reason}</Typography.Text> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {findingEntries.length > 0 ? (
+        <div className="ai-field-finding-strip" aria-label="AI field findings">
+          <Typography.Text strong>字段级细节</Typography.Text>
+          <div className="ai-field-finding-list">
+            {findingEntries.slice(0, 6).map((entry) => {
+              const finding = entry.payload as AiFieldFindingLedgerPayload;
+              return (
+                <div className="ai-field-finding-pill" key={entry.id}>
+                  <Tag className={`semantic-tag semantic-tag--${severityTone(finding.severity)}`} size="small">{severityLabel(finding.severity)}</Tag>
+                  <Typography.Text className="mono-value">{finding.fieldPath}</Typography.Text>
+                  <Typography.Text>{finding.finding}</Typography.Text>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function HumanFinalVerdictCard({ verdict, entries }: { verdict: Verdict | null; entries: QualityLedgerEntry[] }) {
+  const latestReviewerEntry = entries[0];
+
+  return (
+    <Card className="human-final-verdict-card" title="人工最终裁决" bordered={false}>
+      <div className="human-final-verdict-card__status">
+        <VerdictTag status={verdict?.status ?? 'pending'} />
+        <Typography.Text type="tertiary">最终裁决来源: {verdict?.derivedFromEntryId ? `Ledger #${verdict.derivedFromEntryId}` : '暂无人工 ledger entry'}</Typography.Text>
+      </div>
+      {latestReviewerEntry ? (
+        <div className="human-final-verdict-card__ledger">
+          <Typography.Text type="tertiary">最近人工记录</Typography.Text>
+          <ReviewerLedgerSummary entry={latestReviewerEntry} />
+        </div>
+      ) : (
+        <Typography.Text type="tertiary">等待 Reviewer 或 Senior Reviewer 写入人工裁决。</Typography.Text>
+      )}
+    </Card>
+  );
+}
+
+function ReviewerLedgerSummary({ entry }: { entry: QualityLedgerEntry }) {
+  const payload = entry.payload as ReviewerVerdictLedgerPayload;
+  return (
+    <div className="human-final-verdict-card__summary">
+      <Tag className={`semantic-tag semantic-tag--${payload.verdict === 'approve' ? 'success' : 'danger'}`}>
+        {REVIEWER_VERDICT_LABELS[payload.verdict]}
+      </Tag>
+      <Typography.Text>{REVIEW_LEVEL_LABELS[payload.reviewLevel]} · {entry.actorType} #{entry.actorUserId ?? '-'}</Typography.Text>
+      {payload.reason ? <Typography.Text type="tertiary">{payload.reason}</Typography.Text> : null}
+    </div>
+  );
+}
+
+function MetricPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="ai-recommendation-metric">
+      <Typography.Text type="tertiary">{label}</Typography.Text>
+      <Typography.Text strong>{value}</Typography.Text>
+    </div>
   );
 }
 
@@ -258,6 +401,49 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
 
 type ReviewerVerdictLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { verdict: ReviewerVerdict }>;
 type AiFieldFindingLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { fieldPath: string }>;
+type AiOverallRecommendationLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { recommendation: 'pass' | 'reject' | 'manual_review' }>;
+
+const AI_RECOMMENDATION_LABELS: Record<AiOverallRecommendationLedgerPayload['recommendation'], string> = {
+  pass: '建议通过',
+  reject: '建议拒绝',
+  manual_review: '建议人工复核',
+};
+
+function latestEntry<T extends QualityLedgerEntry>(
+  entries: QualityLedgerEntry[],
+  predicate: (entry: QualityLedgerEntry) => entry is T,
+) {
+  return entries.find(predicate);
+}
+
+function isAiOverallRecommendationEntry(entry: QualityLedgerEntry): entry is QualityLedgerEntry {
+  return entry.entryType === 'ai_overall_recommendation';
+}
+
+function isAiFieldFindingEntry(entry: QualityLedgerEntry): entry is QualityLedgerEntry {
+  return entry.entryType === 'ai_field_finding';
+}
+
+function isReviewerVerdictEntry(entry: QualityLedgerEntry): entry is QualityLedgerEntry {
+  return entry.entryType === 'reviewer_overall_verdict';
+}
+
+function aiRecommendationTone(recommendation: AiOverallRecommendationLedgerPayload['recommendation']) {
+  if (recommendation === 'pass') return 'success';
+  if (recommendation === 'reject') return 'danger';
+  return 'warning';
+}
+
+function formatDecimal(value?: string | number | null) {
+  if (value == null || value === '') return '-';
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return String(value);
+  return numeric.toFixed(2);
+}
+
+function formatOptionalDecimal(value?: string | number | null) {
+  return value == null || value === '' ? '-' : formatDecimal(value);
+}
 
 function severityTone(severity: AiFieldFindingLedgerPayload['severity']) {
   if (severity === 'error') return 'danger';

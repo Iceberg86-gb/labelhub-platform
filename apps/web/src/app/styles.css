@@ -3972,6 +3972,97 @@ a {
   gap: var(--space-4);
 }
 
+.ai-recommendation-card,
+.human-final-verdict-card {
+  border: 0;
+  background: var(--color-main-surface);
+  box-shadow: inset 0 0 0 1px var(--color-border-subtle);
+}
+
+.ai-recommendation-card--pending {
+  background: var(--color-surface-subtle);
+}
+
+.ai-recommendation-card__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.85fr);
+  gap: var(--space-16);
+  align-items: start;
+}
+
+.ai-recommendation-card__verdict-line,
+.human-final-verdict-card__status,
+.human-final-verdict-card__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.ai-recommendation-card__score {
+  margin: 0;
+}
+
+.ai-recommendation-thresholds,
+.ai-dimension-score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-8);
+}
+
+.ai-recommendation-metric,
+.ai-dimension-score,
+.ai-field-finding-pill,
+.human-final-verdict-card__ledger {
+  min-width: 0;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-subtle);
+}
+
+.ai-recommendation-metric,
+.ai-dimension-score {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8);
+}
+
+.ai-recommendation-summary {
+  margin: var(--space-12) 0 0;
+}
+
+.ai-dimension-score-grid,
+.ai-field-finding-strip,
+.human-final-verdict-card__ledger {
+  margin-top: var(--space-12);
+}
+
+.ai-dimension-score__name,
+.ai-dimension-score__value {
+  font-weight: 700;
+}
+
+.ai-field-finding-strip,
+.ai-field-finding-list,
+.human-final-verdict-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.ai-field-finding-pill {
+  display: grid;
+  grid-template-columns: max-content minmax(90px, 0.35fr) minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+  padding: var(--space-8);
+}
+
+.human-final-verdict-card__ledger {
+  padding: var(--space-8);
+}
+
 .reviewer-side-stack {
   display: flex;
   min-width: 0;
