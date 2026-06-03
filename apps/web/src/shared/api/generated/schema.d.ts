@@ -1558,6 +1558,7 @@ export interface components {
             /** Format: int64 */
             submissionId: number;
             schemaVersion: components["schemas"]["SchemaVersion"];
+            datasetItem?: components["schemas"]["DatasetItem"];
             answerPayload: {
                 [key: string]: unknown;
             };

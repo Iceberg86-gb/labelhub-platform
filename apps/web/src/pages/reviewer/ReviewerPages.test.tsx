@@ -141,7 +141,12 @@ vi.mock('../../features/quality/useCreateLedgerEntryMutation', () => ({
 }));
 
 vi.mock('../../features/labeling/formily/SchemaFormilyRenderer', () => ({
-  SchemaFormilyRenderer: () => <section>历史作答</section>,
+  SchemaFormilyRenderer: ({ itemPayload }: { itemPayload?: { prompt?: string } }) => (
+    <section>
+      历史作答
+      {itemPayload?.prompt ? <span>{itemPayload.prompt}</span> : null}
+    </section>
+  ),
 }));
 
 vi.mock('../../features/ai/AiProvenanceCard', () => ({
@@ -170,6 +175,11 @@ const queueSubmission = {
 
 const renderSchema = {
   answerPayload: { answer: '合规' },
+  datasetItem: {
+    itemPayload: {
+      prompt: '请判断模型回答是否符合参考答案。',
+    },
+  },
   schemaVersion: {
     id: 77,
     schemaJson: {
@@ -255,6 +265,7 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('ai-provenance-card ai-provenance-card--assistive');
     expect(html).toContain('AI 预审证据');
     expect(html).toContain('人工最终裁决');
+    expect(html).toContain('请判断模型回答是否符合参考答案。');
   });
 
   it('renders AI recommendation separately from the human final verdict', () => {
