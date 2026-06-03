@@ -110,12 +110,12 @@ export function OwnerTaskDetailPage() {
 
     try {
       const created = await createSchemaMutation.mutateAsync(buildTaskSchemaDraft(task));
-      Toast.success('已创建任务 Schema。');
+      Toast.success('已创建任务模板（Schema）。');
       navigate(`/owner/schemas/${created.id}/design`);
     } catch (error) {
       const message = typeof error === 'object' && error && 'message' in error
         ? String((error as { message?: unknown }).message)
-        : 'Schema 创建失败。';
+        : '模板（Schema）创建失败。';
       Toast.error(message);
     }
   };
@@ -259,7 +259,7 @@ export function OwnerTaskDetailPage() {
           <div className="submissions-section-header">
             <div>
               <Typography.Title heading={5}>已提交记录</Typography.Title>
-              <Typography.Text type="tertiary">Owner 可从这里进入历史 Schema 作答与 AI 检查。</Typography.Text>
+              <Typography.Text type="tertiary">Owner 可从这里进入历史模板（Schema）作答与 AI 检查。</Typography.Text>
             </div>
           </div>
           <OwnerTaskSubmissionsSection taskId={task.id} />

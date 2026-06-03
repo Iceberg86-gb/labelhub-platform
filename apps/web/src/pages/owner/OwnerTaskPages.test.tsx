@@ -242,6 +242,8 @@ describe('Owner task pages design shell', () => {
     expect(html).toContain('owner-task-summary-grid');
     expect(html).toContain('detail-timeline-card detail-timeline-card--quiet');
     expect(html).toContain('状态操作');
+    expect(html).toContain('Owner 可从这里进入历史模板（Schema）作答与 AI 检查。');
     expect(html).toContain('客服对话质检');
   });
+
 });
