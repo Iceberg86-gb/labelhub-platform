@@ -33,6 +33,32 @@ function parseSchemaId(raw?: string) {
   return Number.isInteger(schemaId) && schemaId > 0 ? schemaId : null;
 }
 
+type DraftState = {
+  label: string;
+  tone: 'neutral' | 'success' | 'warning';
+};
+
+function draftStateLabel(isDirty: boolean, versionNumber: number | null): DraftState {
+  if (isDirty) {
+    return {
+      label: versionNumber ? `有未发布修改 · 基于 v${versionNumber}` : '有未发布修改',
+      tone: 'warning',
+    };
+  }
+
+  if (versionNumber) {
+    return {
+      label: `已发布 v${versionNumber}`,
+      tone: 'success',
+    };
+  }
+
+  return {
+    label: '尚未发布',
+    tone: 'neutral',
+  };
+}
+
 export function OwnerSchemaDesignerPage() {
   const navigate = useNavigate();
   const { schemaId: rawSchemaId } = useParams();
@@ -170,9 +196,10 @@ export function OwnerSchemaDesignerPage() {
     );
   }
 
-  const versionLabel = currentVersionQuery.version
-    ? `当前版本: v${currentVersionQuery.version.versionNumber}`
-    : '当前版本: 尚未发布';
+  const currentVersionNumber = currentVersionQuery.hasCurrentVersion
+    ? currentVersionQuery.version?.versionNumber ?? null
+    : null;
+  const draftState = draftStateLabel(isDirty, currentVersionNumber);
 
   return (
     <section className="schema-designer-page schema-designer-page--workspace" aria-label="Owner schema designer">
@@ -194,7 +221,9 @@ export function OwnerSchemaDesignerPage() {
             <Typography.Text type="tertiary">{currentVersionQuery.schema.description || '暂无描述'}</Typography.Text>
           </div>
           <div className="schema-designer-actions">
-            <div className="schema-version-pill">{versionLabel} | 草稿</div>
+            <div className="schema-version-pill">
+              <span className={`semantic-tag semantic-tag--${draftState.tone}`}>{draftState.label}</span>
+            </div>
             <Button onClick={() => setVersionDrawerVisible(true)}>版本历史</Button>
             <Button theme="solid" type="primary" onClick={handlePublishClick}>
               发布版本
@@ -202,7 +231,7 @@ export function OwnerSchemaDesignerPage() {
           </div>
         </div>
 
-        {isSessionNoticeVisible ? (
+        {isDirty && isSessionNoticeVisible ? (
           <div className="schema-designer-session-notice" style={sessionNoticeShellStyle}>
             <Banner
               className="schema-designer-session-notice__banner"
