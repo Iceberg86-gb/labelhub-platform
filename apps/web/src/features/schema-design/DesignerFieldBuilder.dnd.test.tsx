@@ -29,9 +29,67 @@ vi.mock('@douyinfe/semi-ui', () => ({
   },
 }));
 
-import { DesignerFieldBuilder } from './DesignerFieldBuilder';
+import { DesignerFieldBuilder, groupPaletteTypes } from './DesignerFieldBuilder';
 
 describe('DesignerFieldBuilder drag wiring', () => {
+  it('groups all field type palette materials without dropping draggable items', () => {
+    const view = renderClient(
+      <DesignerFieldBuilder
+        fields={[{ stableId: 'title', label: 'Title', type: 'text' }]}
+        onChange={() => {}}
+        onAddField={() => null}
+        selectedStableId={null}
+        onSelect={() => {}}
+        onDelete={() => {}}
+        errors={new Map()}
+        validationErrorCount={0}
+      />,
+    );
+
+    expect(view.text()).toContain('只读材料');
+    expect(view.text()).toContain('选择与约束');
+    expect(view.text()).toContain('内容录入');
+    expect(view.text()).toContain('容器与高级组件');
+
+    const paletteItems = Array.from(view.container.querySelectorAll('.field-type-palette__item'));
+    expect(paletteItems).toHaveLength(12);
+    expect(paletteItems.map((item) => item.textContent?.trim())).toEqual([
+      '展示项',
+      '单选',
+      '多选',
+      '日期',
+      '文本',
+      '数字',
+      '富文本',
+      '文件上传',
+      '嵌套对象',
+      '多 Tab',
+      'JSON',
+      'LLM 交互',
+    ]);
+
+    const paletteGroups = Array.from(view.container.querySelectorAll('.field-type-palette__group')).map((group) =>
+      Array.from(group.querySelectorAll('.field-type-palette__item')).map((item) => item.textContent?.trim()),
+    );
+    expect(paletteGroups).toEqual([
+      ['展示项'],
+      ['单选', '多选', '日期'],
+      ['文本', '数字', '富文本', '文件上传'],
+      ['嵌套对象', '多 Tab', 'JSON', 'LLM 交互'],
+    ]);
+    view.unmount();
+  });
+
+  it('keeps unmapped palette types in a fallback group instead of dropping them', () => {
+    const groups = groupPaletteTypes(['show_item', 'text', 'future_widget' as SchemaFieldType]);
+
+    expect(groups).toEqual([
+      { title: '只读材料', types: ['show_item'] },
+      { title: '内容录入', types: ['text'] },
+      { title: '其他', types: ['future_widget'] },
+    ]);
+  });
+
   it('uses non-native-button activators for palette and sortable handle wiring', () => {
     const onAddField = vi.fn<(_: SchemaFieldType, _parentStableId?: string, _index?: number) => null>(() => null);
     const view = renderClient(
@@ -71,7 +129,9 @@ describe('DesignerFieldBuilder drag wiring', () => {
       />,
     );
 
-    const paletteItem = view.container.querySelector('.field-type-palette__item') as HTMLElement;
+    const paletteItem = Array.from(view.container.querySelectorAll('.field-type-palette__item')).find((item) =>
+      item.textContent?.includes('文本'),
+    ) as HTMLElement;
     const dropzone = view.container.querySelector('.schema-canvas-dropzone') as HTMLElement;
     const fieldItem = view.container.querySelector('.field-list-item') as HTMLElement;
     setRect(paletteItem, rect(10, 10, 120, 40));
