@@ -3,6 +3,7 @@ import type { FieldValidationError } from '../../../entities/schema/schemaValida
 
 export type FieldEditorProps = {
   field: SchemaField;
+  availableFields: SchemaField[];
   onChange: (field: SchemaField) => void;
   errors: FieldValidationError[];
   errorsByField: Map<string, FieldValidationError[]>;

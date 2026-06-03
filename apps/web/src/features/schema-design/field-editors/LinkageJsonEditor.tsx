@@ -76,25 +76,28 @@ export function LinkageJsonEditor({ field, onChange }: LinkageJsonEditorProps) {
   };
 
   return (
-    <EditorSection title="高级联动 JSON">
-      <Typography.Text type="tertiary" className="field-linkage-json-help">
-        仅检查 JSON 语法。字段引用、操作符和值类型会在发布时统一校验。
-      </Typography.Text>
-      <LinkageJsonTextarea
-        label="visibleWhen"
-        value={drafts.visibleWhen}
-        error={errors.visibleWhen}
-        placeholder={'{"field":"type","op":"eq","value":"other"}'}
-        onChange={(input) => handleChange('visibleWhen', input)}
-      />
-      <LinkageJsonTextarea
-        label="requiredWhen"
-        value={drafts.requiredWhen}
-        error={errors.requiredWhen}
-        placeholder={'{"field":"type","op":"eq","value":"other"}'}
-        onChange={(input) => handleChange('requiredWhen', input)}
-      />
-    </EditorSection>
+    <details className="field-linkage-json-details">
+      <summary>高级联动 JSON</summary>
+      <EditorSection title="高级联动 JSON">
+        <Typography.Text type="tertiary" className="field-linkage-json-help">
+          仅检查 JSON 语法。字段引用、操作符和值类型会在发布时统一校验。
+        </Typography.Text>
+        <LinkageJsonTextarea
+          label="visibleWhen"
+          value={drafts.visibleWhen}
+          error={errors.visibleWhen}
+          placeholder={'{"field":"type","op":"eq","value":"other"}'}
+          onChange={(input) => handleChange('visibleWhen', input)}
+        />
+        <LinkageJsonTextarea
+          label="requiredWhen"
+          value={drafts.requiredWhen}
+          error={errors.requiredWhen}
+          placeholder={'{"field":"type","op":"eq","value":"other"}'}
+          onChange={(input) => handleChange('requiredWhen', input)}
+        />
+      </EditorSection>
+    </details>
   );
 }
 
