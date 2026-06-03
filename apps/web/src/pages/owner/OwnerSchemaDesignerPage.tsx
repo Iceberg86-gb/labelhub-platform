@@ -139,7 +139,7 @@ export function OwnerSchemaDesignerPage() {
   if (!schemaId) {
     return (
       <section className="schema-designer-page">
-        <Empty title="Schema ID 无效" description="请从 Schema 列表重新进入 Designer。" />
+        <Empty title="模板（Schema）ID 无效" description="请从模板（Schema）列表重新进入 Designer。" />
       </section>
     );
   }
@@ -159,7 +159,7 @@ export function OwnerSchemaDesignerPage() {
       <section className="schema-designer-page">
         <div className="task-state-panel">
           <Empty
-            title="Schema Designer 加载失败"
+            title="模板（Schema）Designer 加载失败"
             description={currentVersionQuery.error instanceof Error ? currentVersionQuery.error.message : '请稍后重试。'}
           />
           <Button onClick={() => currentVersionQuery.refetch()}>重新加载</Button>
@@ -177,7 +177,7 @@ export function OwnerSchemaDesignerPage() {
       <div className="schema-designer-canvas">
         <div className="detail-heading">
           <Button icon={<IconArrowLeft />} theme="borderless" onClick={() => navigate('/owner/schemas')}>
-            返回 Schema 列表
+            返回模板（Schema）列表
           </Button>
           <Button icon={<IconRefresh />} onClick={() => currentVersionQuery.refetch()} loading={currentVersionQuery.isFetching}>
             刷新
