@@ -18,6 +18,14 @@ type LinkageConditionBuilderProps = {
   onChange: (field: SchemaField) => void;
 };
 
+type LinkageMode = 'atomic' | 'group';
+type LinkageGroupOperator = 'allOf' | 'anyOf';
+type AtomicDraft = {
+  field: string;
+  op: LinkageConditionOp;
+  value: string;
+};
+
 const LINKAGE_KEYS: Array<{ label: string; value: LinkageKey }> = [
   { label: '显示条件 visibleWhen', value: 'visibleWhen' },
   { label: '必填条件 requiredWhen', value: 'requiredWhen' },
@@ -41,16 +49,25 @@ const actionsStyle: CSSProperties = {
   justifyContent: 'flex-end',
   marginTop: 4,
 };
-const advancedStyle: CSSProperties = {
+const groupStyle: CSSProperties = {
   display: 'grid',
   gap: 10,
+};
+const groupRowStyle: CSSProperties = {
+  display: 'grid',
+  gap: 8,
+  gridTemplateColumns: 'minmax(0, 1fr) minmax(92px, 0.7fr) minmax(0, 1fr) auto',
+  alignItems: 'end',
 };
 
 export function LinkageConditionBuilder({ field, availableFields, onChange }: LinkageConditionBuilderProps) {
   const [linkageKey, setLinkageKey] = useState<LinkageKey>('visibleWhen');
   const condition = field[linkageKey];
-  const isAdvancedGroup = isLinkageConditionGroup(condition);
   const atomicCondition = isLinkageAtomicCondition(condition) ? condition : undefined;
+  const groupCondition = isLinkageConditionGroup(condition) ? condition : undefined;
+  const [mode, setMode] = useState<LinkageMode>(() => conditionToMode(condition));
+  const [groupOperator, setGroupOperator] = useState<LinkageGroupOperator>(() => groupOperatorFromCondition(groupCondition));
+  const [groupDrafts, setGroupDrafts] = useState<AtomicDraft[]>(() => groupDraftsFromCondition(groupCondition));
   const [draftField, setDraftField] = useState(atomicCondition?.field ?? '');
   const [draftOp, setDraftOp] = useState<LinkageConditionOp>(atomicCondition?.op ?? 'eq');
   const [draftValue, setDraftValue] = useState(formatDraftValue(atomicCondition));
@@ -66,6 +83,10 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
   useEffect(() => {
     const nextCondition = field[linkageKey];
     const nextAtomic = isLinkageAtomicCondition(nextCondition) ? nextCondition : undefined;
+    const nextGroup = isLinkageConditionGroup(nextCondition) ? nextCondition : undefined;
+    setMode(conditionToMode(nextCondition));
+    setGroupOperator(groupOperatorFromCondition(nextGroup));
+    setGroupDrafts(groupDraftsFromCondition(nextGroup));
     setDraftField(nextAtomic?.field ?? '');
     setDraftOp(nextAtomic?.op ?? 'eq');
     setDraftValue(formatDraftValue(nextAtomic));
@@ -85,9 +106,21 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
     }
   };
 
+  const handleGroupOpChange = (index: number, nextOp: LinkageConditionOp) => {
+    setGroupDrafts((drafts) => drafts.map((draft, draftIndex) => {
+      if (draftIndex !== index) return draft;
+      const currentFieldIsNumber = candidates.some((candidate) => candidate.stableId === draft.field && candidate.type === 'number');
+      const nextField = NUMERIC_OPS.has(nextOp) && draft.field && !currentFieldIsNumber
+        ? candidates.find((candidate) => candidate.type === 'number')?.stableId ?? ''
+        : draft.field;
+      return { ...draft, field: nextField, op: nextOp, value: '' };
+    }));
+  };
+
   const canApply = Boolean(draftField)
     && (EMPTY_OPS.has(draftOp)
       || (NUMERIC_OPS.has(draftOp) ? Number.isFinite(Number(draftValue)) && draftValue.trim() !== '' : draftValue.trim() !== ''));
+  const canApplyGroup = groupDrafts.length > 0 && groupDrafts.every(canBuildAtomicDraft);
 
   const handleApply = () => {
     if (!canApply) return;
@@ -97,11 +130,72 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
     });
   };
 
+  const handleApplyGroup = () => {
+    if (!canApplyGroup) return;
+    onChange({
+      ...field,
+      [linkageKey]: buildGroupLinkageCondition(groupOperator, groupDrafts),
+    });
+  };
+
   const handleClear = () => {
     onChange({
       ...field,
       [linkageKey]: undefined,
     });
+  };
+
+  const promoteAtomicDraftToGroup = (withNewRow: boolean) => {
+    setMode('group');
+    setGroupOperator('allOf');
+    setGroupDrafts([
+      atomicDraftFromParts(draftField, draftOp, draftValue),
+      ...(withNewRow ? [createEmptyAtomicDraft()] : []),
+    ]);
+  };
+
+  const handleModeChange = (nextMode: LinkageMode) => {
+    if (nextMode === mode) return;
+    if (nextMode === 'group') {
+      promoteAtomicDraftToGroup(false);
+      return;
+    }
+
+    const firstDraft = groupDrafts[0] ?? createEmptyAtomicDraft();
+    if (groupDrafts.length > 1) {
+      const message = groupOperator === 'anyOf'
+        ? '将从"任一满足"条件组切回单条件,并只保留第一条条件;其他可触发显示/必填的条件会被移除。'
+        : '将从"全部满足"条件组切回单条件,并只保留第一条条件。';
+      if (!window.confirm(message)) {
+        return;
+      }
+    }
+    setMode('atomic');
+    setDraftField(firstDraft.field);
+    setDraftOp(firstDraft.op);
+    setDraftValue(firstDraft.value);
+    if (canBuildAtomicDraft(firstDraft)) {
+      onChange({
+        ...field,
+        [linkageKey]: buildAtomicLinkageCondition(firstDraft.field, firstDraft.op, firstDraft.value),
+      });
+    }
+  };
+
+  const handleAddGroupRow = () => {
+    if (mode === 'atomic') {
+      promoteAtomicDraftToGroup(true);
+      return;
+    }
+    setGroupDrafts((drafts) => [...drafts, createEmptyAtomicDraft()]);
+  };
+
+  const handleRemoveGroupRow = (index: number) => {
+    setGroupDrafts((drafts) => (drafts.length <= 1 ? drafts : drafts.filter((_, draftIndex) => draftIndex !== index)));
+  };
+
+  const updateGroupDraft = (index: number, patch: Partial<AtomicDraft>) => {
+    setGroupDrafts((drafts) => drafts.map((draft, draftIndex) => (draftIndex === index ? { ...draft, ...patch } : draft)));
   };
 
   return (
@@ -121,12 +215,21 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
         </select>
       </label>
 
-      {isAdvancedGroup ? (
-        <div className="field-linkage-builder-advanced" style={advancedStyle}>
-          <Typography.Text type="tertiary">此条件为高级分组,请使用下方 JSON 编辑</Typography.Text>
-          <DisabledAtomicForm linkageKey={linkageKey} />
-        </div>
-      ) : (
+      <label className="field-editor-row">
+        <Typography.Text>联动模式</Typography.Text>
+        <select
+          aria-label="联动模式"
+          className="field-linkage-builder-control"
+          style={controlStyle}
+          value={mode}
+          onChange={(event) => handleModeChange(event.currentTarget.value as LinkageMode)}
+        >
+          <option value="atomic">单条件</option>
+          <option value="group">条件组</option>
+        </select>
+      </label>
+
+      {mode === 'atomic' ? (
         <div className="field-linkage-builder">
           <label className="field-editor-row">
             <Typography.Text>当字段</Typography.Text>
@@ -174,26 +277,84 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
           )}
           <div className="field-linkage-builder-actions" style={actionsStyle}>
             <Button disabled={!canApply} onClick={handleApply}>应用条件</Button>
+            <Button theme="borderless" onClick={() => handleAddGroupRow()}>添加条件</Button>
+            <Button theme="borderless" onClick={handleClear}>清空条件</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="field-linkage-builder-group" style={groupStyle}>
+          <label className="field-editor-row">
+            <Typography.Text>条件组逻辑</Typography.Text>
+            <select
+              aria-label="条件组逻辑"
+              className="field-linkage-builder-control"
+              style={controlStyle}
+              value={groupOperator}
+              onChange={(event) => setGroupOperator(event.currentTarget.value as LinkageGroupOperator)}
+            >
+              <option value="allOf">全部满足 AND/allOf</option>
+              <option value="anyOf">任一满足 OR/anyOf</option>
+            </select>
+          </label>
+          {groupDrafts.map((draft, index) => (
+            <div key={index} className="field-linkage-builder-group-row" style={groupRowStyle}>
+              <label className="field-editor-row">
+                <Typography.Text>当字段</Typography.Text>
+                <select
+                  aria-label={`${linkageKey} 第${index + 1}条条件字段`}
+                  className="field-linkage-builder-control"
+                  style={controlStyle}
+                  value={draft.field}
+                  onChange={(event) => updateGroupDraft(index, { field: event.currentTarget.value })}
+                >
+                  <option value="">请选择字段</option>
+                  {(NUMERIC_OPS.has(draft.op) ? candidates.filter((candidate) => candidate.type === 'number') : candidates).map((candidate) => (
+                    <option key={candidate.stableId} value={candidate.stableId}>
+                      {candidate.label || candidate.stableId}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-editor-row">
+                <Typography.Text>操作符</Typography.Text>
+                <select
+                  aria-label={`${linkageKey} 第${index + 1}条操作符`}
+                  className="field-linkage-builder-control"
+                  style={controlStyle}
+                  value={draft.op}
+                  onChange={(event) => handleGroupOpChange(index, event.currentTarget.value as LinkageConditionOp)}
+                >
+                  {LINKAGE_OPS.map((op) => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
+              </label>
+              {EMPTY_OPS.has(draft.op) ? (
+                <span />
+              ) : (
+                <label className="field-editor-row">
+                  <Typography.Text>{ARRAY_OPS.has(draft.op) ? '值(逗号分隔)' : '值'}</Typography.Text>
+                  <input
+                    aria-label={`${linkageKey} 第${index + 1}条条件值`}
+                    className="field-linkage-builder-control"
+                    style={controlStyle}
+                    inputMode={NUMERIC_OPS.has(draft.op) ? 'decimal' : undefined}
+                    value={draft.value}
+                    onChange={(event) => updateGroupDraft(index, { value: event.currentTarget.value })}
+                  />
+                </label>
+              )}
+              <Button disabled={groupDrafts.length <= 1} theme="borderless" onClick={() => handleRemoveGroupRow(index)}>删除</Button>
+            </div>
+          ))}
+          <div className="field-linkage-builder-actions" style={actionsStyle}>
+            <Button theme="borderless" onClick={handleAddGroupRow}>添加条件</Button>
+            <Button disabled={!canApplyGroup} onClick={handleApplyGroup}>应用条件</Button>
             <Button theme="borderless" onClick={handleClear}>清空条件</Button>
           </div>
         </div>
       )}
     </EditorSection>
-  );
-}
-
-function DisabledAtomicForm({ linkageKey }: { linkageKey: LinkageKey }) {
-  return (
-    <div className="field-linkage-builder">
-      <label className="field-editor-row">
-        <Typography.Text>当字段</Typography.Text>
-        <select aria-label={`${linkageKey} 条件字段`} className="field-linkage-builder-control" style={controlStyle} disabled />
-      </label>
-      <label className="field-editor-row">
-        <Typography.Text>操作符</Typography.Text>
-        <select aria-label={`${linkageKey} 操作符`} className="field-linkage-builder-control" style={controlStyle} disabled />
-      </label>
-    </div>
   );
 }
 
@@ -216,6 +377,15 @@ export function buildAtomicLinkageCondition(
     return { field, op, value: Number(rawValue) };
   }
   return { field, op, value: rawValue ?? '' };
+}
+
+export function buildGroupLinkageCondition(
+  operator: LinkageGroupOperator,
+  drafts: AtomicDraft[],
+): LinkageConditionGroup {
+  return {
+    [operator]: drafts.filter(canBuildAtomicDraft).map((draft) => buildAtomicLinkageCondition(draft.field, draft.op, draft.value)),
+  } as LinkageConditionGroup;
 }
 
 export function flattenLinkageCandidateFields(fields: SchemaField[], currentStableId: string): SchemaField[] {
@@ -244,6 +414,38 @@ export function isLinkageConditionGroup(condition: LinkageCondition | undefined)
 
 function isLinkageAtomicCondition(condition: LinkageCondition | undefined): condition is LinkageAtomicCondition {
   return Boolean(condition && !isLinkageConditionGroup(condition) && ('field' in condition || 'op' in condition));
+}
+
+function conditionToMode(condition: LinkageCondition | undefined): LinkageMode {
+  return isLinkageConditionGroup(condition) ? 'group' : 'atomic';
+}
+
+function groupOperatorFromCondition(condition: LinkageConditionGroup | undefined): LinkageGroupOperator {
+  if (condition?.anyOf?.length && !condition.allOf?.length) return 'anyOf';
+  return 'allOf';
+}
+
+function groupDraftsFromCondition(condition: LinkageConditionGroup | undefined): AtomicDraft[] {
+  const atoms = condition?.allOf?.length ? condition.allOf : condition?.anyOf ?? [];
+  return atoms.length > 0 ? atoms.map(atomicDraftFromCondition) : [createEmptyAtomicDraft()];
+}
+
+function atomicDraftFromCondition(condition: LinkageAtomicCondition): AtomicDraft {
+  return atomicDraftFromParts(condition.field ?? '', condition.op ?? 'eq', formatDraftValue(condition));
+}
+
+function atomicDraftFromParts(field: string, op: LinkageConditionOp, value: string): AtomicDraft {
+  return { field, op, value };
+}
+
+function createEmptyAtomicDraft(): AtomicDraft {
+  return { field: '', op: 'eq', value: '' };
+}
+
+function canBuildAtomicDraft(draft: AtomicDraft): boolean {
+  return Boolean(draft.field)
+    && (EMPTY_OPS.has(draft.op)
+      || (NUMERIC_OPS.has(draft.op) ? Number.isFinite(Number(draft.value)) && draft.value.trim() !== '' : draft.value.trim() !== ''));
 }
 
 function formatDraftValue(condition: LinkageAtomicCondition | undefined): string {
