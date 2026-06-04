@@ -59,6 +59,7 @@ describe('OwnerLlmSettingsPage', () => {
     expect(html).toContain('llm-settings-page');
     expect(html).toContain('LLM 接入');
     expect(html).toContain('Provider 配置');
+    expect(html).toContain('Designer AI 交互字段与字段级建议');
     expect(html).toContain('API Key');
     expect(html).toContain('模型预设');
     expect(html).toContain('gpt-4.1-mini');
