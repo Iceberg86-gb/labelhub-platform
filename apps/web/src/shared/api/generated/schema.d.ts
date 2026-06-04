@@ -58,6 +58,26 @@ export interface paths {
         patch: operations["updateLlmProvider"];
         trace?: never;
     };
+    "/llm/providers/{providerConfigId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Activate one platform-managed LLM provider configuration.
+         * @description Atomically marks this platform provider as the current enabled provider and disables any other enabled platform provider. The provider must already have a stored secret source, otherwise the request is rejected with provider_secret_missing.
+         */
+        post: operations["activateLlmProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/llm/providers/{providerConfigId}:test-connection": {
         parameters: {
             query?: never;
@@ -2419,6 +2439,32 @@ export interface operations {
         };
         responses: {
             /** @description Updated provider configuration. Secret plaintext is never returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmProviderConfig"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    activateLlmProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                providerConfigId: components["parameters"]["ProviderConfigId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Activated provider configuration. Secret plaintext is never returned. */
             200: {
                 headers: {
                     [name: string]: unknown;

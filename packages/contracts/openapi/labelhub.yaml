@@ -151,6 +151,32 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /llm/providers/{providerConfigId}:activate:
+    post:
+      tags: [LLMProviders]
+      operationId: activateLlmProvider
+      summary: Activate one platform-managed LLM provider configuration.
+      description: >
+        Atomically marks this platform provider as the current enabled provider and disables
+        any other enabled platform provider. The provider must already have a stored secret
+        source, otherwise the request is rejected with provider_secret_missing.
+      parameters:
+        - $ref: '#/components/parameters/ProviderConfigId'
+      responses:
+        '200':
+          description: Activated provider configuration. Secret plaintext is never returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LlmProviderConfig'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /llm/providers/{providerConfigId}:test-connection:
     post:
       tags: [LLMProviders]
