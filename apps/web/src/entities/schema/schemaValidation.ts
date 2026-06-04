@@ -46,7 +46,7 @@ function validateFields(fields: SchemaField[], pathPrefix: string, errors: Field
 
     if (field.type === 'nested_object') {
       if (!field.children || field.children.length === 0) {
-        errors.push({ fieldPath, stableId: field.stableId, reason: '嵌套对象字段需要至少一个子字段' });
+        errors.push({ fieldPath, stableId: field.stableId, reason: '字段分组需要至少一个子字段' });
         return;
       }
 
@@ -55,7 +55,7 @@ function validateFields(fields: SchemaField[], pathPrefix: string, errors: Field
           errors.push({
             fieldPath: `${fieldPath}.children[${childIndex}]`,
             stableId: child.stableId,
-            reason: 'UI 暂不支持多层嵌套对象',
+            reason: 'UI 暂不支持多层字段分组',
           });
         }
       });
@@ -64,7 +64,7 @@ function validateFields(fields: SchemaField[], pathPrefix: string, errors: Field
 
     if (field.type === 'tab_container') {
       if (!field.tabs || field.tabs.length === 0) {
-        errors.push({ fieldPath, stableId: field.stableId, reason: '多 Tab 容器需要至少一个 Tab' });
+        errors.push({ fieldPath, stableId: field.stableId, reason: '标签页组需要至少一个 Tab' });
         return;
       }
 
@@ -82,7 +82,7 @@ function validateFields(fields: SchemaField[], pathPrefix: string, errors: Field
             errors.push({
               fieldPath: `${tabPath}.children[${childIndex}]`,
               stableId: child.stableId,
-              reason: 'UI 暂不支持 Tab 内再嵌套多 Tab',
+              reason: 'UI 暂不支持 Tab 内再嵌套标签页组',
             });
           }
         });
