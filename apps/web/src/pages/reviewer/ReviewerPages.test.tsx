@@ -149,6 +149,15 @@ vi.mock('../../features/labeling/formily/SchemaFormilyRenderer', () => ({
   ),
 }));
 
+vi.mock('./ReviewerAnswerSummary', () => ({
+  ReviewerAnswerSummary: ({ itemPayload }: { itemPayload?: { prompt?: string } }) => (
+    <section className="reviewer-answer-summary">
+      平铺答案
+      {itemPayload?.prompt ? <span>{itemPayload.prompt}</span> : null}
+    </section>
+  ),
+}));
+
 vi.mock('../../features/ai/AiProvenanceCard', () => ({
   AiProvenanceCard: ({ className }: { className?: string }) => (
     <section className={['ai-provenance-card', className].filter(Boolean).join(' ')}>AI 预审证据</section>
@@ -235,7 +244,7 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('客服回复质检');
   });
 
-  it('renders submission detail with human decision primary and AI evidence secondary', () => {
+  it('renders submission detail as a three-zone reviewer workbench', () => {
     userMock.mockReturnValue({ id: 1003, roles: ['REVIEWER'] });
     routeState.searchParams = new URLSearchParams('reviewLevel=reviewer');
     renderSchemaQueryMock.mockReturnValue({
@@ -257,14 +266,21 @@ describe('Reviewer pages design shell', () => {
 
     expect(html).toContain('reviewer-submission-page reviewer-submission-page--decision');
     expect(html).toContain('reviewer-decision-hero');
-    expect(html).toContain('reviewer-comparison-grid');
+    expect(html).toContain('reviewer-workbench-grid');
+    expect(html).toContain('reviewer-reading-panel');
+    expect(html).toContain('reviewer-decision-rail');
+    expect(html).toContain('reviewer-decision-rail__sticky');
     expect(html).toContain('reviewer-human-decision-panel');
     expect(html).toContain('review-actions-card review-actions-card--primary');
     expect(html).toContain('review-reason-field review-reason-field--required');
     expect(html).toContain('reviewer-ai-evidence-panel');
+    expect(html).toContain('reviewer-ai-layer reviewer-ai-layer--fields');
+    expect(html).toContain('reviewer-ai-layer reviewer-ai-layer--debug');
+    expect(html).toContain('AI 调用详情(调试)');
     expect(html).toContain('ai-provenance-card ai-provenance-card--assistive');
     expect(html).toContain('AI 预审证据');
     expect(html).toContain('人工最终裁决');
+    expect(html).toContain('平铺答案');
     expect(html).toContain('请判断模型回答是否符合参考答案。');
   });
 
@@ -315,8 +331,25 @@ describe('Reviewer pages design shell', () => {
             submissionId: 501,
             taskId: 22,
           },
+          {
+            actorType: 'ai_agent',
+            actorUserId: null,
+            aiCallId: 6,
+            createdAt: '2026-06-02T21:31:00Z',
+            entryType: 'ai_field_finding',
+            id: 25,
+            payload: {
+              confidence: '0.91',
+              fieldPath: 'answer',
+              finding: '回答覆盖了主要结论。',
+              label: '结论',
+              severity: 'info',
+            },
+            submissionId: 501,
+            taskId: 22,
+          },
         ],
-        total: 2,
+        total: 3,
       },
       isError: false,
       isLoading: false,
@@ -326,6 +359,11 @@ describe('Reviewer pages design shell', () => {
     const html = renderToString(<ReviewerSubmissionPage />);
 
     expect(html).toContain('AI 综合判定（建议）');
+    expect(html).toContain('reviewer-ai-recommendation-line');
+    expect(html).toContain('reviewer-ai-dimension-mini-bars');
+    expect(html).toContain('reviewer-ai-finding-list reviewer-ai-finding-list--compact');
+    expect(html).toContain('审核历史');
+    expect(html).toContain('ledger-entry-timeline');
     expect(html).toContain('非最终裁决');
     expect(html).toContain('AI 建议');
     expect(html).toContain('0.95');
@@ -333,6 +371,8 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('0.80');
     expect(html).toContain('accuracy');
     expect(html).toContain('答案匹配参考结论');
+    expect(html).toContain('answer');
+    expect(html).toContain('回答覆盖了主要结论。');
     expect(html).toContain('人工最终裁决');
     expect(html).toContain('最终裁决来源');
     expect(html).toContain('已通过');
