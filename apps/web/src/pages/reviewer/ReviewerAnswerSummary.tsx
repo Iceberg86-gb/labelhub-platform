@@ -47,9 +47,17 @@ export function ReviewerAnswerSummary({ schemaFields, answerPayload, itemPayload
 }
 
 function ReviewerAnswerItem({ row }: { row: ReviewerAnswerRow }) {
+  const displayValue = formatAnswerValue(row.displayValue ?? row.value, row.options);
+  const itemClassName = [
+    'reviewer-answer-item',
+    `reviewer-answer-item--${row.type}`,
+    isPrimaryAnswerRow(row) ? 'reviewer-answer-item--hero' : '',
+    displayValue === '未填写' ? 'reviewer-answer-item--empty' : '',
+  ].filter(Boolean).join(' ');
+
   if (row.type === 'json_editor') {
     return (
-      <details className="reviewer-answer-item reviewer-answer-item--json">
+      <details className={itemClassName}>
         <summary>{row.label}</summary>
         <pre>{formatAnswerValue(row.value, row.options)}</pre>
       </details>
@@ -57,11 +65,15 @@ function ReviewerAnswerItem({ row }: { row: ReviewerAnswerRow }) {
   }
 
   return (
-    <div className={`reviewer-answer-item reviewer-answer-item--${row.type}`}>
+    <div className={itemClassName}>
       <span className="reviewer-answer-item__label">{row.label}</span>
-      <p className="reviewer-answer-item__value">{formatAnswerValue(row.displayValue ?? row.value, row.options)}</p>
+      <p className="reviewer-answer-item__value">{displayValue}</p>
     </div>
   );
+}
+
+function isPrimaryAnswerRow(row: ReviewerAnswerRow) {
+  return row.type === 'show_item' || row.label === '题目' || row.label === '模型回答' || row.label === '参考答案';
 }
 
 function flattenAnswerRows(
