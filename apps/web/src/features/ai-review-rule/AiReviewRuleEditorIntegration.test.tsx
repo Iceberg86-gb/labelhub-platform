@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { renderToString } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiReviewRule } from './aiReviewRuleTypes';
 import { AiReviewRuleEditorDrawer } from './AiReviewRuleEditorDrawer';
 import { AiReviewRuleEntryCard } from './AiReviewRuleEntryCard';
@@ -80,15 +80,75 @@ vi.mock('./usePublishAiReviewRuleMutation', () => ({
 }));
 
 describe('AiReviewRule editor integration', () => {
-  it('renders the entry card as a muted AI pre-review configuration module', () => {
-    const html = renderToString(<AiReviewRuleEntryCard taskId={22} onOpenEditor={() => {}} />);
+  beforeEach(() => {
+    invalidateQueriesMock.mockReset();
+    publishMock.mockReset();
+    saveMock.mockReset();
+    listState.data = [];
+    listState.error = null;
+    listState.isError = false;
+    listState.isLoading = false;
+  });
+
+  it('renders the entry card as an unconfigured AI pre-review module', () => {
+    const html = stripReactComments(renderToString(<AiReviewRuleEntryCard taskId={22} onOpenEditor={() => {}} />));
 
     expect(html).toContain('ai-review-rule-entry-card ai-review-rule-entry-card--assistive');
     expect(html).toContain('ai-review-rule-entry-hero');
     expect(html).toContain('ai-review-rule-task-tag');
     expect(html).toContain('ai-review-rule-status-tag ai-review-rule-status-tag--draft');
     expect(html).toContain('AI 预审辅助规则');
-    expect(html).toContain('辅助证据');
+    expect(html).toContain('未配置 AI 预审');
+    expect(html).toContain('配置规则');
+  });
+
+  it('renders the current published rule summary in the entry card', () => {
+    listState.data = [
+      makeRule({
+        id: 1,
+        versionNo: 4,
+        promptVersionId: 12,
+        dimensions: ['准确性', '安全性'],
+        passThreshold: 0.75,
+        rejectThreshold: 0.25,
+        status: 'published',
+        isCurrent: true,
+      }),
+      makeRule({ id: 2, versionNo: 5, status: 'draft', isCurrent: false }),
+    ];
+
+    const html = stripReactComments(renderToString(<AiReviewRuleEntryCard taskId={22} onOpenEditor={() => {}} />));
+
+    expect(html).toContain('生效中 · v4');
+    expect(html).toContain('Prompt 版本');
+    expect(html).toContain('#12');
+    expect(html).toContain('准确性');
+    expect(html).toContain('安全性');
+    expect(html).toContain('通过阈值');
+    expect(html).toContain('0.75');
+    expect(html).toContain('拒绝阈值');
+    expect(html).toContain('0.25');
+    expect(html).toContain('查看 / 编辑规则');
+  });
+
+  it('keeps the entry card usable while the rule query is loading or failed', () => {
+    listState.isLoading = true;
+    const loadingHtml = renderToString(<AiReviewRuleEntryCard taskId={22} onOpenEditor={() => {}} />);
+
+    expect(loadingHtml).toContain('未配置 AI 预审');
+    expect(loadingHtml).toContain('配置规则');
+    expect(loadingHtml).toContain('保存会创建新的规则版本');
+    expect(loadingHtml).not.toContain('生效中');
+
+    listState.isLoading = false;
+    listState.isError = true;
+    listState.error = new Error('boom');
+    const errorHtml = renderToString(<AiReviewRuleEntryCard taskId={22} onOpenEditor={() => {}} />);
+
+    expect(errorHtml).toContain('未配置 AI 预审');
+    expect(errorHtml).toContain('配置规则');
+    expect(errorHtml).toContain('发布后才会成为当前生效规则');
+    expect(errorHtml).not.toContain('LLM 生成失败');
   });
 
   it('keeps save-form controls separate from history and current-state controls', () => {

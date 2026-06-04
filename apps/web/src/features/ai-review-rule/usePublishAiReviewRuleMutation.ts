@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../shared/api/client';
 import type { AiReviewRule } from './aiReviewRuleTypes';
+import { aiReviewRulesQueryKey } from './useListAiReviewRulesQuery';
 import { AiReviewRuleMutationFailure, mapAiReviewRuleErrorMessage } from './useSaveAiReviewRuleMutation';
 
 export type PublishAiReviewRuleVariables = {
@@ -25,8 +27,12 @@ export async function publishAiReviewRule({ ruleId }: PublishAiReviewRuleVariabl
 }
 
 export function usePublishAiReviewRuleMutation() {
+  const queryClient = useQueryClient();
   return useMutation<AiReviewRule, AiReviewRuleMutationFailure, PublishAiReviewRuleVariables>({
     mutationFn: publishAiReviewRule,
+    onSuccess: (rule) => {
+      void queryClient.invalidateQueries({ queryKey: aiReviewRulesQueryKey(rule.taskId) });
+    },
   });
 }
 
