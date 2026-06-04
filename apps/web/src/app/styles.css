@@ -4239,11 +4239,13 @@ a {
 .reviewer-answer-score-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-8);
-  padding: var(--space-6);
+  gap: var(--space-10);
+  padding: var(--space-8);
   border: 1px solid rgba(214, 224, 238, 0.72);
-  border-radius: 24px;
-  background: rgba(247, 249, 252, 0.86);
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(245, 248, 252, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
 }
 
 .reviewer-answer-score-pill {
@@ -4252,19 +4254,20 @@ a {
   justify-content: center;
   gap: var(--space-8);
   min-width: 0;
-  min-height: 36px;
-  padding: 0 var(--space-10);
+  min-height: 42px;
+  padding: 0 var(--space-14);
   border: 1px solid rgba(216, 226, 240, 0.82);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: var(--color-text-secondary);
-  font-size: var(--font-size-small);
-  box-shadow: 0 8px 18px rgba(25, 38, 64, 0.05);
+  font-size: 14px;
+  font-weight: 650;
+  box-shadow: 0 10px 22px rgba(25, 38, 64, 0.06);
 }
 
 .reviewer-answer-score-pill strong {
   color: var(--color-accent-blue);
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
 }
 
@@ -4277,11 +4280,14 @@ a {
 
 .reviewer-answer-item {
   min-width: 0;
-  padding: var(--space-12) var(--space-14);
-  border: 1px solid rgba(218, 226, 236, 0.78);
-  border-radius: 20px;
-  background: rgba(248, 250, 252, 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  padding: var(--space-14) var(--space-16);
+  border: 1px solid rgba(218, 226, 236, 0.64);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 253, 0.84));
+  box-shadow:
+    0 10px 24px rgba(35, 49, 76, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -4299,16 +4305,18 @@ a {
 
 .reviewer-answer-item__label {
   display: block;
-  margin-bottom: var(--space-8);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-caption);
+  margin-bottom: var(--space-10);
+  color: var(--color-text-primary);
+  font-size: 14px;
   font-weight: var(--font-weight-table-header);
+  letter-spacing: 0;
 }
 
 .reviewer-answer-item__value {
   margin: 0;
   color: var(--color-text-primary);
-  line-height: 1.58;
+  font-size: 14px;
+  line-height: 1.62;
   white-space: pre-wrap;
 }
 
@@ -4319,6 +4327,7 @@ a {
 
 .reviewer-answer-item--empty .reviewer-answer-item__value {
   color: var(--color-text-tertiary);
+  font-weight: 500;
 }
 
 .reviewer-answer-item--json summary,
