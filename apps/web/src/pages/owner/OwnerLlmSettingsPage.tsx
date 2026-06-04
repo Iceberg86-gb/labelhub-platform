@@ -321,7 +321,7 @@ export function OwnerLlmSettingsPage() {
           <div className="llm-panel-head">
             <div>
               <Typography.Title heading={5}>Provider 配置</Typography.Title>
-              <Typography.Text type="tertiary">平台统一使用这一组 Provider,用于 AI 预审、Designer LLM 字段与字段级建议。</Typography.Text>
+              <Typography.Text type="tertiary">平台统一使用这一组 Provider,用于 AI 预审、Designer AI 交互字段与字段级建议。</Typography.Text>
             </div>
             <span className={`llm-connection-pill llm-connection-pill--${connectionStatus}`}>
               {statusLabel(connectionStatus)}
