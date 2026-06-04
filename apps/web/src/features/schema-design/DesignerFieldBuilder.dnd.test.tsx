@@ -62,10 +62,10 @@ describe('DesignerFieldBuilder drag wiring', () => {
       '数字',
       '富文本',
       '文件上传',
-      '嵌套对象',
-      '多 Tab',
+      '字段分组',
+      '标签页组',
       'JSON',
-      'LLM 交互',
+      'AI 交互',
     ]);
 
     const paletteGroups = Array.from(view.container.querySelectorAll('.field-type-palette__group')).map((group) =>
@@ -75,7 +75,7 @@ describe('DesignerFieldBuilder drag wiring', () => {
       ['展示项'],
       ['单选', '多选', '日期'],
       ['文本', '数字', '富文本', '文件上传'],
-      ['嵌套对象', '多 Tab', 'JSON', 'LLM 交互'],
+      ['字段分组', '标签页组', 'JSON', 'AI 交互'],
     ]);
     view.unmount();
   });
