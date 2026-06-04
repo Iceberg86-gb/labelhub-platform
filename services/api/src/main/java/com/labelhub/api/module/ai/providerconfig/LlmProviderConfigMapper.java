@@ -46,6 +46,40 @@ public interface LlmProviderConfigMapper {
         """)
     LlmProviderConfigEntity selectPlatformById(@Param("id") Long id);
 
+    @Select("""
+        SELECT id
+        FROM llm_provider_configs
+        WHERE scope = 'platform'
+          AND enabled = TRUE
+          AND id <> #{targetId}
+        ORDER BY id ASC
+        """)
+    List<Long> selectEnabledPlatformProviderIdsExcept(@Param("targetId") Long targetId);
+
+    @Update("""
+        UPDATE llm_provider_configs
+        SET enabled = FALSE
+        WHERE scope = 'platform'
+          AND enabled = TRUE
+          AND id <> #{targetId}
+        """)
+    int disableOtherPlatformProviderRows(@Param("targetId") Long targetId);
+
+    default List<Long> disableOtherPlatformProviders(Long targetId) {
+        List<Long> disabledIds = selectEnabledPlatformProviderIdsExcept(targetId);
+        if (!disabledIds.isEmpty()) {
+            disableOtherPlatformProviderRows(targetId);
+        }
+        return disabledIds;
+    }
+
+    @Update("""
+        UPDATE llm_provider_configs
+        SET enabled = TRUE
+        WHERE id = #{id} AND scope = 'platform'
+        """)
+    int enablePlatformProvider(@Param("id") Long id);
+
     @Update("""
         UPDATE llm_provider_configs
         SET provider_type = #{providerType},

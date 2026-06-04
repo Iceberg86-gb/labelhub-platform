@@ -78,6 +78,13 @@ public class LlmProviderConfigsController implements LlmProvidersApi {
 
     @Override
     @PreAuthorize("hasRole('PLATFORM_ADMIN')")
+    @PostMapping(path = "/{providerConfigId}:activate", produces = "application/json")
+    public ResponseEntity<LlmProviderConfig> activateLlmProvider(@PathVariable("providerConfigId") Long providerConfigId) {
+        return ResponseEntity.ok(dtoMapper.toDto(service.activate(currentUserId(), providerConfigId)));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('PLATFORM_ADMIN')")
     @PostMapping(path = "/{providerConfigId}:test-connection", consumes = "application/json", produces = "application/json")
     public ResponseEntity<LlmProviderTestConnectionResponse> testLlmProvider(
         @PathVariable("providerConfigId") Long providerConfigId,
