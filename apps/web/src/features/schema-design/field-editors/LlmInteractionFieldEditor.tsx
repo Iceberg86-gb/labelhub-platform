@@ -6,7 +6,7 @@ export function LlmInteractionFieldEditor({ field, onChange, errors }: FieldEdit
   return (
     <div className="field-editor">
       <FieldErrors errors={errors} />
-      <EditorSection title="LLM 交互字段">
+      <EditorSection title="AI 交互字段">
         <label className="field-editor-row">
           <Typography.Text>字段标签</Typography.Text>
           <Input value={field.label} validateStatus={errors.length ? 'error' : 'default'} onChange={(label) => onChange({ ...field, label })} />

@@ -26,7 +26,7 @@ export function NestedObjectFieldEditor({
   return (
     <div className="field-editor">
       <FieldErrors errors={errors} />
-      <EditorSection title="嵌套对象">
+      <EditorSection title="字段分组">
         <label className="field-editor-row">
           <Typography.Text>字段标签</Typography.Text>
           <Input
@@ -36,7 +36,7 @@ export function NestedObjectFieldEditor({
             onChange={(label) => onChange({ ...field, label })}
           />
         </label>
-        <Typography.Text type="tertiary">嵌套对象用于组织一组子字段。P4b 仅支持一层 children，不支持 children 内再添加嵌套对象。</Typography.Text>
+        <Typography.Text type="tertiary">字段分组用于组织一组子字段。P4b 仅支持一层 children，不支持 children 内再添加字段分组。</Typography.Text>
       </EditorSection>
       <EditorSection title="子字段">
         <div className="nested-children-panel">

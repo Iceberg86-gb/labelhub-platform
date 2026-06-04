@@ -63,7 +63,7 @@ export function TabContainerFieldEditor({
   return (
     <div className="field-editor">
       <FieldErrors errors={errors} />
-      <EditorSection title="多 Tab 容器">
+      <EditorSection title="标签页组">
         <label className="field-editor-row">
           <Typography.Text>容器标题</Typography.Text>
           <Input
@@ -73,7 +73,7 @@ export function TabContainerFieldEditor({
             onChange={(label) => onChange({ ...field, label })}
           />
         </label>
-        <Typography.Text type="tertiary">多 Tab 用于组织布局，不写入答案 payload；各 Tab 内字段会按 stableId 单独提交。</Typography.Text>
+        <Typography.Text type="tertiary">标签页组用于组织布局，不写入答案 payload；各 Tab 内字段会按 stableId 单独提交。</Typography.Text>
       </EditorSection>
 
       <EditorSection title="Tab 设置">
