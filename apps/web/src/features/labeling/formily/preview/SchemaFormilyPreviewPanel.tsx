@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createVisibleSchemaFieldsSelector } from '../../../../entities/labeling/visibleSchemaFields';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 import type { AnswerPayload } from '../../../../entities/submission/answerPayload';
 import { SchemaFormilyRenderer } from '../SchemaFormilyRenderer';
@@ -23,7 +24,12 @@ export function SchemaFormilyPreviewPanel({ schemaFields }: SchemaFormilyPreview
   const previewValueRef = useRef(previewValue);
   const pendingPreviewValueRef = useRef<AnswerPayload | null>(null);
   const previewUpdateTimerRef = useRef<number | null>(null);
+  const visibleFieldsSelector = useMemo(() => createVisibleSchemaFieldsSelector(), []);
   const fieldCount = schemaFields.length;
+  const visibleSchemaFields = useMemo(
+    () => visibleFieldsSelector(schemaFields, previewValue),
+    [previewValue, schemaFields, visibleFieldsSelector],
+  );
   const resetPreview = () => {
     const emptyPayload = createEmptyPreviewPayload();
     pendingPreviewValueRef.current = null;
@@ -81,7 +87,7 @@ export function SchemaFormilyPreviewPanel({ schemaFields }: SchemaFormilyPreview
       </div>
       <div className="designer-preview-panel__body">
         <SchemaFormilyRenderer
-          schemaFields={schemaFields}
+          schemaFields={visibleSchemaFields}
           value={previewValue}
           readOnly={false}
           onChange={handlePreviewChange}
