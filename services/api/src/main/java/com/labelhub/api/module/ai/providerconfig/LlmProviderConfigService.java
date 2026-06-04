@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class LlmProviderConfigService {
     private static final String PLATFORM_SCOPE = "platform";
+    private static final String LLM_PROVIDER_ACTIVATED = "llm_provider_activated";
 
     private final LlmProviderConfigMapper mapper;
     private final LlmSecretEncryptor encryptor;
@@ -102,6 +103,23 @@ public class LlmProviderConfigService {
     }
 
     @Transactional
+    public LlmProviderConfigEntity activate(Long ownerId, Long id) {
+        LlmProviderConfigEntity target = get(ownerId, id);
+        if (!target.hasSecret()) {
+            throw new InvalidLlmProviderConfigException("provider_secret_missing");
+        }
+        if (Boolean.TRUE.equals(target.getEnabled())) {
+            return target;
+        }
+
+        List<Long> disabledProviderConfigIds = mapper.disableOtherPlatformProviders(id);
+        mapper.enablePlatformProvider(id);
+        target.setEnabled(true);
+        auditActivation(ownerId, target, disabledProviderConfigIds);
+        return target;
+    }
+
+    @Transactional
     public LlmProviderConnectionTestResult testSaved(
         Long ownerId,
         Long id,
@@ -175,6 +193,18 @@ public class LlmProviderConfigService {
             .actorPlatformAdmin(ownerId)
             .resource("llm_provider_config", entity.getId())
             .payload(SecretRedactor.redact(payload)));
+    }
+
+    private void auditActivation(Long ownerId, LlmProviderConfigEntity entity, List<Long> disabledProviderConfigIds) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("providerConfigId", entity.getId());
+        payload.put("targetProviderConfigId", entity.getId());
+        payload.put("disabledProviderConfigIds", disabledProviderConfigIds);
+        payload.put("enabled", true);
+        auditLogService.record(AuditEventBuilder.forAction(LLM_PROVIDER_ACTIVATED)
+            .actorPlatformAdmin(ownerId)
+            .resource("llm_provider_config", entity.getId())
+            .payload(payload));
     }
 
     private Map<String, Object> safePayload(LlmProviderConfigEntity entity) {
