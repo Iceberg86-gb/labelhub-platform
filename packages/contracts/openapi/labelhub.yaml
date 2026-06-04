@@ -3861,6 +3861,9 @@ components:
           format: decimal
           nullable: true
         rejectFloor:
+          description: >-
+            System-level default reject threshold fallback from server configuration (default 0.20).
+            Used only when the rule does not configure rejectThreshold. Exposed for observability.
           type: string
           format: decimal
           nullable: true
@@ -3869,6 +3872,9 @@ components:
           format: decimal
           nullable: true
         rejectThreshold:
+          description: >-
+            Effective reject threshold actually applied. Equals the rule-configured value when present,
+            otherwise falls back to the system-level default floor.
           type: string
           format: decimal
           nullable: true
@@ -4251,12 +4257,18 @@ components:
           type: string
           format: decimal
         rejectFloor:
+          description: >-
+            System-level default reject threshold fallback from server configuration (default 0.20).
+            Used only when the rule does not configure rejectThreshold. Exposed for observability.
           type: string
           format: decimal
         passThreshold:
           type: string
           format: decimal
         rejectThreshold:
+          description: >-
+            Effective reject threshold actually applied. Equals the rule-configured value when present,
+            otherwise falls back to the system-level default floor.
           type: string
           format: decimal
         scoringRuleVersion:
