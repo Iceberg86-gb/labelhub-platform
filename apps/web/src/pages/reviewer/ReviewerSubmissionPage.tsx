@@ -122,6 +122,8 @@ export function ReviewerSubmissionPage() {
         </div>
       </header>
 
+      <AiRecommendationCard overallEntry={aiOverallEntry} ledgerLoading={ledgerQuery.isLoading} ledgerError={ledgerQuery.isError} />
+
       <div className="reviewer-workbench-grid">
         <Card className="reviewer-render-card reviewer-reading-panel reviewer-comparison-panel" title="题目原文与标注员答案" bordered={false}>
           <ReviewerAnswerSummary
@@ -131,33 +133,27 @@ export function ReviewerSubmissionPage() {
           />
         </Card>
 
-        <aside className="reviewer-human-decision-panel reviewer-decision-rail" aria-label="人工最终裁决">
+        <aside className="reviewer-human-decision-panel reviewer-workbench-rail" aria-label="人工最终裁决与 AI 证据">
           <div className="reviewer-decision-rail__sticky">
-            <ReviewActionCard
-              reason={reason}
-              loading={createLedgerEntry.isPending}
-              onReasonChange={setReason}
-              onApprove={() => createVerdict('approve')}
-              onReject={() => createVerdict('reject')}
-              reviewLevel={reviewLevel}
-            />
-            <HumanFinalVerdictCard verdict={verdictQuery.data ?? null} entries={reviewerVerdictEntries} />
-            <div className="review-flow-strip" aria-label="状态流转">
-              <span className="review-flow-node review-flow-node--submitted">提交</span>
-              <span className="review-flow-connector" />
-              <span className="review-flow-node review-flow-node--active">{reviewLevel === 'senior_reviewer' ? '高级审核' : '初审'}</span>
-              <span className="review-flow-connector" />
-              <span className="review-flow-node review-flow-node--terminal">人工裁决</span>
+            <div className="reviewer-decision-rail">
+              <ReviewActionCard
+                reason={reason}
+                loading={createLedgerEntry.isPending}
+                onReasonChange={setReason}
+                onApprove={() => createVerdict('approve')}
+                onReject={() => createVerdict('reject')}
+                reviewLevel={reviewLevel}
+              />
+              <HumanFinalVerdictCard verdict={verdictQuery.data ?? null} entries={reviewerVerdictEntries} />
+              <div className="review-flow-strip" aria-label="状态流转">
+                <span className="review-flow-node review-flow-node--submitted">提交</span>
+                <span className="review-flow-connector" />
+                <span className="review-flow-node review-flow-node--active">{reviewLevel === 'senior_reviewer' ? '高级审核' : '初审'}</span>
+                <span className="review-flow-connector" />
+                <span className="review-flow-node review-flow-node--terminal">人工裁决</span>
+              </div>
             </div>
           </div>
-        </aside>
-
-        <section className="reviewer-ai-evidence-panel" aria-label="AI 预审证据">
-          <div className="reviewer-ai-evidence-panel__copy">
-            <Typography.Text strong>AI 预审证据</Typography.Text>
-            <Typography.Text type="tertiary">辅助参考,不作为最终裁决。人工审核结果以右侧操作为准。</Typography.Text>
-          </div>
-          <AiRecommendationCard overallEntry={aiOverallEntry} ledgerLoading={ledgerQuery.isLoading} ledgerError={ledgerQuery.isError} />
           <details className="reviewer-ai-layer reviewer-ai-layer--fields">
             <summary>字段级发现</summary>
             <AiFieldFindingList entries={aiFindingEntries} />
@@ -166,9 +162,8 @@ export function ReviewerSubmissionPage() {
             <summary>AI 调用详情(调试)</summary>
             <AiProvenanceCard submissionId={submissionId} className="ai-provenance-card--assistive" />
           </details>
-        </section>
-
-        <LedgerEntriesCard entries={ledgerEntries} loading={ledgerQuery.isLoading} error={ledgerQuery.isError} />
+          <LedgerEntriesCard entries={ledgerEntries} loading={ledgerQuery.isLoading} error={ledgerQuery.isError} />
+        </aside>
       </div>
     </section>
   );
@@ -185,24 +180,30 @@ function AiRecommendationCard({
 }) {
   if (ledgerLoading) {
     return (
-      <Card className="ai-recommendation-card ai-recommendation-card--pending" title="AI 综合判定（建议）" bordered={false}>
-        <Typography.Text type="tertiary">正在读取 AI 预审证据。</Typography.Text>
+      <Card className="ai-recommendation-card ai-recommendation-card--pending reviewer-ai-summary-band" title="AI 综合判定（建议）" bordered={false}>
+        <div className="reviewer-ai-summary-band__metrics">
+          <Typography.Text type="tertiary">正在读取 AI 预审证据。</Typography.Text>
+        </div>
       </Card>
     );
   }
 
   if (ledgerError) {
     return (
-      <Card className="ai-recommendation-card ai-recommendation-card--pending" title="AI 综合判定（建议）" bordered={false}>
-        <Typography.Text type="tertiary">AI 建议加载失败,请稍后重试。</Typography.Text>
+      <Card className="ai-recommendation-card ai-recommendation-card--pending reviewer-ai-summary-band" title="AI 综合判定（建议）" bordered={false}>
+        <div className="reviewer-ai-summary-band__metrics">
+          <Typography.Text type="tertiary">AI 建议加载失败,请稍后重试。</Typography.Text>
+        </div>
       </Card>
     );
   }
 
   if (!overallEntry) {
     return (
-      <Card className="ai-recommendation-card ai-recommendation-card--pending" title="AI 综合判定（建议）" bordered={false}>
-        <Typography.Text type="tertiary">预审未完成时不显示判定结论。AI 只提供建议证据,非最终裁决。</Typography.Text>
+      <Card className="ai-recommendation-card ai-recommendation-card--pending reviewer-ai-summary-band" title="AI 综合判定（建议）" bordered={false}>
+        <div className="reviewer-ai-summary-band__metrics">
+          <Typography.Text type="tertiary">预审未完成时不显示判定结论。AI 只提供建议证据,非最终裁决。</Typography.Text>
+        </div>
       </Card>
     );
   }
@@ -211,8 +212,8 @@ function AiRecommendationCard({
   const dimensionScores = payload.dimensionScores ?? [];
 
   return (
-    <Card className="ai-recommendation-card reviewer-ai-overview-card" title="AI 综合判定（建议）" bordered={false}>
-      <div className="reviewer-ai-recommendation-line">
+    <Card className="ai-recommendation-card reviewer-ai-overview-card reviewer-ai-summary-band" title="AI 综合判定（建议）" bordered={false}>
+      <div className="reviewer-ai-summary-band__metrics reviewer-ai-recommendation-line">
         <Typography.Text type="tertiary">AI 建议 · 非最终裁决</Typography.Text>
         <Tag className={`semantic-tag semantic-tag--${aiRecommendationTone(payload.recommendation)}`}>
           {AI_RECOMMENDATION_LABELS[payload.recommendation]}
@@ -230,7 +231,7 @@ function AiRecommendationCard({
           {dimensionScores.map((dimension) => (
             <div className="reviewer-ai-dimension-mini-bar" key={dimension.dimension}>
               <div className="reviewer-ai-dimension-mini-bar__head">
-                <span className="ai-dimension-score__name">{dimension.dimension}</span>
+                <span className="ai-dimension-score__name">{formatDimensionLabel(dimension.dimension)}</span>
                 <span className="ai-dimension-score__value">{formatDecimal(dimension.score)}</span>
               </div>
               <span className="reviewer-ai-dimension-mini-bar__track">
@@ -257,7 +258,7 @@ function AiFieldFindingList({ entries }: { entries: QualityLedgerEntry[] }) {
         return (
           <div className="ai-field-finding-pill" key={entry.id}>
             <Tag className={`semantic-tag semantic-tag--${severityTone(finding.severity)}`} size="small">{severityLabel(finding.severity)}</Tag>
-            <Typography.Text className="mono-value">{finding.fieldPath}</Typography.Text>
+            <Typography.Text className="mono-value">{formatFieldPathLabel(finding.fieldPath)}</Typography.Text>
             <Typography.Text>{finding.finding}</Typography.Text>
           </div>
         );
@@ -340,7 +341,8 @@ function ReviewActionCard({
 
 function LedgerEntriesCard({ entries, loading, error }: { entries: QualityLedgerEntry[]; loading: boolean; error: boolean }) {
   return (
-    <Card className="ledger-entries-card" title="审核历史" bordered={false}>
+    <details className="reviewer-ai-layer reviewer-ai-layer--history ledger-entries-card">
+      <summary>审核历史</summary>
       {loading ? <Spin /> : null}
       {error ? <Empty title="审核历史加载失败" description="请稍后重试。" /> : null}
       {!loading && !error && entries.length === 0 ? <Empty title="暂无审核记录" description="Reviewer 写入后会追加到 Quality Ledger。" /> : null}
@@ -351,7 +353,7 @@ function LedgerEntriesCard({ entries, loading, error }: { entries: QualityLedger
           ))}
         </div>
       ) : null}
-    </Card>
+    </details>
   );
 }
 
@@ -361,7 +363,7 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
     return (
       <div className="ledger-entry-item ledger-entry-item--ai ledger-entry-timeline">
         <time>{formatDateTime(entry.createdAt)}</time>
-        <Typography.Text className="mono-value">{payload.fieldPath}</Typography.Text>
+        <Typography.Text className="mono-value">{formatFieldPathLabel(payload.fieldPath)}</Typography.Text>
         <span>
           <Tag className={`semantic-tag semantic-tag--${severityTone(payload.severity)}`} size="small">{severityLabel(payload.severity)}</Tag>
           {payload.finding}
@@ -413,6 +415,17 @@ const AI_RECOMMENDATION_LABELS: Record<AiOverallRecommendationLedgerPayload['rec
   manual_review: '建议人工复核',
 };
 
+const AI_DIMENSION_LABELS: Record<string, string> = {
+  relevance: '相关性(relevance)',
+  relevance_score: '相关性(relevance)',
+  accuracy: '准确性(accuracy)',
+  accuracy_score: '准确性(accuracy)',
+  format: '表达与格式(format)',
+  format_score: '表达与格式(format)',
+  safety: '安全性(safety)',
+  safety_score: '安全性(safety)',
+};
+
 function latestEntry<T extends QualityLedgerEntry>(
   entries: QualityLedgerEntry[],
   predicate: (entry: QualityLedgerEntry) => entry is T,
@@ -453,6 +466,14 @@ function scorePercent(value?: string | number | null) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return 0;
   return Math.max(0, Math.min(100, numeric * 100));
+}
+
+function formatDimensionLabel(dimension: string) {
+  return AI_DIMENSION_LABELS[dimension] ?? dimension;
+}
+
+function formatFieldPathLabel(fieldPath: string) {
+  return AI_DIMENSION_LABELS[fieldPath] ?? fieldPath;
 }
 
 function severityTone(severity: AiFieldFindingLedgerPayload['severity']) {

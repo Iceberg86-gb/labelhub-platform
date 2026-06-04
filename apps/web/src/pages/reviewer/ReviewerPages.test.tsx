@@ -266,19 +266,23 @@ describe('Reviewer pages design shell', () => {
 
     expect(html).toContain('reviewer-submission-page reviewer-submission-page--decision');
     expect(html).toContain('reviewer-decision-hero');
+    expect(html.indexOf('reviewer-ai-summary-band')).toBeLessThan(html.indexOf('reviewer-workbench-grid'));
+    expect(html).toContain('reviewer-ai-summary-band__metrics');
     expect(html).toContain('reviewer-workbench-grid');
     expect(html).toContain('reviewer-reading-panel');
+    expect(html).toContain('reviewer-workbench-rail');
     expect(html).toContain('reviewer-decision-rail');
     expect(html).toContain('reviewer-decision-rail__sticky');
     expect(html).toContain('reviewer-human-decision-panel');
     expect(html).toContain('review-actions-card review-actions-card--primary');
     expect(html).toContain('review-reason-field review-reason-field--required');
-    expect(html).toContain('reviewer-ai-evidence-panel');
     expect(html).toContain('reviewer-ai-layer reviewer-ai-layer--fields');
     expect(html).toContain('reviewer-ai-layer reviewer-ai-layer--debug');
+    expect(html).toContain('reviewer-ai-layer reviewer-ai-layer--history');
     expect(html).toContain('AI 调用详情(调试)');
     expect(html).toContain('ai-provenance-card ai-provenance-card--assistive');
-    expect(html).toContain('AI 预审证据');
+    expect(html).toContain('审核历史');
+    expect(html).toContain('<summary>审核历史</summary>');
     expect(html).toContain('人工最终裁决');
     expect(html).toContain('平铺答案');
     expect(html).toContain('请判断模型回答是否符合参考答案。');
@@ -307,7 +311,9 @@ describe('Reviewer pages design shell', () => {
             id: 24,
             payload: {
               dimensionScores: [
+                { dimension: 'relevance', reason: '回答切题', score: '0.92' },
                 { dimension: 'accuracy', reason: '答案匹配参考结论', score: '0.97' },
+                { dimension: 'format', reason: '表达清楚', score: '0.94' },
                 { dimension: 'safety', reason: '无风险内容', score: '0.93' },
               ],
               finalScore: '0.95',
@@ -359,17 +365,21 @@ describe('Reviewer pages design shell', () => {
     const html = renderToString(<ReviewerSubmissionPage />);
 
     expect(html).toContain('AI 综合判定（建议）');
+    expect(html).toContain('reviewer-ai-summary-band');
     expect(html).toContain('reviewer-ai-recommendation-line');
     expect(html).toContain('reviewer-ai-dimension-mini-bars');
     expect(html).toContain('reviewer-ai-finding-list reviewer-ai-finding-list--compact');
-    expect(html).toContain('审核历史');
+    expect(html).toContain('reviewer-ai-layer reviewer-ai-layer--history');
     expect(html).toContain('ledger-entry-timeline');
     expect(html).toContain('非最终裁决');
     expect(html).toContain('AI 建议');
     expect(html).toContain('0.95');
     expect(html).toContain('通过阈值');
     expect(html).toContain('0.80');
-    expect(html).toContain('accuracy');
+    expect(html).toContain('相关性(relevance)');
+    expect(html).toContain('准确性(accuracy)');
+    expect(html).toContain('表达与格式(format)');
+    expect(html).toContain('安全性(safety)');
     expect(html).toContain('答案匹配参考结论');
     expect(html).toContain('answer');
     expect(html).toContain('回答覆盖了主要结论。');
