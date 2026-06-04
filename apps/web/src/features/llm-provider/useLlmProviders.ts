@@ -64,6 +64,27 @@ export function useDeleteLlmProviderMutation() {
   });
 }
 
+export async function activateLlmProvider(id: number): Promise<LlmProviderConfig> {
+  const { data, error } = await apiClient.POST('/llm/providers/{providerConfigId}:activate', {
+    params: { path: { providerConfigId: id } },
+  });
+  if (error || !data) {
+    throw new Error(error?.message ?? 'LLM Provider 切换失败。');
+  }
+  return data;
+}
+
+export function useActivateLlmProviderMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<LlmProviderConfig, Error, number>({
+    mutationFn: activateLlmProvider,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: llmProvidersQueryKey });
+    },
+  });
+}
+
 export function useTestLlmProviderMutation() {
   return useMutation<LlmProviderTestConnectionResponse, Error, { id?: number; body: LlmProviderTestConnectionRequest }>({
     mutationFn: async ({ id, body }) => {
