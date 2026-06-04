@@ -321,7 +321,7 @@ export function OwnerLlmSettingsPage() {
           <div className="llm-panel-head">
             <div>
               <Typography.Title heading={5}>Provider 配置</Typography.Title>
-              <Typography.Text type="tertiary">平台统一使用这一组 Provider,用于 AI 预审、Designer LLM 字段与字段级建议。</Typography.Text>
+              <Typography.Text type="tertiary">平台统一使用这一组 Provider,用于 AI 预审、Designer AI 交互字段与字段级建议。</Typography.Text>
             </div>
             <span className={`llm-connection-pill llm-connection-pill--${connectionStatus}`}>
               {statusLabel(connectionStatus)}
@@ -468,7 +468,7 @@ export function OwnerLlmSettingsPage() {
             </label>
             <label className="llm-scope-item">
               <span>
-                <strong>Designer LLM 字段</strong>
+                <strong>Designer AI 交互字段</strong>
                 <small>支持任务负责人在表单里加入 AI 交互字段</small>
               </span>
               <Switch checked={config.enableDesignerField} onChange={(enableDesignerField) => updateConfig('enableDesignerField', enableDesignerField)} />
