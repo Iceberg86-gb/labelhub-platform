@@ -6,7 +6,13 @@ import { AiReviewRuleEntryCard } from './AiReviewRuleEntryCard';
 import { publishAiReviewRule } from './usePublishAiReviewRuleMutation';
 import { saveAiReviewRule } from './useSaveAiReviewRuleMutation';
 
-const { postMock } = vi.hoisted(() => ({
+const { listState, postMock } = vi.hoisted(() => ({
+  listState: {
+    data: [] as AiReviewRule[],
+    error: null as Error | null,
+    isError: false,
+    isLoading: false,
+  },
   postMock: vi.fn(),
 }));
 
@@ -14,6 +20,11 @@ vi.mock('../../shared/api/client', () => ({
   apiClient: {
     POST: postMock,
   },
+}));
+
+vi.mock('./useListAiReviewRulesQuery', () => ({
+  aiReviewRulesQueryKey: (taskId: number) => ['ai-review-rules', taskId],
+  useListAiReviewRulesQuery: () => listState,
 }));
 
 vi.mock('@douyinfe/semi-icons', () => ({
@@ -35,6 +46,10 @@ vi.mock('@douyinfe/semi-ui', () => ({
 describe('AI review rule C1 hooks', () => {
   beforeEach(() => {
     postMock.mockReset();
+    listState.data = [];
+    listState.error = null;
+    listState.isError = false;
+    listState.isLoading = false;
   });
 
   it('posts an append-only AI review rule request', async () => {
@@ -117,6 +132,7 @@ describe('AiReviewRuleEntryCard', () => {
 
     expect(html).toContain('AI 预审辅助规则');
     expect(html).toContain('配置规则');
+    expect(html).toContain('未配置 AI 预审');
     expect(html).toContain('保存会创建新的规则版本');
     expect(html).toContain('发布后才会成为当前生效规则');
     expect(html).not.toContain('promptTemplate');

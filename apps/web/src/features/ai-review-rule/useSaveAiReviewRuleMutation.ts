@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../shared/api/client';
 import type { AiReviewRule, AiReviewRuleRequest } from './aiReviewRuleTypes';
+import { aiReviewRulesQueryKey } from './useListAiReviewRulesQuery';
 
 export class AiReviewRuleMutationFailure extends Error {
   constructor(
@@ -31,8 +33,12 @@ export async function saveAiReviewRule(request: AiReviewRuleRequest): Promise<Ai
 }
 
 export function useSaveAiReviewRuleMutation() {
+  const queryClient = useQueryClient();
   return useMutation<AiReviewRule, AiReviewRuleMutationFailure, AiReviewRuleRequest>({
     mutationFn: saveAiReviewRule,
+    onSuccess: (rule) => {
+      void queryClient.invalidateQueries({ queryKey: aiReviewRulesQueryKey(rule.taskId) });
+    },
   });
 }
 

@@ -5564,3 +5564,40 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.ai-review-rule-entry-summary {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1.4fr) minmax(180px, 1fr);
+  gap: var(--space-12);
+}
+.ai-review-rule-entry-summary__item,
+.ai-review-rule-entry-thresholds span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.ai-review-rule-entry-summary__item--wide {
+  gap: var(--space-8);
+}
+.ai-review-rule-entry-dimensions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+.ai-review-rule-entry-dimension-tag {
+  border: 0;
+  background: var(--color-info-soft);
+  color: var(--color-info);
+  font-weight: var(--font-weight-table-header);
+}
+.ai-review-rule-entry-thresholds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-10);
+}
+@media (max-width: 920px) {
+  .ai-review-rule-entry-summary {
+    grid-template-columns: 1fr;
+  }
+}
