@@ -694,9 +694,6 @@ export function OwnerLlmSettingsPage() {
           <Button icon={<IconRefresh />} loading={providersQuery.isLoading} onClick={() => providersQuery.refetch()}>
             刷新
           </Button>
-          <Button icon={<IconPlus />} theme="solid" type="primary" onClick={startCreateProvider}>
-            新建 Provider
-          </Button>
         </Space>
       </header>
 
