@@ -380,7 +380,6 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('准确性(accuracy)');
     expect(html).toContain('表达与格式(format)');
     expect(html).toContain('安全性(safety)');
-    expect(html).toContain('答案匹配参考结论');
     expect(html).toContain('answer');
     expect(html).toContain('回答覆盖了主要结论。');
     expect(html).toContain('人工最终裁决');

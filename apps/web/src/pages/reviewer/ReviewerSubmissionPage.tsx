@@ -219,9 +219,10 @@ function AiRecommendationCard({
           {AI_RECOMMENDATION_LABELS[payload.recommendation]}
         </Tag>
         <strong className="reviewer-ai-score">{formatDecimal(payload.finalScore)}</strong>
-        <span>通过阈值 {formatOptionalDecimal(payload.passThreshold ?? payload.threshold)}</span>
-        <span>拒绝阈值 {formatOptionalDecimal(payload.rejectThreshold ?? payload.rejectFloor)}</span>
-        <span>规则 {payload.scoringRuleVersion}</span>
+        <span>
+          （通过阈值 {formatOptionalDecimal(payload.passThreshold ?? payload.threshold)}，拒绝阈值{' '}
+          {formatOptionalDecimal(payload.rejectThreshold ?? payload.rejectFloor)}）
+        </span>
       </div>
 
       {payload.summary ? <Typography.Paragraph className="ai-recommendation-summary">{payload.summary}</Typography.Paragraph> : null}
@@ -237,7 +238,6 @@ function AiRecommendationCard({
               <span className="reviewer-ai-dimension-mini-bar__track">
                 <span style={{ width: `${scorePercent(dimension.score)}%` }} />
               </span>
-              {dimension.reason ? <Typography.Text type="tertiary">{dimension.reason}</Typography.Text> : null}
             </div>
           ))}
         </div>
