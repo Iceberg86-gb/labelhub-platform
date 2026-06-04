@@ -469,7 +469,7 @@ export function OwnerLlmSettingsPage() {
             <label className="llm-scope-item">
               <span>
                 <strong>Designer LLM 字段</strong>
-                <small>支持任务负责人在表单里加入 LLM 交互字段</small>
+                <small>支持任务负责人在表单里加入 AI 交互字段</small>
               </span>
               <Switch checked={config.enableDesignerField} onChange={(enableDesignerField) => updateConfig('enableDesignerField', enableDesignerField)} />
             </label>
