@@ -37,10 +37,10 @@ export const SCHEMA_FIELD_TYPE_LABELS: Record<SchemaFieldType, string> = {
   file_upload: '文件上传',
   rich_text: '富文本',
   json_editor: 'JSON',
-  llm_interaction: 'LLM 交互',
+  llm_interaction: 'AI 交互',
   show_item: '展示项',
-  nested_object: '嵌套对象',
-  tab_container: '多 Tab',
+  nested_object: '字段分组',
+  tab_container: '标签页组',
 };
 
 export function schemaVersionLabel(version?: SchemaVersion | null): string {

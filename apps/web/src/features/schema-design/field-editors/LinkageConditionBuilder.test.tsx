@@ -45,7 +45,7 @@ const schemaFields: SchemaField[] = [
   field('group', '嵌套组', 'nested_object', {
     children: [field('nested_driver', '嵌套驱动', 'text')],
   }),
-  field('tabs', '多 Tab', 'tab_container', {
+  field('tabs', '标签页组', 'tab_container', {
     tabs: [
       {
         stableId: 'tab-a',
