@@ -9,6 +9,10 @@ import org.springframework.stereotype.Component;
 public class AiReviewScoringProperties {
 
     private BigDecimal defaultThreshold = new BigDecimal("0.80");
+    /**
+     * System-level default reject threshold fallback from labelhub.ai.scoring.reject-floor,
+     * used only when a rule does not configure rejectThreshold.
+     */
     private BigDecimal rejectFloor = new BigDecimal("0.20");
     private String scoringRuleVersion = "equal-weight-three-zone-v2";
 

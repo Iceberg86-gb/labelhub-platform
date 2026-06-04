@@ -33,6 +33,7 @@ public class AiReviewScoringPolicy {
             ? List.of("overall")
             : configuredDimensions;
         BigDecimal passThreshold = configuredPassThreshold == null ? properties.getDefaultThreshold() : configuredPassThreshold;
+        // Missing rule-level rejectThreshold falls back to the system-level rejectFloor.
         BigDecimal rejectThreshold = configuredRejectThreshold == null ? properties.getRejectFloor() : configuredRejectThreshold;
         Map<String, DimensionScoreValue> providerScores = providerScores(result.output().get("dimensionScores"));
         List<DimensionScoreValue> scoredDimensions = new ArrayList<>();

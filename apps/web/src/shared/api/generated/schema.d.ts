@@ -1992,11 +1992,17 @@ export interface components {
             finalScore: string;
             /** Format: decimal */
             threshold?: string | null;
-            /** Format: decimal */
+            /**
+             * Format: decimal
+             * @description System-level default reject threshold fallback from server configuration (default 0.20). Used only when the rule does not configure rejectThreshold. Exposed for observability.
+             */
             rejectFloor?: string | null;
             /** Format: decimal */
             passThreshold?: string | null;
-            /** Format: decimal */
+            /**
+             * Format: decimal
+             * @description Effective reject threshold actually applied. Equals the rule-configured value when present, otherwise falls back to the system-level default floor.
+             */
             rejectThreshold?: string | null;
             scoringRuleVersion: string;
             dimensionScores?: components["schemas"]["DimensionScore"][];
@@ -2196,11 +2202,17 @@ export interface components {
             dimensions: string[];
             /** Format: decimal */
             threshold: string;
-            /** Format: decimal */
+            /**
+             * Format: decimal
+             * @description System-level default reject threshold fallback from server configuration (default 0.20). Used only when the rule does not configure rejectThreshold. Exposed for observability.
+             */
             rejectFloor: string;
             /** Format: decimal */
             passThreshold: string;
-            /** Format: decimal */
+            /**
+             * Format: decimal
+             * @description Effective reject threshold actually applied. Equals the rule-configured value when present, otherwise falls back to the system-level default floor.
+             */
             rejectThreshold: string;
             scoringRuleVersion: string;
             businessPrompt: string;
