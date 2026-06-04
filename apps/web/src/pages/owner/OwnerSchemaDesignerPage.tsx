@@ -266,39 +266,37 @@ export function OwnerSchemaDesignerPage() {
             validationErrorCount={validationErrors.length}
           />
 
-          <aside className="schema-designer-inspector-stack" aria-label="字段属性与运行时预览">
-            <Card className="schema-designer-panel schema-designer-panel--inspector">
-              <div className="schema-designer-panel__header">
-                <div>
-                  <Typography.Title heading={5}>字段属性</Typography.Title>
-                  <Typography.Text type="tertiary">选择画布字段后编辑属性、校验与联动。</Typography.Text>
-                </div>
+          <Card className="schema-designer-panel schema-designer-panel--inspector" aria-label="字段属性">
+            <div className="schema-designer-panel__header">
+              <div>
+                <Typography.Title heading={5}>字段属性</Typography.Title>
+                <Typography.Text type="tertiary">选择画布字段后编辑属性、校验与联动。</Typography.Text>
               </div>
-              {selectedField ? (
-                <FieldEditor
-                  field={selectedField}
-                  availableFields={draftFields}
-                  onChange={handleSelectedFieldChange}
-                  errors={validationErrorsByField.get(selectedField.stableId) ?? []}
-                  errorsByField={validationErrorsByField}
-                  selectedStableId={selectedStableId}
-                  onSelect={setSelectedStableId}
-                  onDelete={handleDeleteField}
-                />
-              ) : (
-                <div className="designer-placeholder">
-                  <Typography.Text type="tertiary">请从画布选择字段编辑。</Typography.Text>
-                </div>
-              )}
+            </div>
+            {selectedField ? (
+              <FieldEditor
+                field={selectedField}
+                availableFields={draftFields}
+                onChange={handleSelectedFieldChange}
+                errors={validationErrorsByField.get(selectedField.stableId) ?? []}
+                errorsByField={validationErrorsByField}
+                selectedStableId={selectedStableId}
+                onSelect={setSelectedStableId}
+                onDelete={handleDeleteField}
+              />
+            ) : (
+              <div className="designer-placeholder">
+                <Typography.Text type="tertiary">请从画布选择字段编辑。</Typography.Text>
+              </div>
+            )}
 
-              <details className="json-preview-collapse">
-                <summary>JSON 预览</summary>
-                <pre className="schema-json-preview">{jsonPreview}</pre>
-              </details>
-            </Card>
+            <details className="json-preview-collapse">
+              <summary>JSON 预览</summary>
+              <pre className="schema-json-preview">{jsonPreview}</pre>
+            </details>
+          </Card>
 
-            <SchemaFormilyPreviewPanel schemaFields={draftFields} />
-          </aside>
+          <SchemaFormilyPreviewPanel schemaFields={draftFields} />
         </div>
 
         <PublishSchemaModal
