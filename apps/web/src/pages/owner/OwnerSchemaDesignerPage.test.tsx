@@ -128,7 +128,7 @@ function mockCurrentVersionQuery({
 }
 
 describe('OwnerSchemaDesignerPage design shell', () => {
-  it('renders the Designer workspace as a three-column builder with inspector stack', () => {
+  it('renders the Designer workspace as a four-column builder with separate inspector and preview panels', () => {
     mockCurrentVersionQuery();
 
     const view = renderClient(<OwnerSchemaDesignerPage />);
@@ -137,7 +137,6 @@ describe('OwnerSchemaDesignerPage design shell', () => {
     expect(html).toContain('schema-designer-page schema-designer-page--workspace');
     expect(html).toContain('schema-designer-header schema-designer-header--workspace');
     expect(html).toContain('schema-designer-grid schema-designer-grid--workspace');
-    expect(html).toContain('schema-designer-inspector-stack');
     expect(html).toContain('schema-designer-panel schema-designer-panel--inspector');
     expect(html).toContain('designer-builder-stub');
     expect(html).toContain('designer-preview-panel');
