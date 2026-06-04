@@ -4,9 +4,8 @@ import { useField } from '@formily/react';
 import { useState } from 'react';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 import { getAccessToken } from '../../../../shared/api/auth-storage';
+import { apiClient } from '../../../../shared/api/client';
 import { ReadOnlyValue } from './FieldFrame';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 type LlmValue = {
   input?: string;
@@ -32,18 +31,15 @@ export function LabelHubLlmInteractionField({ field, sessionId }: { field?: Sche
     }
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/ai-review/field-assist`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { data, error } = await apiClient.POST('/ai-review/field-assist', {
+        body: {
           sessionId,
           fieldPath: field.stableId,
           input: { prompt: field.aiPrompt, text: value.input ?? '' },
-        }),
+        },
       });
-      if (!response.ok) throw new Error('field assist failed');
-      const body = (await response.json()) as { aiCallId: number; output: unknown };
-      formilyField.setValue({ ...value, output: body.output, aiCallId: body.aiCallId });
+      if (error || !data) throw new Error('field assist failed');
+      formilyField.setValue({ ...value, output: data.output, aiCallId: data.aiCallId });
     } catch {
       Toast.error('LLM 生成失败');
     } finally {
