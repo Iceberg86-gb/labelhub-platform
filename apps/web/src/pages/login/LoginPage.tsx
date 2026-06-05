@@ -51,25 +51,27 @@ export function LoginPage() {
           </Typography.Title>
         </Link>
 
-        <div className="login-brand-copy">
-          <Typography.Title heading={1} className="login-brand-headline">
-            AI 辅助,人工把关
-          </Typography.Title>
-          <Typography.Text className="login-brand-subtitle">
-            LabelHub 以 AI 预审加速标注流转,以人工裁决守住数据质量,每一条导出都可追溯。
-          </Typography.Text>
-        </div>
-
-        {LOGIN_BRAND_PANEL_VARIANT === 'workflow' ? (
-          <div className="login-workflow-strip" aria-hidden>
-            {LOGIN_WORKFLOW_STEPS.map((step, index) => (
-              <div className="login-workflow-node" key={step}>
-                <span className="login-workflow-index">{String(index + 1).padStart(2, '0')}</span>
-                <span className="login-workflow-label">{step}</span>
-              </div>
-            ))}
+        <div className="login-brand-center">
+          <div className="login-brand-copy">
+            <Typography.Title heading={1} className="login-brand-headline">
+              AI 辅助，人工把关
+            </Typography.Title>
+            <Typography.Text className="login-brand-subtitle">
+              LabelHub 以 AI 预审加速标注流转,以人工裁决守住数据质量,每一条导出都可追溯。
+            </Typography.Text>
           </div>
-        ) : null}
+
+          {LOGIN_BRAND_PANEL_VARIANT === 'workflow' ? (
+            <div className="login-workflow-strip" aria-hidden>
+              {LOGIN_WORKFLOW_STEPS.map((step, index) => (
+                <div className="login-workflow-node" key={step}>
+                  <span className="login-workflow-index">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="login-workflow-label">{step}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </aside>
 
       <div className="login-card">
