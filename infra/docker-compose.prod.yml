@@ -66,7 +66,8 @@ services:
   api:
     <<: *prod-defaults
     build:
-      context: ../services/api
+      context: ..
+      dockerfile: services/api/Dockerfile
     mem_limit: 1280m
     depends_on:
       mysql:
@@ -99,7 +100,8 @@ services:
   agent:
     <<: *prod-defaults
     build:
-      context: ../services/agent
+      context: ..
+      dockerfile: services/agent/Dockerfile
     mem_limit: 768m
     depends_on:
       api:
