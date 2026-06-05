@@ -1424,12 +1424,6 @@ a {
   color: var(--color-text-inverse);
 }
 
-.register-role-note {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
 .register-login-link {
   display: block;
   margin-top: var(--space-16);
