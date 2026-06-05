@@ -1,4 +1,9 @@
 spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/labelhub_test?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    username: labelhub
+    password: labelhub
+    driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     ignore-migration-patterns: ["*:missing"]
 

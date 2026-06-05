@@ -12,7 +12,7 @@ Install a JDK 17 distribution and make sure macOS can find it:
 /usr/libexec/java_home -v 17
 ```
 
-The project Makefile does not trust `PATH` for Maven. Backend targets export:
+The verification Makefile targets do not trust `PATH` for Maven. They export:
 
 ```bash
 JAVA_HOME=$(/usr/libexec/java_home -v 17)
@@ -49,6 +49,68 @@ To stop local services:
 make dev-down
 ```
 
+## Test Database
+
+Backend tests use a separate MySQL schema named `labelhub_test` in the same dev
+MySQL container. The test datasource is configured in
+`services/api/src/test/resources/application.yml`:
+
+```text
+jdbc:mysql://localhost:3306/labelhub_test?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+```
+
+Create or refresh the schema and grants before running tests:
+
+```bash
+make test-db
+```
+
+The target is idempotent. It starts local services, creates `labelhub_test` if it
+does not exist, and grants the dev `labelhub` user access. Flyway creates the
+test tables on startup. The 93 integration tests that rely on Testcontainers are
+still skipped when Docker/Testcontainers is unavailable; this batch keeps that
+existing boundary unchanged.
+
+## Running The API Locally
+
+Use the Makefile target for a bare API process on the host:
+
+```bash
+make dev-api
+```
+
+This starts `services/api` with `SPRING_PROFILES_ACTIVE=local` and dev-only
+credentials that match `infra/docker-compose.yml`:
+
+```text
+LABELHUB_LLM_PROVIDER_MASTER_KEY=dev-only-llm-provider-master-key-32b
+OBJECT_STORAGE_ACCESS_KEY=labelhub
+OBJECT_STORAGE_SECRET_KEY=labelhub-secret
+LABELHUB_PA_INITIAL_PASSWORD=dev-only-pa-password
+```
+
+The MinIO dev credentials are `labelhub` / `labelhub-secret`, and the bucket is
+`labelhub-exports`. These values are for local development only; production
+secrets must stay out of the repository.
+
+Equivalent bare command:
+
+```bash
+cd services/api
+SPRING_PROFILES_ACTIVE=local \
+LABELHUB_LLM_PROVIDER_MASTER_KEY=dev-only-llm-provider-master-key-32b \
+OBJECT_STORAGE_ACCESS_KEY=labelhub \
+OBJECT_STORAGE_SECRET_KEY=labelhub-secret \
+LABELHUB_PA_INITIAL_PASSWORD=dev-only-pa-password \
+mvn spring-boot:run
+```
+
+If these variables are missing, the app fails loudly during startup or during the
+first storage/provider operation: provider secret encryption needs
+`LABELHUB_LLM_PROVIDER_MASTER_KEY`, platform-admin bootstrap needs
+`LABELHUB_PA_INITIAL_PASSWORD`, and MinIO access needs the object-storage access
+and secret keys.
+
 ## Verification
 
 Use the unified backend verification entrypoint:
@@ -64,6 +126,30 @@ mvn -o -pl services/api test
 ```
 
 with `JAVA_HOME` pinned to JDK 17.
+
+## Deploying Web Assets
+
+Use the deployment helper for the single-host production web sync:
+
+```bash
+scripts/deploy-web.sh
+```
+
+It runs `pnpm --filter @labelhub/web build`, syncs `apps/web/dist/` to
+`root@120.26.182.61:/opt/labelhub/infra/web-dist/` with `--delete`, then syncs
+the source tree to `/opt/labelhub/` without `--delete`. SSH uses
+`~/.ssh/labelhub-deploy.pem`.
+
+Preview the rsync plan without changing the server:
+
+```bash
+scripts/deploy-web.sh --dry-run
+```
+
+Dry-run still performs the local web build, then adds `-n --itemize-changes` to
+both rsync calls. The source sync excludes `node_modules`, `.git`, `dist`,
+`.env.prod`, `web-dist`, `.DS_Store`, `.pnpm-store`, `submission`,
+`docs/screenshots`, and `docs/design-assets`.
 
 ## Dev Container
 
