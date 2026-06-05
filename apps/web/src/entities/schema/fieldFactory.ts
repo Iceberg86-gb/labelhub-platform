@@ -1,9 +1,10 @@
 import type { SchemaField, SchemaFieldType } from './schemaTypes';
+import { generateId } from './generateId';
 
 type SchemaTab = NonNullable<SchemaField['tabs']>[number];
 
 export function generateStableId(): string {
-  return crypto.randomUUID();
+  return generateId();
 }
 
 export function createField(type: SchemaFieldType): SchemaField {
