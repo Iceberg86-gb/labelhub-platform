@@ -22,6 +22,7 @@ import { useLedgerEntriesQuery } from '../../features/quality/useLedgerEntriesQu
 import { useSubmissionVerdictQuery } from '../../features/quality/useSubmissionVerdictQuery';
 import { getUser } from '../../shared/api/auth-storage';
 import { ReviewerAnswerSummary } from './ReviewerAnswerSummary';
+import { ReviewFlowStrip } from './ReviewFlowStrip';
 
 // ReviewerAnswerSummary is this page's read-only replacement for the previous SchemaFormilyRenderer consumer.
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -122,6 +123,9 @@ export function ReviewerSubmissionPage() {
         </div>
       </header>
 
+      {!ledgerQuery.isLoading && !ledgerQuery.isError ? (
+        <ReviewFlowStrip aiOverallEntry={aiOverallEntry} reviewerVerdictEntries={reviewerVerdictEntries} verdictStatus={verdictQuery.data?.status ?? 'pending'} />
+      ) : null}
       <AiRecommendationCard overallEntry={aiOverallEntry} ledgerLoading={ledgerQuery.isLoading} ledgerError={ledgerQuery.isError} />
 
       <div className="reviewer-workbench-grid">
@@ -145,13 +149,6 @@ export function ReviewerSubmissionPage() {
                 reviewLevel={reviewLevel}
               />
               <HumanFinalVerdictCard verdict={verdictQuery.data ?? null} entries={reviewerVerdictEntries} />
-              <div className="review-flow-strip" aria-label="状态流转">
-                <span className="review-flow-node review-flow-node--submitted">提交</span>
-                <span className="review-flow-connector" />
-                <span className="review-flow-node review-flow-node--active">{reviewLevel === 'senior_reviewer' ? '高级审核' : '初审'}</span>
-                <span className="review-flow-connector" />
-                <span className="review-flow-node review-flow-node--terminal">人工裁决</span>
-              </div>
             </div>
           </div>
           <details className="reviewer-ai-layer reviewer-ai-layer--fields">

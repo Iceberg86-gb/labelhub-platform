@@ -219,6 +219,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
           <Typography.Text className="trusted-export-subtitle">
             将 task 的 source facts 物化为 canonical export 快照,用于训练数据交付与审计复现。
           </Typography.Text>
+          <Typography.Text type="tertiary">导出仅包含审核通过(approved)的可信数据,通过即视为入库。</Typography.Text>
         </div>
         <div className="trusted-export-status-strip" aria-label="Export reproducibility summary">
           <span className="trusted-export-status-pill trusted-export-status-pill--strong">
