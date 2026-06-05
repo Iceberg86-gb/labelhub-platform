@@ -24,18 +24,16 @@ set -a
 set +a
 
 MYSQL_DATABASE="${MYSQL_DATABASE:-labelhub}"
-: "${MYSQL_USER:?MYSQL_USER is required}"
-: "${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}"
+: "${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}"
 
 mkdir -p "$BACKUP_DIR"
 
 log "dump mysql database ${MYSQL_DATABASE}"
 docker run --rm --network "$NETWORK" \
-  -e MYSQL_PWD="$MYSQL_PASSWORD" \
-  -e MYSQL_USER="$MYSQL_USER" \
+  -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" \
   -e MYSQL_DATABASE="$MYSQL_DATABASE" \
   -v "$BACKUP_DIR:/backup" \
-  mysql:8.0 sh -c 'mysqldump --single-transaction --routines --triggers -h mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" > /backup/mysql.sql'
+  mysql:8.0 sh -c 'mysqldump --single-transaction --routines --triggers -h mysql -uroot "$MYSQL_DATABASE" > /backup/mysql.sql'
 
 log "archive minio volume ${MINIO_VOLUME}"
 docker run --rm \
