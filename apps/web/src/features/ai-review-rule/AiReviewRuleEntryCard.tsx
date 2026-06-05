@@ -78,6 +78,7 @@ export function AiReviewRuleEntryCard({ taskId, disabled = false, onOpenEditor }
   );
 }
 
-function formatThreshold(value: number): string {
-  return Number.isFinite(value) ? String(value) : '-';
+function formatThreshold(value: number | string | null | undefined): string {
+  const normalized = typeof value === 'string' ? Number(value) : value;
+  return Number.isFinite(normalized) ? String(normalized) : '-';
 }
