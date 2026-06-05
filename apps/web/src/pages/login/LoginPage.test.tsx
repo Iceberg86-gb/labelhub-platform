@@ -61,7 +61,7 @@ describe('LoginPage design shell', () => {
     expect(html).toContain('login-brand-panel');
     expect(html).toContain('login-brand-lockup');
     expect(html).toContain('login-workflow-strip');
-    expect(html).toContain('AI 辅助,人工把关');
+    expect(html).toContain('AI 辅助，人工把关');
     expect(html).toContain('可信导出');
     expect(html).toContain('login-card');
   });
