@@ -518,3 +518,22 @@
 - [x] DEPLOY 挂账消项 Trusted Export 快照物化失败闭合:closure 236 中「根因未定位/唯一缺口」按 append-only 消项,不回改旧条;后续修复 prod compose agent environment 补 SPRING_DATASOURCE_URL/USERNAME/PASSWORD(merge be35019,feature 65375bb3)后生产 live 三绿:agent Up healthy 且 RestartCount=0(281 次崩溃循环终结)、两个 export_jobs 均由 queued 清为 succeeded 并写入 file_key(jobs/1、jobs/2)落盘 MinIO、积压队列 4s 级处理完成,确认 Trusted Export 消费链在 agent。DEPLOY 批最终由"PASS 带一项挂账"升级为"PASS 挂账已闭合",后续仍保留 crypto.randomUUID 安全上下文、登录页 demo 文案、备案+HTTPS 等独立挂账。
 - [x] closure 238 | 2026-06-05 | UUID 降级批 PASS:fieldFactory crypto.randomUUID 唯一直调收编 generateId(原生优先 + getRandomValues 手搓 RFC4122 v4 降级),消除安全上下文依赖。commit cc78f63a,3 文件(2 新建 1 改 ±3 行),labeling 禁区 diff 零出现,单测 2/2 绿(双路径)+ typecheck + build 过。live 铁证:HTTP+IP 直连 http://120.26.182.61:8443 schema designer 添加字段不再瘫(owner 手验)。部署:web-dist rsync + 源码五 exclude 拉平,零漂移。挂账消项:答辩 IP 演示阻塞解除。事故记录:Codex 越界自行 commit closure(c15b6d7b,author labelhub-local@example.invalid)致重复条目,reset 重做;新纪律:closure/git 写操作永远 owner 亲手,Codex 回包只交产物。
 - [x] closure 239 | 2026-06-05 | seed 环境隔离 + 登录页 demo 提示批 PASS(两件合一):V202611231100 demo seed R100 纯移动至 db/demo-seed/(md5 e8dfb16f 前后一致),主干 flyway 加 ignore-migration-patterns ["*:missing"],local/demo profile 双 locations 挂回 seed;LoginPage demoAccounts+demo 提示块整删,styles.css 四规则清除,demo.yml 死配置 seed-enabled 删除。批准例外:test/resources/application.yml 对称补 ignore(测试 classpath 同名遮蔽主配置,Codex 主动请示获批,B 批 invalidate 先例)。commit a86bb4ca,7 文件,labeling/26 migration 禁区零碰。铁证:前端 59/293 + 后端 705 tests + 本地 default/local 双 profile validated 27;生产 api 镜像重建后 default profile validated 27(镜像 26 文件 + history 27 条,ignore-missing 实战生效)+ up to date + healthy;live 登录页 demo 块消失(owner 手验)。根因断绝:未来环境重建弱口令三账号不再复活。换锚:migrations 27→26。新挂账:后端测试连本地真实 MySQL 无库隔离(test yml 无 datasource,93 skipped 系 testcontainers 无 Docker);rsync exclude 清单补 .DS_Store/.pnpm-store;交接文件 env-file 路径勘误为 infra/.env.prod。
+## 240. FileUploadField multipart 收编 + formatThreshold coerce(2026-06-05)
+
+**状态**: COMPLETED
+**实现 commit**: f48ab506(分支 codex/file-upload-apiclient,merge 入 main)
+
+**内容**:
+- LabelHubFileUploadField.tsx:手写 fetch 收编 apiClient.POST + bodySerializer 返回 FormData;删除 API_BASE/getAccessToken/手动 Authorization 注入,改享 authFetch 的 401→refresh→重试链。修复实际缺陷:上传时 access token 过期会直接失败且无法自动恢复。UploadedFileValue 改用 generated UploadedFile 类型,asUploadedFile 守卫连带补默认值。
+- AiReviewRuleEntryCard.tsx:formatThreshold 签名扩为 number|string|null|undefined,string 经 Number() + isFinite 守卫(决策 2-A)。
+- labeling 目录红线单文件例外:LabelHubFileUploadField.tsx(沿 C 批 LabelHubLlmInteractionField 先例)。
+
+**铁证**:
+- 静态:main 顶 7732e28b 零抢跑;diff 恰 2 文件;labeling 除授权文件零碰;哨兵 grep 全零;前端 59 files / 293 tests + typecheck + build 全绿。
+- live(本地全栈 3-A):labeler_demo 于 task upload-live-test / Session #20 上传 preference_compare.json 成功回显,multipart boundary + Bearer 注入 + MinIO 落桶全链实证;draft 已保存。
+- 部署:main merge 后 build,web-dist rsync + 源码拉平完成(纯前端,无镜像重建)。
+
+**live 过程暴露的环境问题**(归挂账 7,本批不修):
+- 本地裸跑 api 需 4 个环境变量(LABELHUB_LLM_PROVIDER_MASTER_KEY / OBJECT_STORAGE_ACCESS_KEY / OBJECT_STORAGE_SECRET_KEY / LABELHUB_PA_INITIAL_PASSWORD),fail-loud 链逐个暴露,零文档化。
+- 本地 MinIO 真实凭据为 labelhub / labelhub-secret(infra dev compose),与常见默认 minioadmin 不同,曾致上传 403;bucket labelhub-exports 已由 compose 初始化。
+- 建议:scripts/dev-api.sh 或 Makefile target 固化本地启动命令。
