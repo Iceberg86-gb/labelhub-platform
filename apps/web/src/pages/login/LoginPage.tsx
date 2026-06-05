@@ -2,9 +2,12 @@ import { Button, Form, Toast, Typography } from '@douyinfe/semi-ui';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import welcomeHeroUrl from '../../../../../docs/design-assets/hero/welcome-hero.svg';
 import { useLogin, type LoginValues } from '../../features/auth/login/useLogin';
 import { clearSession } from '../../shared/api/auth-storage';
+
+const LOGIN_BRAND_PANEL_VARIANT: 'workflow' | 'minimal' = 'workflow';
+
+const LOGIN_WORKFLOW_STEPS = ['任务发布', '标注作答', 'AI 预审', '人工审核', '可信导出'];
 
 export function LoginPage() {
   const login = useLogin();
@@ -37,10 +40,39 @@ export function LoginPage() {
   };
 
   return (
-    <section className="login-shell login-shell--codex-light login-shell--constrained" aria-label="Login">
-      <div className="login-hero" aria-hidden>
-        <img className="welcome-hero" src={welcomeHeroUrl} alt="" />
-      </div>
+    <section className="login-shell login-shell--split" aria-label="Login">
+      <aside className="login-brand-panel" aria-label="LabelHub">
+        <Link to="/" className="login-brand-lockup" aria-label="LabelHub home">
+          <span className="login-brand-mark" aria-hidden>
+            LH
+          </span>
+          <Typography.Title heading={4} className="login-brand-title">
+            LabelHub
+          </Typography.Title>
+        </Link>
+
+        <div className="login-brand-center">
+          <div className="login-brand-copy">
+            <Typography.Title heading={1} className="login-brand-headline">
+              AI 辅助，人工把关
+            </Typography.Title>
+            <Typography.Text className="login-brand-subtitle">
+              LabelHub 以 AI 预审加速标注流转,以人工裁决守住数据质量,每一条导出都可追溯。
+            </Typography.Text>
+          </div>
+
+          {LOGIN_BRAND_PANEL_VARIANT === 'workflow' ? (
+            <div className="login-workflow-strip" aria-hidden>
+              {LOGIN_WORKFLOW_STEPS.map((step, index) => (
+                <div className="login-workflow-node" key={step}>
+                  <span className="login-workflow-index">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="login-workflow-label">{step}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </aside>
 
       <div className="login-card">
         <div className="login-copy">
