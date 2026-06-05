@@ -3,6 +3,7 @@ WORKDIR /workspace
 COPY pom.xml .
 COPY packages/contracts/openapi packages/contracts/openapi
 COPY services/api/pom.xml services/api/pom.xml
+COPY services/agent/pom.xml services/agent/pom.xml
 COPY services/api/src services/api/src
 RUN mvn -pl services/api -am -DskipTests package
 
