@@ -1,3 +1,7 @@
+spring:
+  flyway:
+    ignore-migration-patterns: ["*:missing"]
+
 labelhub:
   platform-admin:
     initial-password: test-only-pa-initial-password

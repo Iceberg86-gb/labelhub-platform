@@ -1225,34 +1225,6 @@ a {
   color: var(--color-text-inverse);
 }
 
-.login-demo-hint {
-  margin-top: var(--space-20);
-  padding: var(--space-12) var(--space-16);
-  border-radius: var(--radius-card);
-  background: var(--color-surface-subtle);
-  font-size: var(--font-size-small);
-}
-
-.login-demo-list {
-  display: grid;
-  gap: var(--space-8);
-  margin: var(--space-12) 0;
-  padding: 0;
-  list-style: none;
-}
-
-.login-demo-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-16);
-  color: var(--color-text-secondary);
-}
-
-.login-demo-list code {
-  color: var(--color-text-primary);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
-}
-
 .register-role-note {
   display: flex;
   flex-direction: column;
