@@ -537,3 +537,20 @@
 - 本地裸跑 api 需 4 个环境变量(LABELHUB_LLM_PROVIDER_MASTER_KEY / OBJECT_STORAGE_ACCESS_KEY / OBJECT_STORAGE_SECRET_KEY / LABELHUB_PA_INITIAL_PASSWORD),fail-loud 链逐个暴露,零文档化。
 - 本地 MinIO 真实凭据为 labelhub / labelhub-secret(infra dev compose),与常见默认 minioadmin 不同,曾致上传 403;bucket labelhub-exports 已由 compose 初始化。
 - 建议:scripts/dev-api.sh 或 Makefile target 固化本地启动命令。
+
+## 241. dev-tooling:测试库隔离 + 本地启动固化 + 部署脚本(2026-06-05)
+
+**状态**: COMPLETED
+**实现 commit**: d2fff2eb(分支 codex/dev-tooling,merge 57faa02d 入 main)
+
+**内容**(挂账 ③④⑤ 三件合一):
+- 测试库隔离(决策 1-A):test application.yml 新增 datasource 指向 labelhub_test(同 dev MySQL 容器),Makefile 新增幂等 test-db target;根因勘察坐实原测试默认写开发库 labelhub(主干 datasource 默认值 + test resources 无覆盖 + ApplicationContextStartupTest 内联 datasource 三连)。范围例外(请示获批):StartupTest 仅删 4 条内联 datasource 属性,@SpringBootTest properties 优先级压过 test resources 系 Spring 属性源事实。
+- Makefile dev-api target(决策 2-A):固化本地裸跑 api 的 4 环境变量 + local profile,dev-only 凭据与 infra dev compose 一致并注明。
+- scripts/deploy-web.sh(决策 3-A):build + web-dist rsync(--delete)+ 源码拉平,exclude 十项(node_modules/.git/dist/.env.prod/web-dist/.DS_Store/.pnpm-store/submission/docs/screenshots/docs/design-assets),支持 --dry-run,set -euo pipefail。挂账 ④ 防再犯侧就此根治;存量侧已清(生产 rm .pnpm-store 315M + 全树 .DS_Store,核验计数 0,磁盘余 28G)。
+- docs/dev-environment.md 增补:dev-api/test-db/deploy-web 三块 + MinIO 凭据 + 4 环境变量 fail-loud 说明;93 testcontainers skip 边界诚实保留不动。
+
+**铁证**:零抢跑 main=fc558c6a;diff 恰 5 文件;禁区哨兵空(main src/web src/contracts/migration/seed/humanpending);test-db 幂等两连;全量 mvn test 连 labelhub_test 且裸 labelhub 连接行零命中,705 tests 0 fail 93 skipped(口径不变),开发库 tasks/sessions/users 行数前后零变化;dry-run exclude 哨兵零命中。
+
+**台账修正**:author 甄别力对同机同仓库 Codex 无效(git config 仓库级共享,本批 feature commit author 同为 Stephen Wang);防线收口为流程纪律。
+
+**流程变更(自 closure 242 起生效)**:closure 落账可由 Codex 代为执行,硬条件三条:① closure 文本由审计师起草、owner 过目后转交,Codex 零自由发挥;② Codex 仅限 cat >> 追加 + git add 该文件 + git commit,禁触旧条目、禁 merge/push/封板锚;③ 每次 closure 后 owner 亲手跑五锚核验,不可代理。main merge 仍 owner 专属。
