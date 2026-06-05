@@ -34,3 +34,5 @@ logs/
 # DB local
 mysql-data/
 minio-data/
+infra/.env.prod
+infra/web-dist/
