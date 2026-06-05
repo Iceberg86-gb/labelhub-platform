@@ -16,7 +16,7 @@ JAVA17_HOME := $(shell \
 	fi)
 JAVA17_ENV := JAVA_HOME="$(JAVA17_HOME)" PATH="$(JAVA17_HOME)/bin:$$PATH"
 
-.PHONY: doctor dev-up dev-down verify migrate-check require-java17
+.PHONY: doctor dev-up dev-down test-db dev-api verify migrate-check require-java17
 
 require-java17:
 	@if [ -z "$(JAVA17_HOME)" ]; then \
@@ -57,8 +57,25 @@ dev-up:
 dev-down:
 	@docker compose -f $(COMPOSE_FILE) down
 
-verify: dev-up require-java17
+test-db: dev-up
+	@echo "Ensuring dev-only MySQL test database labelhub_test exists"
+	@root_password="$${MYSQL_ROOT_PASSWORD:-labelhub-root}"; \
+	mysql_user="$${MYSQL_USER:-labelhub}"; \
+	mysql_password="$${MYSQL_PASSWORD:-labelhub}"; \
+	docker compose -f $(COMPOSE_FILE) exec -T mysql mysql -uroot -p"$$root_password" -e "CREATE DATABASE IF NOT EXISTS labelhub_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; CREATE USER IF NOT EXISTS '$$mysql_user'@'%' IDENTIFIED BY '$$mysql_password'; GRANT ALL PRIVILEGES ON labelhub_test.* TO '$$mysql_user'@'%'; FLUSH PRIVILEGES;"
+
+dev-api: test-db
+	@echo "Starting API with dev-only local credentials from infra/docker-compose.yml"
+	@cd services/api && \
+		SPRING_PROFILES_ACTIVE=local \
+		LABELHUB_LLM_PROVIDER_MASTER_KEY=dev-only-llm-provider-master-key-32b \
+		OBJECT_STORAGE_ACCESS_KEY=labelhub \
+		OBJECT_STORAGE_SECRET_KEY=labelhub-secret \
+		LABELHUB_PA_INITIAL_PASSWORD=dev-only-pa-password \
+		mvn spring-boot:run
+
+verify: test-db require-java17
 	@$(JAVA17_ENV) mvn -o -pl services/api test-compile $(SUREFIRE_GOAL)
 
-migrate-check: dev-up require-java17
+migrate-check: test-db require-java17
 	@$(JAVA17_ENV) mvn -o -pl services/api -Dtest=ApplicationContextStartupTest test-compile $(SUREFIRE_GOAL)
