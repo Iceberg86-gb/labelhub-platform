@@ -4,10 +4,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(properties = {
-    "spring.datasource.url=jdbc:mysql://localhost:3306/labelhub?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC",
-    "spring.datasource.username=labelhub",
-    "spring.datasource.password=labelhub",
-    "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver",
     "labelhub.security.jwt-secret=dev-only-32-bytes-minimum-secret-please-change-me",
     "labelhub.security.internal-token=dev-internal-token",
     "labelhub.object-storage.endpoint=http://localhost:9000",
