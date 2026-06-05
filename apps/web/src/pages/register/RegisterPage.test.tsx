@@ -54,7 +54,11 @@ vi.mock('../../features/auth/register/useRegister', () => ({
 }));
 
 vi.mock('react-router-dom', () => ({
-  Link: ({ children, to }: { children?: ReactNode; to: string }) => <a href={to}>{children}</a>,
+  Link: ({ children, className, to }: { children?: ReactNode; className?: string; to: string }) => (
+    <a className={className} href={to}>
+      {children}
+    </a>
+  ),
 }));
 
 import { RegisterPage } from './RegisterPage';
@@ -69,9 +73,12 @@ describe('RegisterPage design shell', () => {
   it('renders the shared auth shell and labeler-only copy', () => {
     const html = renderToString(<RegisterPage />);
 
-    expect(html).toContain('login-shell login-shell--codex-light');
+    expect(html).toContain('login-shell login-shell--split');
+    expect(html).toContain('login-brand-panel');
+    expect(html).toContain('login-workflow-strip');
     expect(html).toContain('register-form');
     expect(html).toContain('默认开通 LABELER 权限');
+    expect(html).not.toContain('Registration role policy');
     expect(html).toContain('/login');
   });
 

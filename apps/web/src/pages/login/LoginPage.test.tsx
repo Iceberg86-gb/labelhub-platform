@@ -44,19 +44,25 @@ vi.mock('../../shared/api/auth-storage', () => ({
 }));
 
 vi.mock('react-router-dom', () => ({
-  Link: ({ children, to }: { children?: ReactNode; to: string }) => <a href={to}>{children}</a>,
+  Link: ({ children, className, to }: { children?: ReactNode; className?: string; to: string }) => (
+    <a className={className} href={to}>
+      {children}
+    </a>
+  ),
 }));
 
 import { LoginPage } from './LoginPage';
 
 describe('LoginPage design shell', () => {
-  it('renders the welcome hero and quiet login card hooks', () => {
+  it('renders the split brand panel and workflow hooks', () => {
     const html = renderToString(<LoginPage />);
 
-    expect(html).toContain('login-shell login-shell--codex-light');
-    expect(html).toContain('login-shell--constrained');
-    expect(html).toContain('login-hero');
-    expect(html).toContain('welcome-hero');
+    expect(html).toContain('login-shell login-shell--split');
+    expect(html).toContain('login-brand-panel');
+    expect(html).toContain('login-brand-lockup');
+    expect(html).toContain('login-workflow-strip');
+    expect(html).toContain('AI 辅助，人工把关');
+    expect(html).toContain('可信导出');
     expect(html).toContain('login-card');
   });
 

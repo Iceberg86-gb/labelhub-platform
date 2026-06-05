@@ -2,9 +2,12 @@ import { Button, Form, Toast, Typography } from '@douyinfe/semi-ui';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import welcomeHeroUrl from '../../../../../docs/design-assets/hero/welcome-hero.svg';
 import { useRegister, type RegisterValues } from '../../features/auth/register/useRegister';
 import { clearSession } from '../../shared/api/auth-storage';
+
+const REGISTER_BRAND_PANEL_VARIANT: 'workflow' | 'minimal' = 'workflow';
+
+const REGISTER_WORKFLOW_STEPS = ['任务发布', '标注作答', 'AI 预审', '人工审核', '可信导出'];
 
 type RegisterFormValues = RegisterValues & {
   account?: string;
@@ -46,10 +49,39 @@ export function RegisterPage() {
   };
 
   return (
-    <section className="login-shell login-shell--codex-light login-shell--constrained" aria-label="Register">
-      <div className="login-hero" aria-hidden>
-        <img className="welcome-hero" src={welcomeHeroUrl} alt="" />
-      </div>
+    <section className="login-shell login-shell--split" aria-label="Register">
+      <aside className="login-brand-panel" aria-label="LabelHub">
+        <Link to="/" className="login-brand-lockup" aria-label="LabelHub home">
+          <span className="login-brand-mark" aria-hidden>
+            LH
+          </span>
+          <Typography.Title heading={4} className="login-brand-title">
+            LabelHub
+          </Typography.Title>
+        </Link>
+
+        <div className="login-brand-center">
+          <div className="login-brand-copy">
+            <Typography.Title heading={1} className="login-brand-headline">
+              AI 辅助，人工把关
+            </Typography.Title>
+            <Typography.Text className="login-brand-subtitle">
+              LabelHub 以 AI 预审加速标注流转,以人工裁决守住数据质量,每一条导出都可追溯。
+            </Typography.Text>
+          </div>
+
+          {REGISTER_BRAND_PANEL_VARIANT === 'workflow' ? (
+            <div className="login-workflow-strip" aria-hidden>
+              {REGISTER_WORKFLOW_STEPS.map((step, index) => (
+                <div className="login-workflow-node" key={step}>
+                  <span className="login-workflow-index">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="login-workflow-label">{step}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </aside>
 
       <div className="login-card">
         <div className="login-copy">
@@ -98,13 +130,6 @@ export function RegisterPage() {
             创建账号
           </Button>
         </Form>
-
-        <div className="login-demo-hint register-role-note" aria-label="Registration role policy">
-          <Typography.Text strong>角色策略</Typography.Text>
-          <Typography.Text type="tertiary">
-            注册只创建 LABELER。REVIEWER 与 SENIOR_REVIEWER 需要 Owner 或 Senior Reviewer 在用户权限页授予。
-          </Typography.Text>
-        </div>
 
         <Typography.Text className="register-login-link" type="tertiary">
           已有账号？<Link to="/login">返回登录</Link>
