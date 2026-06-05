@@ -14,9 +14,9 @@ log() {
 }
 
 cleanup() {
-  docker run --rm --network "$NETWORK" -e MYSQL_PWD="${MYSQL_PASSWORD:-}" \
-    -e MYSQL_USER="${MYSQL_USER:-}" -e TEMP_DB="$TEMP_DB" \
-    mysql:8.0 sh -c 'mysql -h mysql -u"$MYSQL_USER" -e "DROP DATABASE IF EXISTS \`$TEMP_DB\`"' >/dev/null 2>&1 || true
+  docker run --rm --network "$NETWORK" -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-}" \
+    -e TEMP_DB="$TEMP_DB" \
+    mysql:8.0 sh -c 'mysql -h mysql -uroot -e "DROP DATABASE IF EXISTS \`$TEMP_DB\`"' >/dev/null 2>&1 || true
   docker volume rm "$TEMP_VOLUME" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
@@ -35,16 +35,14 @@ set -a
 . "$ENV_FILE"
 set +a
 
-: "${MYSQL_USER:?MYSQL_USER is required}"
-: "${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}"
+: "${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}"
 
 log "restore mysql dump into temporary database ${TEMP_DB}"
 docker run --rm --network "$NETWORK" \
-  -e MYSQL_PWD="$MYSQL_PASSWORD" \
-  -e MYSQL_USER="$MYSQL_USER" \
+  -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" \
   -e TEMP_DB="$TEMP_DB" \
   -v "$BACKUP_DIR:/backup:ro" \
-  mysql:8.0 sh -c 'mysql -h mysql -u"$MYSQL_USER" -e "CREATE DATABASE \`$TEMP_DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" && mysql -h mysql -u"$MYSQL_USER" "$TEMP_DB" < /backup/mysql.sql && mysql -N -h mysql -u"$MYSQL_USER" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '\''$TEMP_DB'\''"'
+  mysql:8.0 sh -c 'mysql -h mysql -uroot -e "CREATE DATABASE \`$TEMP_DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" && mysql -h mysql -uroot "$TEMP_DB" < /backup/mysql.sql && mysql -N -h mysql -uroot -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = '\''$TEMP_DB'\''"'
 
 log "restore minio archive into temporary volume ${TEMP_VOLUME}"
 docker volume create "$TEMP_VOLUME" >/dev/null
