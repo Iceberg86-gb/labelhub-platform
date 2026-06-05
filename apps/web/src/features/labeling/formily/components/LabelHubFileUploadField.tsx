@@ -3,17 +3,11 @@ import { Field as FormilyField } from '@formily/core';
 import { useField } from '@formily/react';
 import { useRef, useState } from 'react';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
-import { getAccessToken } from '../../../../shared/api/auth-storage';
+import { apiClient } from '../../../../shared/api/client';
+import type { components } from '../../../../shared/api/generated/schema';
 import { ReadOnlyValue } from './FieldFrame';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
-
-type UploadedFileValue = {
-  objectKey: string;
-  fileName: string;
-  contentType: string;
-  sizeBytes: number;
-};
+type UploadedFileValue = components['schemas']['UploadedFile'];
 
 export function LabelHubFileUploadField({ field, sessionId }: { field?: SchemaField; sessionId?: number }) {
   const formilyField = useField<FormilyField>();
@@ -32,24 +26,21 @@ export function LabelHubFileUploadField({ field, sessionId }: { field?: SchemaFi
       Toast.error(`文件不能超过 ${field?.maxFileSizeMb ?? 50} MB`);
       return;
     }
-    const token = getAccessToken();
-    if (!token) {
-      Toast.error('登录已过期,请重新登录');
-      return;
-    }
-    const formData = new FormData();
-    formData.append('file', file);
     setUploading(true);
     try {
-      const response = await fetch(`${API_BASE}/sessions/${sessionId}/attachments`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+      const { data, error } = await apiClient.POST('/sessions/{sessionId}/attachments', {
+        params: { path: { sessionId } },
+        body: { file: file.name },
+        bodySerializer: () => {
+          const formData = new FormData();
+          formData.append('file', file);
+          return formData;
+        },
       });
-      if (!response.ok) {
+      if (error || !data) {
         throw new Error('upload failed');
       }
-      formilyField.setValue((await response.json()) as UploadedFileValue);
+      formilyField.setValue(data);
     } catch {
       Toast.error('文件上传失败');
     } finally {
