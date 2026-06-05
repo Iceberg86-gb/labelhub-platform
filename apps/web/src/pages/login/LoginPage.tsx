@@ -6,12 +6,6 @@ import welcomeHeroUrl from '../../../../../docs/design-assets/hero/welcome-hero.
 import { useLogin, type LoginValues } from '../../features/auth/login/useLogin';
 import { clearSession } from '../../shared/api/auth-storage';
 
-const demoAccounts = [
-  { role: 'Owner', username: 'owner_demo' },
-  { role: 'Labeler', username: 'labeler_demo' },
-  { role: 'Reviewer', username: 'reviewer_demo' },
-];
-
 export function LoginPage() {
   const login = useLogin();
   const formApiRef = useRef<FormApi<LoginValues>>();
@@ -98,19 +92,6 @@ export function LoginPage() {
         <Typography.Text className="register-login-link" type="tertiary">
           还没有账号？<Link to="/register">创建新账号</Link>
         </Typography.Text>
-
-        <div className="login-demo-hint" aria-label="Demo accounts">
-          <Typography.Text strong>演示账号</Typography.Text>
-          <ul className="login-demo-list">
-            {demoAccounts.map((account) => (
-              <li key={account.username}>
-                <span>{account.role}</span>
-                <code>{account.username}</code>
-              </li>
-            ))}
-          </ul>
-          <Typography.Text type="tertiary">密码统一为: demo1234</Typography.Text>
-        </div>
       </div>
     </section>
   );

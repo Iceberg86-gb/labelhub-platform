@@ -2,7 +2,5 @@ spring:
   config:
     activate:
       on-profile: demo
-
-labelhub:
-  demo:
-    seed-enabled: true
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo-seed
