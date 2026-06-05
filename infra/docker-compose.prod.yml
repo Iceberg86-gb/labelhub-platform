@@ -1,0 +1,146 @@
+x-prod-defaults: &prod-defaults
+  restart: unless-stopped
+  env_file:
+    - path: .env.prod
+      required: true
+  networks:
+    - labelhub-net
+
+services:
+  mysql:
+    <<: *prod-defaults
+    image: mysql:8.0
+    mem_limit: 1g
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-labelhub}
+      MYSQL_USER: ${MYSQL_USER:-labelhub}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    <<: *prod-defaults
+    image: redis:7-alpine
+    mem_limit: 192m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    <<: *prod-defaults
+    image: minio/minio:latest
+    command: server /data --address ":9000" --console-address ":9001"
+    mem_limit: 512m
+    environment:
+      MINIO_ROOT_USER: ${OBJECT_STORAGE_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${OBJECT_STORAGE_SECRET_KEY}
+    volumes:
+      - minio-data:/data
+
+  minio-init:
+    <<: *prod-defaults
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      S3_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY}
+      S3_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY}
+      S3_BUCKET: ${OBJECT_STORAGE_BUCKET:-labelhub-exports}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        until mc alias set local http://minio:9000 "$$S3_ACCESS_KEY" "$$S3_SECRET_KEY"; do sleep 2; done;
+        mc mb --ignore-existing "local/$$S3_BUCKET";
+        tail -f /dev/null
+
+  api:
+    <<: *prod-defaults
+    build:
+      context: ../services/api
+    mem_limit: 1280m
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio-init:
+        condition: service_started
+    entrypoint: ["/bin/sh", "-c", "exec java $$JAVA_OPTS -jar /app/app.jar"]
+    environment:
+      JAVA_OPTS: ${API_JAVA_OPTS:--Xmx768m}
+      DATABASE_URL: ${DATABASE_URL:-jdbc:mysql://mysql:3306/labelhub?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+      MYSQL_USER: ${MYSQL_USER:-labelhub}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      LABELHUB_PA_INITIAL_PASSWORD: ${LABELHUB_PA_INITIAL_PASSWORD}
+      LABELHUB_INTERNAL_TOKEN: ${LABELHUB_INTERNAL_TOKEN}
+      LABELHUB_LLM_PROVIDER_MASTER_KEY: ${LABELHUB_LLM_PROVIDER_MASTER_KEY}
+      OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-http://minio:9000}
+      OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-us-east-1}
+      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY}
+      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY}
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET:-labelhub-exports}
+      OBJECT_STORAGE_PATH_STYLE: ${OBJECT_STORAGE_PATH_STYLE:-true}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/actuator/health >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  agent:
+    <<: *prod-defaults
+    build:
+      context: ../services/agent
+    mem_limit: 768m
+    depends_on:
+      api:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c", "exec java $$JAVA_OPTS -jar /app/app.jar"]
+    environment:
+      JAVA_OPTS: ${AGENT_JAVA_OPTS:--Xmx512m}
+      LABELHUB_API_BASE_URL: ${LABELHUB_API_BASE_URL:-http://api:8080/api}
+      LABELHUB_INTERNAL_TOKEN: ${LABELHUB_INTERNAL_TOKEN}
+      LABELHUB_LLM_PROVIDER_MASTER_KEY: ${LABELHUB_LLM_PROVIDER_MASTER_KEY}
+      LABELHUB_AGENT_WORKER_ID: ${LABELHUB_AGENT_WORKER_ID:-agent-prod}
+      LABELHUB_AGENT_OUTBOX_POLL_DELAY_MS: ${LABELHUB_AGENT_OUTBOX_POLL_DELAY_MS:-5000}
+      LABELHUB_AGENT_OUTBOX_BATCH_SIZE: ${LABELHUB_AGENT_OUTBOX_BATCH_SIZE:-10}
+      LABELHUB_AGENT_OUTBOX_MAX_ATTEMPTS: ${LABELHUB_AGENT_OUTBOX_MAX_ATTEMPTS:-3}
+      LABELHUB_AGENT_OUTBOX_BASE_DELAY_MS: ${LABELHUB_AGENT_OUTBOX_BASE_DELAY_MS:-1000}
+      LABELHUB_AGENT_OUTBOX_LEASE_SECONDS: ${LABELHUB_AGENT_OUTBOX_LEASE_SECONDS:-60}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/actuator/health >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  nginx:
+    <<: *prod-defaults
+    image: nginx:1.27-alpine
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8443:80" # 备案/证书就绪后改为 "443:443" 并补 "80:80" 跳转。
+    volumes:
+      - ./nginx/labelhub.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./web-dist:/usr/share/nginx/html:ro
+
+networks:
+  labelhub-net:
+    name: labelhub-net
+
+volumes:
+  mysql-data:
+    name: labelhub-mysql-data
+  minio-data:
+    name: labelhub-minio-data
