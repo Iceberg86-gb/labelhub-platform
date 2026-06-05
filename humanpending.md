@@ -554,3 +554,23 @@
 **台账修正**:author 甄别力对同机同仓库 Codex 无效(git config 仓库级共享,本批 feature commit author 同为 Stephen Wang);防线收口为流程纪律。
 
 **流程变更(自 closure 242 起生效)**:closure 落账可由 Codex 代为执行,硬条件三条:① closure 文本由审计师起草、owner 过目后转交,Codex 零自由发挥;② Codex 仅限 cat >> 追加 + git add 该文件 + git commit,禁触旧条目、禁 merge/push/封板锚;③ 每次 closure 后 owner 亲手跑五锚核验,不可代理。main merge 仍 owner 专属。
+
+## 242. 登录/注册页深色分屏视觉重构(2026-06-05)
+
+**状态**: COMPLETED
+**实现 commit**: 2ccda0b2 + d37bc4b7 + 97250191(分支 codex/login-redesign,merge 6fb5ab9f 入 main)
+
+**内容**(Stitch 概念探索首批落地):
+- 流程:design.md(产品语境+功能清单+负面清单+prompt)→ Google Stitch 生成方向 A-D → owner 点选方向 C(深色分屏)→ Codex 在 Semi Design 体系内实现,Stitch 导出代码零进 repo。
+- LoginPage:左侧深色品牌区(近黑/深藏蓝)+ 右侧白卡(~480px 双居中);左屏标题「AI 辅助,人工把关」+ 副文 + 五节点工作流条(任务发布→标注作答→AI 预审→人工审核→可信导出,纯 CSS/SVG),整组垂直居中;版 A(workflow)/版 B(minimal)常量开关,owner 点选定版 A。表单卡文案逐字回归现状,拒收 Stitch 越界文案(忘记密码/用户名邮箱/版权行/帮助中心)。
+- RegisterPage 增量并入(owner 批准扩范围):复用分屏壳与 A/B 开关;角色策略说明块经 owner 裁决整块删除(与副题语义重复),顺带清除 239 批残留的 login-demo-hint class。
+- 文案裁决:Stitch 生成的营销腔(「高精度高效率/图像分割文本分类」)因虚构能力被否,改为基于真实机制的版本 2 文案。
+- 一轮返修:首版比例失衡(卡片过小/左栏上下分离/标题半角逗号/底色偏 teal/流程条节点名悬挂),五条修正清单后达标。
+
+**铁证**:零抢跑 main=0a23761d;diff 恰 5 文件(Login 三件 + Register 两件);逻辑哨兵(mutation/onSubmit/navigate/authFetch/apiClient)全程零命中;文案哨兵唯一命中为删除行;labeling/contracts/services/db 红线零碰;前端 59 files / 293 tests + typecheck 全绿;OpenAPI MD5 a158ddfa 未漂。live:版 A/B 双版肉眼验、登录回归(labeler_demo)、真实注册测试号成功(mutation 零碰旁证)、双向跳转、窄屏退化全过。
+
+**部署**:scripts/deploy-web.sh 首秀(build + web-dist + 源码拉平一条命令),生产已上线;旧 welcome-hero svg 资产自然退役(模块 3679→3678)。
+
+**方法论沉淀**:Stitch 用法定型——视觉概念生成器,输入截图+约束 prompt,产出仅作对标基准,代码一律 Codex 在既有组件体系内实现;AI 生成文案必须过"真实能力"审计,虚构功能承诺一律拒收。
+
+**本批 closure 为 241 新规首跑**:文本审计师起草、owner 过目转交、Codex 受控落账、owner 亲手五锚。
