@@ -5488,7 +5488,7 @@ a {
 
 .trusted-export-field-mapping-row {
   display: grid;
-  grid-template-columns: 32px minmax(210px, 1fr) minmax(220px, 1.06fr) 58px;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-8);
 }
@@ -5500,26 +5500,6 @@ a {
   background: var(--color-main-surface);
 }
 
-.trusted-export-builder__row--system {
-  min-height: 76px;
-}
-
-.trusted-export-builder__row--plain {
-  min-height: 56px;
-  padding-top: var(--space-8);
-  padding-bottom: var(--space-8);
-}
-
-.trusted-export-builder__row > * {
-  align-self: center;
-}
-
-.trusted-export-builder__row--system > .trusted-export-column-input,
-.trusted-export-builder__row--system > .semi-button {
-  align-self: start;
-  margin-top: calc(18px + var(--space-4));
-}
-
 .trusted-export-builder__row > .semi-button {
   justify-self: start;
 }
@@ -5529,18 +5509,16 @@ a {
 }
 
 .trusted-export-source-field {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  grid-template-rows: 18px 32px;
   gap: var(--space-4);
-  align-self: center;
   justify-self: stretch;
 }
 
 .trusted-export-source-field__label {
   display: inline-flex;
   min-width: 0;
-  min-height: 18px;
   align-items: center;
   gap: var(--space-6);
   color: var(--color-text-primary);
@@ -5589,15 +5567,6 @@ a {
 .trusted-export-column-input .semi-input {
   min-height: 32px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-}
-
-.trusted-export-source-field--plain .trusted-export-source-field__input {
-  grid-row: 1;
-}
-
-.trusted-export-source-field--plain {
-  grid-template-rows: 32px;
-  gap: 0;
 }
 
 .trusted-export-snapshot-panel {
