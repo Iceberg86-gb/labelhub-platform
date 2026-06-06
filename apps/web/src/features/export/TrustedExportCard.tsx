@@ -330,19 +330,22 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
           </div>
           <div className="trusted-export-builder__table">
             <div className="trusted-export-builder__table-head">
-              <span />
-              <span className="trusted-export-builder__heading">
-                源字段
-                <IconInfoCircle />
-              </span>
-              <span className="trusted-export-builder__heading trusted-export-builder__heading--column">
-                <span>
-                  导出列名
+              <span className="trusted-export-builder__table-head-spacer" />
+              <div className="trusted-export-builder__table-head-grid">
+                <span />
+                <span className="trusted-export-builder__heading">
+                  源字段
                   <IconInfoCircle />
                 </span>
-                <small>导出列名将写入交付文件,建议保持英文</small>
-              </span>
-              <span />
+                <span className="trusted-export-builder__heading trusted-export-builder__heading--column">
+                  <span>
+                    导出列名
+                    <IconInfoCircle />
+                  </span>
+                  <small>导出列名将写入交付文件,建议保持英文</small>
+                </span>
+                <span />
+              </div>
             </div>
             <div className="trusted-export-field-mapping-list trusted-export-builder__list">
               {groupedMappingRows.map((group) => (
