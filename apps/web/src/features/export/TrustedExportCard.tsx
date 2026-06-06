@@ -253,21 +253,21 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         <div className="trusted-export-status-strip" aria-label="Export reproducibility summary">
           <span className="trusted-export-status-pill trusted-export-status-pill--strong">
             <span className="trusted-export-status-pill__icon"><IconServer /></span>
-            <span>
+            <span className="trusted-export-status-pill__body">
               <strong>{exportsQuery.data?.total ?? 0} 个{showArchived ? '已归档' : '活跃'}快照</strong>
               <small>当前任务已生成的活跃快照总数</small>
             </span>
           </span>
           <span className="trusted-export-status-pill">
             <span className="trusted-export-status-pill__icon"><IconUser /></span>
-            <span>
+            <span className="trusted-export-status-pill__body">
               <strong>已选 {selectedIds.length}/2</strong>
               <small>最多同时选择 2 个快照用于对比</small>
             </span>
           </span>
           <span className="trusted-export-status-pill trusted-export-status-pill--stable">
             <span className="trusted-export-status-pill__icon"><IconShield /></span>
-            <span>
+            <span className="trusted-export-status-pill__body">
               <strong>可复现</strong>
               <small>所有快照均基于相同规范与数据生成</small>
             </span>
@@ -335,14 +335,9 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
                 <span />
                 <span className="trusted-export-builder__heading">
                   源字段
-                  <IconInfoCircle />
                 </span>
                 <span className="trusted-export-builder__heading trusted-export-builder__heading--column">
-                  <span>
-                    导出列名
-                    <IconInfoCircle />
-                  </span>
-                  <small>导出列名将写入交付文件,建议保持英文</small>
+                  导出列名
                 </span>
                 <span />
               </div>
