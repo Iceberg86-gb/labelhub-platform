@@ -5425,6 +5425,9 @@ a {
 }
 
 .trusted-export-builder__table {
+  --trusted-export-group-label-track: minmax(88px, 0.28fr);
+  --trusted-export-mapping-column-gap: var(--space-12);
+  --trusted-export-mapping-grid: 24px minmax(0, 1.25fr) minmax(0, 1fr) 52px;
   overflow: hidden;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-card);
@@ -5433,13 +5436,24 @@ a {
 
 .trusted-export-builder__table-head {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1.25fr) minmax(0, 1fr) 52px;
-  align-items: center;
-  column-gap: var(--space-12);
+  grid-template-columns: var(--trusted-export-group-label-track) minmax(0, 1fr);
+  align-items: stretch;
   min-height: 58px;
-  padding: 0 var(--space-12);
   border-bottom: 1px solid var(--color-border-subtle);
   background: linear-gradient(180deg, #f8fbff 0%, #f3f7ff 100%);
+}
+
+.trusted-export-builder__table-head-spacer {
+  border-right: 1px solid var(--color-border-subtle);
+}
+
+.trusted-export-builder__table-head-grid {
+  display: grid;
+  grid-template-columns: var(--trusted-export-mapping-grid);
+  align-items: center;
+  column-gap: var(--trusted-export-mapping-column-gap);
+  min-width: 0;
+  padding: 0 var(--space-12);
 }
 
 .trusted-export-builder__heading {
@@ -5487,7 +5501,7 @@ a {
 
 .trusted-export-builder__group {
   display: grid;
-  grid-template-columns: minmax(88px, 0.28fr) minmax(0, 1fr);
+  grid-template-columns: var(--trusted-export-group-label-track) minmax(0, 1fr);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
@@ -5511,8 +5525,8 @@ a {
 /* === 字段映射行(重写版,旧 builder__row/source-field 规则已全删) === */
 .trusted-export-mapping-row {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1.25fr) minmax(0, 1fr) 52px;
-  column-gap: var(--space-12);
+  grid-template-columns: var(--trusted-export-mapping-grid);
+  column-gap: var(--trusted-export-mapping-column-gap);
   align-items: center;
   min-height: 48px;
   padding: var(--space-4) var(--space-12);
@@ -6205,12 +6219,16 @@ a {
     display: none;
   }
 
-  .trusted-export-builder__table-head {
-    display: none;
-  }
-
   .trusted-export-builder__group {
     grid-template-columns: 1fr;
+  }
+
+  .trusted-export-builder__table-head {
+    grid-template-columns: 1fr;
+  }
+
+  .trusted-export-builder__table-head-spacer {
+    display: none;
   }
 
   .trusted-export-builder__group-label {
