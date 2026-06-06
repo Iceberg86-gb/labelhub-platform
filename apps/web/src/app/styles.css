@@ -6543,3 +6543,143 @@ a {
     grid-column: auto;
   }
 }
+
+@media (max-width: 560px) {
+  .app-topbar {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    gap: var(--space-8);
+    padding: 0 var(--space-12);
+  }
+
+  .app-topbar__brand,
+  .brand-link,
+  .brand-link > span:not(.brand-mark) {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .app-topbar__brand,
+  .brand-link {
+    gap: var(--space-8);
+  }
+
+  .app-sidebar-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .brand-title {
+    max-width: 84px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  .app-topbar__actions.header-user {
+    min-width: 0;
+    gap: var(--space-6);
+    overflow: hidden;
+  }
+
+  .header-user > svg {
+    display: none;
+  }
+
+  .header-user .user-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: clamp(48px, 14vw, 72px);
+  }
+
+  .header-user .role-badge {
+    display: inline-flex;
+    flex: 0 1 auto;
+    max-width: 76px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header-user .role-badge + .role-badge {
+    display: none;
+  }
+
+  .header-logout-button {
+    min-width: 44px;
+    min-height: 44px;
+    flex: 0 0 auto;
+  }
+
+  .home-page {
+    gap: var(--space-16);
+  }
+
+  .home-hero {
+    gap: var(--space-12);
+  }
+
+  .home-hero__title,
+  .home-hero__subtitle {
+    max-width: 100%;
+  }
+
+  .home-role-tags {
+    width: 100%;
+  }
+
+  .home-dashboard,
+  .home-dashboard-panel,
+  .home-entry-card {
+    padding: var(--space-12);
+  }
+
+  .home-dashboard {
+    gap: var(--space-12);
+  }
+
+  .home-dashboard__header {
+    gap: var(--space-12);
+  }
+
+  .home-dashboard-metric {
+    min-height: 88px;
+    padding: var(--space-12);
+  }
+}
+
+@media (max-width: 375px) {
+  .app-topbar {
+    gap: var(--space-6);
+    padding: 0 var(--space-8);
+  }
+
+  .brand-title {
+    display: none;
+  }
+
+  .app-topbar__actions.header-user {
+    gap: var(--space-4);
+  }
+
+  .header-user .user-name {
+    max-width: 56px;
+  }
+
+  .header-user .role-badge {
+    max-width: 68px;
+  }
+
+  .home-dashboard-metrics,
+  .home-dashboard-split,
+  .home-entry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-dashboard-metric strong {
+    overflow-wrap: anywhere;
+  }
+}
