@@ -4177,7 +4177,18 @@ a {
 }
 
 .labeler-session-actions--sticky .semi-button-primary:not(.semi-button-disabled) {
+  border-color: var(--color-accent-blue);
   background: var(--color-accent-blue);
+  background-color: var(--color-accent-blue);
+  color: #fff;
+}
+
+.labeler-session-actions--sticky .semi-button-primary:not(.semi-button-disabled):hover,
+.labeler-session-actions--sticky .semi-button-primary:not(.semi-button-disabled):active {
+  border-color: var(--color-accent-blue-hover);
+  background: var(--color-accent-blue-hover);
+  background-color: var(--color-accent-blue-hover);
+  color: #fff;
 }
 
 .labeler-session-actions--sticky .semi-button-disabled {
