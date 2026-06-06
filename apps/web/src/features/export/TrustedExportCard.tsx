@@ -1,5 +1,17 @@
-import { Button, Card, Checkbox, Empty, Input, Pagination, Popconfirm, Select, Space, Spin, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconArchive, IconRefresh, IconUpload } from '@douyinfe/semi-icons';
+import { Button, Card, Checkbox, Empty, Input, Pagination, Popconfirm, Select, Space, Spin, Table, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import {
+  IconArchive,
+  IconArrowRight,
+  IconConfigStroked,
+  IconDownload,
+  IconInfoCircle,
+  IconList,
+  IconRefresh,
+  IconServer,
+  IconShield,
+  IconUpload,
+  IconUser,
+} from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ExportFieldMapping, ExportSnapshot } from '../../entities/export/exportTypes';
@@ -26,6 +38,23 @@ const DEFAULT_FIELD_MAPPING_ROWS: FieldMappingDraftRow[] = [
   { id: 'reviewed_at', source: 'reviewed_at', columnName: 'reviewed_at', included: true },
   { id: 'item-source', source: 'item.text', columnName: 'item_text', included: true },
   { id: 'answer-source', source: 'answer.title', columnName: 'answer_title', included: true },
+];
+
+const SYSTEM_FIELD_META: Record<string, { label: string; description: string }> = {
+  task_id: { label: '任务 ID', description: '任务在系统中的唯一标识' },
+  dataset_item_id: { label: '数据项 ID', description: '该条数据在数据集中的唯一标识' },
+  submission_id: { label: '提交 ID', description: '标注员提交记录的唯一标识' },
+  schema_version_id: { label: 'Schema 版本', description: '本条数据绑定的标注模板版本' },
+  submitted_at: { label: '提交时间', description: '标注员提交答案的时间' },
+  final_verdict: { label: '终审结论', description: '审核流程的最终裁决结果' },
+  reviewed_at: { label: '审核时间', description: '终审完成的时间' },
+};
+
+const EXPORT_FLOW_STEPS = [
+  { label: '配置字段', icon: <IconConfigStroked /> },
+  { label: '导出', icon: <IconUpload /> },
+  { label: '快照入列', icon: <IconList /> },
+  { label: '对比 / 下载', icon: <IconDownload /> },
 ];
 
 type FieldMappingDraftRow = {
@@ -66,6 +95,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const canDiff = selectedIds.length === 2;
   const baseSnapshotId = canDiff ? selectedIds[0] ?? null : null;
   const compareSnapshotId = canDiff ? selectedIds[1] ?? null : null;
+  const groupedMappingRows = groupMappingRows(mappingRows);
 
   const columns = useMemo(
     () => [
@@ -223,11 +253,37 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         </div>
         <div className="trusted-export-status-strip" aria-label="Export reproducibility summary">
           <span className="trusted-export-status-pill trusted-export-status-pill--strong">
-            {exportsQuery.data?.total ?? 0} 个{showArchived ? '已归档' : '活跃'}快照
+            <span className="trusted-export-status-pill__icon"><IconServer /></span>
+            <span>
+              <strong>{exportsQuery.data?.total ?? 0} 个{showArchived ? '已归档' : '活跃'}快照</strong>
+              <small>当前任务已生成的活跃快照总数</small>
+            </span>
           </span>
-          <span className="trusted-export-status-pill">已选 {selectedIds.length}/2</span>
-          <span className="trusted-export-status-pill trusted-export-status-pill--stable">可复现</span>
+          <span className="trusted-export-status-pill">
+            <span className="trusted-export-status-pill__icon"><IconUser /></span>
+            <span>
+              <strong>已选 {selectedIds.length}/2</strong>
+              <small>最多同时选择 2 个快照用于对比</small>
+            </span>
+          </span>
+          <span className="trusted-export-status-pill trusted-export-status-pill--stable">
+            <span className="trusted-export-status-pill__icon"><IconShield /></span>
+            <span>
+              <strong>可复现</strong>
+              <small>所有快照均基于相同规范与数据生成</small>
+            </span>
+          </span>
         </div>
+      </div>
+
+      <div className="trusted-export-flow-strip" aria-label="Export workflow">
+        {EXPORT_FLOW_STEPS.map((step, index) => (
+          <span className="trusted-export-flow-step" key={step.label}>
+            <span className="trusted-export-flow-step__icon">{step.icon}</span>
+            <span>{step.label}</span>
+            {index < EXPORT_FLOW_STEPS.length - 1 ? <IconArrowRight className="trusted-export-flow-step__arrow" /> : null}
+          </span>
+        ))}
       </div>
 
       <div className="trusted-export-toolbar trusted-export-command-strip">
@@ -263,72 +319,140 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         </Space>
       </div>
 
-      <div className="trusted-export-field-mapping trusted-export-builder">
-        <div className="trusted-export-field-mapping-header trusted-export-builder__header">
-          <Typography.Text strong>业务表字段映射</Typography.Text>
-          <Button size="small" onClick={addMappingRow}>
-            添加列
-          </Button>
-        </div>
-        <div className="trusted-export-field-mapping-list trusted-export-builder__list">
-          {mappingRows.map((row) => (
-            <div className="trusted-export-field-mapping-row trusted-export-builder__row" key={row.id}>
-              <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
-              <Input
-                size="small"
-                value={row.source}
-                placeholder="source: item.prompt / answer.label"
-                onChange={(value) => updateMappingRow(row.id, { source: value })}
-              />
-              <Input
-                size="small"
-                value={row.columnName}
-                placeholder="导出列名"
-                onChange={(value) => updateMappingRow(row.id, { columnName: value })}
-              />
-              <Button size="small" type="danger" theme="borderless" onClick={() => removeMappingRow(row.id)}>
-                删除
-              </Button>
+      <div className="trusted-export-console-grid">
+        <div className="trusted-export-field-mapping trusted-export-builder">
+          <div className="trusted-export-field-mapping-header trusted-export-builder__header">
+            <Typography.Text strong>业务表字段映射</Typography.Text>
+            <Button size="small" onClick={addMappingRow}>
+              添加列
+            </Button>
+          </div>
+          <div className="trusted-export-builder__table">
+            <div className="trusted-export-builder__table-head">
+              <span />
+              <span />
+              <span className="trusted-export-builder__heading">
+                源字段
+                <IconInfoCircle />
+              </span>
+              <span className="trusted-export-builder__heading trusted-export-builder__heading--column">
+                <span>
+                  导出列名
+                  <IconInfoCircle />
+                </span>
+                <small>导出列名将写入交付文件,建议保持英文</small>
+              </span>
+              <span />
             </div>
-          ))}
-        </div>
-      </div>
-
-      {exportsQuery.isLoading ? <Spin /> : null}
-      {exportsQuery.isError ? (
-        <div className="trusted-export-empty-state">
-          <Empty title="导出列表加载失败" description={exportsQuery.error instanceof Error ? exportsQuery.error.message : '请稍后重试。'} />
-        </div>
-      ) : null}
-      {!exportsQuery.isLoading && !exportsQuery.isError && items.length === 0 ? (
-        <div className="trusted-export-empty-state">
-          <Empty
-            title={showArchived ? '暂无已归档快照' : '尚未导出'}
-            description={showArchived ? '归档后的快照会保留在这里,仍可下载审计。' : '点击"导出"按钮创建可信训练数据集快照。'}
-          />
-        </div>
-      ) : null}
-      {items.length > 0 ? (
-        <div className="trusted-export-table-shell">
-          <Table className="trusted-export-table" columns={columns} dataSource={items} rowKey="id" pagination={false} size="small" />
-          <div className="export-pagination">
-            <Pagination
-              total={exportsQuery.data?.total ?? 0}
-              currentPage={page}
-              pageSize={size}
-              showSizeChanger
-              onPageChange={(nextPage) => updateParams({ page: nextPage })}
-              onPageSizeChange={(nextSize) => updateParams({ page: 1, size: nextSize })}
-            />
+            <div className="trusted-export-field-mapping-list trusted-export-builder__list">
+              {groupedMappingRows.map((group) => (
+                <div className="trusted-export-builder__group" key={group.kind}>
+                  <div className="trusted-export-builder__group-label">{group.label}</div>
+                  <div className="trusted-export-builder__group-rows">
+                    {group.rows.map((row) => (
+                      <div className="trusted-export-field-mapping-row trusted-export-builder__row" key={row.id}>
+                        <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
+                        <SourceFieldCell row={row} onChange={(patch) => updateMappingRow(row.id, patch)} />
+                        <Input
+                          size="small"
+                          value={row.columnName}
+                          placeholder="导出列名"
+                          onChange={(value) => updateMappingRow(row.id, { columnName: value })}
+                        />
+                        <Button size="small" type="danger" theme="borderless" onClick={() => removeMappingRow(row.id)}>
+                          删除
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      ) : null}
+
+        <div className="trusted-export-snapshot-panel">
+          {exportsQuery.isLoading ? <Spin /> : null}
+          {exportsQuery.isError ? (
+            <div className="trusted-export-empty-state">
+              <Empty title="导出列表加载失败" description={exportsQuery.error instanceof Error ? exportsQuery.error.message : '请稍后重试。'} />
+            </div>
+          ) : null}
+          {!exportsQuery.isLoading && !exportsQuery.isError && items.length === 0 ? (
+            <div className="trusted-export-empty-state trusted-export-empty-state--snapshot">
+              <Empty
+                title={showArchived ? '暂无已归档快照' : '尚未导出'}
+                description={showArchived ? '归档后的快照会保留在这里,仍可下载审计。' : '点击"导出"按钮创建可信训练数据集快照。'}
+              />
+            </div>
+          ) : null}
+          {items.length > 0 ? (
+            <div className="trusted-export-table-shell">
+              <Table className="trusted-export-table" columns={columns} dataSource={items} rowKey="id" pagination={false} size="small" />
+              <div className="export-pagination">
+                <Pagination
+                  total={exportsQuery.data?.total ?? 0}
+                  currentPage={page}
+                  pageSize={size}
+                  showSizeChanger
+                  onPageChange={(nextPage) => updateParams({ page: nextPage })}
+                  onPageSizeChange={(nextSize) => updateParams({ page: 1, size: nextSize })}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
 
       {diffModalOpen && baseSnapshotId != null && compareSnapshotId != null ? (
         <ExportSnapshotDiffModal baseSnapshotId={baseSnapshotId} compareSnapshotId={compareSnapshotId} onClose={() => setDiffModalOpen(false)} />
       ) : null}
     </Card>
   );
+}
+
+function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChange: (patch: Partial<FieldMappingDraftRow>) => void }) {
+  const meta = SYSTEM_FIELD_META[row.source];
+  if (!meta) {
+    return (
+      <span className="trusted-export-source-field trusted-export-source-field--plain">
+        <Input
+          className="trusted-export-source-field__input"
+          size="small"
+          value={row.source}
+          placeholder="source: item.prompt / answer.label"
+          onChange={(source) => onChange({ source })}
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span className="trusted-export-source-field">
+      <span className="trusted-export-source-field__label">
+        {meta.label}
+        <Tooltip content={meta.description}>
+          <IconInfoCircle />
+        </Tooltip>
+      </span>
+      <Input
+        className="trusted-export-source-field__input"
+        size="small"
+        value={row.source}
+        placeholder="source: item.prompt / answer.label"
+        onChange={(source) => onChange({ source })}
+      />
+    </span>
+  );
+}
+
+function groupMappingRows(rows: FieldMappingDraftRow[]) {
+  const systemRows = rows.filter((row) => Boolean(SYSTEM_FIELD_META[row.source]));
+  const contentRows = rows.filter((row) => !SYSTEM_FIELD_META[row.source]);
+  return [
+    { kind: 'system', label: '系统溯源字段', rows: systemRows },
+    { kind: 'content', label: '业务内容字段', rows: contentRows },
+  ].filter((group) => group.rows.length > 0);
 }
 
 function buildFieldMapping(rows: FieldMappingDraftRow[]): ExportFieldMapping {
