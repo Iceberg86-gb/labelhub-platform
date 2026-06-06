@@ -9,7 +9,6 @@ verification across the six locked defense paths.
 - Browser: Codex in-app browser against local LabelHub dev services.
 - Image format: PNG.
 - Image dimensions: 2560 x 1600.
-- Zip bundle: `docs/screenshots/m6p6-after-set/m6p6-p6b2-full-after.zip`.
 - Images `08-export-diff-modal-after.png` and
   `09-ai-drawer-idempotency-hit-after.png` were re-captured after nits commit
   `5c03dcf`.
