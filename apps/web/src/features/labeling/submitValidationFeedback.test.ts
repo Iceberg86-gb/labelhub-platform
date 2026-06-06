@@ -44,6 +44,25 @@ describe('submit validation feedback', () => {
     expect(focusSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('marks the first error field for a visible mobile focus cue', () => {
+    document.body.innerHTML = `
+      <div data-labeling-field-id="previous_error" class="labeling-field--validation-focus"></div>
+      <div data-labeling-field-id="detailed_comment"><textarea></textarea></div>
+    `;
+    const validate = vi.fn().mockRejectedValue(new Error('invalid'));
+    const showWarning = vi.fn();
+
+    expect(triggerSubmitValidationFeedback({
+      validationErrors: [{ stableId: 'detailed_comment', reason: '最少 5 字' }],
+      fields,
+      form: { validate },
+      showWarning,
+    })).toBe(true);
+
+    expect(document.querySelector('[data-labeling-field-id="previous_error"]')?.classList.contains('labeling-field--validation-focus')).toBe(false);
+    expect(document.querySelector('[data-labeling-field-id="detailed_comment"]')?.classList.contains('labeling-field--validation-focus')).toBe(true);
+  });
+
   it('does not trigger feedback when there are no validation errors', () => {
     const validate = vi.fn();
     const showWarning = vi.fn();

@@ -161,9 +161,9 @@ export function LabelerMarketplacePage() {
           onEnterPress={applySearchFilters}
         />
         <Select
+          className="marketplace-deadline-filter"
           value={deadline ?? 'all'}
           onChange={(value) => setFilterParam('deadline', value === 'all' ? null : String(value))}
-          style={{ width: 132 }}
           aria-label="截止时间筛选"
         >
           <Select.Option value="all">全部截止</Select.Option>
