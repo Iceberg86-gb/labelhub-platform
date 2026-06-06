@@ -5494,11 +5494,19 @@ a {
 }
 
 .trusted-export-builder__row {
-  min-height: 62px;
+  min-height: 72px;
   padding: var(--space-8) var(--space-12);
   border-bottom: 1px solid var(--color-border-subtle);
   border-radius: 0;
   background: var(--color-main-surface);
+}
+
+.trusted-export-builder__row > * {
+  align-self: center;
+}
+
+.trusted-export-builder__row > .semi-button {
+  justify-self: start;
 }
 
 .trusted-export-builder__row:last-child {
@@ -5509,6 +5517,8 @@ a {
   display: grid;
   min-width: 0;
   gap: var(--space-6);
+  align-self: center;
+  justify-self: stretch;
 }
 
 .trusted-export-source-field__label {
@@ -5518,14 +5528,41 @@ a {
   gap: var(--space-6);
   color: var(--color-text-primary);
   font-weight: var(--font-weight-table-header);
+  line-height: 1.2;
 }
 
-.trusted-export-source-field__label svg {
+.trusted-export-source-field__label .semi-icon,
+.trusted-export-builder__heading .semi-icon,
+.trusted-export-builder__heading--column .semi-icon {
   color: var(--color-text-tertiary);
 }
 
+.trusted-export-source-field__label .semi-tooltip-wrapper,
+.trusted-export-source-field__label .semi-icon,
+.trusted-export-builder__heading .semi-icon,
+.trusted-export-builder__heading--column .semi-icon {
+  border: 0;
+  box-shadow: none;
+  outline: 0;
+}
+
+.trusted-export-source-field__label .semi-tooltip-wrapper:focus-visible,
+.trusted-export-source-field__label .semi-icon:focus-visible,
+.trusted-export-builder__heading .semi-icon:focus-visible,
+.trusted-export-builder__heading--column .semi-icon:focus-visible {
+  border-radius: var(--radius-button-default);
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.trusted-export-source-field__input,
+.trusted-export-column-input {
+  width: 100%;
+}
+
 .trusted-export-source-field__input .semi-input,
-.trusted-export-builder__row > .semi-input-wrapper .semi-input {
+.trusted-export-column-input .semi-input {
+  min-height: 32px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
