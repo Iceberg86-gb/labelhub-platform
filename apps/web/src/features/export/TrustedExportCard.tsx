@@ -433,16 +433,10 @@ function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChang
       <span className="trusted-export-source-field__label">
         {meta.label}
         <Tooltip content={meta.description}>
-          <IconInfoCircle />
+          <IconInfoCircle size="small" />
         </Tooltip>
       </span>
-      <Input
-        className="trusted-export-source-field__input"
-        size="small"
-        value={row.source}
-        placeholder="source: item.prompt / answer.label"
-        onChange={(source) => onChange({ source })}
-      />
+      <code className="trusted-export-source-field__code">{row.source}</code>
     </span>
   );
 }

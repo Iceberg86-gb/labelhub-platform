@@ -5510,20 +5510,35 @@ a {
 
 .trusted-export-source-field {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-8);
   min-width: 0;
-  gap: var(--space-4);
-  justify-self: stretch;
 }
 
 .trusted-export-source-field__label {
   display: inline-flex;
-  min-width: 0;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-4);
   color: var(--color-text-primary);
   font-weight: var(--font-weight-table-header);
+  white-space: nowrap;
   line-height: 1.2;
+}
+
+.trusted-export-source-field__code {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .trusted-export-source-field__label .semi-icon,
