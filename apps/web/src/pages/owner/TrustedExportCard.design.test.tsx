@@ -148,7 +148,7 @@ describe('TrustedExportCard design shell', () => {
     expect(html).toContain('trusted-export-flow-strip');
     expect(html).toContain('trusted-export-command-strip');
     expect(html).toContain('trusted-export-builder');
-    expect(html).toContain('trusted-export-builder__row');
+    expect(html).toContain('trusted-export-mapping-row');
     expect(html).toContain('trusted-export-snapshot-panel');
     expect(html).toContain('trusted-export-table-shell');
     expect(html).toContain('trusted-export-table');

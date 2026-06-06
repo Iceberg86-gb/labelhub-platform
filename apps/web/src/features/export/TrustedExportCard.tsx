@@ -350,11 +350,11 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
                   <div className="trusted-export-builder__group-label">{group.label}</div>
                   <div className="trusted-export-builder__group-rows">
                     {group.rows.map((row) => (
-                      <div className="trusted-export-field-mapping-row trusted-export-builder__row" key={row.id}>
+                      <div className="trusted-export-mapping-row" key={row.id}>
                         <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
                         <SourceFieldCell row={row} onChange={(patch) => updateMappingRow(row.id, patch)} />
                         <Input
-                          className="trusted-export-column-input"
+                          className="trusted-export-mapping-row__column-input"
                           size="small"
                           value={row.columnName}
                           placeholder="导出列名"
@@ -416,9 +416,9 @@ function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChang
   const meta = SYSTEM_FIELD_META[row.source];
   if (!meta) {
     return (
-      <span className="trusted-export-source-field">
+      <span className="trusted-export-mapping-row__source">
         <Input
-          className="trusted-export-source-field__input"
+          className="trusted-export-mapping-row__source-input"
           size="small"
           value={row.source}
           placeholder="source: item.prompt / answer.label"
@@ -429,14 +429,14 @@ function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChang
   }
 
   return (
-    <span className="trusted-export-source-field">
-      <span className="trusted-export-source-field__label">
+    <span className="trusted-export-mapping-row__source">
+      <span className="trusted-export-mapping-row__source-label">
         {meta.label}
         <Tooltip content={meta.description}>
           <IconInfoCircle size="small" />
         </Tooltip>
       </span>
-      <code className="trusted-export-source-field__code">{row.source}</code>
+      <code className="trusted-export-mapping-row__source-code">{row.source}</code>
     </span>
   );
 }
