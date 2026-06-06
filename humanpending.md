@@ -645,3 +645,13 @@
 整理总结论:docs 为结构完整的审计资产库(ADR 16 篇、批次三件套约 120 篇、截图证据约 100 张带 INDEX 编目),系答辩方法论实物证据,大规模删除等于自毁证据链,本批仅清真冗余与归位,历史档案全量保留。
 
 落账勘误:本条首次落盘丢失 ## 标题前缀与段间空行,致五锚 grep 索引失配,当场由 Codex 修正格式,正文文字零改动。
+
+## 248. 架构图集:四图交付与基线漂移发现(2026-06-06)
+
+交付:docs/architecture/diagrams/ 四文件——system-overview(C4 容器级,含 13 模块分组)、deployment(7 服务 compose 全景)、core-flow-sequence(主链路时序)、core-flow-revision(打回分支时序)。Mermaid 双语,实证驱动,每图带明细表与实证来源。三 commit:d9077c25 初版 / e0384854 一轮返修(契约移出运行链、Submission 状态机归位、打回分支、redis 补查)/ 22df8709 二轮返修(节点与箭头瘦身、细节下沉明细表、主链与分支拆图、终审门 Actor 实证保留 Reviewer)。
+
+取证发现(基线文档与代码漂移,入挂账):①基线七模块简写过期,实际 13 包;②基线"独立 Export Worker"不存在,agent 容器双 worker;③基线端口暴露描述过期,生产仅暴露 nginx 8443;④LLM 接入为 openai-compatible 运行态 + DB registry 优先 + env fallback,非固定 SDK;⑤基线旧状态机表过期,以 state-machine-submission.md 为准。
+
+redis 实证:全仓 grep 仅命中两份 compose 定义,无业务消费者,图中如实标注,列为候选裁剪项(挂账)。
+
+挂账新增:设计基线文档(labelhub-complete-design-baseline.md)需开修订批次对齐代码现状(上述五条漂移);redis 容器候选裁剪。
