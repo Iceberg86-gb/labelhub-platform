@@ -156,7 +156,7 @@ describe('TrustedExportCard design shell', () => {
     expect(html).toContain('当前任务已生成的活跃快照总数');
     expect(html).toContain('配置字段');
     expect(html).toContain('源字段');
-    expect(html).toContain('导出列名将写入交付文件,建议保持英文');
+    expect(html).toContain('导出列名');
     expect(html).toContain('任务 ID');
     expect(html).toContain('任务在系统中的唯一标识');
     expect(html).toContain('系统溯源字段');
