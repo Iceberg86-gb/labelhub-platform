@@ -1,5 +1,19 @@
 import { Card, Tag, Typography } from '@douyinfe/semi-ui';
 import {
+  IconAIWandLevel1,
+  IconArticle,
+  IconBox,
+  IconCalendar,
+  IconCheckboxTick,
+  IconCode,
+  IconEyeOpened,
+  IconHash,
+  IconRadio,
+  IconTabsStroked,
+  IconText,
+  IconUpload,
+} from '@douyinfe/semi-icons';
+import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
@@ -39,6 +53,21 @@ export const FIELD_TYPE_PALETTE_GROUPS: Array<{ title: string; types: SchemaFiel
   { title: '内容录入', types: ['text', 'number', 'rich_text', 'file_upload'] },
   { title: '容器与高级组件', types: ['nested_object', 'tab_container', 'json_editor', 'llm_interaction'] },
 ];
+
+const FIELD_TYPE_PALETTE_ICONS: Record<SchemaFieldType, JSX.Element> = {
+  show_item: <IconEyeOpened />,
+  single_select: <IconRadio />,
+  multi_select: <IconCheckboxTick />,
+  date: <IconCalendar />,
+  text: <IconText />,
+  number: <IconHash />,
+  rich_text: <IconArticle />,
+  file_upload: <IconUpload />,
+  nested_object: <IconBox />,
+  tab_container: <IconTabsStroked />,
+  json_editor: <IconCode />,
+  llm_interaction: <IconAIWandLevel1 />,
+};
 
 export function groupPaletteTypes(types: readonly SchemaFieldType[] = SCHEMA_FIELD_TYPES) {
   const knownTypes = new Set(types);
@@ -201,6 +230,9 @@ function PaletteItem({ type }: { type: SchemaFieldType }) {
       role="button"
       tabIndex={0}
     >
+      <span className="field-type-palette__icon" aria-hidden>
+        {FIELD_TYPE_PALETTE_ICONS[type]}
+      </span>
       <Tag className="semantic-tag semantic-tag--accent" size="small">
         {SCHEMA_FIELD_TYPE_LABELS[type]}
       </Tag>
