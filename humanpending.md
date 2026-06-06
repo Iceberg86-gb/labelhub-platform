@@ -633,3 +633,8 @@
 修复:rsync + rebuild 后 flyway_schema_history 顶部 202612101310 success=1;senior 账号经注册页创建(id 1005),SQL 清默认角色、授 SENIOR_REVIEWER;终态矩阵五账号各一角色实证干净;浏览器实登两账号通过(含 reviewer_demo 无 senior 复审入口负向检查)。
 附注一:修复回执中健康 curl 因 sleep 不足失败致日志 grep 未执行,迁移证据改以 flyway_schema_history 落库记录为准。
 附注二:流程规则变更(owner 裁决):自本条起,closure 落账统一由 Codex 代理执行,"closure 文本永不进 Codex 输入"条款废止;五锚核验永远 owner 亲手执行,不得代理。
+247. docs 整理:垃圾清除与批次文档归位(2026-06-06)
+决策(owner 点选):D1=1-A 顶层 5 个 backend-batch-* 移入 docs/internal/;D2=2-A internal 约 120 个历史批次文档零移动原样保留;D3=3-A superpowers/plans 唯一文件移入 docs/internal/、空目录删除。审计师初判 coderules.md 与 CODEX.md 合并候选,实证职能不重叠(架构师宪章 vs 开发协同契约),撤回,均保留。
+执行(Codex 代理,commit 3d41f42e):4 个未追踪 .DS_Store 删盘(.gitignore 已有规则未改);冗余 zip m6p6-p6b2-full-after.zip 删除(同目录 p6b2-full/ 为其解压版保留),INDEX.md 引用行同步删除;6 个 git mv 均为纯 rename 零内容修改。引用三轮 grep:humanpending.md 全程零命中零触碰;superpowers:executing-plans 为技能名非路径,正确未改。
+事故记录:首轮执行在步骤 3 前置检查中断——实现 prompt 写"顶层 batch 文档"未带 docs/ 前缀,Codex 在仓库根查无此文件,按规停止、零变通、如实回报,owner 实证 5 文件原地完好后以修正路径续作。归因:审计师 prompt 路径歧义。该中断是停止协议按设计工作的正面案例。
+整理总结论:docs 为结构完整的审计资产库(ADR 16 篇、批次三件套约 120 篇、截图证据约 100 张带 INDEX 编目),系答辩方法论实物证据,大规模删除等于自毁证据链,本批仅清真冗余与归位,历史档案全量保留。
