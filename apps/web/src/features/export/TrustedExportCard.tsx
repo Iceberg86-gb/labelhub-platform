@@ -350,7 +350,12 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
                   <div className="trusted-export-builder__group-label">{group.label}</div>
                   <div className="trusted-export-builder__group-rows">
                     {group.rows.map((row) => (
-                      <div className="trusted-export-field-mapping-row trusted-export-builder__row" key={row.id}>
+                      <div
+                        className={`trusted-export-field-mapping-row trusted-export-builder__row ${
+                          SYSTEM_FIELD_META[row.source] ? 'trusted-export-builder__row--system' : 'trusted-export-builder__row--plain'
+                        }`}
+                        key={row.id}
+                      >
                         <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
                         <SourceFieldCell row={row} onChange={(patch) => updateMappingRow(row.id, patch)} />
                         <Input
