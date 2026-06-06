@@ -3650,6 +3650,10 @@ a {
   gap: 14px;
 }
 
+.publish-schema-modal .modal-actions {
+  padding: 8px 0 22px;
+}
+
 .publish-schema-warning,
 .publish-schema-error {
   padding: 12px 14px;
