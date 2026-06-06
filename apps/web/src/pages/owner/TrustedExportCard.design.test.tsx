@@ -15,8 +15,16 @@ const routeState = vi.hoisted(() => ({
 
 vi.mock('@douyinfe/semi-icons', () => ({
   IconArchive: () => <span />,
+  IconArrowRight: () => <span />,
+  IconConfigStroked: () => <span />,
+  IconDownload: () => <span />,
+  IconInfoCircle: () => <span />,
+  IconList: () => <span />,
   IconRefresh: () => <span />,
+  IconServer: () => <span />,
+  IconShield: () => <span />,
   IconUpload: () => <span />,
+  IconUser: () => <span />,
 }));
 
 function MockSelect({ children, className }: { children?: ReactNode; className?: string }) {
@@ -64,6 +72,12 @@ vi.mock('@douyinfe/semi-ui', () => ({
     </table>
   ),
   Tag: ({ children, className }: { children?: ReactNode; className?: string }) => <span className={className}>{children}</span>,
+  Tooltip: ({ children, content }: { children?: ReactNode; content?: ReactNode }) => (
+    <span>
+      {children}
+      {content}
+    </span>
+  ),
   Toast: {
     error: vi.fn(),
     success: vi.fn(),
@@ -131,12 +145,22 @@ describe('TrustedExportCard design shell', () => {
     expect(html).toContain('trusted-export-card trusted-export-card--console');
     expect(html).toContain('trusted-export-console-hero');
     expect(html).toContain('trusted-export-status-strip');
+    expect(html).toContain('trusted-export-flow-strip');
     expect(html).toContain('trusted-export-command-strip');
     expect(html).toContain('trusted-export-builder');
-    expect(html).toContain('trusted-export-builder__row');
+    expect(html).toContain('trusted-export-mapping-row');
+    expect(html).toContain('trusted-export-snapshot-panel');
     expect(html).toContain('trusted-export-table-shell');
     expect(html).toContain('trusted-export-table');
     expect(html).toContain('可信快照控制台');
+    expect(html).toContain('当前任务已生成的活跃快照总数');
+    expect(html).toContain('配置字段');
+    expect(html).toContain('源字段');
+    expect(html).toContain('导出列名');
+    expect(html).toContain('任务 ID');
+    expect(html).toContain('任务在系统中的唯一标识');
+    expect(html).toContain('系统溯源字段');
+    expect(html).toContain('业务内容字段');
     expect(html).toContain('可复现');
     expect(html).toContain('业务表字段映射');
     expect(html).toContain('CSV');
