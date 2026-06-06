@@ -574,3 +574,17 @@
 **方法论沉淀**:Stitch 用法定型——视觉概念生成器,输入截图+约束 prompt,产出仅作对标基准,代码一律 Codex 在既有组件体系内实现;AI 生成文案必须过"真实能力"审计,虚构功能承诺一律拒收。
 
 **本批 closure 为 241 新规首跑**:文本审计师起草、owner 过目转交、Codex 受控落账、owner 亲手五锚。
+
+## 243. Schema 设计器视觉精修(2026-06-06)
+
+**状态**: COMPLETED
+**实现 commit**: 051359a5 + a0fbeed6(分支 codex/designer-polish,merge 入 main)
+
+**内容**(Product design mock 落地,层级 1:四栏骨架不动):
+- 现状对齐原则首次成文并执行:mock 仅作视觉基准,现状存在的元素重样式,不存在的功能元素零新增;勘察先行,五项疑似新功能逐项核对均为"存在→重样式",跳过项零。
+- 物料区:物料卡 Semi Icons + hover/拖起态,分组标题层级;画布:字段卡把手/徽标/选中蓝边/错误红态、落点指示;属性面板:浅蓝分区标题条、选项行重样式、添加选项虚线框;Schema 预览:卡片化(预览组件本体在 labeling 禁区,纯 CSS 侧精修);页头按钮组与四栏配比对齐 mock;卡片质感与 242 批登录页统一。
+- 返修一轮:发布弹窗 footer 间距(归因为历史债——PublishSchemaModal footer={null} 且 .modal-actions 无底部 padding,非本批引入;作用域限定修复,拒绝全局 .semi-modal-footer)。
+
+**铁证**:零抢跑 main=25ed4bf0;diff 恰 5 文件;逻辑哨兵(useDrag/useDrop/onDrop/mutation/onSubmit/navigate/publish)零命中(返修后唯一命中为 CSS 类名字样);新增中文文案哨兵零命中;labeling/contracts/services/db 禁区零碰;**CSS 作用域哨兵**(新增审计项):新增选择器无裸命中 Semi/Formily 全局类,Schema 预览精修不外溢标注作答页;59 files / 293 tests + typecheck 全绿。live:视觉对版、交互回归八连(拖拽创建/排序/选中联动/选项增删/必填开关/JSON 预览/发布 v2 真实走通/重置预览)、红线旁证(labeler 作答页观感零变化)、窄屏四栏不崩,全过。
+
+**方法论沉淀**:视觉精修批新增两道闸——勘察先行(mock 元素存在性逐项核对,防"顺手加功能");CSS 作用域哨兵(共用运行时组件的页面,样式批必须验选择器作用域,防红线被 CSS 绕过)。
