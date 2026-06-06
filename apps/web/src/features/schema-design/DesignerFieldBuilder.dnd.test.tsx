@@ -5,9 +5,21 @@ import type { SchemaFieldType } from '../../entities/schema/schemaTypes';
 import { renderClient } from '../labeling/formily/__tests__/renderClient';
 
 vi.mock('@douyinfe/semi-icons', () => ({
+  IconAIWandLevel1: () => <span />,
+  IconArticle: () => <span />,
+  IconBox: () => <span />,
+  IconCalendar: () => <span />,
+  IconCheckboxTick: () => <span />,
+  IconCode: () => <span />,
   IconDelete: () => <span>delete</span>,
   IconHandle: () => <span>handle</span>,
+  IconEyeOpened: () => <span />,
+  IconHash: () => <span />,
   IconPlus: () => <span>plus</span>,
+  IconRadio: () => <span />,
+  IconTabsStroked: () => <span />,
+  IconText: () => <span />,
+  IconUpload: () => <span />,
 }));
 
 vi.mock('@douyinfe/semi-ui', () => ({

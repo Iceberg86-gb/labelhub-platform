@@ -70,7 +70,7 @@ export function SelectFieldEditor({ field, onChange, errors }: FieldEditorProps)
             </div>
           ))}
         </div>
-        <Button icon={<IconPlus />} onClick={addOption}>
+        <Button className="select-option-add-button" icon={<IconPlus />} onClick={addOption}>
           添加选项
         </Button>
       </EditorSection>
