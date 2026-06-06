@@ -1,11 +1,29 @@
 import { createForm } from '@formily/core';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 import type { AnswerPayload } from '../../../../entities/submission/answerPayload';
 import { formilyValuesToAnswerPayload } from '../adapters/formilyValuesToAnswerPayload';
 import { schemaToFormilyISchema } from '../adapters/schemaToFormilyISchema';
 import { createSchemaFormilyForm, SchemaFormilyRenderer } from '../SchemaFormilyRenderer';
 import { renderClient } from './renderClient';
+
+const virtualizerMocks = vi.hoisted(() => ({
+  useVirtualizer: vi.fn(({ count }: { count: number }) => ({
+    getTotalSize: () => count * 112,
+    getVirtualItems: () =>
+      Array.from({ length: Math.min(count, 3) }, (_, index) => ({
+        index,
+        key: index,
+        size: 112,
+        start: index * 112,
+      })),
+    measureElement: vi.fn(),
+  })),
+}));
+
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: virtualizerMocks.useVirtualizer,
+}));
 
 const schemaFields: SchemaField[] = [
   { stableId: 'title', label: 'Title', type: 'text', validation: { required: true } },
@@ -49,6 +67,10 @@ const payload: AnswerPayload = {
 };
 
 describe('SchemaFormilyRenderer', () => {
+  afterEach(() => {
+    virtualizerMocks.useVirtualizer.mockClear();
+  });
+
   it('mounts without throwing for a 7-type schema', () => {
     const view = renderClient(
       <SchemaFormilyRenderer schemaFields={schemaFields} value={payload} readOnly={false} onChange={() => {}} />,
@@ -94,6 +116,43 @@ describe('SchemaFormilyRenderer', () => {
     expect(form?.values.title).toBe('Existing');
     expect(form?.values.meta).toEqual({ note: 'nested' });
     view.unmount();
+  });
+
+  it('uses measured container width for virtualized initialRect', () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = vi.fn(function getBoundingClientRect(this: HTMLElement) {
+      if (this instanceof HTMLElement && this.classList.contains('schema-formily-virtual-scroll')) {
+        return {
+          bottom: 720,
+          height: 720,
+          left: 0,
+          right: 360,
+          top: 0,
+          width: 360,
+          x: 0,
+          y: 0,
+          toJSON: () => {},
+        } as DOMRect;
+      }
+      return originalGetBoundingClientRect.call(this);
+    });
+    const virtualFields = Array.from({ length: 51 }, (_, index) => ({
+      stableId: `field_${index}`,
+      label: `Field ${index}`,
+      type: 'text' as const,
+    }));
+
+    const view = renderClient(
+      <SchemaFormilyRenderer schemaFields={virtualFields} value={{}} readOnly={false} onChange={() => {}} />,
+    );
+    try {
+      expect(virtualizerMocks.useVirtualizer).toHaveBeenLastCalledWith(
+        expect.objectContaining({ initialRect: { width: 360, height: 720 } }),
+      );
+    } finally {
+      view.unmount();
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
   });
 
   it('supports external errors through Formily field state', () => {

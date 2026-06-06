@@ -31,6 +31,7 @@ export function SubmitConfirmModal({
       okText="确认提交"
       cancelText="取消"
       confirmLoading={loading}
+      width="min(520px, calc(100vw - 32px))"
     >
       <div className="submit-modal-summary">
         <Typography.Text type="warning">提交后将无法修改答案,session 状态会变为已提交。</Typography.Text>
