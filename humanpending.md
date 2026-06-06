@@ -588,3 +588,17 @@
 **铁证**:零抢跑 main=25ed4bf0;diff 恰 5 文件;逻辑哨兵(useDrag/useDrop/onDrop/mutation/onSubmit/navigate/publish)零命中(返修后唯一命中为 CSS 类名字样);新增中文文案哨兵零命中;labeling/contracts/services/db 禁区零碰;**CSS 作用域哨兵**(新增审计项):新增选择器无裸命中 Semi/Formily 全局类,Schema 预览精修不外溢标注作答页;59 files / 293 tests + typecheck 全绿。live:视觉对版、交互回归八连(拖拽创建/排序/选中联动/选项增删/必填开关/JSON 预览/发布 v2 真实走通/重置预览)、红线旁证(labeler 作答页观感零变化)、窄屏四栏不崩,全过。
 
 **方法论沉淀**:视觉精修批新增两道闸——勘察先行(mock 元素存在性逐项核对,防"顺手加功能");CSS 作用域哨兵(共用运行时组件的页面,样式批必须验选择器作用域,防红线被 CSS 绕过)。
+
+## 244. Labeler 提交按钮对比度修复(2026-06-06)
+
+**状态**: COMPLETED
+**实现 commit**: ffd2a9e2(分支 codex/submit-contrast,merge 入 main)
+
+**内容**:
+- owner 报障:作答页头 sticky 操作区「提交」按钮文字看不清。审计勘察三连(状态对照排除禁用态 → 组件定位 LabelerSessionPage/pages 非红线 → styles.css 逐段取证)定位根因:`.labeler-session-actions--sticky .semi-button-primary` 历史规则只重写 background 未锁 color,文字在 0.82 半透明白 pill 上对比度失效。
+- 定性:历史样式债(早期页头打磨批遗留),非 242/243 批外溢,无需事故溯源。
+- 修复:该选择器三态(默认/hover/active)补 color:#fff + border/background 统一 accent-blue 体系;全选择器保持 sticky 作用域前缀,零裸全局规则。Codex 同文件排查确认 --sticky 作用域内仅此一处半改写;owner/labeler-submission-header 不复用该结构不受影响。
+
+**铁证**:零抢跑 main=e415fcb5;diff 仅 styles.css 单文件;新增选择器全带作用域前缀;typecheck + 59 files / 293 tests 绿;live 三态目验清晰、变量渲染正常。
+
+**方法论沉淀**:CSS 重写组件样式必须成套(background/color/border 三件套 + hover/active 态),半改写是对比度隐患温床;此类报障先做状态对照(禁用态 vs bug)再动手。
