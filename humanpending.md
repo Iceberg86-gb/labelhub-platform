@@ -620,3 +620,16 @@
 **部署**:deploy-web.sh,生产已上线。
 
 **方法论沉淀**:像素级布局问题两轮返修不收敛即停止增量修补,改"终态规格重写"(完整代码 + class 物理隔离 + 删除清单),增量补丁叠加在矛盾布局假设上永不收敛;owner 直发 Codex 的改动需回头知会审计师,保证台账可归因。
+
+## 246 senior_reviewer_demo 账号 + 生产清库(双事合账)
+
+决策:1-A senior 进 demo-seed;2-A 业务表清零、基础设施五张保留;3-A reviewer_demo 剥离 SENIOR_REVIEWER(migration)。
+代码:codex/senior-demo(4dd183c0)merge 入 main = 4bf8d7d2;migrations 26→27;本地四账号矩阵 + 705 tests 绿。
+生产:备份双落(/opt/labelhub-backups/labelhub-pre-clean-20260607-0102.sql,本地 Desktop 各一份);22 张业务表 TRUNCATE,COUNT(*) 实证全零。
+
+事故一:生产手动 INSERT senior 账号用 id 1004,与 platform_admin 冲突,INSERT IGNORE 静默吞掉,账号未建成,登录失败才暴露。教训:生产手动 INSERT 不用 IGNORE,id 不手指定。
+事故二:后端重建漏跑 deploy-web.sh rsync,服务器 build 旧代码,V202612101310 未上生产,flyway 停在 202612101200。教训:重建前必跑 rsync 拉平,已写入交接纪律。
+
+修复:rsync + rebuild 后 flyway_schema_history 顶部 202612101310 success=1;senior 账号经注册页创建(id 1005),SQL 清默认角色、授 SENIOR_REVIEWER;终态矩阵五账号各一角色实证干净;浏览器实登两账号通过(含 reviewer_demo 无 senior 复审入口负向检查)。
+附注一:修复回执中健康 curl 因 sleep 不足失败致日志 grep 未执行,迁移证据改以 flyway_schema_history 落库记录为准。
+附注二:流程规则变更(owner 裁决):自本条起,closure 落账统一由 Codex 代理执行,"closure 文本永不进 Codex 输入"条款废止;五锚核验永远 owner 亲手执行,不得代理。
