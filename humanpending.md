@@ -602,3 +602,21 @@
 **铁证**:零抢跑 main=e415fcb5;diff 仅 styles.css 单文件;新增选择器全带作用域前缀;typecheck + 59 files / 293 tests 绿;live 三态目验清晰、变量渲染正常。
 
 **方法论沉淀**:CSS 重写组件样式必须成套(background/color/border 三件套 + hover/active 态),半改写是对比度隐患温床;此类报障先做状态对照(禁用态 vs bug)再动手。
+
+## 245. 可信快照控制台呈现层优化(2026-06-06)
+
+**状态**: COMPLETED
+**实现 commit**: 1a895911 起共 8 commit(分支 codex/export-polish,merge 入 main)
+
+**内容**(三决策定调:1-A 前端字典 / 2-A 导出列名保持英文 / 3-A 呈现层,导出逻辑零碰):
+- 核心原则:英文字段名是数据契约,优化方式为"中文标签 + 英文名共存"而非翻译替换;七条系统字段字典(task_id/dataset_item_id/submission_id/schema_version_id/submitted_at/final_verdict/reviewed_at)前端硬编码,自定义字段显原名。
+- 落地:头部三统计卡(30/70 图标文字区,等高)、四步流程引导条(等分 grid,箭头居中)、字段映射表(表头与行同构对齐含分组轨道列、系统/业务分组竖标、源字段单行"中文标签+code 胶囊")、双栏布局等高、空态插画、等宽字体统一。
+- **七轮返修实录**(审计学费,如实入账):双行布局对齐三刀失败(margin-top 魔法数字补偿逐行漂移)→ 宣布 prompt 增量迭代破产 → 终态规格重写方案(export-mapping-rewrite.md:旧样式整段删除 + class 前缀物理隔离 + 终态代码逐行给出)一刀落地 → 后续四刀均为数值级微调(流程条等分/表头轨道/字体/统计卡)。
+- owner 直发指令一刀(55c0b4b1):删除表头双 info 图标与导出列名副说明,锁定文案清单相应作废两条;指令来源 owner,内容合规,流程上补记归因。
+- 值绑定自查:重写后九行映射值渲染完好,业务字段 item.text/answer.title 绑定无回归。
+
+**铁证**:零抢跑 main=166efddf;diff 3 文件(TrustedExportCard.tsx/styles.css/design.test);逻辑哨兵(mutation/onSubmit/navigate/useExport/snapshot.*select/compare)全程零命中;新增中文全部来自锁定清单;CSS 全程 trusted-export 前缀作用域;59 files / 293 tests + typecheck 八轮全绿。live:字段交互(勾选/列名编辑/添加列/删除)、真导出两次、双快照对比、下载验英文列名、窄屏退化,owner 验证通过。
+
+**部署**:deploy-web.sh,生产已上线。
+
+**方法论沉淀**:像素级布局问题两轮返修不收敛即停止增量修补,改"终态规格重写"(完整代码 + class 物理隔离 + 删除清单),增量补丁叠加在矛盾布局假设上永不收敛;owner 直发 Codex 的改动需回头知会审计师,保证台账可归因。
