@@ -354,6 +354,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
                         <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
                         <SourceFieldCell row={row} onChange={(patch) => updateMappingRow(row.id, patch)} />
                         <Input
+                          className="trusted-export-column-input"
                           size="small"
                           value={row.columnName}
                           placeholder="导出列名"
