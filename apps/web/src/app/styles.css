@@ -6435,6 +6435,37 @@ a {
     width: 100%;
   }
 
+  .labeler-workbench-toolbar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .labeler-workbench-toolbar > .semi-typography {
+    flex: 0 0 100%;
+    text-align: center;
+  }
+
+  .labeler-workbench-toolbar > .semi-space {
+    display: inline-flex;
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .labeler-workbench-toolbar > .semi-space .semi-button {
+    width: auto;
+    min-width: 44px;
+    flex: 0 0 auto;
+  }
+
+  .labeler-workbench-toolbar > .semi-space .semi-typography {
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .labeler-workbench-toolbar .semi-button,
   .labeler-page .semi-button,
   .labeler-session-page .semi-button,
@@ -6450,6 +6481,10 @@ a {
     align-items: stretch;
   }
 
+  .labeler-session-navigation .semi-typography {
+    white-space: nowrap;
+  }
+
   .labeler-session-jump-select {
     flex: 1 1 220px;
     max-width: 100%;
@@ -6458,6 +6493,97 @@ a {
 
   .labeler-session-card--answer {
     --labeler-answer-card-padding: 16px;
+  }
+
+  .labeler-session-header > div:first-child {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .labeler-session-header > div:first-child > .page-title {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .labeler-session-header > div:first-child > .semi-space {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-8);
+  }
+
+  .labeler-session-header > div:first-child > .semi-space > .semi-space-item {
+    display: inline-flex;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .labeler-session-header > div:first-child > .semi-space > .semi-space-item:nth-child(3) {
+    display: block;
+    flex: 0 0 100%;
+  }
+
+  .labeler-session-header > div:first-child > .semi-space > .semi-space-item:nth-child(3) .semi-typography,
+  .labeler-session-header > div:first-child > .semi-space > .semi-typography:last-child {
+    display: block;
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .labeler-session-header > div:first-child > .semi-space .semantic-tag {
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .labeler-session-header > div:first-child > .semi-space .semantic-tag .semi-tag-content {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .labeler-submission-header > div:first-child {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .labeler-submission-header > div:first-child > .semi-space {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-8);
+  }
+
+  .labeler-submission-header > .semi-typography {
+    display: block;
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .labeler-submission-header .semantic-tag {
+    max-width: 100%;
+    height: auto;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .labeler-submission-header .semantic-tag .semi-tag-content {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
   }
 
   .labeler-session-actions--sticky {
