@@ -1,7 +1,6 @@
 import { Button, Card, Checkbox, Empty, Input, Pagination, Popconfirm, Select, Space, Spin, Table, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import {
   IconArchive,
-  IconArrowRight,
   IconConfigStroked,
   IconDownload,
   IconInfoCircle,
@@ -12,7 +11,7 @@ import {
   IconUpload,
   IconUser,
 } from '@douyinfe/semi-icons';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ExportFieldMapping, ExportSnapshot } from '../../entities/export/exportTypes';
 import { TruncatedHash } from '../../shared/ui/TruncatedHash';
@@ -278,11 +277,13 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 
       <div className="trusted-export-flow-strip" aria-label="Export workflow">
         {EXPORT_FLOW_STEPS.map((step, index) => (
-          <span className="trusted-export-flow-step" key={step.label}>
-            <span className="trusted-export-flow-step__icon">{step.icon}</span>
-            <span>{step.label}</span>
-            {index < EXPORT_FLOW_STEPS.length - 1 ? <IconArrowRight className="trusted-export-flow-step__arrow" /> : null}
-          </span>
+          <Fragment key={step.label}>
+            <span className="trusted-export-flow-step">
+              <span className="trusted-export-flow-step__icon">{step.icon}</span>
+              <span>{step.label}</span>
+            </span>
+            {index < EXPORT_FLOW_STEPS.length - 1 ? <span className="trusted-export-flow-connector" aria-hidden="true" /> : null}
+          </Fragment>
         ))}
       </div>
 
@@ -329,7 +330,6 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
           </div>
           <div className="trusted-export-builder__table">
             <div className="trusted-export-builder__table-head">
-              <span />
               <span />
               <span className="trusted-export-builder__heading">
                 源字段

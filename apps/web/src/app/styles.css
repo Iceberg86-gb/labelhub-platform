@@ -5335,8 +5335,8 @@ a {
 
 .trusted-export-flow-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--space-12);
+  grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+  column-gap: var(--space-12);
   align-items: center;
   margin-bottom: var(--space-16);
   padding: var(--space-12) var(--space-16);
@@ -5346,9 +5346,10 @@ a {
 }
 
 .trusted-export-flow-step {
-  display: inline-grid;
-  grid-template-columns: 28px minmax(0, auto) 1fr;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  justify-self: center;
   gap: var(--space-8);
   min-width: 0;
   color: var(--color-text-secondary);
@@ -5367,9 +5368,25 @@ a {
   color: var(--color-accent-blue);
 }
 
-.trusted-export-flow-step__arrow {
-  justify-self: end;
+.trusted-export-flow-connector {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 1px;
+  background: var(--color-text-tertiary);
+}
+
+.trusted-export-flow-connector::after {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 7px;
+  height: 7px;
+  border-top: 1px solid currentColor;
+  border-right: 1px solid currentColor;
   color: var(--color-text-tertiary);
+  content: "";
+  transform: translateY(-50%) rotate(45deg);
 }
 
 .trusted-export-command-strip {
@@ -5416,9 +5433,9 @@ a {
 
 .trusted-export-builder__table-head {
   display: grid;
-  grid-template-columns: minmax(88px, 0.28fr) 32px minmax(210px, 1fr) minmax(220px, 1.06fr) 58px;
+  grid-template-columns: 24px minmax(0, 1.25fr) minmax(0, 1fr) 52px;
   align-items: center;
-  gap: var(--space-8);
+  column-gap: var(--space-12);
   min-height: 58px;
   padding: 0 var(--space-12);
   border-bottom: 1px solid var(--color-border-subtle);
@@ -5433,21 +5450,26 @@ a {
   color: var(--color-text-primary);
   font-size: var(--font-size-small);
   font-weight: var(--font-weight-table-header);
+  justify-self: start;
 }
 
+.trusted-export-mapping-row__source-label .semi-icon,
+.trusted-export-builder__heading .semi-icon,
 .trusted-export-builder__heading svg {
   color: var(--color-text-tertiary);
+  font-size: 13px;
 }
 
 .trusted-export-builder__heading--column {
   display: grid;
   gap: var(--space-2);
+  justify-items: start;
 }
 
 .trusted-export-builder__heading--column > span {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-4);
 }
 
 .trusted-export-builder__heading--column small {
@@ -5520,14 +5542,19 @@ a {
   line-height: 1.2;
 }
 
+.trusted-export-mapping-row__source-label .semi-icon:hover {
+  color: var(--color-text-secondary);
+}
+
 .trusted-export-mapping-row__source-code {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 6px;
-  background: var(--color-surface-subtle);
-  color: var(--color-text-secondary);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 12px;
+  background: var(--color-fill-0, #f5f7fa);
+  color: var(--color-text-primary);
+  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.1px;
   line-height: 1.6;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5543,7 +5570,9 @@ a {
 .trusted-export-mapping-row__source-input .semi-input,
 .trusted-export-mapping-row__column-input .semi-input {
   min-height: 32px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.1px;
 }
 
 .trusted-export-snapshot-panel {
@@ -6169,10 +6198,10 @@ a {
   }
 
   .trusted-export-flow-step {
-    grid-template-columns: 28px minmax(0, auto);
+    justify-self: start;
   }
 
-  .trusted-export-flow-step__arrow {
+  .trusted-export-flow-connector {
     display: none;
   }
 
