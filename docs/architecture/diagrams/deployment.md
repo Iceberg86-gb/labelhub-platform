@@ -6,47 +6,81 @@
 - `scripts/deploy-web.sh` 在开发机执行 Web build，然后用 `rsync` 同步 `apps/web/dist/` 到 `/opt/labelhub/infra/web-dist/`，并同步源码到 `/opt/labelhub/`。
 - 公开访问路径仍是 `http://120.26.182.61:8443/`，`nginx` 只做 `8443:80` 映射；ICP备案与 HTTPS 证书切换尚未完成。
 - 生产 compose 实际包含 `mysql`、`redis`、`minio`、`minio-init`、`api`、`agent`、`nginx`；公网只暴露 `nginx`，其他端口在 compose 网络内使用。
-- Redis 补查使用 `grep -rn -i "redis" services/ apps/ packages/ infra/ --include="*.java" --include="*.ts" --include="*.tsx" --include="*.yml" --include="*.yaml" --include="*.conf"`；命中仅限 `infra/docker-compose.yml` 与 `infra/docker-compose.prod.yml` 的服务定义/healthcheck，未发现业务消费者，属于候选裁剪项。
+- Redis 补查命中仅限 `infra/docker-compose.yml` 与 `infra/docker-compose.prod.yml` 的服务定义/healthcheck，未发现业务消费者，属于候选裁剪项。
 
 ```mermaid
 flowchart LR
-    dev["开发机(Developer Machine)<br/>scripts/deploy-web.sh<br/>pnpm --filter @labelhub/web build"]
-    dist_sync["Web 产物同步(Web Dist Sync)<br/>rsync --delete<br/>apps/web/dist/ -> root@120.26.182.61:/opt/labelhub/infra/web-dist/"]
-    source_sync["源码同步(Source Tree Sync)<br/>repo -> root@120.26.182.61:/opt/labelhub/<br/>排除(excludes) node_modules, .git, dist, .env.prod, web-dist, screenshots, design-assets"]
-    browser["浏览器(Browser)<br/>HTTP + IP 直连(HTTP + IP direct)<br/>http://120.26.182.61:8443/"]
+    dev["开发机(Developer Machine)<br/>scripts/deploy-web.sh<br/>build + rsync"]
+    dist_sync["Web 产物同步(Web Dist Sync)<br/>apps/web/dist/<br/>--delete"]
+    source_sync["源码同步(Source Tree Sync)<br/>repo -> /opt/labelhub/<br/>without --delete"]
+    browser["浏览器(Browser)<br/>http://120.26.182.61:8443/<br/>HTTP + IP"]
 
-    dev -->|"构建后同步(sync after build)"| dist_sync
-    dev -->|"同步源码(sync source)"| source_sync
+    dev -->|"构建(build)"| dist_sync
+    dev -->|"同步(sync)"| source_sync
 
-    subgraph ecs["阿里云 ECS(Alibaba Cloud ECS) / Ubuntu 24.04<br/>/opt/labelhub/infra<br/>docker compose prod<br/>备案/HTTPS 未完成(ICP/HTTPS pending)"]
-        nginx["公开入口(Public Entry)<br/>nginx<br/>image nginx:1.27-alpine<br/>ports: 8443:80<br/>服务 ./web-dist(serves ./web-dist)<br/>/api/ proxy"]
-        api["业务 API(Business API)<br/>api<br/>build services/api/Dockerfile<br/>container port 8080<br/>context path /api<br/>health /api/actuator/health"]
-        agent["异步工作容器(Async Worker Container)<br/>agent<br/>build services/agent/Dockerfile<br/>container port 8081<br/>health /actuator/health<br/>AI review + export outbox workers"]
-        mysql["业务数据库(Business Database)<br/>mysql<br/>image mysql:8.0<br/>container port 3306<br/>volume labelhub-mysql-data"]
-        redis["Redis 缓存服务(Redis Cache Service)<br/>redis<br/>image redis:7-alpine<br/>container port 6379<br/>已部署, 当前无业务引用(deployed, no business consumer)<br/>healthcheck redis-cli ping"]
-        minio["对象存储(Object Storage)<br/>minio<br/>image minio/minio:latest<br/>container ports 9000 API / 9001 console<br/>volume labelhub-minio-data"]
-        minio_init["对象存储初始化(Object Storage Init)<br/>minio-init<br/>image minio/mc:latest<br/>创建 OBJECT_STORAGE_BUCKET(creates OBJECT_STORAGE_BUCKET) via http://minio:9000"]
+    subgraph ecs["阿里云 ECS(Alibaba Cloud ECS)<br/>/opt/labelhub/infra<br/>docker compose prod"]
+        nginx["公开入口(Public Entry)<br/>nginx<br/>8443:80"]
+        api["业务 API(Business API)<br/>api<br/>/api"]
+        agent["异步工作容器(Async Worker Container)<br/>agent<br/>AI + export workers"]
+        mysql["业务数据库(Business Database)<br/>mysql<br/>MySQL 8.0"]
+        redis["Redis 缓存服务(Redis Cache Service)<br/>redis<br/>no business consumer"]
+        minio["对象存储(Object Storage)<br/>minio<br/>S3-compatible"]
+        minio_init["对象存储初始化(Object Storage Init)<br/>minio-init<br/>bucket init"]
     end
 
-    dist_sync -->|"提供静态资源(provide static assets)"| nginx
-    source_sync -->|"提供构建上下文(provide build context)"| ecs
-    browser -->|"GET / 通过 HTTP(over HTTP)"| nginx
-    browser -->|"GET/POST /api/* 通过 HTTP(over HTTP)"| nginx
+    dist_sync -->|"供静态(serve static)"| nginx
+    source_sync -->|"供构建(build context)"| ecs
+    browser -->|"访问(visit)"| nginx
+    browser -->|"调用(call)"| nginx
 
-    nginx -->|"SPA 回退(SPA fallback) try_files -> index.html"| nginx
-    nginx -->|"反向代理(reverse proxy) proxy_pass http://api:8080"| api
+    nginx -->|"SPA 回退(SPA fallback)"| nginx
+    nginx -->|"反代(proxy)"| api
 
-    api -->|"启动依赖(start dependency) depends_on mysql: service_healthy"| mysql
-    api -->|"启动依赖(start dependency) depends_on minio-init: service_started"| minio_init
-    api -->|"数据库连接(database connection) DATABASE_URL jdbc:mysql://mysql:3306/labelhub"| mysql
-    api -->|"对象存储连接(object storage connection) OBJECT_STORAGE_ENDPOINT http://minio:9000"| minio
+    api -->|"依赖(depends)"| mysql
+    api -->|"依赖(depends)"| minio_init
+    api -->|"连接(connect)"| mysql
+    api -->|"存取(store)"| minio
 
-    minio_init -->|"启动依赖(start dependency) depends_on minio: service_started"| minio
-    agent -->|"启动依赖(start dependency) depends_on api: service_healthy"| api
-    agent -->|"内部 API 地址(internal API base URL) LABELHUB_API_BASE_URL http://api:8080/api"| api
-    agent -->|"数据库连接(database connection) SPRING_DATASOURCE_URL from .env.prod"| mysql
-    nginx -->|"启动依赖(start dependency) depends_on api: service_healthy"| api
+    minio_init -->|"依赖(depends)"| minio
+    agent -->|"依赖(depends)"| api
+    agent -->|"回调(callback)"| api
+    agent -->|"连接(connect)"| mysql
+    nginx -->|"依赖(depends)"| api
 ```
+
+## 明细(Details)
+
+### 节点明细(Node Details)
+
+| 节点 | 关键细节 | 实证来源 |
+| --- | --- | --- |
+| 开发机(Developer Machine) | `scripts/deploy-web.sh` 执行 `pnpm --filter @labelhub/web build`，然后 rsync Web dist 与源码。 | `scripts/deploy-web.sh`、`docs/dev-environment.md` |
+| Web 产物同步(Web Dist Sync) | `apps/web/dist/` 同步到 `root@120.26.182.61:/opt/labelhub/infra/web-dist/`，使用 `--delete`。 | `scripts/deploy-web.sh`、`infra/deploy/README.md` |
+| 源码同步(Source Tree Sync) | 源码同步到 `/opt/labelhub/`，排除 `node_modules`、`.git`、`dist`、`.env.prod`、`web-dist`、`.DS_Store`、`.pnpm-store`、`submission`、`docs/screenshots`、`docs/design-assets`。 | `scripts/deploy-web.sh`、`docs/dev-environment.md` |
+| 浏览器(Browser) | 当前公网入口为 `http://120.26.182.61:8443/`；ICP备案与 HTTPS 证书切换尚未完成。 | `infra/deploy/README.md`、`infra/docker-compose.prod.yml` |
+| 阿里云 ECS(Alibaba Cloud ECS) | 单机 Ubuntu 24.04，部署根目录 `/opt/labelhub`，compose 在 `/opt/labelhub/infra` 执行。 | `infra/deploy/README.md` |
+| nginx | image `nginx:1.27-alpine`；公开端口映射 `8443:80`；挂载 `./web-dist:/usr/share/nginx/html:ro` 与 `./nginx/labelhub.conf:/etc/nginx/conf.d/default.conf:ro`。 | `infra/docker-compose.prod.yml`、`infra/nginx/labelhub.conf` |
+| api | build `services/api/Dockerfile`；container port `8080`；context path `/api`；health `http://localhost:8080/api/actuator/health`；mem_limit `1280m`。 | `infra/docker-compose.prod.yml`、`services/api/src/main/resources/application.yml` |
+| agent | build `services/agent/Dockerfile`；container port `8081`；health `http://localhost:8081/actuator/health`；运行 AI review 与 export outbox workers；mem_limit `768m`。 | `infra/docker-compose.prod.yml`、`services/agent/src/main/resources/application.yml`、`services/agent/src/main/java/com/labelhub/agent/outbox/` |
+| mysql | image `mysql:8.0`；volume `labelhub-mysql-data`；container port `3306`；healthcheck `mysqladmin ping`。 | `infra/docker-compose.prod.yml` |
+| redis | image `redis:7-alpine`；container port `6379`；healthcheck `redis-cli ping`；grep 未发现业务消费者。 | `infra/docker-compose.prod.yml`、`infra/docker-compose.yml` |
+| minio | image `minio/minio:latest`；container ports `9000` API / `9001` console；volume `labelhub-minio-data`。 | `infra/docker-compose.prod.yml` |
+| minio-init | image `minio/mc:latest`；通过 `mc mb --ignore-existing` 创建 `${OBJECT_STORAGE_BUCKET:-labelhub-exports}`。 | `infra/docker-compose.prod.yml` |
+
+### 连线明细(Edge Details)
+
+| 连线 | 细节 | 实证来源 |
+| --- | --- | --- |
+| dev -> dist_sync | 本地 Web build 后同步 dist，dry-run 时仍 build，但 rsync 加 `-n --itemize-changes`。 | `scripts/deploy-web.sh` |
+| dev -> source_sync | 源码同步不带 `--delete`，避免远端运行目录被清空。 | `scripts/deploy-web.sh` |
+| browser -> nginx | 公开入口是 HTTP + IP direct；当前 compose 只暴露 `nginx` 的 `8443:80`。 | `infra/deploy/README.md`、`infra/docker-compose.prod.yml` |
+| nginx -> api | `location /api/` 使用 `proxy_pass http://api:8080`。 | `infra/nginx/labelhub.conf` |
+| nginx -> nginx | `location /` 使用 `try_files $uri $uri/ /index.html` 支撑 SPA fallback。 | `infra/nginx/labelhub.conf` |
+| api -> mysql | `DATABASE_URL` 默认 `jdbc:mysql://mysql:3306/labelhub?...`；`depends_on mysql: service_healthy`。 | `infra/docker-compose.prod.yml` |
+| api -> minio-init / minio | `api` depends on `minio-init: service_started`；对象存储 endpoint 默认 `http://minio:9000`。 | `infra/docker-compose.prod.yml`、`services/api/src/main/resources/application.yml` |
+| minio-init -> minio | `minio-init` depends on `minio: service_started`，并通过 `http://minio:9000` 初始化 bucket。 | `infra/docker-compose.prod.yml` |
+| agent -> api | `agent` depends on `api: service_healthy`；`LABELHUB_API_BASE_URL` 默认 `http://api:8080/api`。 | `infra/docker-compose.prod.yml`、`services/agent/src/main/resources/application.yml` |
+| agent -> mysql | `agent` 使用 `SPRING_DATASOURCE_URL`、`SPRING_DATASOURCE_USERNAME`、`SPRING_DATASOURCE_PASSWORD` 连接数据库并轮询 outbox。 | `infra/docker-compose.prod.yml`、`services/agent/src/main/java/com/labelhub/agent/outbox/` |
 
 ## 实证来源
 
