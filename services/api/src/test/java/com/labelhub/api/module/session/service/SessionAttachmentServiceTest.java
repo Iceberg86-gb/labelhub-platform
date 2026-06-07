@@ -47,7 +47,7 @@ class SessionAttachmentServiceTest {
 
         var uploaded = service.upload(55L, 2002L, file);
 
-        assertThat(uploaded.getFileName()).isEqualTo("report-final.png");
+        assertThat(uploaded.getFileName()).isEqualTo("Report Final.PNG");
         assertThat(uploaded.getContentType()).isEqualTo("image/png");
         assertThat(uploaded.getSizeBytes()).isEqualTo(7);
         assertThat(uploaded.getObjectKey())
@@ -56,6 +56,78 @@ class SessionAttachmentServiceTest {
         ArgumentCaptor<byte[]> contentCaptor = ArgumentCaptor.forClass(byte[].class);
         verify(objectStorageWriter).putObject(eq(uploaded.getObjectKey()), contentCaptor.capture(), eq("image/png"));
         assertThat(contentCaptor.getValue()).isEqualTo("payload".getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void uploadPreservesChineseDisplayFileNameAndUsesReadableObjectKeyFallback() {
+        SessionEntity session = ownedSession();
+        when(sessionService.assertLabelerOwnsSession(55L, 2002L)).thenReturn(session);
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "测试中文名.pdf",
+            "application/pdf",
+            "payload".getBytes(StandardCharsets.UTF_8)
+        );
+
+        var uploaded = service.upload(55L, 2002L, file);
+
+        assertThat(uploaded.getFileName()).isEqualTo("测试中文名.pdf");
+        assertThat(storedFileName(uploaded.getObjectKey())).isEqualTo("file.pdf");
+    }
+
+    @Test
+    void uploadPreservesSpacesInDisplayFileNameAndSanitizesObjectKey() {
+        SessionEntity session = ownedSession();
+        when(sessionService.assertLabelerOwnsSession(55L, 2002L)).thenReturn(session);
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "report final v2.pdf",
+            "application/pdf",
+            "payload".getBytes(StandardCharsets.UTF_8)
+        );
+
+        var uploaded = service.upload(55L, 2002L, file);
+
+        assertThat(uploaded.getFileName()).isEqualTo("report final v2.pdf");
+        assertThat(storedFileName(uploaded.getObjectKey())).isEqualTo("report-final-v2.pdf");
+    }
+
+    @Test
+    void uploadStripsPathSegmentsFromDisplayFileName() {
+        SessionEntity session = ownedSession();
+        when(sessionService.assertLabelerOwnsSession(55L, 2002L)).thenReturn(session);
+        MockMultipartFile file = new MockMultipartFile(
+            "file",
+            "../../etc/passwd",
+            "application/octet-stream",
+            "payload".getBytes(StandardCharsets.UTF_8)
+        );
+
+        var uploaded = service.upload(55L, 2002L, file);
+
+        assertThat(uploaded.getFileName()).isEqualTo("passwd");
+    }
+
+    @Test
+    void uploadFallsBackWhenOriginalFileNameIsBlankOrNull() {
+        SessionEntity session = ownedSession();
+        when(sessionService.assertLabelerOwnsSession(55L, 2002L)).thenReturn(session);
+
+        var blankNameUpload = service.upload(55L, 2002L, new MockMultipartFile(
+            "file",
+            "",
+            "application/pdf",
+            "payload".getBytes(StandardCharsets.UTF_8)
+        ));
+        var nullNameUpload = service.upload(55L, 2002L, new MockMultipartFile(
+            "file",
+            null,
+            "application/pdf",
+            "payload".getBytes(StandardCharsets.UTF_8)
+        ));
+
+        assertThat(blankNameUpload.getFileName()).isEqualTo("附件");
+        assertThat(nullNameUpload.getFileName()).isEqualTo("附件");
     }
 
     @Test
@@ -110,5 +182,17 @@ class SessionAttachmentServiceTest {
 
     private String encodeRef(String objectKey) {
         return Base64.getUrlEncoder().withoutPadding().encodeToString(objectKey.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private SessionEntity ownedSession() {
+        SessionEntity session = new SessionEntity();
+        session.setId(55L);
+        session.setTaskId(44L);
+        return session;
+    }
+
+    private String storedFileName(String objectKey) {
+        String lastSegment = objectKey.substring(objectKey.lastIndexOf('/') + 1);
+        return lastSegment.substring(37);
     }
 }
