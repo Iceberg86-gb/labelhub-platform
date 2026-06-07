@@ -46,11 +46,12 @@ public class SessionAttachmentService {
             throw new InvalidSessionAttachmentException("attachment file exceeds 25MB");
         }
 
-        String fileName = safeFileName(file.getOriginalFilename());
+        String originalFileName = file.getOriginalFilename();
+        String fileName = displayFileName(originalFileName);
         String contentType = file.getContentType() == null || file.getContentType().isBlank()
             ? "application/octet-stream"
             : file.getContentType();
-        String objectKey = objectKey(session, fileName);
+        String objectKey = objectKey(session, safeFileName(originalFileName));
         try {
             objectStorageWriter.putObject(objectKey, file.getBytes(), contentType);
         } catch (IOException exception) {
@@ -132,10 +133,20 @@ public class SessionAttachmentService {
         return storedFileName;
     }
 
+    private String displayFileName(String original) {
+        String value = stripPathSegments(original)
+            .replaceAll("\\p{Cntrl}", "")
+            .trim();
+        if (!value.isBlank()) {
+            return value;
+        }
+        String extension = safeExtension(original);
+        return extension == null ? "附件" : "附件." + extension;
+    }
+
     private String safeFileName(String original) {
-        String fallback = "attachment.bin";
-        String value = original == null || original.isBlank() ? fallback : original;
-        String normalized = Normalizer.normalize(value, Normalizer.Form.NFKC)
+        String extension = safeExtension(original);
+        String normalized = Normalizer.normalize(stripPathSegments(original), Normalizer.Form.NFKC)
             .replace('\\', '/');
         int slash = normalized.lastIndexOf('/');
         if (slash >= 0) {
@@ -146,6 +157,25 @@ public class SessionAttachmentService {
             .replaceAll("-+", "-")
             .replaceAll("^[.-]+", "")
             .replaceAll("[.-]+$", "");
-        return safe.isBlank() ? fallback : safe;
+        if (safe.isBlank() || (extension != null && safe.equals(extension))) {
+            return extension == null ? "file" : "file." + extension;
+        }
+        return safe;
+    }
+
+    private String stripPathSegments(String original) {
+        String value = original == null ? "" : original.trim().replace('\\', '/');
+        int slash = value.lastIndexOf('/');
+        return slash >= 0 ? value.substring(slash + 1) : value;
+    }
+
+    private String safeExtension(String original) {
+        String value = stripPathSegments(original);
+        int dot = value.lastIndexOf('.');
+        if (dot < 0 || dot == value.length() - 1) {
+            return null;
+        }
+        String extension = value.substring(dot + 1).toLowerCase(Locale.ROOT);
+        return extension.matches("[a-z0-9]{1,10}") ? extension : null;
     }
 }
