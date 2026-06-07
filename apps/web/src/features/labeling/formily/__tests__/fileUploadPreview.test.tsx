@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
+import { apiClient } from '../../../../shared/api/client';
 import { SchemaFormilyRenderer } from '../SchemaFormilyRenderer';
 import { renderClient } from './renderClient';
 
@@ -72,6 +73,37 @@ describe('LabelHubFileUploadField image preview', () => {
     expect(view.text()).toContain('report.pdf');
     expect(view.container.querySelector('.labelhub-file-upload-thumbnail')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+    view.unmount();
+  });
+
+  it('keeps acceptedFileTypes empty as an unrestricted chooser and shows PDF upload feedback', async () => {
+    const postSpy = vi.spyOn(apiClient, 'POST').mockImplementation(() => new Promise(() => {}));
+
+    const view = renderClient(
+      <SchemaFormilyRenderer
+        schemaFields={[{ ...fileField, acceptedFileTypes: [] }]}
+        value={{}}
+        readOnly={false}
+        onChange={() => {}}
+        sessionId={55}
+      />,
+    );
+    const input = view.container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(input.accept).toBe('');
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: [new File(['pdf'], 'evidence.pdf', { type: 'application/pdf' })],
+    });
+
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(postSpy).toHaveBeenCalledOnce();
+    expect(view.text()).toContain('evidence.pdf');
+    expect(view.container.querySelector('.labelhub-file-upload-thumbnail')).toBeNull();
     view.unmount();
   });
 
