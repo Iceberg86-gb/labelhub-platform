@@ -42,6 +42,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -271,6 +272,48 @@ class SessionServiceTest {
         when(sessionMapper.selectById(900L)).thenReturn(claimedSession(900L, 2002L));
 
         assertThatThrownBy(() -> sessionService.assertLabelerOwnsSession(900L, 1002L))
+            .isInstanceOf(SessionAccessDeniedException.class);
+    }
+
+    @Test
+    void assertSessionVisible_allows_session_labeler() {
+        SessionEntity session = claimedSession(900L, 1002L);
+        when(sessionMapper.selectById(900L)).thenReturn(session);
+
+        SessionEntity result = sessionService.assertSessionVisible(900L, 1002L, Set.of("ROLE_LABELER"));
+
+        assertThat(result).isSameAs(session);
+        verify(taskMapper, never()).selectById(any());
+    }
+
+    @Test
+    void assertSessionVisible_allows_task_owner() {
+        SessionEntity session = claimedSession(900L, 1002L);
+        when(sessionMapper.selectById(900L)).thenReturn(session);
+        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+
+        SessionEntity result = sessionService.assertSessionVisible(900L, 1001L, Set.of("ROLE_OWNER"));
+
+        assertThat(result).isSameAs(session);
+    }
+
+    @Test
+    void assertSessionVisible_allows_reviewer_role() {
+        SessionEntity session = claimedSession(900L, 1002L);
+        when(sessionMapper.selectById(900L)).thenReturn(session);
+
+        SessionEntity result = sessionService.assertSessionVisible(900L, 3003L, Set.of("ROLE_REVIEWER"));
+
+        assertThat(result).isSameAs(session);
+        verify(taskMapper, never()).selectById(any());
+    }
+
+    @Test
+    void assertSessionVisible_throws_when_requester_has_no_session_visibility() {
+        when(sessionMapper.selectById(900L)).thenReturn(claimedSession(900L, 1002L));
+        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+
+        assertThatThrownBy(() -> sessionService.assertSessionVisible(900L, 9999L, Set.of("ROLE_OWNER")))
             .isInstanceOf(SessionAccessDeniedException.class);
     }
 

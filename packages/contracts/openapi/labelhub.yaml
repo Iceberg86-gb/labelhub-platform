@@ -1457,6 +1457,39 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /sessions/{sessionId}/attachments/{attachmentRef}:
+    get:
+      tags: [Sessions]
+      operationId: downloadSessionAttachment
+      description: Download a session attachment visible to the requester.
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: attachmentRef
+          in: path
+          required: true
+          description: Base64url-encoded session attachment objectKey.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Attachment content stream.
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /ai-review/rules:
     get:
       tags: [AIReview]

@@ -3,10 +3,13 @@ package com.labelhub.api.module.session.service;
 import com.labelhub.api.module.export.storage.ObjectStorageWriter;
 import com.labelhub.api.module.session.entity.SessionEntity;
 import com.labelhub.api.module.session.exception.InvalidSessionAttachmentException;
+import com.labelhub.api.module.session.exception.SessionAccessDeniedException;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Base64;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockMultipartFile;
@@ -16,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class SessionAttachmentServiceTest {
@@ -64,5 +68,47 @@ class SessionAttachmentServiceTest {
         assertThatThrownBy(() -> service.upload(55L, 2002L, new MockMultipartFile("file", new byte[0])))
             .isInstanceOf(InvalidSessionAttachmentException.class)
             .hasMessageContaining("required");
+    }
+
+    @Test
+    void downloadReadsSessionVisibleAttachmentWithStoredContentType() {
+        SessionEntity session = new SessionEntity();
+        session.setId(55L);
+        session.setTaskId(44L);
+        when(sessionService.assertSessionVisible(55L, 2002L, Set.of("ROLE_LABELER"))).thenReturn(session);
+        String objectKey = "session-attachments/20260530/task-44/session-55/123e4567-e89b-12d3-a456-426614174000-photo.png";
+        when(objectStorageWriter.getObjectWithMetadata(objectKey))
+            .thenReturn(new ObjectStorageWriter.StoredObject("image".getBytes(StandardCharsets.UTF_8), "image/png"));
+
+        SessionAttachmentDownload download = service.download(55L, 2002L, Set.of("ROLE_LABELER"), encodeRef(objectKey));
+
+        assertThat(download.fileName()).isEqualTo("photo.png");
+        assertThat(download.contentType()).isEqualTo("image/png");
+        assertThat(download.content()).isEqualTo("image".getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void downloadRejectsAttachmentFromAnotherSession() {
+        SessionEntity session = new SessionEntity();
+        session.setId(55L);
+        session.setTaskId(44L);
+        when(sessionService.assertSessionVisible(55L, 2002L, Set.of("ROLE_LABELER"))).thenReturn(session);
+        String objectKey = "session-attachments/20260530/task-44/session-66/123e4567-e89b-12d3-a456-426614174000-photo.png";
+
+        assertThatThrownBy(() -> service.download(55L, 2002L, Set.of("ROLE_LABELER"), encodeRef(objectKey)))
+            .isInstanceOf(SessionAccessDeniedException.class);
+        verifyNoInteractions(objectStorageWriter);
+    }
+
+    @Test
+    void downloadRejectsInvalidAttachmentRef() {
+        assertThatThrownBy(() -> service.download(55L, 2002L, Set.of("ROLE_LABELER"), "not base64url"))
+            .isInstanceOf(InvalidSessionAttachmentException.class)
+            .hasMessageContaining("attachmentRef");
+        verifyNoInteractions(objectStorageWriter);
+    }
+
+    private String encodeRef(String objectKey) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(objectKey.getBytes(StandardCharsets.UTF_8));
     }
 }

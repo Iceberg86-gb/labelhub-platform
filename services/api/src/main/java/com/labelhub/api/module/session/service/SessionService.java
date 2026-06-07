@@ -49,6 +49,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -233,6 +234,25 @@ public class SessionService {
         }
         if (!Objects.equals(session.getLabelerId(), labelerId)) {
             throw new SessionAccessDeniedException(sessionId, labelerId);
+        }
+        return session;
+    }
+
+    public SessionEntity assertSessionVisible(Long sessionId, Long requesterUserId, Set<String> requesterRoles) {
+        SessionEntity session = sessionMapper.selectById(sessionId);
+        if (session == null) {
+            throw new SessionNotFoundException(sessionId);
+        }
+        boolean isLabeler = Objects.equals(session.getLabelerId(), requesterUserId);
+        boolean isReviewer = hasRole(requesterRoles, "REVIEWER") || hasRole(requesterRoles, "SENIOR_REVIEWER");
+        if (isLabeler || isReviewer) {
+            return session;
+        }
+
+        TaskEntity task = taskMapper.selectById(session.getTaskId());
+        boolean isOwner = task != null && Objects.equals(task.getOwnerId(), requesterUserId);
+        if (!isOwner) {
+            throw new SessionAccessDeniedException(sessionId, requesterUserId);
         }
         return session;
     }
@@ -437,6 +457,10 @@ public class SessionService {
         snapshot.put("datasetItemPayload", item.getItemPayload());
         snapshot.put("claimedAt", LocalDateTime.now(clock).toString());
         return snapshot;
+    }
+
+    private boolean hasRole(Set<String> roles, String role) {
+        return roles != null && (roles.contains(role) || roles.contains("ROLE_" + role));
     }
 
     private void requireOneRow(int affectedRows, String action) {
