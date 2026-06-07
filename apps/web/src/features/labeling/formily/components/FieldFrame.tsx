@@ -1,5 +1,5 @@
 import { Typography } from '@douyinfe/semi-ui';
-import { useField } from '@formily/react';
+import { observer, useField } from '@formily/react';
 import type { ReactNode } from 'react';
 import type { GeneralField } from '@formily/core';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
@@ -11,7 +11,7 @@ export interface FieldFrameProps {
   showRequiredMarker?: boolean;
 }
 
-export function FieldFrame({ field, children, externalErrors, showRequiredMarker = true }: FieldFrameProps) {
+export const FieldFrame = observer(function FieldFrame({ field, children, externalErrors, showRequiredMarker = true }: FieldFrameProps) {
   const formilyField = useField<GeneralField>();
   const errors = [...formilyErrors(formilyField), ...(externalErrors ?? [])];
   const schemaField = fieldFromPropsOrState(field, formilyField);
@@ -34,7 +34,7 @@ export function FieldFrame({ field, children, externalErrors, showRequiredMarker
       <FieldErrors errors={errors} />
     </div>
   );
-}
+});
 
 function FieldErrors({ errors }: { errors: string[] }) {
   if (!errors.length) return null;
