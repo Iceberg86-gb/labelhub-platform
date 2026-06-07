@@ -25,6 +25,23 @@ vi.mock('@douyinfe/semi-ui', () => ({
       {children}
     </button>
   ),
+  Modal: ({
+    children,
+    footer,
+    visible,
+  }: {
+    children?: ReactNode;
+    footer?: ReactNode;
+    visible?: boolean;
+  }) => (visible ? (
+    <div role="dialog">
+      {children}
+      {footer}
+    </div>
+  ) : null),
+  Tag({ children }: { children?: ReactNode }) {
+    return <span>{children}</span>;
+  },
   Typography: {
     Text({ children, className }: { children?: ReactNode; className?: string }) {
       return <span className={className}>{children}</span>;
@@ -337,5 +354,80 @@ describe('LinkageConditionBuilder', () => {
     expect(confirmSpy).toHaveBeenCalledWith('将从"全部满足"条件组切回单条件,并只保留第一条条件。');
     view.unmount();
     confirmSpy.mockRestore();
+  });
+
+  it('marks unapplied linkage drafts and exposes apply/discard leave actions', () => {
+    const onChange = vi.fn();
+    const dirtyChanges: Array<unknown> = [];
+    const target = field('details', '详情', 'text');
+    const view = renderClient(
+      <LinkageConditionBuilder
+        field={target}
+        availableFields={schemaFields}
+        onChange={onChange}
+        onDirtyStateChange={(state) => dirtyChanges.push(state)}
+      />,
+    );
+
+    const fieldSelect = view.container.querySelector('[aria-label="visibleWhen 条件字段"]') as HTMLSelectElement;
+    const valueInput = view.container.querySelector('[aria-label="visibleWhen 条件值"]') as HTMLInputElement;
+    act(() => {
+      setNativeValue(fieldSelect, 'driver');
+      fieldSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      setNativeValue(valueInput, 'show');
+      valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+      valueInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    expect(view.text()).toContain('有未应用的修改');
+    const dirtyState = dirtyChanges.at(-1) as { dirty: boolean; apply: () => void; discard: () => void };
+    expect(dirtyState.dirty).toBe(true);
+
+    act(() => {
+      dirtyState.apply();
+    });
+    expect(onChange).toHaveBeenCalledWith({
+      ...target,
+      visibleWhen: { field: 'driver', op: 'eq', value: 'show' },
+    });
+
+    act(() => {
+      setNativeValue(valueInput, 'hide');
+      valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+      valueInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const nextDirtyState = dirtyChanges.at(-1) as { dirty: boolean; apply: () => void; discard: () => void };
+    act(() => {
+      nextDirtyState.discard();
+    });
+
+    expect((view.container.querySelector('[aria-label="visibleWhen 条件字段"]') as HTMLSelectElement).value).toBe('');
+    expect((view.container.querySelector('[aria-label="visibleWhen 条件值"]') as HTMLInputElement).value).toBe('');
+    view.unmount();
+  });
+
+  it('keeps unapplied drafts when unrelated field properties change', () => {
+    const target = field('details', '详情', 'text');
+    const view = renderClient(
+      <LinkageConditionBuilder field={target} availableFields={schemaFields} onChange={vi.fn()} />,
+    );
+
+    const fieldSelect = view.container.querySelector('[aria-label="visibleWhen 条件字段"]') as HTMLSelectElement;
+    const valueInput = view.container.querySelector('[aria-label="visibleWhen 条件值"]') as HTMLInputElement;
+    act(() => {
+      setNativeValue(fieldSelect, 'driver');
+      fieldSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      setNativeValue(valueInput, 'show');
+      valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+      valueInput.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    view.rerender(
+      <LinkageConditionBuilder field={{ ...target, label: '详情新版' }} availableFields={schemaFields} onChange={vi.fn()} />,
+    );
+
+    expect((view.container.querySelector('[aria-label="visibleWhen 条件字段"]') as HTMLSelectElement).value).toBe('driver');
+    expect((view.container.querySelector('[aria-label="visibleWhen 条件值"]') as HTMLInputElement).value).toBe('show');
+    view.unmount();
   });
 });

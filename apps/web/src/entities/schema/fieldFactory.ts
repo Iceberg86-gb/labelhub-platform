@@ -55,6 +55,22 @@ export function createTab(label: string): SchemaTab {
   };
 }
 
+export function isContainerField(field: SchemaField): boolean {
+  return field.type === 'nested_object' || field.type === 'tab_container';
+}
+
+export function duplicateFieldWithFreshStableIds(field: SchemaField): SchemaField {
+  const copy = deepCloneField(field);
+  reassignFieldStableIds(copy);
+  copy.label = `${field.label || '未命名字段'} (副本)`;
+  return copy;
+}
+
+export function insertFieldAfterStableId(fields: SchemaField[], stableId: string, fieldToInsert: SchemaField): SchemaField[] {
+  const result = insertIntoFieldListAfterStableId(fields, stableId, fieldToInsert);
+  return result.changed ? result.fields : fields;
+}
+
 export function findFieldByStableId(fields: SchemaField[], stableId: string | null): SchemaField | null {
   if (!stableId) return null;
 
@@ -166,4 +182,65 @@ function fieldChildFields(field: SchemaField): SchemaField[] {
     return field.tabs?.flatMap((tab) => tab.children ?? []) ?? [];
   }
   return [];
+}
+
+function deepCloneField(field: SchemaField): SchemaField {
+  return JSON.parse(JSON.stringify(field)) as SchemaField;
+}
+
+function reassignFieldStableIds(field: SchemaField) {
+  field.stableId = generateStableId();
+
+  if (field.type === 'nested_object') {
+    field.children?.forEach(reassignFieldStableIds);
+  }
+
+  if (field.type === 'tab_container') {
+    field.tabs?.forEach((tab) => {
+      tab.stableId = generateStableId();
+      tab.children?.forEach(reassignFieldStableIds);
+    });
+  }
+}
+
+function insertIntoFieldListAfterStableId(
+  fields: SchemaField[],
+  stableId: string,
+  fieldToInsert: SchemaField,
+): { fields: SchemaField[]; changed: boolean } {
+  let changed = false;
+  const next: SchemaField[] = [];
+
+  fields.forEach((field) => {
+    next.push(field);
+    if (field.stableId === stableId) {
+      next.push(fieldToInsert);
+      changed = true;
+      return;
+    }
+
+    if (field.type === 'nested_object' && field.children?.length) {
+      const childResult = insertIntoFieldListAfterStableId(field.children, stableId, fieldToInsert);
+      if (childResult.changed) {
+        next[next.length - 1] = { ...field, children: childResult.fields };
+        changed = true;
+      }
+    }
+
+    if (field.type === 'tab_container' && field.tabs?.length) {
+      let tabsChanged = false;
+      const nextTabs = field.tabs.map((tab) => {
+        const childResult = insertIntoFieldListAfterStableId(tab.children ?? [], stableId, fieldToInsert);
+        if (!childResult.changed) return tab;
+        tabsChanged = true;
+        changed = true;
+        return { ...tab, children: childResult.fields };
+      });
+      if (tabsChanged) {
+        next[next.length - 1] = { ...field, tabs: nextTabs };
+      }
+    }
+  });
+
+  return { fields: next, changed };
 }

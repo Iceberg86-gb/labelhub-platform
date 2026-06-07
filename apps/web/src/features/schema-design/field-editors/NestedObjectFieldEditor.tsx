@@ -1,5 +1,11 @@
 import { Input, Typography } from '@douyinfe/semi-ui';
-import { createField } from '../../../entities/schema/fieldFactory';
+import {
+  createField,
+  duplicateFieldWithFreshStableIds,
+  findFieldByStableId,
+  insertFieldAfterStableId,
+  isContainerField,
+} from '../../../entities/schema/fieldFactory';
 import type { SchemaFieldType } from '../../../entities/schema/schemaTypes';
 import { AddFieldButton } from '../AddFieldButton';
 import { FieldList } from '../FieldList';
@@ -21,6 +27,14 @@ export function NestedObjectFieldEditor({
     const child = createField(type);
     onChange({ ...field, children: [...children, child] });
     onSelect(child.stableId);
+  };
+
+  const handleDuplicateChild = (stableId: string) => {
+    const source = findFieldByStableId(children, stableId);
+    if (!source || isContainerField(source)) return;
+    const duplicate = duplicateFieldWithFreshStableIds(source);
+    onChange({ ...field, children: insertFieldAfterStableId(children, stableId, duplicate) });
+    onSelect(duplicate.stableId);
   };
 
   return (
@@ -47,6 +61,7 @@ export function NestedObjectFieldEditor({
             selectedStableId={selectedStableId}
             onSelect={onSelect}
             onDelete={onDelete}
+            onDuplicate={handleDuplicateChild}
             errors={errorsByField}
           />
         </div>

@@ -1,5 +1,5 @@
-import { Button, Popconfirm, Tag, Typography } from '@douyinfe/semi-ui';
-import { IconDelete, IconHandle } from '@douyinfe/semi-icons';
+import { Button, Popconfirm, Tag, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { IconCopy, IconDelete, IconHandle } from '@douyinfe/semi-icons';
 import {
   useSortable,
 } from '@dnd-kit/sortable';
@@ -8,6 +8,7 @@ import { useState } from 'react';
 import type { SchemaField } from '../../entities/schema/schemaTypes';
 import { SCHEMA_FIELD_TYPE_LABELS } from '../../entities/schema/schemaTypes';
 import type { FieldValidationError } from '../../entities/schema/schemaValidation';
+import { isContainerField } from '../../entities/schema/fieldFactory';
 
 type FieldListProps = {
   fields: SchemaField[];
@@ -15,10 +16,11 @@ type FieldListProps = {
   selectedStableId: string | null;
   onSelect: (stableId: string) => void;
   onDelete: (stableId: string) => void;
+  onDuplicate: (stableId: string) => void;
   errors: Map<string, FieldValidationError[]>;
 };
 
-export function FieldList({ fields, onChange, selectedStableId, onSelect, onDelete, errors }: FieldListProps) {
+export function FieldList({ fields, onChange, selectedStableId, onSelect, onDelete, onDuplicate, errors }: FieldListProps) {
   const moveField = (from: number, to: number) => {
     if (from === to || to < 0 || to >= fields.length) return;
     const next = [...fields];
@@ -47,6 +49,7 @@ export function FieldList({ fields, onChange, selectedStableId, onSelect, onDele
           isLast={index === fields.length - 1}
           onSelect={onSelect}
           onDelete={onDelete}
+          onDuplicate={onDuplicate}
           onMoveUp={() => moveField(index, index - 1)}
           onMoveDown={() => moveField(index, index + 1)}
         />
@@ -70,6 +73,7 @@ function PlainFieldListItem({
   isLast,
   onSelect,
   onDelete,
+  onDuplicate,
   onMoveUp,
   onMoveDown,
 }: PlainFieldListItemProps) {
@@ -116,9 +120,10 @@ function PlainFieldListItem({
           {SCHEMA_FIELD_TYPE_LABELS[field.type]}
         </Tag>
       </div>
-      <FieldDeleteAction
+      <FieldActions
         visible={showDeleteAction}
-        fieldLabel={field.label}
+        field={field}
+        onDuplicate={() => onDuplicate(field.stableId)}
         onDelete={() => onDelete(field.stableId)}
       />
     </div>
@@ -131,9 +136,10 @@ type SortableFieldItemProps = {
   hasError: boolean;
   onSelect: (stableId: string) => void;
   onDelete: (stableId: string) => void;
+  onDuplicate: (stableId: string) => void;
 };
 
-export function SortableFieldItem({ field, selected, hasError, onSelect, onDelete }: SortableFieldItemProps) {
+export function SortableFieldItem({ field, selected, hasError, onSelect, onDelete, onDuplicate }: SortableFieldItemProps) {
   const { attributes, listeners, setActivatorNodeRef, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.stableId });
   const [showDeleteAction, setShowDeleteAction] = useState(false);
   const transformStyle = transform
@@ -182,27 +188,33 @@ export function SortableFieldItem({ field, selected, hasError, onSelect, onDelet
           {SCHEMA_FIELD_TYPE_LABELS[field.type]}
         </Tag>
       </div>
-      <FieldDeleteAction
+      <FieldActions
         visible={showDeleteAction}
-        fieldLabel={field.label}
+        field={field}
+        onDuplicate={() => onDuplicate(field.stableId)}
         onDelete={() => onDelete(field.stableId)}
       />
     </div>
   );
 }
 
-function FieldDeleteAction({
+function FieldActions({
   visible,
-  fieldLabel,
+  field,
+  onDuplicate,
   onDelete,
 }: {
   visible: boolean;
-  fieldLabel?: string;
+  field: SchemaField;
+  onDuplicate: () => void;
   onDelete: () => void;
 }) {
+  const canDuplicate = !isContainerField(field);
+
   return (
     <span
       className={[
+        'field-list-item__actions',
         'field-list-item__delete-action',
         'field-list-item__delete-action--deferred',
         visible ? 'field-list-item__delete-action--visible' : '',
@@ -211,9 +223,19 @@ function FieldDeleteAction({
       onMouseDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
+      <Tooltip content={canDuplicate ? '复制字段' : '暂不支持复制容器字段'}>
+        <Button
+          icon={<IconCopy />}
+          theme="borderless"
+          size="small"
+          disabled={!canDuplicate}
+          aria-label="复制字段"
+          onClick={canDuplicate ? onDuplicate : undefined}
+        />
+      </Tooltip>
       <Popconfirm
         title="删除字段?"
-        content={fieldLabel ? `确认删除「${fieldLabel}」字段?` : '确认删除该字段?'}
+        content={field.label ? `确认删除「${field.label}」字段?` : '确认删除该字段?'}
         okText="删除"
         cancelText="取消"
         position="leftTop"

@@ -1,5 +1,5 @@
-import { Button, Typography } from '@douyinfe/semi-ui';
-import { useEffect, useMemo, useState } from 'react';
+import { Button, Tag, Typography } from '@douyinfe/semi-ui';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type {
   LinkageAtomicCondition,
@@ -8,6 +8,7 @@ import type {
   LinkageConditionOp,
   SchemaField,
 } from '../../../entities/schema/schemaTypes';
+import type { LinkageDirtyState } from './editorTypes';
 import { EditorSection } from './editorUtils';
 
 type LinkageKey = 'visibleWhen' | 'requiredWhen';
@@ -16,6 +17,7 @@ type LinkageConditionBuilderProps = {
   field: SchemaField;
   availableFields: SchemaField[];
   onChange: (field: SchemaField) => void;
+  onDirtyStateChange?: (state: LinkageDirtyState | null) => void;
 };
 
 type LinkageMode = 'atomic' | 'group';
@@ -45,6 +47,7 @@ const controlStyle: CSSProperties = {
 };
 const actionsStyle: CSSProperties = {
   display: 'flex',
+  alignItems: 'center',
   gap: 8,
   justifyContent: 'flex-end',
   marginTop: 4,
@@ -60,7 +63,7 @@ const groupRowStyle: CSSProperties = {
   alignItems: 'end',
 };
 
-export function LinkageConditionBuilder({ field, availableFields, onChange }: LinkageConditionBuilderProps) {
+export function LinkageConditionBuilder({ field, availableFields, onChange, onDirtyStateChange }: LinkageConditionBuilderProps) {
   const [linkageKey, setLinkageKey] = useState<LinkageKey>('visibleWhen');
   const condition = field[linkageKey];
   const atomicCondition = isLinkageAtomicCondition(condition) ? condition : undefined;
@@ -71,6 +74,7 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
   const [draftField, setDraftField] = useState(atomicCondition?.field ?? '');
   const [draftOp, setDraftOp] = useState<LinkageConditionOp>(atomicCondition?.op ?? 'eq');
   const [draftValue, setDraftValue] = useState(formatDraftValue(atomicCondition));
+  const appliedDraftSignature = useMemo(() => draftSignatureFromCondition(condition), [condition]);
   const candidates = useMemo(
     () => flattenLinkageCandidateFields(availableFields, field.stableId),
     [availableFields, field.stableId],
@@ -81,16 +85,20 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
   );
 
   useEffect(() => {
-    const nextCondition = field[linkageKey];
-    const nextAtomic = isLinkageAtomicCondition(nextCondition) ? nextCondition : undefined;
-    const nextGroup = isLinkageConditionGroup(nextCondition) ? nextCondition : undefined;
-    setMode(conditionToMode(nextCondition));
-    setGroupOperator(groupOperatorFromCondition(nextGroup));
-    setGroupDrafts(groupDraftsFromCondition(nextGroup));
-    setDraftField(nextAtomic?.field ?? '');
-    setDraftOp(nextAtomic?.op ?? 'eq');
-    setDraftValue(formatDraftValue(nextAtomic));
-  }, [field, linkageKey]);
+    resetDraftFromCondition(condition);
+  }, [condition, field.stableId, linkageKey]);
+
+  const draftSignature = useMemo(
+    () => JSON.stringify({
+      mode,
+      groupOperator: mode === 'group' ? groupOperator : undefined,
+      groupDrafts: mode === 'group' ? groupDrafts : undefined,
+      draftField: mode === 'atomic' ? draftField : undefined,
+      draftOp: mode === 'atomic' ? draftOp : undefined,
+      draftValue: mode === 'atomic' ? draftValue : undefined,
+    }),
+    [draftField, draftOp, draftValue, groupDrafts, groupOperator, mode],
+  );
 
   const handleKeyChange = (nextKey: LinkageKey) => {
     setLinkageKey(nextKey);
@@ -121,22 +129,46 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
     && (EMPTY_OPS.has(draftOp)
       || (NUMERIC_OPS.has(draftOp) ? Number.isFinite(Number(draftValue)) && draftValue.trim() !== '' : draftValue.trim() !== ''));
   const canApplyGroup = groupDrafts.length > 0 && groupDrafts.every(canBuildAtomicDraft);
+  const isDirty = draftSignature !== appliedDraftSignature;
+  const canApplyCurrentDraft = mode === 'atomic' ? canApply : canApplyGroup;
 
-  const handleApply = () => {
-    if (!canApply) return;
-    onChange({
-      ...field,
-      [linkageKey]: buildAtomicLinkageCondition(draftField, draftOp, draftValue),
-    });
-  };
+  const applyCurrentDraft = useCallback(() => {
+    if (mode === 'atomic') {
+      if (!canApply) return;
+      onChange({
+        ...field,
+        [linkageKey]: buildAtomicLinkageCondition(draftField, draftOp, draftValue),
+      });
+      return;
+    }
 
-  const handleApplyGroup = () => {
     if (!canApplyGroup) return;
     onChange({
       ...field,
       [linkageKey]: buildGroupLinkageCondition(groupOperator, groupDrafts),
     });
-  };
+  }, [canApply, canApplyGroup, draftField, draftOp, draftValue, field, groupDrafts, groupOperator, linkageKey, mode, onChange]);
+
+  const discardDraft = useCallback(() => {
+    resetDraftFromCondition(condition);
+  }, [condition]);
+
+  useEffect(() => {
+    if (!onDirtyStateChange) return;
+    if (!isDirty) {
+      onDirtyStateChange(null);
+      return;
+    }
+
+    onDirtyStateChange({
+      dirty: true,
+      canApply: canApplyCurrentDraft,
+      apply: applyCurrentDraft,
+      discard: discardDraft,
+    });
+  }, [applyCurrentDraft, canApplyCurrentDraft, discardDraft, isDirty, onDirtyStateChange]);
+
+  useEffect(() => () => onDirtyStateChange?.(null), [onDirtyStateChange]);
 
   const handleClear = () => {
     onChange({
@@ -276,7 +308,8 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
             </label>
           )}
           <div className="field-linkage-builder-actions" style={actionsStyle}>
-            <Button disabled={!canApply} onClick={handleApply}>应用条件</Button>
+            {isDirty ? <Tag className="semantic-tag semantic-tag--warning">有未应用的修改</Tag> : null}
+            <Button disabled={!canApply} onClick={applyCurrentDraft}>应用条件</Button>
             <Button theme="borderless" onClick={() => handleAddGroupRow()}>添加条件</Button>
             <Button theme="borderless" onClick={handleClear}>清空条件</Button>
           </div>
@@ -349,13 +382,25 @@ export function LinkageConditionBuilder({ field, availableFields, onChange }: Li
           ))}
           <div className="field-linkage-builder-actions" style={actionsStyle}>
             <Button theme="borderless" onClick={handleAddGroupRow}>添加条件</Button>
-            <Button disabled={!canApplyGroup} onClick={handleApplyGroup}>应用条件</Button>
+            {isDirty ? <Tag className="semantic-tag semantic-tag--warning">有未应用的修改</Tag> : null}
+            <Button disabled={!canApplyGroup} onClick={applyCurrentDraft}>应用条件</Button>
             <Button theme="borderless" onClick={handleClear}>清空条件</Button>
           </div>
         </div>
       )}
     </EditorSection>
   );
+
+  function resetDraftFromCondition(nextCondition: LinkageCondition | undefined) {
+    const nextAtomic = isLinkageAtomicCondition(nextCondition) ? nextCondition : undefined;
+    const nextGroup = isLinkageConditionGroup(nextCondition) ? nextCondition : undefined;
+    setMode(conditionToMode(nextCondition));
+    setGroupOperator(groupOperatorFromCondition(nextGroup));
+    setGroupDrafts(groupDraftsFromCondition(nextGroup));
+    setDraftField(nextAtomic?.field ?? '');
+    setDraftOp(nextAtomic?.op ?? 'eq');
+    setDraftValue(formatDraftValue(nextAtomic));
+  }
 }
 
 export function buildAtomicLinkageCondition(
@@ -451,4 +496,18 @@ function canBuildAtomicDraft(draft: AtomicDraft): boolean {
 function formatDraftValue(condition: LinkageAtomicCondition | undefined): string {
   if (!condition || condition.value == null) return '';
   return Array.isArray(condition.value) ? condition.value.join(', ') : String(condition.value);
+}
+
+function draftSignatureFromCondition(condition: LinkageCondition | undefined): string {
+  const groupCondition = isLinkageConditionGroup(condition) ? condition : undefined;
+  const atomicCondition = isLinkageAtomicCondition(condition) ? condition : undefined;
+  const mode = conditionToMode(condition);
+  return JSON.stringify({
+    mode,
+    groupOperator: mode === 'group' ? groupOperatorFromCondition(groupCondition) : undefined,
+    groupDrafts: mode === 'group' ? groupDraftsFromCondition(groupCondition) : undefined,
+    draftField: mode === 'atomic' ? atomicCondition?.field ?? '' : undefined,
+    draftOp: mode === 'atomic' ? atomicCondition?.op ?? 'eq' : undefined,
+    draftValue: mode === 'atomic' ? formatDraftValue(atomicCondition) : undefined,
+  });
 }

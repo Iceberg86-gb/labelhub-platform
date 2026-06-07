@@ -1,7 +1,7 @@
-import { Banner, Button, Card, Empty, Spin, Toast, Typography } from '@douyinfe/semi-ui';
+import { Banner, Button, Card, Empty, Modal, Spin, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconRefresh } from '@douyinfe/semi-icons';
 import type { CSSProperties } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   containsFieldStableId,
@@ -23,10 +23,14 @@ import {
   insertFieldIntoDesignerTarget,
 } from '../../features/schema-design/designerDragModel';
 import { PublishSchemaModal } from '../../features/schema-design/PublishSchemaModal';
+import { buildSourcePathOptionsFromDatasetItems } from '../../features/schema-design/sourcePathOptions';
 import { VersionHistoryDrawer } from '../../features/schema-design/VersionHistoryDrawer';
 import { FieldEditor } from '../../features/schema-design/field-editors/FieldEditor';
+import type { LinkageDirtyState } from '../../features/schema-design/field-editors/editorTypes';
 import { useSchemaCurrentVersionQuery } from '../../features/schema-design/useSchemaCurrentVersionQuery';
+import { useDatasetItemsQuery } from '../../features/dataset/useDatasetItemsQuery';
 import { SchemaFormilyPreviewPanel } from '../../features/labeling/formily/preview/SchemaFormilyPreviewPanel';
+import { useTaskDetailQuery } from '../../features/task/task-detail/useTaskDetailQuery';
 
 function parseSchemaId(raw?: string) {
   const schemaId = Number(raw);
@@ -70,6 +74,11 @@ export function OwnerSchemaDesignerPage() {
   const [isSessionNoticeVisible, setIsSessionNoticeVisible] = useState(true);
   const [publishModalVisible, setPublishModalVisible] = useState(false);
   const [versionDrawerVisible, setVersionDrawerVisible] = useState(false);
+  const [linkageDirtyState, setLinkageDirtyState] = useState<LinkageDirtyState | null>(null);
+  const [pendingDesignerAction, setPendingDesignerAction] = useState<(() => void) | null>(null);
+  const schemaTaskId = currentVersionQuery.schema?.taskId ?? null;
+  const taskDetailQuery = useTaskDetailQuery(schemaTaskId ?? 0, { enabled: schemaTaskId != null });
+  const datasetItemsQuery = useDatasetItemsQuery(taskDetailQuery.data?.currentDatasetId);
 
   useEffect(() => {
     if (!currentVersionQuery.isLoading && currentVersionQuery.document) {
@@ -106,6 +115,23 @@ export function OwnerSchemaDesignerPage() {
     () => (draftDocument ? previewJson(draftDocument) : ''),
     [draftDocument],
   );
+  const sourcePathOptions = useMemo(
+    () => buildSourcePathOptionsFromDatasetItems(datasetItemsQuery.data?.items ?? []),
+    [datasetItemsQuery.data?.items],
+  );
+
+  const runWithLinkageLeaveGuard = useCallback((action: () => void) => {
+    if (linkageDirtyState?.dirty) {
+      setPendingDesignerAction(() => action);
+      return;
+    }
+    action();
+  }, [linkageDirtyState]);
+
+  const handleSelectField = useCallback((stableId: string) => {
+    if (stableId === selectedStableId) return;
+    runWithLinkageLeaveGuard(() => setSelectedStableId(stableId));
+  }, [runWithLinkageLeaveGuard, selectedStableId]);
 
   const handleFieldsChange = (nextFields: SchemaField[]) => {
     if (!draftDocument) return;
@@ -139,6 +165,14 @@ export function OwnerSchemaDesignerPage() {
     setIsDirty(true);
   };
 
+  const handleDeleteFieldWithGuard = (stableId: string) => {
+    if (stableId === selectedStableId) {
+      runWithLinkageLeaveGuard(() => handleDeleteField(stableId));
+      return;
+    }
+    handleDeleteField(stableId);
+  };
+
   const handleSelectedFieldChange = (updatedField: SchemaField) => {
     if (!draftDocument) return;
     const nextFields = updateFieldByStableId(schemaFields(draftDocument), updatedField.stableId, () => updatedField);
@@ -162,6 +196,24 @@ export function OwnerSchemaDesignerPage() {
     );
     setIsDirty(false);
     Toast.success(`已发布 v${newVersion.versionNumber}`);
+  };
+
+  const handleApplyLinkageAndLeave = () => {
+    const action = pendingDesignerAction;
+    linkageDirtyState?.apply();
+    setPendingDesignerAction(null);
+    action?.();
+  };
+
+  const handleDiscardLinkageAndLeave = () => {
+    const action = pendingDesignerAction;
+    linkageDirtyState?.discard();
+    setPendingDesignerAction(null);
+    action?.();
+  };
+
+  const handleContinueEditingLinkage = () => {
+    setPendingDesignerAction(null);
   };
 
   if (!schemaId) {
@@ -260,8 +312,8 @@ export function OwnerSchemaDesignerPage() {
             onChange={handleFieldsChange}
             onAddField={handleAddField}
             selectedStableId={selectedStableId}
-            onSelect={setSelectedStableId}
-            onDelete={handleDeleteField}
+            onSelect={handleSelectField}
+            onDelete={handleDeleteFieldWithGuard}
             errors={validationErrorsByField}
             validationErrorCount={validationErrors.length}
           />
@@ -278,11 +330,13 @@ export function OwnerSchemaDesignerPage() {
                 field={selectedField}
                 availableFields={draftFields}
                 onChange={handleSelectedFieldChange}
+                onLinkageDirtyStateChange={setLinkageDirtyState}
+                sourcePathOptions={sourcePathOptions}
                 errors={validationErrorsByField.get(selectedField.stableId) ?? []}
                 errorsByField={validationErrorsByField}
                 selectedStableId={selectedStableId}
-                onSelect={setSelectedStableId}
-                onDelete={handleDeleteField}
+                onSelect={handleSelectField}
+                onDelete={handleDeleteFieldWithGuard}
               />
             ) : (
               <div className="designer-placeholder">
@@ -313,6 +367,28 @@ export function OwnerSchemaDesignerPage() {
           currentVersionId={currentVersionQuery.schema.currentVersionId ?? null}
           onClose={() => setVersionDrawerVisible(false)}
         />
+        <Modal
+          title="联动规则尚未应用"
+          visible={Boolean(pendingDesignerAction)}
+          width={480}
+          footer={null}
+          onCancel={handleContinueEditingLinkage}
+        >
+          <div className="linkage-dirty-modal">
+            <Typography.Text>该联动规则尚未应用,离开将丢失修改</Typography.Text>
+            <div className="linkage-dirty-modal__actions">
+              <Button disabled={!linkageDirtyState?.canApply} theme="solid" type="primary" onClick={handleApplyLinkageAndLeave}>
+                应用并离开
+              </Button>
+              <Button type="danger" onClick={handleDiscardLinkageAndLeave}>
+                放弃更改
+              </Button>
+              <Button theme="borderless" onClick={handleContinueEditingLinkage}>
+                继续编辑
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </div>
     </section>
   );

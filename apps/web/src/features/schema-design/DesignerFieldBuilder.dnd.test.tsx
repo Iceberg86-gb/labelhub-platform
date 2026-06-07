@@ -11,6 +11,7 @@ vi.mock('@douyinfe/semi-icons', () => ({
   IconCalendar: () => <span />,
   IconCheckboxTick: () => <span />,
   IconCode: () => <span />,
+  IconCopy: () => <span>copy</span>,
   IconDelete: () => <span>delete</span>,
   IconHandle: () => <span>handle</span>,
   IconEyeOpened: () => <span />,
@@ -35,6 +36,12 @@ vi.mock('@douyinfe/semi-ui', () => ({
     </div>
   ),
   Tag: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Tooltip: ({ children, content }: { children?: ReactNode; content?: ReactNode }) => (
+    <span>
+      {children}
+      {content}
+    </span>
+  ),
   Typography: {
     Text: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
     Title: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
