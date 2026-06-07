@@ -701,3 +701,15 @@ live 验收(owner,Chrome):工具栏五按钮、加粗 b 标签、ul/ol 列表、
 live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服务端行为的 live 验收必须确认进程已重启且版本命中;②pending 本地预览会造成"上传成功"假象,附件链重验必须包含刷新后回读和查库确认,drafts/submissions 中没有落值不得判通过。
 
 遗留:①下载 Content-Disposition 文件名仍为 objectKey 安全名,中文附件下载落盘会是 file.pdf,暂不影响答辩演示;②reviewer 角色当前可下载任意 session 附件,答辩可接受,多团队部署前需按任务/队列可见性收紧;③历史脏数据(fileName:"pdf" 旧记录)不回填,演示前重传即可。
+
+## 253. 后端部署脚本:同步-远端构建-带 env 重启-探针自检(2026-06-07)
+
+交付:scripts/deploy-api.sh 新增后端部署固化脚本,流程为同步源码树→远端 docker compose 构建并重启 api/agent→轮询 infra-api-1 healthy→容器内附件下载鉴权探针。脚本 SSH 固定使用 ~/.ssh/labelhub-deploy.pem,目标 root@120.26.182.61:/opt/labelhub/,rsync exclude 列表复制 deploy-web.sh 当前锚定版本并注明需保持同步。
+
+台账1:原 scripts/deploy-web.sh 只覆盖前端 dist 构建与源码树 rsync,没有后端远端构建/重启钩子,历史上已造成 closure 246 漏 rsync 与本轮 stale 源码编译失败两类事故。deploy-api.sh 将后端链路显式纳入脚本,避免靠手工 ssh 补步骤。
+
+台账2:rsync exclude 未锚定曾误伤同名模块目录,尤其 submission 业务模块。新脚本保留 --exclude=/submission 锚定写法,不得回退为 --exclude=submission;后续 deploy-web.sh 与 deploy-api.sh 的 exclude 列表需成对维护。
+
+台账3:生产 docker compose 必须显式携带 --env-file .env.prod,否则空变量会参与重建生产栈。deploy-api.sh 将 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build api agent 作为硬编码命令,并在重启后用 infra-api-1 healthy 与 /api/sessions/1/attachments/xx 返回 401 双探针自检。
+
+边界声明:本批只新增部署脚本与追加本条 closure,零触碰 Java/TS 业务代码、OpenAPI、migration;labeling feature 目录、共享 AI 溯源组件、质量 mutation hooks 等零触碰区与本批无交集。
