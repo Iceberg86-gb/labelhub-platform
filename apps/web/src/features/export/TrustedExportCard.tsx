@@ -414,7 +414,7 @@ function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChang
   const meta = SYSTEM_FIELD_META[row.source];
   if (!meta) {
     return (
-      <span className="trusted-export-mapping-row__source">
+      <span className="trusted-export-mapping-row__source trusted-export-mapping-row__source--custom">
         <Input
           className="trusted-export-mapping-row__source-input"
           size="small"
@@ -427,7 +427,7 @@ function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChang
   }
 
   return (
-    <span className="trusted-export-mapping-row__source">
+    <span className="trusted-export-mapping-row__source trusted-export-mapping-row__source--system">
       <span className="trusted-export-mapping-row__source-label">
         {meta.label}
         <Tooltip content={meta.description}>
