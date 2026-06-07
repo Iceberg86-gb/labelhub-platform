@@ -1,6 +1,6 @@
 import { createForm, onFormValuesChange, type Form } from '@formily/core';
 import { createSchemaField, FormProvider, type ISchema } from '@formily/react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { SchemaField } from '../../../entities/schema/schemaTypes';
 import type { AnswerPayload } from '../../../entities/submission/answerPayload';
@@ -11,6 +11,8 @@ import { componentsMap } from './components';
 
 const FormilySchemaField = createSchemaField({ components: componentsMap });
 export const FORMILY_VIRTUALIZATION_THRESHOLD = 50;
+const VIRTUAL_SCROLL_HEIGHT = 720;
+const VIRTUAL_SCROLL_FALLBACK_RECT = { width: 800, height: VIRTUAL_SCROLL_HEIGHT };
 
 export interface SchemaFormilyRendererProps {
   schemaFields: SchemaField[];
@@ -87,12 +89,13 @@ export function createSchemaFormilyForm({
 
 function VirtualizedFormilyFields({ schema, schemaFields }: { schema: ISchema; schemaFields: SchemaField[] }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const initialRect = useMeasuredVirtualScrollRect(scrollRef);
   const virtualizer = useVirtualizer({
     count: schemaFields.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => 112,
     overscan: 6,
-    initialRect: { width: 800, height: 720 },
+    initialRect,
   });
   const properties = (schema.properties ?? {}) as Record<string, ISchema>;
 
@@ -100,7 +103,7 @@ function VirtualizedFormilyFields({ schema, schemaFields }: { schema: ISchema; s
     <div
       ref={scrollRef}
       className="schema-formily-virtual-scroll"
-      style={{ maxHeight: 720, overflow: 'auto', contain: 'strict' }}
+      style={{ maxHeight: VIRTUAL_SCROLL_HEIGHT, overflow: 'auto', contain: 'strict' }}
     >
       <div
         className="schema-formily-virtual-inner"
@@ -133,6 +136,40 @@ function VirtualizedFormilyFields({ schema, schemaFields }: { schema: ISchema; s
       </div>
     </div>
   );
+}
+
+function useMeasuredVirtualScrollRect(scrollRef: RefObject<HTMLElement>) {
+  const [rect, setRect] = useState(VIRTUAL_SCROLL_FALLBACK_RECT);
+
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (!element) {
+      return undefined;
+    }
+
+    const measure = () => {
+      const measuredWidth = Math.round(element.getBoundingClientRect().width);
+      setRect((current) => {
+        const width = measuredWidth > 0 ? measuredWidth : current.width || VIRTUAL_SCROLL_FALLBACK_RECT.width;
+        if (current.width === width && current.height === VIRTUAL_SCROLL_HEIGHT) {
+          return current;
+        }
+        return { width, height: VIRTUAL_SCROLL_HEIGHT };
+      });
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [scrollRef]);
+
+  return rect;
 }
 
 export function applyExternalErrorsToForm(
