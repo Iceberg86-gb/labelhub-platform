@@ -170,23 +170,35 @@ function attachmentPreview(previewUrl: string | null, value: UploadedFileValue) 
 
 function attachmentDisplayName(value: UploadedFileValue): string {
   const fileName = value.fileName.trim();
-  const objectKeyBasename = basename(value.objectKey);
-  if (!fileName) {
-    return objectKeyBasename || value.objectKey;
-  }
-  return isExtensionOnlyName(fileName, value.contentType, objectKeyBasename)
-    ? objectKeyBasename || fileName
-    : fileName;
+  if (fileName) return fileName;
+  return attachmentFallbackName(value);
 }
 
-function isExtensionOnlyName(fileName: string, contentType: string, objectKeyBasename: string): boolean {
-  const normalized = fileName.replace(/^\./, '').toLowerCase();
-  if (!normalized || normalized.length > 8 || normalized.includes('.')) return false;
-  const contentSubtype = contentType.split(';')[0]?.split('/').pop()?.split('+')[0]?.toLowerCase();
-  const objectKeyExtension = objectKeyBasename.includes('.')
-    ? objectKeyBasename.split('.').pop()?.toLowerCase()
-    : undefined;
-  return normalized === contentSubtype || normalized === objectKeyExtension;
+function attachmentFallbackName(value: UploadedFileValue): string {
+  const objectKeyBasename = basename(value.objectKey);
+  const readableBasename = objectKeyBasename.replace(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i,
+    '',
+  );
+  if (isReadableAttachmentName(readableBasename)) return readableBasename;
+  if (isReadableAttachmentName(objectKeyBasename)) return objectKeyBasename;
+  const extension =
+    attachmentExtension(value.contentType.split(';')[0]?.split('/').pop()?.split('+')[0]) ??
+    attachmentExtension(readableBasename.split('.').pop()) ??
+    attachmentExtension(objectKeyBasename.split('-').pop());
+  if (extension) return `附件.${extension}`;
+  return value.contentType.trim() || '附件';
+}
+
+function isReadableAttachmentName(name: string): boolean {
+  const trimmed = name.trim();
+  return trimmed.includes('.') && !/^[0-9a-f-]+$/i.test(trimmed);
+}
+
+function attachmentExtension(rawExtension: string | undefined): string | null {
+  const normalized = rawExtension?.replace(/^\./, '').trim().toLowerCase();
+  if (!normalized || !/^[a-z0-9]{1,10}$/.test(normalized)) return null;
+  return normalized === 'jpeg' ? 'jpg' : normalized;
 }
 
 function basename(path: string): string {

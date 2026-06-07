@@ -4022,6 +4022,8 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 1 1 min(320px, 100%);
+  flex-wrap: nowrap;
   min-width: 0;
   max-width: 100%;
 }
@@ -4044,9 +4046,19 @@ a {
 }
 
 .labelhub-file-upload-name {
+  flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.labelhub-file-upload-name > * {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .labelhub-rich-text {

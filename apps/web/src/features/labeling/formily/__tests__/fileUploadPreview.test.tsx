@@ -78,7 +78,7 @@ describe('LabelHubFileUploadField image preview', () => {
     view.unmount();
   });
 
-  it('falls back to the objectKey basename when a non-image fileName is extension-only', async () => {
+  it('keeps a non-image fileName even when it is extension-like', async () => {
     mockImageDownload();
     mockObjectUrls('blob:unused');
     const view = renderClient(
@@ -99,8 +99,35 @@ describe('LabelHubFileUploadField image preview', () => {
     );
     await flushEffects();
 
-    expect(view.text()).toContain('123e4567-e89b-12d3-a456-426614174000-proof-document.pdf');
+    expect(view.text()).toContain('pdf');
+    expect(view.text()).not.toContain('123e4567-e89b-12d3-a456-426614174000-proof-document.pdf');
     expect(view.container.querySelector('.labelhub-file-upload-name')).not.toBeNull();
+    view.unmount();
+  });
+
+  it('uses a readable generic fallback only when fileName is empty', async () => {
+    mockImageDownload();
+    mockObjectUrls('blob:unused');
+    const view = renderClient(
+      <SchemaFormilyRenderer
+        schemaFields={[fileField]}
+        value={{
+          attachment: {
+            objectKey: 'session-attachments/20260530/task-44/session-55/a2fcfc21-4ea2-4c79-9bbf-90b745a896c0-pdf',
+            fileName: '',
+            contentType: 'application/pdf',
+            sizeBytes: 12,
+          },
+        }}
+        readOnly={false}
+        onChange={() => {}}
+        sessionId={55}
+      />,
+    );
+    await flushEffects();
+
+    expect(view.text()).toContain('附件.pdf');
+    expect(view.text()).not.toContain('a2fcfc21-4ea2-4c79-9bbf-90b745a896c0-pdf');
     view.unmount();
   });
 
