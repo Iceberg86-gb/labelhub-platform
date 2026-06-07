@@ -56,11 +56,28 @@ function extractTabFields(source: Record<string, unknown>, field: SchemaField): 
 
   for (const tab of field.tabs ?? []) {
     const tabValue = container[tab.stableId];
-    const tabSource = isPlainObject(tabValue) ? { ...source, ...tabValue } : source;
+    const tabSource = isPlainObject(tabValue) ? mergeTabValueSource(source, tabValue, tab.children ?? []) : source;
     Object.assign(payload, extractFields(tabSource, tab.children ?? []));
   }
 
   return payload;
+}
+
+function mergeTabValueSource(
+  source: Record<string, unknown>,
+  tabValue: Record<string, unknown>,
+  children: SchemaField[],
+): Record<string, unknown> {
+  const merged = { ...source, ...tabValue };
+  for (const child of children) {
+    if (
+      isEmptyPlainObject(tabValue[child.stableId])
+      && isNonEmptyPlainObject(source[child.stableId])
+    ) {
+      merged[child.stableId] = source[child.stableId];
+    }
+  }
+  return merged;
 }
 
 function snapshotAnswerValue(value: unknown): AnswerValue {
@@ -73,4 +90,12 @@ function isInternalKey(key: string): boolean {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isEmptyPlainObject(value: unknown): value is Record<string, never> {
+  return isPlainObject(value) && Object.keys(value).length === 0;
+}
+
+function isNonEmptyPlainObject(value: unknown): value is Record<string, unknown> {
+  return isPlainObject(value) && Object.keys(value).length > 0;
 }

@@ -1,6 +1,8 @@
-import { act } from 'react';
+import { act, useState } from 'react';
+import type { Form } from '@formily/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
+import type { AnswerPayload } from '../../../../entities/submission/answerPayload';
 import { apiClient } from '../../../../shared/api/client';
 import { SchemaFormilyRenderer } from '../SchemaFormilyRenderer';
 import { renderClient } from './renderClient';
@@ -107,6 +109,95 @@ describe('LabelHubFileUploadField image preview', () => {
     view.unmount();
   });
 
+  it('writes UploadedFile into Formily value and emitted payload for fields inside tabs', async () => {
+    const uploadedFile = {
+      objectKey: 'session-attachments/20260607/task-44/session-55/abc-evidence.pdf',
+      fileName: 'evidence.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 1234,
+    };
+    vi.spyOn(apiClient, 'POST').mockResolvedValue({ data: uploadedFile, response: new Response(null, { status: 201 }) } as any);
+    const onChange = vi.fn<(next: AnswerPayload) => void>();
+    let form: Form<Record<string, unknown>> | undefined;
+
+    const view = renderClient(
+      <SchemaFormilyRenderer
+        schemaFields={[{
+          stableId: 'evidence_tabs',
+          label: '证据 Tabs',
+          type: 'tab_container',
+          tabs: [
+            { stableId: 'main', label: 'Main', children: [{ ...fileField, stableId: 'evidence_file', acceptedFileTypes: [] }] },
+          ],
+        }]}
+        value={{}}
+        readOnly={false}
+        onChange={onChange}
+        onFormReady={(nextForm) => {
+          form = nextForm;
+        }}
+        sessionId={55}
+      />,
+    );
+    const input = view.container.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: [new File(['pdf'], 'evidence.pdf', { type: 'application/pdf' })],
+    });
+
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(form?.values.evidence_file).toEqual(uploadedFile);
+    expect(onChange).toHaveBeenLastCalledWith({ evidence_file: uploadedFile });
+    expect(view.text()).toContain('evidence.pdf');
+    view.unmount();
+  });
+
+  it('keeps UploadedFile when parent mirrors onChange back into renderer value', async () => {
+    const uploadedFile = {
+      objectKey: 'session-attachments/20260607/task-44/session-55/abc-evidence.pdf',
+      fileName: 'evidence.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 1234,
+    };
+    vi.spyOn(apiClient, 'POST').mockResolvedValue({ data: uploadedFile, response: new Response(null, { status: 201 }) } as any);
+    const payloads: AnswerPayload[] = [];
+
+    const view = renderClient(
+      <MirroredRenderer
+        schemaFields={[{
+          stableId: 'evidence_tabs',
+          label: '证据 Tabs',
+          type: 'tab_container',
+          tabs: [
+            { stableId: 'main', label: 'Main', children: [{ ...fileField, stableId: 'evidence_file', acceptedFileTypes: [] }] },
+          ],
+        }]}
+        onPayload={(next) => payloads.push(next)}
+      />,
+    );
+    const input = view.container.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: [new File(['pdf'], 'evidence.pdf', { type: 'application/pdf' })],
+    });
+
+    await act(async () => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(payloads.at(-1)).toEqual({ evidence_file: uploadedFile });
+    expect(view.text()).toContain('evidence.pdf');
+    view.unmount();
+  });
+
   it('shows a local objectURL preview while image upload is pending', () => {
     const { revokeObjectURL } = mockObjectUrls('blob:local-image');
     mockPendingUpload();
@@ -154,6 +245,28 @@ describe('LabelHubFileUploadField image preview', () => {
     view.unmount();
   });
 });
+
+function MirroredRenderer({
+  schemaFields,
+  onPayload,
+}: {
+  schemaFields: SchemaField[];
+  onPayload: (payload: AnswerPayload) => void;
+}) {
+  const [payload, setPayload] = useState<AnswerPayload>({});
+  return (
+    <SchemaFormilyRenderer
+      schemaFields={schemaFields}
+      value={payload}
+      readOnly={false}
+      onChange={(next) => {
+        onPayload(next);
+        queueMicrotask(() => setPayload(next));
+      }}
+      sessionId={55}
+    />
+  );
+}
 
 function imageValue(objectKey: string) {
   return {
