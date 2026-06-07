@@ -19,13 +19,11 @@ export function LabelHubFileUploadField({ field, sessionId }: { field?: SchemaFi
   const [uploading, setUploading] = useState(false);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [downloadedPreviewUrl, setDownloadedPreviewUrl] = useState<string | null>(null);
-  const [pendingPreviewFileName, setPendingPreviewFileName] = useState<string | null>(null);
+  const [pendingUploadValue, setPendingUploadValue] = useState<UploadedFileValue | null>(null);
   const value = asUploadedFile(formilyField.value);
   const imageAttachment = isImageAttachment(value);
   const previewSessionId = sessionId ?? sessionIdFromObjectKey(value?.objectKey);
-  const pendingPreviewValue = localPreviewUrl && pendingPreviewFileName
-    ? pendingUploadedFileValue(pendingPreviewFileName)
-    : null;
+  const accept = acceptedFileTypesAttr(field);
 
   useEffect(() => {
     if (!imageAttachment || !value?.objectKey || !previewSessionId) {
@@ -74,8 +72,9 @@ export function LabelHubFileUploadField({ field, sessionId }: { field?: SchemaFi
       Toast.error(`文件不能超过 ${field?.maxFileSizeMb ?? 50} MB`);
       return;
     }
+    setPendingUploadValue(pendingUploadedFileValue(file));
     if (file.type.startsWith('image/')) {
-      replaceLocalPreview(URL.createObjectURL(file), file.name);
+      replaceLocalPreview(URL.createObjectURL(file));
     } else {
       replaceLocalPreview(null);
     }
@@ -94,8 +93,10 @@ export function LabelHubFileUploadField({ field, sessionId }: { field?: SchemaFi
         throw new Error('upload failed');
       }
       formilyField.setValue(data);
+      setPendingUploadValue(null);
     } catch {
       replaceLocalPreview(null);
+      setPendingUploadValue(null);
       Toast.error('文件上传失败');
     } finally {
       setUploading(false);
@@ -108,7 +109,7 @@ export function LabelHubFileUploadField({ field, sessionId }: { field?: SchemaFi
       <input
         ref={inputRef}
         type="file"
-        accept={field?.acceptedFileTypes?.join(',')}
+        accept={accept}
         style={{ display: 'none' }}
         onChange={(event) => void handleFile(event.target.files?.[0])}
       />
@@ -116,17 +117,16 @@ export function LabelHubFileUploadField({ field, sessionId }: { field?: SchemaFi
         上传文件
       </Button>
       {value ? attachmentPreview(previewUrl, value) : null}
-      {!value && pendingPreviewValue ? attachmentPreview(previewUrl, pendingPreviewValue) : null}
+      {!value && pendingUploadValue ? attachmentPreview(localPreviewUrl, pendingUploadValue) : null}
       {!sessionId ? <Typography.Text type="tertiary">预览模式不上传文件</Typography.Text> : null}
     </div>
   );
 
-  function replaceLocalPreview(nextUrl: string | null, fileName?: string) {
+  function replaceLocalPreview(nextUrl: string | null) {
     if (localPreviewRef.current && localPreviewRef.current !== nextUrl) {
       revokePreview(localPreviewRef.current);
     }
     localPreviewRef.current = nextUrl;
-    setPendingPreviewFileName(nextUrl ? fileName ?? pendingPreviewFileName : null);
     setLocalPreviewUrl(nextUrl);
   }
 
@@ -169,13 +169,17 @@ function isImageAttachment(value: UploadedFileValue | null): boolean {
   return Boolean(value?.contentType?.toLowerCase().startsWith('image/'));
 }
 
-function pendingUploadedFileValue(fileName: string): UploadedFileValue {
+function pendingUploadedFileValue(file: File): UploadedFileValue {
   return {
     objectKey: '',
-    fileName,
-    contentType: 'image/*',
-    sizeBytes: 0,
+    fileName: file.name,
+    contentType: file.type || 'application/octet-stream',
+    sizeBytes: file.size,
   };
+}
+
+function acceptedFileTypesAttr(field?: SchemaField): string | undefined {
+  return field?.acceptedFileTypes?.length ? field.acceptedFileTypes.join(',') : undefined;
 }
 
 function sessionIdFromObjectKey(objectKey?: string): number | undefined {
