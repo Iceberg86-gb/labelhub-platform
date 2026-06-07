@@ -268,6 +268,29 @@ describe('Formily adapters', () => {
     expect(formilyValuesToAnswerPayload(values, tabFields)).toEqual({ tab_text: 'changed' });
   });
 
+  it('does not let an empty tab mirror overwrite a non-empty file_upload object', () => {
+    const uploadedFile = {
+      objectKey: 'session-attachments/20260607/task-44/session-55/abc-evidence.pdf',
+      fileName: 'evidence.pdf',
+      contentType: 'application/pdf',
+      sizeBytes: 1234,
+    };
+    const tabFields = [
+      field({
+        stableId: 'tabs_1',
+        type: 'tab_container',
+        tabs: [
+          { stableId: 'tab_a', label: 'Tab A', children: [field({ stableId: 'evidence_file', type: 'file_upload' })] },
+        ],
+      }),
+    ];
+
+    expect(formilyValuesToAnswerPayload({
+      evidence_file: uploadedFile,
+      tabs_1: { tab_a: { evidence_file: {} } },
+    }, tabFields)).toEqual({ evidence_file: uploadedFile });
+  });
+
   it('omits display-only show_item fields from outbound answer payload', () => {
     const form = createForm({ initialValues: { show_1: 'display copy', text_1: 'hello' } });
     expect(formilyValuesToAnswerPayload(form.values, [
