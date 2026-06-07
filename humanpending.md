@@ -686,4 +686,4 @@ live 验收(owner,Chrome):工具栏五按钮、加粗 b 标签、ul/ol 列表、
 
 台账新增:①链接插入用 prompt() 实现,内嵌浏览器/webview 场景静默失效,批4 候选改 Semi Modal 输入(顺带 URL 即时校验);②rich_text 长度校验按含标签字符串计算,重格式内容下 maxLength 被标签侵蚀,观察项。
 
-落账后自检:grep "^## " humanpending.md | tail -1 必须输出 ## 251 标题行,否则停止报告。只动 humanpending.md。提交 message:closure 251: designer compliance batch 2 (richtext toolbar)。回报:commit hash、自检 grep 输出、tail -4 humanpending.md。
+落账勘误:本条首次落盘误将落账指令段抄入正文,当场删除,正文零改动。归因:落账 prompt 未用分隔标记圈定落盘文本边界,自下条起恢复硬分隔。
