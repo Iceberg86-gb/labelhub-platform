@@ -119,6 +119,7 @@ describe('Formily adapters', () => {
   it('maps all current schema field types to LabelHub x-component names', () => {
     expect(LABEL_HUB_COMPONENTS).toEqual({
       text: 'LabelHubTextField',
+      textarea: 'LabelHubTextareaField',
       number: 'LabelHubNumberField',
       single_select: 'LabelHubSelectField',
       multi_select: 'LabelHubSelectField',
@@ -155,6 +156,24 @@ describe('Formily adapters', () => {
       { label: 'Alpha', value: 'a' },
       { label: 'Beta', value: 'b' },
     ]);
+  });
+
+  it('maps textarea fields to string Formily schema and LabelHubTextareaField', () => {
+    const schema = schemaToFormilyISchema([
+      field({
+        stableId: 'long_reason',
+        type: 'textarea' as SchemaField['type'],
+        label: 'Long reason',
+        placeholder: '请输入多行说明',
+        validation: { required: true, minLength: 10, maxLength: 500, pattern: '^[\\s\\S]+$' },
+      }),
+    ]);
+    const properties = schema.properties as Record<string, any>;
+
+    expect(properties.long_reason?.type).toBe('string');
+    expect(properties.long_reason?.['x-component']).toBe('LabelHubTextareaField');
+    expect(properties.long_reason?.['x-component-props']?.placeholder).toBe('请输入多行说明（至少10字符）');
+    expect(schema.required).toEqual(['long_reason']);
   });
 
   it('maps visibleWhen and requiredWhen to Formily x-reactions', () => {
@@ -306,6 +325,21 @@ describe('Formily validation projection', () => {
   it('projects named custom validators to Formily validation errors', async () => {
     const errors = await validateFormilyField(field({ stableId: 'url', type: 'text', validation: { customFunction: 'httpsUrl' } }), 'http://example.com');
     expect(errors.some((error) => error.includes('必须是 HTTPS URL'))).toBe(true);
+  });
+
+  it('projects textarea validation through the same Formily and payloadValidation path as text', async () => {
+    const textareaField = field({
+      stableId: 'long_reason',
+      type: 'textarea' as SchemaField['type'],
+      validation: { required: true, minLength: 10, maxLength: 40, pattern: '^reason:', customFunction: 'nonBlankTrimmed' },
+    });
+    const valid = { long_reason: 'reason: enough detail' } satisfies AnswerPayload;
+    const invalid = { long_reason: 'short' } satisfies AnswerPayload;
+
+    expect(await validateFormilyField(textareaField, valid.long_reason)).toHaveLength(0);
+    expect(validatePayload([textareaField], valid)).toHaveLength(0);
+    expect((await validateFormilyField(textareaField, invalid.long_reason)).length).toBeGreaterThan(0);
+    expect(validatePayload([textareaField], invalid).map((error) => error.reason)).toEqual(['最少 10 字', '格式不正确']);
   });
 
   it('keeps Formily passing values within payloadValidation authority', async () => {

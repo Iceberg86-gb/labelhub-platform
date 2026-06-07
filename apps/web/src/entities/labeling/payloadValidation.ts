@@ -47,6 +47,7 @@ function validateField(
 
   switch (field.type) {
     case 'text':
+    case 'textarea':
       validateText(field, value, errors);
       validateCustomFunction(field, value, errors);
       return;

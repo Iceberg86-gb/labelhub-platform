@@ -112,6 +112,7 @@ function schemaType(field: SchemaField): ISchema['type'] {
     case 'multi_select':
       return 'array';
     case 'text':
+    case 'textarea':
     case 'rich_text':
     case 'single_select':
     case 'date':
@@ -142,7 +143,7 @@ function validationSchema(validation?: SchemaFieldValidation): Partial<ISchema> 
 function placeholderWithValidationHint(field: SchemaField): string | undefined {
   const placeholder = field.placeholder;
   const minLength = field.validation?.minLength;
-  if (field.type !== 'text' || !placeholder || minLength == null) {
+  if ((field.type !== 'text' && field.type !== 'textarea') || !placeholder || minLength == null) {
     return placeholder;
   }
 

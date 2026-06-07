@@ -79,7 +79,7 @@ public class AnswerPayloadValidator {
         }
 
         List<AnswerValidationError> errors = switch (type) {
-            case TEXT, RICH_TEXT -> validateText(field, value);
+            case TEXT, TEXTAREA, RICH_TEXT -> validateText(field, value);
             case NUMBER -> validateNumber(field, value);
             case SINGLE_SELECT -> validateSingleSelect(field, value);
             case MULTI_SELECT -> validateMultiSelect(field, value);
