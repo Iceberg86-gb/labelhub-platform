@@ -42,7 +42,7 @@ rsync "${rsync_flags[@]}" -e "$ssh_cmd" \
   --exclude=web-dist \
   --exclude=.DS_Store \
   --exclude=.pnpm-store \
-  --exclude=submission \
+  --exclude=/submission \
   --exclude=docs/screenshots \
   --exclude=docs/design-assets \
   "$repo_root/" \
