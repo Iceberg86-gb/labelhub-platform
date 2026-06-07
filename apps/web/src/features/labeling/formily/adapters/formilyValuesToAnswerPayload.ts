@@ -32,6 +32,10 @@ function extractFields(source: Record<string, unknown>, fields: SchemaField[]): 
     }
 
     const rawValue = source[field.stableId];
+    if (rawValue === undefined || isUnansweredFieldValue(field, rawValue)) {
+      continue;
+    }
+
     if (field.type === 'nested_object') {
       if (!isPlainObject(rawValue)) {
         continue;
@@ -43,7 +47,10 @@ function extractFields(source: Record<string, unknown>, fields: SchemaField[]): 
       continue;
     }
 
-    payload[field.stableId] = snapshotAnswerValue(rawValue);
+    const snapshotValue = snapshotAnswerValue(rawValue);
+    if (snapshotValue !== undefined) {
+      payload[field.stableId] = snapshotValue;
+    }
   }
 
   return payload;
@@ -68,20 +75,37 @@ function mergeTabValueSource(
   tabValue: Record<string, unknown>,
   children: SchemaField[],
 ): Record<string, unknown> {
-  const merged = { ...source, ...tabValue };
+  // Tab containers and panes are Formily void fields, so active child fields
+  // write to their top-level stableId. The nested tab value is a hydration
+  // mirror and must not overwrite a newer top-level value during controlled
+  // parent echoes.
+  const merged = { ...source };
   for (const child of children) {
+    const tabHasChild = Object.hasOwn(tabValue, child.stableId);
+    const tabChildValue = tabValue[child.stableId];
+    if (!tabHasChild || tabChildValue === undefined) {
+      continue;
+    }
+
     if (
-      isEmptyPlainObject(tabValue[child.stableId])
-      && isNonEmptyPlainObject(source[child.stableId])
+      !Object.hasOwn(source, child.stableId)
+      || (
+        isEmptyPlainObject(source[child.stableId])
+        && isNonEmptyPlainObject(tabChildValue)
+      )
     ) {
-      merged[child.stableId] = source[child.stableId];
+      merged[child.stableId] = tabChildValue;
     }
   }
   return merged;
 }
 
-function snapshotAnswerValue(value: unknown): AnswerValue {
-  return JSON.parse(JSON.stringify(value)) as AnswerValue;
+function snapshotAnswerValue(value: unknown): AnswerValue | undefined {
+  const serialized = JSON.stringify(value);
+  if (serialized === undefined) {
+    return undefined;
+  }
+  return JSON.parse(serialized) as AnswerValue;
 }
 
 function isInternalKey(key: string): boolean {
@@ -90,6 +114,10 @@ function isInternalKey(key: string): boolean {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isUnansweredFieldValue(field: SchemaField, value: unknown): boolean {
+  return field.type === 'file_upload' && isEmptyPlainObject(value);
 }
 
 function isEmptyPlainObject(value: unknown): value is Record<string, never> {

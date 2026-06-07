@@ -252,7 +252,7 @@ describe('Formily adapters', () => {
     expect(formilyValuesToAnswerPayload(form.values, fields)).toEqual(currentOnlyPayload);
   });
 
-  it('hydrates tab container values for Formily paths and emits tab child fields as flat payload', () => {
+  it('hydrates tab container mirrors and emits active top-level tab child fields as flat payload', () => {
     const tabFields = [
       field({
         stableId: 'tabs_1',
@@ -264,7 +264,7 @@ describe('Formily adapters', () => {
     ];
     const values = answerPayloadToFormilyValues({ tab_text: 'initial' }, tabFields);
     expect((values.tabs_1 as any).tab_a.tab_text).toBe('initial');
-    (values.tabs_1 as any).tab_a.tab_text = 'changed';
+    values.tab_text = 'changed';
     expect(formilyValuesToAnswerPayload(values, tabFields)).toEqual({ tab_text: 'changed' });
   });
 
@@ -289,6 +289,23 @@ describe('Formily adapters', () => {
       evidence_file: uploadedFile,
       tabs_1: { tab_a: { evidence_file: {} } },
     }, tabFields)).toEqual({ evidence_file: uploadedFile });
+  });
+
+  it('does not create undefined tab child payload keys when source and mirror both omit them', () => {
+    const tabFields = [
+      field({
+        stableId: 'tabs_1',
+        type: 'tab_container',
+        tabs: [
+          { stableId: 'tab_a', label: 'Tab A', children: [field({ stableId: 'evidence_file', type: 'file_upload' })] },
+        ],
+      }),
+    ];
+
+    const payload = formilyValuesToAnswerPayload({ tabs_1: { tab_a: {} } }, tabFields);
+
+    expect(payload).toEqual({});
+    expect(Object.hasOwn(payload, 'evidence_file')).toBe(false);
   });
 
   it('omits display-only show_item fields from outbound answer payload', () => {

@@ -2,6 +2,7 @@ import { createForm, onFormValuesChange, type Form } from '@formily/core';
 import { createSchemaField, FormProvider, type ISchema } from '@formily/react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { buildFlatValueIndex, isFieldConditionallyRequired, isFieldVisible } from '../../../entities/labeling/linkageEvaluator';
 import type { SchemaField } from '../../../entities/schema/schemaTypes';
 import type { AnswerPayload } from '../../../entities/submission/answerPayload';
 import { answerPayloadToFormilyValues } from './adapters/answerPayloadToFormilyValues';
@@ -35,15 +36,21 @@ export function SchemaFormilyRenderer({
   sessionId,
   itemPayload,
 }: SchemaFormilyRendererProps) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   const form = useMemo(
-    () => createSchemaFormilyForm({ schemaFields, value, onChange, readOnly }),
-    [schemaFields, value, onChange, readOnly],
+    () => createSchemaFormilyForm({ schemaFields, value, onChange: (next) => onChangeRef.current(next), readOnly }),
+    [schemaFields, readOnly, sessionId],
   );
   const schema = useMemo(() => schemaToFormilyISchema(schemaFields, { sessionId, itemPayload }), [schemaFields, sessionId, itemPayload]);
 
   useEffect(() => {
     onFormReady?.(form);
   }, [form, onFormReady]);
+
+  useEffect(() => {
+    applyLinkageStateToForm(form, schemaFields);
+  }, [form, schemaFields]);
 
   useEffect(() => {
     applyExternalErrorsToForm(form, schemaFields, errors);
@@ -81,10 +88,29 @@ export function createSchemaFormilyForm({
     readPretty: readOnly,
     effects() {
       onFormValuesChange((form) => {
+        applyLinkageStateToForm(form, schemaFields);
         onChange(formilyValuesToAnswerPayload(form.values, schemaFields));
       });
     },
   });
+}
+
+export function applyLinkageStateToForm(form: Form<Record<string, unknown>>, schemaFields: SchemaField[]) {
+  const values = formilyValuesToAnswerPayload(form.values, schemaFields);
+  const flatValues = buildFlatValueIndex(schemaFields, values);
+
+  for (const { path, field } of flattenFieldPaths(schemaFields)) {
+    if (!field.visibleWhen && !field.requiredWhen) {
+      continue;
+    }
+
+    form.setFieldState(path, (state) => {
+      const visible = isFieldVisible(field, flatValues);
+      state.visible = visible;
+      state.display = visible ? 'visible' : 'none';
+      state.required = visible && ((field.validation?.required ?? false) || isFieldConditionallyRequired(field, flatValues));
+    });
+  }
 }
 
 function VirtualizedFormilyFields({ schema, schemaFields }: { schema: ISchema; schemaFields: SchemaField[] }) {
