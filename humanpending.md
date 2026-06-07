@@ -655,3 +655,13 @@
 redis 实证:全仓 grep 仅命中两份 compose 定义,无业务消费者,图中如实标注,列为候选裁剪项(挂账)。
 
 挂账新增:设计基线文档(labelhub-complete-design-baseline.md)需开修订批次对齐代码现状(上述五条漂移);redis 容器候选裁剪。
+
+## 249. 移动端适配:Labeler 全链路(2026-06-06)
+
+裁决链(owner 点选):适配路线 R2 分级(Labeler 作答+Reviewer 审核真适配,Owner/PA 不残废);本批 1-A 全链(领题入口+作答+提交)、2-A 延既有 CSS 断点体系零新依赖、D3 必修清单;课程要求"必须包含移动端适配、无明确验收标准",验收线自定义并入档(375px 全链可完成、无横滚、触控≥44px、校验错误可见)。另:备案+HTTPS 处置 owner 裁决 B+C——降级为答辩后事项停止催办,演示预案新增 SSH 隧道路线。
+
+过程:RESEARCH(a6a6ea9a)实证 Semi 桌面定位、13 断点既有体系、800px 抽屉、m7p2 三视口为 1440/1280/1024 且 375 级从未验证;实现批 codex/mobile-labeler 三 commit(4ef5fec6 初版 / abdd5360 一返:topbar 小屏层叠 / 5265bd31 二返:作答 meta 区 Space 混排、分页 width:100% 误伤,终态规格式描述后收敛)。merge 入 main 由 owner 亲手执行。
+
+事故与勘误:①实现 prompt 测试基线误写 705(系后端 Java 基线),前端实际 295,Codex 如实回报实际值,归因审计师;②首轮 scope 漏切全局壳 topbar,375 层叠错乱由 owner live 验收暴露,归因审计师切口;③二返成因含上轮规则自伤(分页全宽),Codex 自我归因如实入账。
+
+本地环境知识沉淀:本地标准启动为 make dev-api(自动带 LABELHUB_LLM_PROVIDER_MASTER_KEY 等 dev 凭据与 local profile),裸 mvn spring-boot:run 必崩于 LlmSecretEncryptor;本地 compose 仅基础设施四容器,API 跑宿主机。挂账新增:Makefile dev-api 目标未挂 require-java17 钩(本机 Java 26 裸跑曾混入),候选补钩。
