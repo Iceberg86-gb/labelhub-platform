@@ -10,10 +10,12 @@ import { LabelHubSelectField } from './LabelHubSelectField';
 import { LabelHubShowItem } from './LabelHubShowItem';
 import { LabelHubTabPane, LabelHubTabsContainer } from './LabelHubTabsContainer';
 import { LabelHubTextField } from './LabelHubTextField';
+import { LabelHubTextareaField } from './LabelHubTextareaField';
 
 export const componentsMap = {
   FieldFrame,
   LabelHubTextField,
+  LabelHubTextareaField,
   LabelHubNumberField,
   LabelHubSelectField,
   LabelHubDateField,

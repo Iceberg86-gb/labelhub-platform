@@ -2881,7 +2881,7 @@ components:
           type: integer
     SchemaFieldType:
       type: string
-      enum: [text, number, single_select, multi_select, date, file_upload, rich_text, json_editor, llm_interaction, show_item, nested_object, tab_container]
+      enum: [text, textarea, number, single_select, multi_select, date, file_upload, rich_text, json_editor, llm_interaction, show_item, nested_object, tab_container]
     SchemaFieldValidation:
       type: object
       properties:

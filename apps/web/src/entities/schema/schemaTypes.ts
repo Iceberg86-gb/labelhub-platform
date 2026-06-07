@@ -15,6 +15,7 @@ export type SchemaVersion = components['schemas']['SchemaVersion'];
 
 export const SCHEMA_FIELD_TYPES = [
   'text',
+  'textarea',
   'number',
   'single_select',
   'multi_select',
@@ -30,6 +31,7 @@ export const SCHEMA_FIELD_TYPES = [
 
 export const SCHEMA_FIELD_TYPE_LABELS: Record<SchemaFieldType, string> = {
   text: '文本',
+  textarea: '多行文本',
   number: '数字',
   single_select: '单选',
   multi_select: '多选',

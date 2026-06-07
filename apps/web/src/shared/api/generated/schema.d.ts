@@ -1467,7 +1467,7 @@ export interface components {
             size: number;
         };
         /** @enum {string} */
-        SchemaFieldType: "text" | "number" | "single_select" | "multi_select" | "date" | "file_upload" | "rich_text" | "json_editor" | "llm_interaction" | "show_item" | "nested_object" | "tab_container";
+        SchemaFieldType: "text" | "textarea" | "number" | "single_select" | "multi_select" | "date" | "file_upload" | "rich_text" | "json_editor" | "llm_interaction" | "show_item" | "nested_object" | "tab_container";
         SchemaFieldValidation: {
             required?: boolean;
             minLength?: number;

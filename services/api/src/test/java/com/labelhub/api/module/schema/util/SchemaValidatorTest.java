@@ -292,6 +292,19 @@ class SchemaValidatorTest {
     }
 
     @Test
+    void validate_accepts_textarea_custom_validation_like_text() {
+        SchemaField field = field("long_reason", SchemaFieldType.valueOf("TEXTAREA"));
+        SchemaFieldValidation validation = new SchemaFieldValidation();
+        validation.setMinLength(10);
+        validation.setMaxLength(500);
+        validation.setPattern("^[\\s\\S]+$");
+        validation.setCustomFunction("httpsUrl");
+        field.setValidation(validation);
+
+        validator.validate(document(field));
+    }
+
+    @Test
     void validate_rejects_custom_validation_function_for_incompatible_type() {
         SchemaField field = field("score", SchemaFieldType.NUMBER);
         SchemaFieldValidation validation = new SchemaFieldValidation();

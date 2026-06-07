@@ -16,6 +16,24 @@ class AnswerPayloadValidatorMaterialTest {
     private final AnswerPayloadValidator validator = new AnswerPayloadValidator();
 
     @Test
+    void textarea_validatesLikeText() {
+        SchemaField textarea = field("long_reason", SchemaFieldType.valueOf("TEXTAREA"));
+        SchemaFieldValidation validation = new SchemaFieldValidation();
+        validation.setRequired(true);
+        validation.setMinLength(10);
+        validation.setMaxLength(40);
+        validation.setPattern("^reason:");
+        validation.setCustomFunction("nonBlankTrimmed");
+        textarea.setValidation(validation);
+        SchemaDocument schema = document(textarea);
+
+        assertThat(validator.validate(schema, Map.of("long_reason", "reason: enough detail"))).isEmpty();
+        assertThat(validator.validate(schema, Map.of("long_reason", "short")))
+            .extracting(AnswerValidationError::reason)
+            .containsExactly("最少 10 字", "格式不正确");
+    }
+
+    @Test
     void fileUpload_requiresPersistedObjectReference() {
         SchemaDocument schema = document(field("receipt", SchemaFieldType.FILE_UPLOAD));
 

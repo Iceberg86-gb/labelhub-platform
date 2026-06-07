@@ -64,13 +64,14 @@ describe('DesignerFieldBuilder drag wiring', () => {
     expect(view.text()).toContain('容器与高级组件');
 
     const paletteItems = Array.from(view.container.querySelectorAll('.field-type-palette__item'));
-    expect(paletteItems).toHaveLength(12);
+    expect(paletteItems).toHaveLength(13);
     expect(paletteItems.map((item) => item.textContent?.trim())).toEqual([
       '展示项',
       '单选',
       '多选',
       '日期',
       '文本',
+      '多行文本',
       '数字',
       '富文本',
       '文件上传',
@@ -86,7 +87,7 @@ describe('DesignerFieldBuilder drag wiring', () => {
     expect(paletteGroups).toEqual([
       ['展示项'],
       ['单选', '多选', '日期'],
-      ['文本', '数字', '富文本', '文件上传'],
+      ['文本', '多行文本', '数字', '富文本', '文件上传'],
       ['字段分组', '标签页组', 'JSON', 'AI 交互'],
     ]);
     view.unmount();

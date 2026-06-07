@@ -50,7 +50,7 @@ import { SortableFieldItem } from './FieldList';
 export const FIELD_TYPE_PALETTE_GROUPS: Array<{ title: string; types: SchemaFieldType[] }> = [
   { title: '只读材料', types: ['show_item'] },
   { title: '选择与约束', types: ['single_select', 'multi_select', 'date'] },
-  { title: '内容录入', types: ['text', 'number', 'rich_text', 'file_upload'] },
+  { title: '内容录入', types: ['text', 'textarea', 'number', 'rich_text', 'file_upload'] },
   { title: '容器与高级组件', types: ['nested_object', 'tab_container', 'json_editor', 'llm_interaction'] },
 ];
 
@@ -60,6 +60,7 @@ const FIELD_TYPE_PALETTE_ICONS: Record<SchemaFieldType, JSX.Element> = {
   multi_select: <IconCheckboxTick />,
   date: <IconCalendar />,
   text: <IconText />,
+  textarea: <IconArticle />,
   number: <IconHash />,
   rich_text: <IconArticle />,
   file_upload: <IconUpload />,
