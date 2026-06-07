@@ -1,7 +1,14 @@
 import { Button, Input, Typography } from '@douyinfe/semi-ui';
 import { IconDelete, IconPlus } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
-import { createField, createTab } from '../../../entities/schema/fieldFactory';
+import {
+  createField,
+  createTab,
+  duplicateFieldWithFreshStableIds,
+  findFieldByStableId,
+  insertFieldAfterStableId,
+  isContainerField,
+} from '../../../entities/schema/fieldFactory';
 import type { SchemaField, SchemaFieldType } from '../../../entities/schema/schemaTypes';
 import { AddFieldButton } from '../AddFieldButton';
 import { FieldList } from '../FieldList';
@@ -60,6 +67,16 @@ export function TabContainerFieldEditor({
     updateTabs(tabs.map((tab) => (tab.stableId === activeTab.stableId ? { ...tab, children } : tab)));
   };
 
+  const handleDuplicateChild = (stableId: string) => {
+    if (!activeTab) return;
+    const children = activeTab.children ?? [];
+    const source = findFieldByStableId(children, stableId);
+    if (!source || isContainerField(source)) return;
+    const duplicate = duplicateFieldWithFreshStableIds(source);
+    handleChildrenChange(insertFieldAfterStableId(children, stableId, duplicate));
+    onSelect(duplicate.stableId);
+  };
+
   return (
     <div className="field-editor">
       <FieldErrors errors={errors} />
@@ -114,6 +131,7 @@ export function TabContainerFieldEditor({
               selectedStableId={selectedStableId}
               onSelect={onSelect}
               onDelete={onDelete}
+              onDuplicate={handleDuplicateChild}
               errors={errorsByField}
             />
           </div>

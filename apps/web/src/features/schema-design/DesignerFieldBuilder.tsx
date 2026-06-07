@@ -33,7 +33,12 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useCallback, useMemo, useState } from 'react';
-import { findFieldByStableId } from '../../entities/schema/fieldFactory';
+import {
+  duplicateFieldWithFreshStableIds,
+  findFieldByStableId,
+  insertFieldAfterStableId,
+  isContainerField,
+} from '../../entities/schema/fieldFactory';
 import type { SchemaField, SchemaFieldType } from '../../entities/schema/schemaTypes';
 import { SCHEMA_FIELD_TYPES, SCHEMA_FIELD_TYPE_LABELS } from '../../entities/schema/schemaTypes';
 import type { FieldValidationError } from '../../entities/schema/schemaValidation';
@@ -136,6 +141,15 @@ export function DesignerFieldBuilder({
     setActiveDragId(null);
   };
 
+  const handleDuplicateField = (stableId: string) => {
+    const sourceField = findFieldByStableId(fields, stableId);
+    if (!sourceField || isContainerField(sourceField)) return;
+    const duplicateField = duplicateFieldWithFreshStableIds(sourceField);
+    const nextFields = insertFieldAfterStableId(fields, stableId, duplicateField);
+    onChange(nextFields);
+    onSelect(duplicateField.stableId);
+  };
+
   return (
     <DndContext
       sensors={sensors}
@@ -176,6 +190,7 @@ export function DesignerFieldBuilder({
           selectedStableId={selectedStableId}
           onSelect={onSelect}
           onDelete={onDelete}
+          onDuplicate={handleDuplicateField}
           errors={errors}
         />
       </Card>
@@ -247,8 +262,12 @@ function CanvasFieldList({
   selectedStableId,
   onSelect,
   onDelete,
+  onDuplicate,
   errors,
-}: Pick<DesignerFieldBuilderProps, 'fields' | 'selectedStableId' | 'onSelect' | 'onDelete' | 'errors'> & { target: DesignerDropTarget }) {
+}: Pick<DesignerFieldBuilderProps, 'fields' | 'selectedStableId' | 'onSelect' | 'onDelete' | 'errors'> & {
+  target: DesignerDropTarget;
+  onDuplicate: (stableId: string) => void;
+}) {
   const { isOver, setNodeRef } = useDroppable({ id: designerDropIdFromTarget(target) });
   const isRoot = target.kind === 'root';
   const emptyText = isRoot ? '从左侧拖入物料创建第一个字段。' : '拖入字段到此处。';
@@ -278,12 +297,14 @@ function CanvasFieldList({
                   hasError={errors.has(field.stableId)}
                   onSelect={onSelect}
                   onDelete={onDelete}
+                  onDuplicate={onDuplicate}
                 />
                 <CanvasFieldChildren
                   field={field}
                   selectedStableId={selectedStableId}
                   onSelect={onSelect}
                   onDelete={onDelete}
+                  onDuplicate={onDuplicate}
                   errors={errors}
                 />
               </div>
@@ -300,8 +321,12 @@ function CanvasFieldChildren({
   selectedStableId,
   onSelect,
   onDelete,
+  onDuplicate,
   errors,
-}: Pick<DesignerFieldBuilderProps, 'selectedStableId' | 'onSelect' | 'onDelete' | 'errors'> & { field: SchemaField }) {
+}: Pick<DesignerFieldBuilderProps, 'selectedStableId' | 'onSelect' | 'onDelete' | 'errors'> & {
+  field: SchemaField;
+  onDuplicate: (stableId: string) => void;
+}) {
   if (field.type === 'nested_object') {
     return (
       <div className="schema-canvas-child-container">
@@ -312,6 +337,7 @@ function CanvasFieldChildren({
           selectedStableId={selectedStableId}
           onSelect={onSelect}
           onDelete={onDelete}
+          onDuplicate={onDuplicate}
           errors={errors}
         />
       </div>
@@ -332,6 +358,7 @@ function CanvasFieldChildren({
               selectedStableId={selectedStableId}
               onSelect={onSelect}
               onDelete={onDelete}
+              onDuplicate={onDuplicate}
               errors={errors}
             />
           </div>

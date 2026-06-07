@@ -21,7 +21,12 @@ export function FieldEditor(props: FieldEditorProps) {
   return (
     <div className="field-editor">
       {editor}
-      <LinkageConditionBuilder field={props.field} availableFields={props.availableFields} onChange={props.onChange} />
+      <LinkageConditionBuilder
+        field={props.field}
+        availableFields={props.availableFields}
+        onChange={props.onChange}
+        onDirtyStateChange={props.onLinkageDirtyStateChange}
+      />
       <LinkageJsonEditor field={props.field} onChange={props.onChange} />
     </div>
   );

@@ -3369,7 +3369,7 @@ a {
 .field-list-item {
   position: relative;
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  grid-template-columns: 32px minmax(0, 1fr) 68px;
   align-items: center;
   gap: var(--space-8);
   min-height: 54px;
@@ -3438,7 +3438,7 @@ a {
 }
 
 .field-list-item--plain {
-  grid-template-columns: 84px minmax(0, 1fr) 32px;
+  grid-template-columns: 84px minmax(0, 1fr) 68px;
 }
 
 .field-list-item__order-controls {
@@ -3485,6 +3485,15 @@ a {
   z-index: 1;
 }
 
+.field-list-item__actions {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
 .field-type-picker {
   display: grid;
   grid-template-columns: repeat(2, minmax(120px, 1fr));
@@ -3500,6 +3509,30 @@ a {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.source-path-option {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.source-path-option .semi-typography {
+  min-width: 0;
+}
+
+.linkage-dirty-modal {
+  display: grid;
+  gap: var(--space-16);
+}
+
+.linkage-dirty-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-8);
 }
 
 .field-editor-section {

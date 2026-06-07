@@ -713,3 +713,13 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 台账3:生产 docker compose 必须显式携带 --env-file .env.prod,否则空变量会参与重建生产栈。deploy-api.sh 将 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build api agent 作为硬编码命令,并在重启后用 infra-api-1 healthy 与 /api/sessions/1/attachments/xx 返回 401 双探针自检。
 
 边界声明:本批只新增部署脚本与追加本条 closure,零触碰 Java/TS 业务代码、OpenAPI、migration;labeling feature 目录、共享 AI 溯源组件、质量 mutation hooks 等零触碰区与本批无交集。
+
+## 254. Designer 交互打磨:字段复制、联动提示、sourcePath 建议(2026-06-07)
+
+交付:Designer 交互打磨中批完成三项纯前端增强。①字段列表新增"复制字段"入口,复制叶子字段时深拷贝 options/linkage 等配置,stableId 全部重生,副本插入原字段下方并自动选中;容器字段 nested_object/tab_container 本批不复制,按钮置灰并提示"暂不支持复制容器字段"。②联动构造器新增未应用提示,编辑后显示"有未应用的修改";切换字段或删除当前字段前弹出"该联动规则尚未应用,离开将丢失修改",提供"应用并离开/放弃更改/继续编辑"三选,放弃会真实还原到上次已应用快照。③展示项 sourcePath 从裸 Input 升级为 AutoComplete,候选来自当前 Schema 绑定任务的 currentDatasetId 与既有 dataset items query,前端从 itemPayload 展开 question.text、items.0.title 等路径并标注类型,仍保留自由手输兜底与"未在数据集字段中找到,请确认拼写"提示。
+
+取舍说明:字段复制本批只支持叶子字段,容器复制涉及 children/tabs 的交互语义与用户预期,暂不展开;sourcePath 数据源未新增 API/OpenAPI,而是复用既有 task detail 与 dataset items hooks,嵌套路径按实际 itemPayload 展开,数组提供首项 .0 路径作为可操作建议。
+
+测试:新增/补强字段复制、联动 dirty 与三分支离开守卫、sourcePath 选项渲染/自由输入、dataset payload 路径展开测试。前端测试 316→323;pnpm --filter @labelhub/web build 通过,pnpm test 65 文件/323 条通过。
+
+边界声明:本批零改 OpenAPI、零后端、零 migration;packages/contracts、services、db、apps/web/src/features/labeling 空 diff。未触碰共享 AI 溯源组件、质量 mutation hooks。
