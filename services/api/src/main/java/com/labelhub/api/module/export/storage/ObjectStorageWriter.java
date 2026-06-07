@@ -42,12 +42,21 @@ public class ObjectStorageWriter {
     }
 
     public byte[] getObject(String objectKey) {
+        return getObjectWithMetadata(objectKey).content();
+    }
+
+    public StoredObject getObjectWithMetadata(String objectKey) {
         GetObjectRequest request = GetObjectRequest.builder()
             .bucket(properties.bucket())
             .key(objectKey)
             .build();
         ResponseBytes<GetObjectResponse> response = s3Client.getObjectAsBytes(request);
-        return response.asByteArray();
+        return new StoredObject(
+            response.asByteArray(),
+            response.response().contentType() == null || response.response().contentType().isBlank()
+                ? contentTypeFor(objectKey)
+                : response.response().contentType()
+        );
     }
 
     public String contentTypeFor(String objectKey) {
@@ -61,5 +70,8 @@ public class ObjectStorageWriter {
             return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         }
         return "application/octet-stream";
+    }
+
+    public record StoredObject(byte[] content, String contentType) {
     }
 }
