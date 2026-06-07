@@ -34,6 +34,7 @@ export function SchemaRenderer({ fields, value, onChange, readOnly, errors }: Sc
 
     switch (field.type) {
       case 'text':
+      case 'textarea':
         return (
           <TextFieldRenderer
             key={field.stableId}

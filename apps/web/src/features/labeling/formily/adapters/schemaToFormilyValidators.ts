@@ -12,7 +12,7 @@ export function schemaToFormilyValidators(field: SchemaField): FieldValidator | 
     validators.push({ required: true, message: '此字段必填' });
   }
 
-  if (field.type === 'text') {
+  if (field.type === 'text' || field.type === 'textarea') {
     if (validation.minLength != null) {
       validators.push({ minLength: validation.minLength, message: `最少 ${validation.minLength} 字` });
     }

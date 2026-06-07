@@ -17,6 +17,7 @@ export function createField(type: SchemaFieldType): SchemaField {
 
   switch (type) {
     case 'text':
+    case 'textarea':
     case 'rich_text':
     case 'llm_interaction':
       return { ...base, placeholder: undefined, help: undefined };

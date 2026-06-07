@@ -4,7 +4,7 @@ export const CUSTOM_VALIDATION_FUNCTIONS = ['nonBlankTrimmed', 'httpsUrl', 'json
 
 export type CustomValidationFunction = (typeof CUSTOM_VALIDATION_FUNCTIONS)[number];
 
-const STRING_FUNCTIONS = new Set<SchemaFieldType>(['text', 'rich_text', 'date']);
+const STRING_FUNCTIONS = new Set<SchemaFieldType>(['text', 'textarea', 'rich_text', 'date']);
 const OBJECT_FUNCTIONS = new Set<SchemaFieldType>(['json_editor', 'llm_interaction']);
 
 export function isSupportedCustomValidationFunction(value: unknown): value is CustomValidationFunction {
@@ -16,7 +16,7 @@ export function isCustomValidationCompatible(type: SchemaFieldType, customFuncti
     return OBJECT_FUNCTIONS.has(type);
   }
   if (customFunction === 'httpsUrl') {
-    return type === 'text';
+    return type === 'text' || type === 'textarea';
   }
   if (customFunction === 'nonBlankTrimmed') {
     return STRING_FUNCTIONS.has(type);

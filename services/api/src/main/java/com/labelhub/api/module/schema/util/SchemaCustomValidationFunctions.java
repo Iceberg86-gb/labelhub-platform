@@ -14,6 +14,7 @@ public final class SchemaCustomValidationFunctions {
     private static final Set<String> SUPPORTED = Set.of(NON_BLANK_TRIMMED, HTTPS_URL, JSON_OBJECT);
     private static final Set<SchemaFieldType> STRING_TYPES = Set.of(
             SchemaFieldType.TEXT,
+            SchemaFieldType.TEXTAREA,
             SchemaFieldType.RICH_TEXT,
             SchemaFieldType.DATE);
     private static final Set<SchemaFieldType> OBJECT_TYPES = Set.of(
@@ -31,7 +32,7 @@ public final class SchemaCustomValidationFunctions {
             return OBJECT_TYPES.contains(type);
         }
         if (HTTPS_URL.equals(name)) {
-            return type == SchemaFieldType.TEXT;
+            return type == SchemaFieldType.TEXT || type == SchemaFieldType.TEXTAREA;
         }
         if (NON_BLANK_TRIMMED.equals(name)) {
             return STRING_TYPES.contains(type);
