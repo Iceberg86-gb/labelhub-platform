@@ -116,7 +116,7 @@ export function TransitionTaskModal({ task, targetStatus, onClose }: TransitionT
           }}
         />
 
-        <div className="modal-actions">
+        <div className="modal-actions transition-task-modal-actions">
           <Button onClick={handleClose} disabled={transitionTask.isPending}>
             取消
           </Button>

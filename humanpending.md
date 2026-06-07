@@ -723,3 +723,7 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 测试:新增/补强字段复制、联动 dirty 与三分支离开守卫、sourcePath 选项渲染/自由输入、dataset payload 路径展开测试。前端测试 316→323;pnpm --filter @labelhub/web build 通过,pnpm test 65 文件/323 条通过。
 
 边界声明:本批零改 OpenAPI、零后端、零 migration;packages/contracts、services、db、apps/web/src/features/labeling 空 diff。未触碰共享 AI 溯源组件、质量 mutation hooks。
+
+## 255. LabelHub UI 小修四项人工验收与生产同步(2026-06-07)
+
+交付:本轮 LabelHub UI 小修四项已由 owner 人工验收通过并进入提交/生产同步闭环,锚点为发布任务弹窗底部留白、Trusted Export 字段胶囊右端对齐与垂直居中、Reviewer queue 流程胶囊均分与连线延长。
