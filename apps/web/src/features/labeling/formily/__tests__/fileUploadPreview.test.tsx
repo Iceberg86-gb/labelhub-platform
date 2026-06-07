@@ -78,6 +78,32 @@ describe('LabelHubFileUploadField image preview', () => {
     view.unmount();
   });
 
+  it('falls back to the objectKey basename when a non-image fileName is extension-only', async () => {
+    mockImageDownload();
+    mockObjectUrls('blob:unused');
+    const view = renderClient(
+      <SchemaFormilyRenderer
+        schemaFields={[fileField]}
+        value={{
+          attachment: {
+            objectKey: 'session-attachments/20260530/task-44/session-55/123e4567-e89b-12d3-a456-426614174000-proof-document.pdf',
+            fileName: 'pdf',
+            contentType: 'application/pdf',
+            sizeBytes: 12,
+          },
+        }}
+        readOnly={false}
+        onChange={() => {}}
+        sessionId={55}
+      />,
+    );
+    await flushEffects();
+
+    expect(view.text()).toContain('123e4567-e89b-12d3-a456-426614174000-proof-document.pdf');
+    expect(view.container.querySelector('.labelhub-file-upload-name')).not.toBeNull();
+    view.unmount();
+  });
+
   it('keeps acceptedFileTypes empty as an unrestricted chooser and shows PDF upload feedback', async () => {
     const postSpy = vi.spyOn(apiClient, 'POST').mockImplementation(() => new Promise(() => {}));
 

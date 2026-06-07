@@ -153,16 +153,44 @@ function asUploadedFile(value: unknown): UploadedFileValue | null {
 }
 
 function attachmentPreview(previewUrl: string | null, value: UploadedFileValue) {
+  const displayName = attachmentDisplayName(value);
   return (
     <div className="labelhub-file-upload-file">
       {previewUrl ? (
         <a className="labelhub-file-upload-preview-link" href={previewUrl} target="_blank" rel="noreferrer">
-          <img className="labelhub-file-upload-thumbnail" src={previewUrl} alt={value.fileName} />
+          <img className="labelhub-file-upload-thumbnail" src={previewUrl} alt={displayName} />
         </a>
       ) : null}
-      <Typography.Text>{value.fileName}</Typography.Text>
+      <span className="labelhub-file-upload-name" title={displayName}>
+        <Typography.Text>{displayName}</Typography.Text>
+      </span>
     </div>
   );
+}
+
+function attachmentDisplayName(value: UploadedFileValue): string {
+  const fileName = value.fileName.trim();
+  const objectKeyBasename = basename(value.objectKey);
+  if (!fileName) {
+    return objectKeyBasename || value.objectKey;
+  }
+  return isExtensionOnlyName(fileName, value.contentType, objectKeyBasename)
+    ? objectKeyBasename || fileName
+    : fileName;
+}
+
+function isExtensionOnlyName(fileName: string, contentType: string, objectKeyBasename: string): boolean {
+  const normalized = fileName.replace(/^\./, '').toLowerCase();
+  if (!normalized || normalized.length > 8 || normalized.includes('.')) return false;
+  const contentSubtype = contentType.split(';')[0]?.split('/').pop()?.split('+')[0]?.toLowerCase();
+  const objectKeyExtension = objectKeyBasename.includes('.')
+    ? objectKeyBasename.split('.').pop()?.toLowerCase()
+    : undefined;
+  return normalized === contentSubtype || normalized === objectKeyExtension;
+}
+
+function basename(path: string): string {
+  return path.split('/').filter(Boolean).pop() ?? '';
 }
 
 function isImageAttachment(value: UploadedFileValue | null): boolean {
