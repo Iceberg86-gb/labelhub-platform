@@ -687,3 +687,17 @@ live 验收(owner,Chrome):工具栏五按钮、加粗 b 标签、ul/ol 列表、
 台账新增:①链接插入用 prompt() 实现,内嵌浏览器/webview 场景静默失效,批4 候选改 Semi Modal 输入(顺带 URL 即时校验);②rich_text 长度校验按含标签字符串计算,重格式内容下 maxLength 被标签侵蚀,观察项。
 
 落账勘误:本条首次落盘误将落账指令段抄入正文,当场删除,正文零改动。归因:落账 prompt 未用分隔标记圈定落盘文本边界,自下条起恢复硬分隔。
+
+## 252. 附件链:图片预览 + 中文文件名 + 受控回声修复(2026-06-07)
+
+交付:codex/image-upload-preview 全链 7 提交(adaca581..734fac34)合入,完成 session 附件下载端点 + 前端图片缩略图闭环。契约新增 GET /sessions/{sessionId}/attachments/{attachmentRef},用于 file_upload 图片回读预览;前端图片附件支持上传后缩略图、刷新后回读缩略图,非图片保持文件行展示。
+
+后端根因1:safeFileName 正则剥离中文,且 fileName 与 objectKey 共用清洗结果,导致中文附件落值为 fileName:"pdf"、objectKey 末段退化为 "-pdf"。修复为职责分离:fileName 保留用户原始可见文件名(仅剥路径段、控制字符和空白兜底),objectKey 继续使用安全名,纯中文等退化场景兜底为 file.ext。
+
+前端根因2:SchemaFormilyRenderer 因 value/onChange 引用变化整体重建 form,页面接线 onChange→setAnswerPayload→value 新引用形成受控回声循环,上传成功后的 setValue 新值被旧 value 回灌吞掉。修复为 form 生命周期与 value/onChange 解耦,onChange 用 ref 持有最新回调,初始 value 仅作 initialValues 注入。连带修正 tab 镜像合并语义:tab 子字段以顶层 stableId 真实值优先,嵌套 tab mirror 只做缺省兜底;联动刷新改为命令式 applyLinkageStateToForm,避免 requiredWhen/visibleWhen 继续依赖重建副作用。
+
+回归与修复:mergeTabValueSource 曾对未作答 tab 子字段无条件赋 undefined 键,导致标注页挂载即崩 SyntaxError:"undefined" is not valid JSON。该行经过审计但漏判,记审计方错误。已修为仅当 tabValue 自身拥有该 key 且值非 undefined 时回填,extractFields/snapshotAnswerValue 路径同步跳过 undefined,并补空 payload 挂载用例。
+
+live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服务端行为的 live 验收必须确认进程已重启且版本命中;②pending 本地预览会造成"上传成功"假象,附件链重验必须包含刷新后回读和查库确认,drafts/submissions 中没有落值不得判通过。
+
+遗留:①下载 Content-Disposition 文件名仍为 objectKey 安全名,中文附件下载落盘会是 file.pdf,暂不影响答辩演示;②reviewer 角色当前可下载任意 session 附件,答辩可接受,多团队部署前需按任务/队列可见性收紧;③历史脏数据(fileName:"pdf" 旧记录)不回填,演示前重传即可。
