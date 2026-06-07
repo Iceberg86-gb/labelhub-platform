@@ -302,10 +302,10 @@ export function LabelerSessionPage() {
           上一题
         </Button>
         <Select
+          className="labeler-session-jump-select"
           value={sessionId}
           disabled={navigation.total <= 1 || navigationBusy}
           onChange={(value) => void navigateToSession(Number(value))}
-          style={{ minWidth: 220 }}
           aria-label="跳题"
         >
           {navigation.items.map((item, index) => (
@@ -342,7 +342,10 @@ export function LabelerSessionPage() {
         </aside>
 
         <div className="labeler-answer-panel">
-          <Card className="labeler-session-card labeler-session-card--answer" bodyStyle={{ padding: 24 }}>
+          <Card
+            className="labeler-session-card labeler-session-card--answer"
+            bodyStyle={{ padding: 'var(--labeler-answer-card-padding, 24px)' }}
+          >
             <SchemaFormilyRenderer
               schemaFields={visibleFields}
               value={answerPayload}
@@ -423,11 +426,15 @@ function findFieldLabel(fields: SchemaField[], stableId: string): string | null 
 }
 
 function scrollToFieldError(stableId: string, root: ParentNode) {
+  root.querySelectorAll<HTMLElement>('.labeling-field--validation-focus').forEach((field) => {
+    field.classList.remove('labeling-field--validation-focus');
+  });
   const target = root.querySelector<HTMLElement>(`[data-labeling-field-id="${escapeAttributeValue(stableId)}"]`);
   if (!target) {
     return;
   }
 
+  target.classList.add('labeling-field--validation-focus');
   target.scrollIntoView({ block: 'center', behavior: 'smooth' });
   target.querySelector<HTMLElement>('input, textarea, button, [role="combobox"], [tabindex]:not([tabindex="-1"])')?.focus();
 }
