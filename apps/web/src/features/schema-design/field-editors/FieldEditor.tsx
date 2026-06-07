@@ -30,6 +30,7 @@ export function FieldEditor(props: FieldEditorProps) {
 function renderConcreteFieldEditor(props: FieldEditorProps) {
   switch (props.field.type) {
     case 'text':
+    case 'textarea':
       return <TextFieldEditor {...props} />;
     case 'number':
       return <NumberFieldEditor {...props} />;

@@ -176,6 +176,29 @@ describe('SchemaFormilyRenderer', () => {
     expect(properties.status['x-component-props'].mode).toBeUndefined();
   });
 
+  it('renders textarea fields as multiline text controls through Formily', () => {
+    const textareaField = {
+      stableId: 'long_reason',
+      label: 'Long reason',
+      type: 'textarea' as SchemaField['type'],
+      placeholder: '请输入多行说明',
+    } satisfies SchemaField;
+
+    const view = renderClient(
+      <SchemaFormilyRenderer
+        schemaFields={[textareaField]}
+        value={{ long_reason: 'line 1\nline 2' }}
+        readOnly={false}
+        onChange={() => {}}
+      />,
+    );
+
+    const textarea = view.container.querySelector('textarea');
+    expect(textarea).not.toBeNull();
+    expect((textarea as HTMLTextAreaElement).value).toBe('line 1\nline 2');
+    view.unmount();
+  });
+
   it('renders show_item from dataset item sourcePath without adding it to answers', () => {
     const sourceField = {
       stableId: 'source_prompt',
