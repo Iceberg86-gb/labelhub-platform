@@ -107,6 +107,10 @@ export function useAutosave({
       mountedRef.current = true;
       return;
     }
+    if (disabledRef.current) return;
+    saveRunRef.current += 1;
+    setLastError(null);
+    setStatus('idle');
     scheduleSave();
   }, [scheduleSave, value]);
 

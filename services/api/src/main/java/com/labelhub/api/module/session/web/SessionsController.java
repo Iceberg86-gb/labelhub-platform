@@ -12,13 +12,20 @@ import com.labelhub.api.generated.model.UploadedFile;
 import com.labelhub.api.generated.web.SessionsApi;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.session.entity.DraftEntity;
+import com.labelhub.api.module.session.service.SessionAttachmentDownload;
 import com.labelhub.api.module.session.service.SessionAttachmentService;
 import com.labelhub.api.module.session.service.SessionService;
 import com.labelhub.api.module.submission.web.SubmissionDtoMapper;
 import com.labelhub.api.security.JwtPrincipal;
-import org.springframework.http.MediaType;
+import java.util.Set;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -119,11 +126,47 @@ public class SessionsController implements SessionsApi {
             .body(sessionAttachmentService.upload(sessionId, currentUserId(), file));
     }
 
+    @Override
+    @PreAuthorize("hasAnyRole('LABELER','OWNER','REVIEWER','SENIOR_REVIEWER')")
+    @GetMapping(path = "/sessions/{sessionId}/attachments/{attachmentRef}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public ResponseEntity<Resource> downloadSessionAttachment(
+        @PathVariable("sessionId") Long sessionId,
+        @PathVariable("attachmentRef") String attachmentRef
+    ) {
+        SessionAttachmentDownload download = sessionAttachmentService.download(
+            sessionId,
+            currentUserId(),
+            currentUserRoles(),
+            attachmentRef
+        );
+        ByteArrayResource resource = new ByteArrayResource(download.content());
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(download.contentType()))
+            .contentLength(download.content().length)
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.inline().filename(download.fileName()).build().toString()
+            )
+            .body(resource);
+    }
+
     private Long currentUserId() {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof JwtPrincipal jwtPrincipal) {
             return jwtPrincipal.userId();
         }
         throw new IllegalStateException("Authenticated principal is not a JwtPrincipal");
+    }
+
+    private Set<String> currentUserRoles() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return Set.of();
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof JwtPrincipal jwtPrincipal) {
+            return Set.copyOf(jwtPrincipal.roles());
+        }
+        return Set.of();
     }
 }
