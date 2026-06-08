@@ -138,6 +138,17 @@ class VerdictServiceTest {
     }
 
     @Test
+    void deriveCurrentVerdict_allows_senior_reviewer_to_read_any_submission() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+        when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID)).thenReturn(null);
+
+        VerdictView verdict = verdictService.deriveCurrentVerdict(SUBMISSION_ID, REVIEWER_ID, Set.of("ROLE_SENIOR_REVIEWER"));
+
+        assertThat(verdict.status()).isEqualTo("pending");
+        verify(taskMapper, never()).selectById(any());
+    }
+
+    @Test
     void deriveCurrentVerdict_throws_when_requester_neither_owner_labeler_nor_reviewer() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
         when(taskMapper.selectById(TASK_ID)).thenReturn(task());

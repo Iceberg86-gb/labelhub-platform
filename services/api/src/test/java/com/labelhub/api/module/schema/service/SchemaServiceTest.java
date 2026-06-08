@@ -505,6 +505,19 @@ class SchemaServiceTest {
         assertThat(view.getAnswerPayload()).containsEntry("title", "answer");
     }
 
+    @Test
+    void renderForSubmission_allows_senior_reviewer_to_read_any_submission() {
+        when(submissionMapper.selectById(700L)).thenReturn(submission(700L, 42L, Map.of("title", "answer")));
+        when(taskMapper.selectById(10L)).thenReturn(task(10L, 1001L));
+        when(schemaVersionMapper.selectById(42L)).thenReturn(version(42L, 5L, 1, schemaJsonWithFieldCount(3)));
+        when(labelSchemaMapper.selectById(5L)).thenReturn(schema(5L, 10L, 1001L));
+
+        SubmissionRenderSchemaView view = schemaService.renderForSubmission(700L, 3004L, Set.of("ROLE_SENIOR_REVIEWER"));
+
+        assertThat(view.getSchemaVersion().getOwnerId()).isEqualTo(1001L);
+        assertThat(view.getAnswerPayload()).containsEntry("title", "answer");
+    }
+
     private static TaskEntity task(Long id, Long ownerId) {
         TaskEntity task = new TaskEntity();
         task.setId(id);

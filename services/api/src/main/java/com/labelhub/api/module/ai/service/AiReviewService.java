@@ -341,7 +341,7 @@ public class AiReviewService {
         TaskEntity task = taskMapper.selectById(submission.getTaskId());
         boolean isOwner = task != null && Objects.equals(task.getOwnerId(), requesterUserId);
         boolean isLabeler = Objects.equals(submission.getLabelerId(), requesterUserId);
-        boolean isReviewer = requesterRoles != null && requesterRoles.contains("REVIEWER");
+        boolean isReviewer = hasRole(requesterRoles, "REVIEWER") || hasRole(requesterRoles, "SENIOR_REVIEWER");
         if (!isOwner && !isLabeler && !isReviewer) {
             throw new SubmissionNotFoundException(submissionId);
         }
@@ -355,6 +355,10 @@ public class AiReviewService {
             aiCallInFieldMapper.selectBySubmissionId(submissionId),
             isOwner || isReviewer
         );
+    }
+
+    private boolean hasRole(Set<String> roles, String role) {
+        return roles != null && (roles.contains(role) || roles.contains("ROLE_" + role));
     }
 
     public InternalAiReviewContextView getInternalContext(Long submissionId) {

@@ -727,3 +727,7 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 ## 255. LabelHub UI 小修四项人工验收与生产同步(2026-06-07)
 
 交付:本轮 LabelHub UI 小修四项已由 owner 人工验收通过并进入提交/生产同步闭环,锚点为发布任务弹窗底部留白、Trusted Export 字段胶囊右端对齐与垂直居中、Reviewer queue 流程胶囊均分与连线延长。
+
+## 256. Senior Reviewer 复核详情权限修复与生产同步(2026-06-08)
+
+交付:全过程验证中 senior_reviewer_demo 可见复核队列但进入 submission 详情被判无权的问题已修复,锚点为 `/reviewer/submissions/:id?reviewLevel=senior_reviewer` 详情依赖的 render-schema、verdict、ledger、AI provenance 读取权限统一放行 `SENIOR_REVIEWER` 并补回归测试。

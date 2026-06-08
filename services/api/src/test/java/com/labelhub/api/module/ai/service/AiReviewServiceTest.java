@@ -796,6 +796,18 @@ class AiReviewServiceTest {
     }
 
     @Test
+    void getProvenance_allows_senior_reviewer_to_read_any_submission() {
+        TaskEntity task = task(10L, 2002L);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        AiCallEntity aiCall = persistedAiCall(inputHashForDefaultFixture());
+        when(aiCallMapper.selectBySubmissionId(300L)).thenReturn(List.of(aiCall));
+
+        SubmissionAiProvenanceView result = service.getProvenance(300L, 3004L, Set.of("SENIOR_REVIEWER"));
+
+        assertThat(result.aiCalls()).hasSize(1);
+    }
+
+    @Test
     void review_throws_submission_not_found_when_submission_missing() {
         when(submissionMapper.selectById(300L)).thenReturn(null);
 

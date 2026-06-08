@@ -377,6 +377,19 @@ class LedgerServiceTest {
     }
 
     @Test
+    void listEntries_returns_paged_entries_for_senior_reviewer_role() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+        when(qualityLedgerEntryMapper.selectBySubmissionId(SUBMISSION_ID, 0L, 20L)).thenReturn(List.of(entry(904L, "approve")));
+        when(qualityLedgerEntryMapper.selectCountBySubmissionId(SUBMISSION_ID)).thenReturn(1L);
+
+        PagedResult<QualityLedgerEntryEntity> result =
+            ledgerService.listEntries(SUBMISSION_ID, REVIEWER_ID, Set.of("ROLE_SENIOR_REVIEWER"), 1, 20);
+
+        assertThat(result.items()).extracting(QualityLedgerEntryEntity::getId).containsExactly(904L);
+        verify(taskMapper, never()).selectById(any());
+    }
+
+    @Test
     void listEntries_throws_when_requester_is_neither_owner_labeler_nor_reviewer() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
         when(taskMapper.selectById(TASK_ID)).thenReturn(task());
