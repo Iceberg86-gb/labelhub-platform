@@ -8,6 +8,9 @@ interface SubmitConfirmModalProps {
   fields: SchemaField[];
   payload: AnswerPayload;
   loading?: boolean;
+  title?: string;
+  okText?: string;
+  warningText?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -17,6 +20,9 @@ export function SubmitConfirmModal({
   fields,
   payload,
   loading = false,
+  title = '确认提交',
+  okText = '确认提交',
+  warningText = '提交后将无法修改答案,session 状态会变为已提交。',
   onClose,
   onConfirm,
 }: SubmitConfirmModalProps) {
@@ -24,17 +30,17 @@ export function SubmitConfirmModal({
 
   return (
     <Modal
-      title="确认提交"
+      title={title}
       visible={visible}
       onCancel={onClose}
       onOk={onConfirm}
-      okText="确认提交"
+      okText={okText}
       cancelText="取消"
       confirmLoading={loading}
       width="min(520px, calc(100vw - 32px))"
     >
       <div className="submit-modal-summary">
-        <Typography.Text type="warning">提交后将无法修改答案,session 状态会变为已提交。</Typography.Text>
+        <Typography.Text type="warning">{warningText}</Typography.Text>
         <div className="answer-summary-grid">
           <span>总字段数</span>
           <strong>{summary.totalCount}</strong>

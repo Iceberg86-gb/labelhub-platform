@@ -67,6 +67,7 @@ export function AiReviewRuleEditorDrawer({ taskId, open, onClose }: AiReviewRule
 
   return (
     <SideSheet
+      className="ai-review-rule-editor-sidesheet"
       title="AI 预审辅助配置"
       visible={open}
       width={640}

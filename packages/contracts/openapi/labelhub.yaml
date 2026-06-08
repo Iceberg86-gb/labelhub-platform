@@ -732,6 +732,63 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/ai-prereview/summary:
+    get:
+      tags: [Tasks]
+      operationId: getTaskAiPrereviewSummary
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Owner-visible AI prereview aggregate status for all eligible task submissions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAiPrereviewSummary'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/ai-prereview/enqueue:
+    post:
+      tags: [Tasks]
+      operationId: enqueueTaskAiPrereviews
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '202':
+          description: Eligible task submissions were accepted into the asynchronous AI prereview queue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAiPrereviewEnqueueResult'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/workflow-progress:
+    get:
+      tags: [Tasks]
+      operationId: getTaskWorkflowProgress
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Owner-visible aggregate progress for the task labeling and review workflow.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskWorkflowProgress'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /tasks/{taskId}/exports:
     post:
       tags: [Exports]
@@ -909,6 +966,35 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+  /tasks/{taskId}/schema-from-template:
+    post:
+      tags: [Tasks]
+      operationId: applySchemaTemplateToTask
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplySchemaTemplateRequest'
+      responses:
+        '201':
+          description: Created a task-bound schema copy from a reusable template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplySchemaTemplateResult'
         '400':
           $ref: '#/components/responses/ErrorBadRequest'
         '401':
@@ -1098,6 +1184,63 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+  /tasks/{taskId}/claim-batch:
+    post:
+      tags: [Tasks]
+      operationId: claimTaskItems
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimTaskItemsRequest'
+      responses:
+        '201':
+          description: Claimed annotation sessions. Fewer sessions may be returned when fewer items are available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimTaskItemsResult'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
+  /tasks/{taskId}/submit-drafts:
+    post:
+      tags: [Tasks]
+      operationId: submitTaskDrafts
+      description: Submit all editable sessions claimed by the authenticated labeler for this task. The current session uses the provided payload; other sessions use their latest saved drafts.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitTaskDraftsRequest'
+      responses:
+        '201':
+          description: Submissions created and queued for AI review.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitTaskDraftsResult'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
   /schemas:
     get:
       tags: [Schemas]
@@ -1120,6 +1263,15 @@ paths:
           in: query
           schema:
             type: string
+        - name: scope
+          in: query
+          schema:
+            $ref: '#/components/schemas/SchemaListScope'
+        - name: includeArchived
+          in: query
+          schema:
+            type: boolean
+            default: false
       responses:
         '200':
           description: Owner schemas for the authenticated user.
@@ -1153,6 +1305,29 @@ paths:
           $ref: '#/components/responses/ErrorUnauthorized'
         '403':
           $ref: '#/components/responses/ErrorForbidden'
+  /schemas/import:
+    post:
+      tags: [Schemas]
+      operationId: importSchemaTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchemaImportRequest'
+      responses:
+        '201':
+          description: Imported reusable schema template and its initial published version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaImportResult'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
   /schemas/{schemaId}:
     get:
       tags: [Schemas]
@@ -1172,6 +1347,23 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+    delete:
+      tags: [Schemas]
+      operationId: archiveSchemaTemplate
+      description: Archive a library schema template. Task-bound schemas are intentionally not archived through this endpoint.
+      parameters:
+        - $ref: '#/components/parameters/SchemaId'
+      responses:
+        '204':
+          description: Schema template archived.
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
   /schemas/{schemaId}/versions:
     get:
       tags: [Schemas]
@@ -1233,6 +1425,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SchemaVersion'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /schemas/{schemaId}/versions/{versionId}/export:
+    get:
+      tags: [Schemas]
+      operationId: exportSchemaVersionPackage
+      parameters:
+        - $ref: '#/components/parameters/SchemaId'
+        - $ref: '#/components/parameters/SchemaVersionId'
+      responses:
+        '200':
+          description: Portable LabelHub schema template package.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaExportPackage'
         '401':
           $ref: '#/components/responses/ErrorUnauthorized'
         '403':
@@ -1641,6 +1853,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PromptVersion'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /submissions/{submissionId}/ai-prereview/enqueue:
+    post:
+      tags: [AIReview]
+      operationId: enqueueSubmissionAiPrereview
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      responses:
+        '202':
+          description: The submission was accepted into the asynchronous AI prereview queue when eligible.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAiPrereviewEnqueueResult'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
   /submissions/{submissionId}/ai-trace:
@@ -2715,6 +2946,99 @@ components:
           type: integer
         size:
           type: integer
+    TaskAiPrereviewSummary:
+      type: object
+      required:
+        - taskId
+        - totalCount
+        - pendingCount
+        - processingCount
+        - completedCount
+        - failedCount
+        - enqueueableCount
+      properties:
+        taskId:
+          type: integer
+          format: int64
+        totalCount:
+          type: integer
+          format: int64
+        pendingCount:
+          type: integer
+          format: int64
+        processingCount:
+          type: integer
+          format: int64
+        completedCount:
+          type: integer
+          format: int64
+        failedCount:
+          type: integer
+          format: int64
+        enqueueableCount:
+          type: integer
+          format: int64
+    TaskAiPrereviewEnqueueResult:
+      type: object
+      required: [taskId, enqueuedCount, skippedCount, summary]
+      properties:
+        taskId:
+          type: integer
+          format: int64
+        enqueuedCount:
+          type: integer
+          format: int64
+        skippedCount:
+          type: integer
+          format: int64
+        summary:
+          $ref: '#/components/schemas/TaskAiPrereviewSummary'
+    TaskWorkflowProgress:
+      type: object
+      required:
+        - taskId
+        - quotaTotal
+        - quotaClaimed
+        - unclaimedCount
+        - labelingCount
+        - submittedCount
+        - aiPrereviewCompletedCount
+        - pendingReviewCount
+        - pendingSeniorReviewCount
+        - approvedCount
+        - rejectedCount
+      properties:
+        taskId:
+          type: integer
+          format: int64
+        quotaTotal:
+          type: integer
+        quotaClaimed:
+          type: integer
+        unclaimedCount:
+          type: integer
+          format: int64
+        labelingCount:
+          type: integer
+          format: int64
+        submittedCount:
+          type: integer
+          format: int64
+        aiPrereviewCompletedCount:
+          type: integer
+          format: int64
+        pendingReviewCount:
+          type: integer
+          format: int64
+        pendingSeniorReviewCount:
+          type: integer
+          format: int64
+        approvedCount:
+          type: integer
+          format: int64
+        rejectedCount:
+          type: integer
+          format: int64
     MarketplaceTask:
       type: object
       required: [id, title, status, quotaTotal, quotaClaimed, currentSchemaVersionId, currentDatasetId, availableItemCount]
@@ -2860,6 +3184,28 @@ components:
         datasetId:
           type: integer
           format: int64
+    ApplySchemaTemplateRequest:
+      type: object
+      required: [schemaId]
+      properties:
+        schemaId:
+          type: integer
+          format: int64
+        versionId:
+          type: integer
+          format: int64
+          description: Optional immutable template version. Defaults to the template current version.
+    ApplySchemaTemplateResult:
+      type: object
+      required: [schema, version]
+      properties:
+        schema:
+          $ref: '#/components/schemas/LabelSchema'
+        version:
+          $ref: '#/components/schemas/SchemaVersion'
+    SchemaListScope:
+      type: string
+      enum: [all, library, task]
     CreateSchemaRequest:
       type: object
       required: [taskId, name]
@@ -2871,6 +3217,24 @@ components:
           type: string
         description:
           type: string
+    SchemaImportRequest:
+      type: object
+      required: [name, schemaJson]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        schemaJson:
+          $ref: '#/components/schemas/SchemaDocument'
+    SchemaImportResult:
+      type: object
+      required: [schema, version]
+      properties:
+        schema:
+          $ref: '#/components/schemas/LabelSchema'
+        version:
+          $ref: '#/components/schemas/SchemaVersion'
     LabelSchema:
       type: object
       required: [id, name, ownerId, createdAt]
@@ -2895,6 +3259,9 @@ components:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+        archivedAt:
           type: string
           format: date-time
     PagedSchemas:
@@ -3132,6 +3499,27 @@ components:
         ownerId:
           type: integer
           format: int64
+    SchemaExportPackage:
+      type: object
+      required: [packageVersion, schemaId, versionId, versionNumber, name, schemaJson]
+      properties:
+        packageVersion:
+          type: integer
+          enum: [1]
+        schemaId:
+          type: integer
+          format: int64
+        versionId:
+          type: integer
+          format: int64
+        versionNumber:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        schemaJson:
+          $ref: '#/components/schemas/SchemaDocument'
     SubmissionRenderSchema:
       type: object
       required: [submissionId, schemaVersion, answerPayload]
@@ -3208,6 +3596,50 @@ components:
         submittedAt:
           type: string
           format: date-time
+    ClaimTaskItemsRequest:
+      type: object
+      required: [size]
+      additionalProperties: false
+      properties:
+        size:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          description: Desired number of dataset items to claim. The server caps this to remaining quota and available items.
+    ClaimTaskItemsResult:
+      type: object
+      required: [requestedSize, claimedCount, sessions]
+      properties:
+        requestedSize:
+          type: integer
+        claimedCount:
+          type: integer
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+    SubmitTaskDraftsRequest:
+      type: object
+      required: [currentSessionId, answerPayload]
+      additionalProperties: false
+      properties:
+        currentSessionId:
+          type: integer
+          format: int64
+          description: Session currently open in the labeler workspace. Its unsaved form payload is submitted from this request.
+        answerPayload:
+          type: object
+          additionalProperties: true
+    SubmitTaskDraftsResult:
+      type: object
+      required: [submittedCount, submissions]
+      properties:
+        submittedCount:
+          type: integer
+        submissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Submission'
     DatasetItem:
       type: object
       required: [id, datasetId, taskId, ordinal, itemPayload, itemHash, status, createdAt]
@@ -3945,7 +4377,7 @@ components:
           type: integer
     ReviewerSubmissionSummary:
       type: object
-      required: [id, taskId, taskTitle, labelerId, schemaVersionId, status, submittedAt, verdict, reviewLevel]
+      required: [id, taskId, taskTitle, labelerId, schemaVersionId, schemaName, schemaVersionNumber, status, submittedAt, verdict, reviewLevel]
       properties:
         id:
           type: integer
@@ -3961,6 +4393,10 @@ components:
         schemaVersionId:
           type: integer
           format: int64
+        schemaName:
+          type: string
+        schemaVersionNumber:
+          type: integer
         status:
           type: string
         submittedAt:

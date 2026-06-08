@@ -50,6 +50,22 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
     SessionEntity selectByIdForUpdate(@Param("id") Long id);
 
     @Select("""
+        SELECT id, task_id, dataset_item_id, labeler_id, schema_version_id,
+               claim_snapshot, status, claimed_at, submitted_at
+        FROM sessions
+        WHERE task_id = #{taskId}
+          AND labeler_id = #{labelerId}
+          AND status IN ('claimed', 'returned_for_revision')
+        ORDER BY dataset_item_id ASC, id ASC
+        FOR UPDATE
+        """)
+    @ResultMap("sessionResultMap")
+    List<SessionEntity> selectEditableByTaskAndLabelerForUpdate(
+        @Param("taskId") Long taskId,
+        @Param("labelerId") Long labelerId
+    );
+
+    @Select("""
         <script>
         SELECT *
         FROM (

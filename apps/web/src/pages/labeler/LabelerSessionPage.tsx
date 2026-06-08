@@ -12,7 +12,7 @@ import { createVisibleSchemaFieldsSelector } from '../../entities/labeling/visib
 import { AutosaveStatusTag } from '../../features/labeling/AutosaveStatusTag';
 import { DatasetItemContextCard, selectDatasetItemPayload } from '../../features/labeling/DatasetItemContextCard';
 import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
-import { buildSessionNavigation } from '../../features/labeling/sessionNavigation';
+import { buildSessionNavigation, nextEditableSessionId } from '../../features/labeling/sessionNavigation';
 import { SubmitConfirmModal } from '../../features/labeling/SubmitConfirmModal';
 import { fieldErrorsToStableIdMap, selectVisibleFieldErrors } from '../../features/labeling/serverValidationErrors';
 import { useAutosave } from '../../features/labeling/useAutosave';
@@ -27,6 +27,7 @@ import { useMySessionsQuery } from '../../features/labeling/useMySessionsQuery';
 import { useSaveDraftMutation } from '../../features/labeling/useSaveDraftMutation';
 import { useSessionDetailQuery } from '../../features/labeling/useSessionDetailQuery';
 import { SubmitValidationError, useSubmitMutation } from '../../features/labeling/useSubmitMutation';
+import { useSubmitTaskDraftsMutation } from '../../features/labeling/useSubmitTaskDraftsMutation';
 import { getUser } from '../../shared/api/auth-storage';
 import { runLabelerSubmitWithOfflineDraft } from './labelerSubmitOfflineDraftFlow';
 
@@ -46,11 +47,13 @@ export function LabelerSessionPage() {
   const submittedSessionsQuery = useMySessionsQuery({ page: 1, size: 100, status: 'submitted' });
   const saveDraftMutation = useSaveDraftMutation();
   const submitMutation = useSubmitMutation();
+  const submitTaskDraftsMutation = useSubmitTaskDraftsMutation();
 
   const [answerPayload, setAnswerPayload] = useState<AnswerPayload | null>(null);
   const [serverErrors, setServerErrors] = useState<Map<string, string[]> | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
+  const [submitMode, setSubmitMode] = useState<'single' | 'batch'>('single');
   const [navigationBusy, setNavigationBusy] = useState(false);
   const formRef = useRef<Form<Record<string, unknown>> | null>(null);
   const lastSessionIdRef = useRef<number | null>(sessionId);
@@ -94,6 +97,7 @@ export function LabelerSessionPage() {
     setServerErrors(null);
     setHasInitialized(false);
     setSubmitModalOpen(false);
+    setSubmitMode('single');
   }, [sessionId]);
 
   useEffect(() => {
@@ -179,6 +183,11 @@ export function LabelerSessionPage() {
       submittedSessionsQuery.data,
     ],
   );
+  const editableSessionCount = useMemo(
+    () => navigation.items.filter((item) => item.status === 'claimed' || item.status === 'returned_for_revision').length,
+    [navigation.items],
+  );
+  const canSubmitBatch = isEditable && editableSessionCount > 1;
 
   const handleAnswerPayloadChange = useCallback((next: AnswerPayload) => {
     setServerErrors(null);
@@ -210,12 +219,26 @@ export function LabelerSessionPage() {
     if (triggerSubmitValidationFeedback({ validationErrors, fields, form: formRef.current })) {
       return;
     }
+    setSubmitMode('single');
+    setSubmitModalOpen(true);
+  };
+
+  const handleBatchSubmitClick = () => {
+    if (triggerSubmitValidationFeedback({ validationErrors, fields, form: formRef.current })) {
+      return;
+    }
+    setSubmitMode('batch');
     setSubmitModalOpen(true);
   };
 
   const handleConfirmSubmit = async () => {
+    if (submitMode === 'batch') {
+      await handleConfirmBatchSubmit();
+      return;
+    }
     if (!sessionId) return;
     const finalPayload = answerPayload ?? EMPTY_ANSWER_PAYLOAD;
+    const nextSessionId = nextEditableSessionId(navigation);
     await runLabelerSubmitWithOfflineDraft({
       sessionId,
       userId,
@@ -228,7 +251,13 @@ export function LabelerSessionPage() {
       submit: (payload) => submitMutation.mutateAsync({ sessionId, answerPayload: payload }),
       clearPending: discardOfflineDraft,
       onSuccess: (submission) => {
-        Toast.success(`已提交 submission #${submission.id}`);
+        setSubmitModalOpen(false);
+        if (nextSessionId) {
+          Toast.success(`已提交 submission #${submission.id},进入下一题`);
+          navigate(`/labeler/sessions/${nextSessionId}`);
+          return;
+        }
+        Toast.success(`已提交 submission #${submission.id},本批次已完成`);
         navigate(`/labeler/submissions/${submission.id}`);
       },
       onBlocked: (message) => {
@@ -240,6 +269,47 @@ export function LabelerSessionPage() {
       },
       onGenericError: () => {
         Toast.error('提交失败,请稍后重试');
+      },
+    });
+  };
+
+  const handleConfirmBatchSubmit = async () => {
+    if (!sessionId || !detail) return;
+    const finalPayload = answerPayload ?? EMPTY_ANSWER_PAYLOAD;
+    await runLabelerSubmitWithOfflineDraft({
+      sessionId,
+      userId,
+      schemaVersionId: detail.schemaVersion.id,
+      finalPayload,
+      flush: autosave.flush,
+      disable: autosave.disable,
+      bufferPending: bufferPendingOfflineDraft,
+      preSync: syncPendingForSubmit,
+      submit: (payload) => submitTaskDraftsMutation.mutateAsync({
+        taskId: detail.task.id,
+        currentSessionId: sessionId,
+        answerPayload: payload,
+      }),
+      clearPending: discardOfflineDraft,
+      onSuccess: (result) => {
+        setSubmitModalOpen(false);
+        Toast.success(`已提交 ${result.submittedCount} 条 submission`);
+        const lastSubmission = result.submissions[result.submissions.length - 1];
+        if (lastSubmission) {
+          navigate(`/labeler/submissions/${lastSubmission.id}`);
+          return;
+        }
+        navigate('/labeler/my');
+      },
+      onBlocked: (message) => {
+        Toast.error(message);
+      },
+      onValidationError: (error: SubmitValidationError) => {
+        setServerErrors(fieldErrorsToStableIdMap(error.fieldErrors));
+        Toast.error(error.message);
+      },
+      onGenericError: (error) => {
+        Toast.error(error instanceof Error ? error.message : '批次提交失败,请稍后重试');
       },
     });
   };
@@ -289,6 +359,18 @@ export function LabelerSessionPage() {
           >
             提交
           </Button>
+          {canSubmitBatch ? (
+            <Button
+              icon={<IconSend />}
+              type="primary"
+              theme="light"
+              disabled={!isEditable}
+              loading={submitTaskDraftsMutation.isPending}
+              onClick={handleBatchSubmitClick}
+            >
+              提交本批次
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -364,7 +446,14 @@ export function LabelerSessionPage() {
         visible={submitModalOpen}
         fields={visibleFields}
         payload={answerPayload}
-        loading={submitMutation.isPending}
+        loading={submitMode === 'batch' ? submitTaskDraftsMutation.isPending : submitMutation.isPending}
+        title={submitMode === 'batch' ? '确认提交本批次' : '确认提交'}
+        okText={submitMode === 'batch' ? '提交本批次' : '确认提交'}
+        warningText={
+          submitMode === 'batch'
+            ? '将提交本任务下所有已领取且仍可编辑的题目；其他题会使用最新保存草稿。'
+            : '提交后将无法修改答案,session 状态会变为已提交。'
+        }
         onClose={() => setSubmitModalOpen(false)}
         onConfirm={handleConfirmSubmit}
       />

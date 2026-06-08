@@ -81,7 +81,7 @@ export function OwnerTaskSubmissionsSection({ taskId }: OwnerTaskSubmissionsSect
         <Empty title="提交记录加载失败" description={submissionsQuery.error instanceof Error ? submissionsQuery.error.message : '请稍后重试。'} />
       ) : null}
       {!submissionsQuery.isLoading && !submissionsQuery.isError && items.length === 0 ? (
-        <Empty title="暂无提交记录" description="Labeler 提交后,Owner 可在这里进入 AI 检查。" />
+        <Empty title="暂无提交记录" description="Labeler 提交后,Owner 可在这里进入 AI 预审。" />
       ) : null}
       {items.length > 0 ? (
         <>

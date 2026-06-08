@@ -40,6 +40,23 @@ public interface DatasetItemMapper extends BaseMapper<DatasetItemEntity> {
     DatasetItemEntity selectNextAvailableForUpdate(@Param("datasetId") Long datasetId, @Param("taskId") Long taskId);
 
     @Select("""
+        SELECT id, dataset_id, task_id, ordinal, item_payload, item_hash, status, created_at
+        FROM dataset_items
+        WHERE dataset_id = #{datasetId}
+          AND task_id = #{taskId}
+          AND status = 'available'
+        ORDER BY ordinal ASC, id ASC
+        LIMIT #{limit}
+        FOR UPDATE
+        """)
+    @ResultMap("datasetItemResultMap")
+    List<DatasetItemEntity> selectAvailableForUpdate(
+        @Param("datasetId") Long datasetId,
+        @Param("taskId") Long taskId,
+        @Param("limit") Integer limit
+    );
+
+    @Select("""
         SELECT COUNT(*)
         FROM dataset_items
         WHERE dataset_id = #{datasetId}

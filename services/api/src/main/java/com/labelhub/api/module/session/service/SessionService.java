@@ -31,6 +31,8 @@ import com.labelhub.api.module.session.exception.SessionNotFoundException;
 import com.labelhub.api.module.session.exception.TaskNotAvailableException;
 import com.labelhub.api.module.session.mapper.DraftMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
+import com.labelhub.api.module.session.service.view.ClaimBatchResultView;
+import com.labelhub.api.module.session.service.view.BatchSubmitResultView;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskFilter;
 import com.labelhub.api.module.session.service.view.LabelerSessionWorkStatusCount;
@@ -45,6 +47,7 @@ import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,6 +65,7 @@ public class SessionService {
     private static final String SESSION_SUBMITTED = "submitted";
     private static final String SESSION_RETURNED_FOR_REVISION = "returned_for_revision";
     private static final String ITEM_CLAIMED = "claimed";
+    private static final int MAX_CLAIM_BATCH_SIZE = 1000;
 
     private final TaskMapper taskMapper;
     private final DatasetItemMapper datasetItemMapper;
@@ -227,6 +231,37 @@ public class SessionService {
         return session;
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ClaimBatchResultView claimBatch(Long taskId, Long labelerId, Integer requestedSize) {
+        int requested = requestedSize == null ? 1 : Math.max(1, requestedSize);
+        int cappedRequest = Math.min(requested, MAX_CLAIM_BATCH_SIZE);
+        TaskEntity task = taskMapper.selectByIdForUpdate(taskId);
+        if (!isClaimableTask(task)) {
+            throw new TaskNotAvailableException(taskId);
+        }
+
+        int quotaRemaining = Math.max(0, nullToZero(task.getQuotaTotal()) - nullToZero(task.getQuotaClaimed()));
+        int claimLimit = Math.min(cappedRequest, quotaRemaining);
+        if (claimLimit < 1) {
+            throw new TaskNotAvailableException(taskId);
+        }
+
+        List<DatasetItemEntity> items = datasetItemMapper.selectAvailableForUpdate(task.getCurrentDatasetId(), taskId, claimLimit);
+        if (items.isEmpty()) {
+            throw new NoAvailableDatasetItemException(taskId, task.getCurrentDatasetId());
+        }
+
+        requireOneRow(taskMapper.incrementQuotaClaimedBy(taskId, items.size()), "increment task claimed quota");
+        List<SessionEntity> sessions = new ArrayList<>(items.size());
+        for (DatasetItemEntity item : items) {
+            requireOneRow(datasetItemMapper.updateStatus(item.getId(), ITEM_CLAIMED), "update dataset item status");
+            SessionEntity session = createClaimedSession(task, item, labelerId);
+            requireOneRow(sessionMapper.insert(session), "insert session");
+            sessions.add(session);
+        }
+        return new ClaimBatchResultView(requested, sessions);
+    }
+
     public SessionEntity assertLabelerOwnsSession(Long sessionId, Long labelerId) {
         SessionEntity session = sessionMapper.selectById(sessionId);
         if (session == null) {
@@ -330,6 +365,46 @@ public class SessionService {
     @Transactional
     public SubmissionEntity submit(Long sessionId, Long labelerId, Map<String, Object> answerPayload) {
         SessionEntity session = sessionMapper.selectByIdForUpdate(sessionId);
+        return submitLockedSession(session, sessionId, labelerId, answerPayload);
+    }
+
+    @Transactional
+    public BatchSubmitResultView submitTaskDrafts(
+        Long taskId,
+        Long labelerId,
+        Long currentSessionId,
+        Map<String, Object> currentAnswerPayload
+    ) {
+        List<SessionEntity> sessions = sessionMapper.selectEditableByTaskAndLabelerForUpdate(taskId, labelerId);
+        boolean currentSessionFound = sessions.stream().anyMatch(session -> Objects.equals(session.getId(), currentSessionId));
+        if (!currentSessionFound) {
+            throw new SessionNotFoundException(currentSessionId);
+        }
+
+        List<SubmissionEntity> submissions = new ArrayList<>(sessions.size());
+        for (SessionEntity session : sessions) {
+            Map<String, Object> payload = Objects.equals(session.getId(), currentSessionId)
+                ? currentAnswerPayload
+                : latestDraftPayload(session.getId());
+            submissions.add(submitLockedSession(session, session.getId(), labelerId, payload));
+        }
+        return new BatchSubmitResultView(submissions);
+    }
+
+    private Map<String, Object> latestDraftPayload(Long sessionId) {
+        DraftEntity draft = draftMapper.selectLatestBySession(sessionId);
+        if (draft == null) {
+            throw new DraftNotFoundException(sessionId);
+        }
+        return draft.getDraftPayload();
+    }
+
+    private SubmissionEntity submitLockedSession(
+        SessionEntity session,
+        Long sessionId,
+        Long labelerId,
+        Map<String, Object> answerPayload
+    ) {
         if (session == null || !Objects.equals(session.getLabelerId(), labelerId)) {
             throw new SessionNotFoundException(sessionId);
         }
@@ -457,6 +532,32 @@ public class SessionService {
         snapshot.put("datasetItemPayload", item.getItemPayload());
         snapshot.put("claimedAt", LocalDateTime.now(clock).toString());
         return snapshot;
+    }
+
+    private SessionEntity createClaimedSession(TaskEntity task, DatasetItemEntity item, Long labelerId) {
+        SessionEntity session = new SessionEntity();
+        session.setTaskId(task.getId());
+        session.setDatasetItemId(item.getId());
+        session.setLabelerId(labelerId);
+        session.setSchemaVersionId(task.getCurrentSchemaVersionId());
+        session.setStatus(SESSION_CLAIMED);
+        session.setClaimedAt(LocalDateTime.now(clock));
+        session.setClaimSnapshot(claimSnapshot(task, item));
+        return session;
+    }
+
+    private boolean isClaimableTask(TaskEntity task) {
+        return task != null
+            && "published".equals(task.getStatusCode())
+            && task.getCurrentDatasetId() != null
+            && task.getCurrentSchemaVersionId() != null
+            && task.getDeadlineAt() != null
+            && task.getDeadlineAt().isAfter(LocalDateTime.now(clock))
+            && nullToZero(task.getQuotaClaimed()) < nullToZero(task.getQuotaTotal());
+    }
+
+    private int nullToZero(Integer value) {
+        return value == null ? 0 : value;
     }
 
     private boolean hasRole(Set<String> roles, String role) {

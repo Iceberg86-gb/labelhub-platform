@@ -1,15 +1,21 @@
 package com.labelhub.api.module.schema.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.labelhub.api.generated.model.ApplySchemaTemplateResult;
 import com.labelhub.api.generated.model.DatasetItem;
 import com.labelhub.api.generated.model.LabelSchema;
 import com.labelhub.api.generated.model.PagedSchemas;
 import com.labelhub.api.generated.model.SchemaDocument;
+import com.labelhub.api.generated.model.SchemaExportPackage;
+import com.labelhub.api.generated.model.SchemaImportResult;
 import com.labelhub.api.generated.model.SchemaVersion;
 import com.labelhub.api.generated.model.SubmissionRenderSchema;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.schema.entity.LabelSchemaEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
+import com.labelhub.api.module.schema.service.SchemaExportPackageView;
+import com.labelhub.api.module.schema.service.SchemaTemplateApplyResultView;
+import com.labelhub.api.module.schema.service.SchemaTemplateImportResultView;
 import com.labelhub.api.module.schema.service.view.SubmissionRenderSchemaView;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -34,6 +40,7 @@ public class SchemaDtoMapper {
         dto.setCurrentVersionId(entity.getCurrentVersionId());
         dto.setCreatedAt(entity.getCreatedAt() == null ? null : entity.getCreatedAt().atOffset(ZoneOffset.UTC));
         dto.setUpdatedAt(entity.getUpdatedAt() == null ? null : entity.getUpdatedAt().atOffset(ZoneOffset.UTC));
+        dto.setArchivedAt(entity.getArchivedAt() == null ? null : entity.getArchivedAt().atOffset(ZoneOffset.UTC));
         return dto;
     }
 
@@ -82,6 +89,32 @@ public class SchemaDtoMapper {
         dto.setTotal(total);
         dto.setPage(page);
         dto.setSize(size);
+        return dto;
+    }
+
+    public SchemaImportResult toSchemaImportResult(SchemaTemplateImportResultView view) {
+        SchemaImportResult dto = new SchemaImportResult();
+        dto.setSchema(toLabelSchema(view.schema()));
+        dto.setVersion(toSchemaVersion(view.version()));
+        return dto;
+    }
+
+    public ApplySchemaTemplateResult toApplySchemaTemplateResult(SchemaTemplateApplyResultView view) {
+        ApplySchemaTemplateResult dto = new ApplySchemaTemplateResult();
+        dto.setSchema(toLabelSchema(view.schema()));
+        dto.setVersion(toSchemaVersion(view.version()));
+        return dto;
+    }
+
+    public SchemaExportPackage toSchemaExportPackage(SchemaExportPackageView view) {
+        SchemaExportPackage dto = new SchemaExportPackage();
+        dto.setPackageVersion(SchemaExportPackage.PackageVersionEnum.NUMBER_1);
+        dto.setSchemaId(view.schemaId());
+        dto.setVersionId(view.versionId());
+        dto.setVersionNumber(view.versionNumber());
+        dto.setName(view.name());
+        dto.setDescription(view.description());
+        dto.setSchemaJson(objectMapper.convertValue(view.schemaJson(), SchemaDocument.class));
         return dto;
     }
 }

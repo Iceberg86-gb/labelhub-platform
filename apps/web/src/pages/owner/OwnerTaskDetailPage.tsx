@@ -19,8 +19,10 @@ import { TransitionButtons } from '../../features/task/transition-task/Transitio
 import { TransitionTaskModal } from '../../features/task/transition-task/TransitionTaskModal';
 import { transitionLabels } from '../../features/task/transition-task/transitionRules';
 import { EditTaskModal } from '../../features/task/update-task/EditTaskModal';
+import { useTaskWorkflowProgressQuery, type TaskWorkflowProgress } from '../../features/task/workflow-progress/useTaskWorkflowProgressQuery';
 import { getUser } from '../../shared/api/auth-storage';
 import { RoleBadge } from '../../shared/ui/RoleBadge';
+import { TaskAiPrereviewPanel } from '../../features/ai/TaskAiPrereviewPanel';
 
 function parseTaskId(raw?: string) {
   const taskId = Number(raw);
@@ -74,6 +76,96 @@ function TransitionTimeline({ transitions }: { transitions: TaskTransition[] }) 
   );
 }
 
+const workflowProgressSteps: Array<{
+  key: keyof Pick<
+    TaskWorkflowProgress,
+    'unclaimedCount'
+    | 'labelingCount'
+    | 'submittedCount'
+    | 'aiPrereviewCompletedCount'
+    | 'pendingReviewCount'
+    | 'pendingSeniorReviewCount'
+    | 'approvedCount'
+    | 'rejectedCount'
+  >;
+  label: string;
+  tone: 'neutral' | 'info' | 'accent' | 'warning' | 'success' | 'danger';
+}> = [
+  { key: 'unclaimedCount', label: '待领取', tone: 'neutral' },
+  { key: 'labelingCount', label: '标注中', tone: 'info' },
+  { key: 'submittedCount', label: '已提交', tone: 'accent' },
+  { key: 'aiPrereviewCompletedCount', label: 'AI 预审完成', tone: 'success' },
+  { key: 'pendingReviewCount', label: '待初审', tone: 'warning' },
+  { key: 'pendingSeniorReviewCount', label: '待复审', tone: 'warning' },
+  { key: 'approvedCount', label: '已通过', tone: 'success' },
+  { key: 'rejectedCount', label: '已打回', tone: 'danger' },
+];
+
+function countText(value?: number) {
+  return String(value ?? 0);
+}
+
+function claimedPercent(progress?: TaskWorkflowProgress) {
+  if (!progress || progress.quotaTotal <= 0) {
+    return 0;
+  }
+  return Math.min(100, Math.max(0, (progress.quotaClaimed / progress.quotaTotal) * 100));
+}
+
+function WorkflowProgressCard({
+  progress,
+  isLoading,
+  isError,
+  onRetry,
+}: {
+  progress?: TaskWorkflowProgress;
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <Card className="owner-workflow-progress-card" aria-label="Owner task workflow progress">
+      <div className="owner-workflow-progress-card__head">
+        <div>
+          <Typography.Title heading={5}>全过程进度</Typography.Title>
+          <Typography.Text type="tertiary">标注、AI 预审与审核阶段聚合。</Typography.Text>
+        </div>
+        <div className="owner-workflow-progress-card__quota" aria-label="领取配额进度">
+          <span>领取</span>
+          <strong>{progress ? `${progress.quotaClaimed}/${progress.quotaTotal}` : '-'}</strong>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="owner-workflow-progress-card__loading">
+          <Spin />
+        </div>
+      ) : isError ? (
+        <div className="owner-workflow-progress-card__loading">
+          <Empty title="全过程进度加载失败" />
+          <Button onClick={onRetry}>重新加载</Button>
+        </div>
+      ) : progress ? (
+        <>
+          <div className="owner-workflow-progress-meter" aria-hidden>
+            <span style={{ width: `${claimedPercent(progress)}%` }} />
+          </div>
+          <div className="owner-workflow-progress-grid">
+            {workflowProgressSteps.map((step) => (
+              <div className={`owner-workflow-progress-step owner-workflow-progress-step--${step.tone}`} key={step.key}>
+                <span>{step.label}</span>
+                <strong>{countText(progress[step.key])}</strong>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <Empty title="暂无全过程进度" description="任务发布并产生领取、提交或审核记录后会显示在这里。" />
+      )}
+    </Card>
+  );
+}
+
 export function OwnerTaskDetailPage() {
   const navigate = useNavigate();
   const { taskId: rawTaskId } = useParams();
@@ -83,6 +175,7 @@ export function OwnerTaskDetailPage() {
   const [taskEditorOpen, setTaskEditorOpen] = useState(false);
   const taskQuery = useTaskDetailQuery(taskId ?? 0);
   const transitionsQuery = useTaskTransitionsQuery(taskId ?? 0);
+  const workflowProgressQuery = useTaskWorkflowProgressQuery(taskId ?? 0);
   const schemasQuery = useSchemasQuery({ page: 1, size: 100 });
   const createSchemaMutation = useCreateSchemaMutation();
   const task = taskQuery.data;
@@ -162,6 +255,7 @@ export function OwnerTaskDetailPage() {
         <Button icon={<IconRefresh />} onClick={() => {
           taskQuery.refetch();
           transitionsQuery.refetch();
+          workflowProgressQuery.refetch();
         }}>
           刷新
         </Button>
@@ -226,13 +320,14 @@ export function OwnerTaskDetailPage() {
           </div>
         </Card>
 
-        <Card className="detail-timeline-card detail-timeline-card--quiet">
-          <div className="timeline-heading">
-            <Typography.Title heading={5}>状态迁移记录</Typography.Title>
-            <Typography.Text type="tertiary">来自 append-only task_transitions。</Typography.Text>
-          </div>
-          {transitionsQuery.isLoading ? <Spin /> : <TransitionTimeline transitions={transitionsQuery.data ?? []} />}
-        </Card>
+        <WorkflowProgressCard
+          progress={workflowProgressQuery.data}
+          isLoading={workflowProgressQuery.isLoading}
+          isError={workflowProgressQuery.isError}
+          onRetry={() => workflowProgressQuery.refetch()}
+        />
+
+        <TaskAiPrereviewPanel taskId={task.id} />
 
         {task.status === 'draft' ? (
           <Card className="task-setup-guidance-card">
@@ -255,11 +350,19 @@ export function OwnerTaskDetailPage() {
 
         <TrustedExportCard taskId={task.id} />
 
+        <Card className="detail-timeline-card detail-timeline-card--quiet detail-timeline-card--compact">
+          <div className="timeline-heading">
+            <Typography.Title heading={5}>任务状态日志</Typography.Title>
+            <Typography.Text type="tertiary">仅记录发布、暂停、恢复或结束等任务状态变化。</Typography.Text>
+          </div>
+          {transitionsQuery.isLoading ? <Spin /> : <TransitionTimeline transitions={transitionsQuery.data ?? []} />}
+        </Card>
+
         <Card className="detail-submissions-card">
           <div className="submissions-section-header">
             <div>
               <Typography.Title heading={5}>已提交记录</Typography.Title>
-              <Typography.Text type="tertiary">Owner 可从这里进入历史模板（Schema）作答与 AI 检查。</Typography.Text>
+              <Typography.Text type="tertiary">Owner 可从这里进入历史模板（Schema）作答与 AI 预审。</Typography.Text>
             </div>
           </div>
           <OwnerTaskSubmissionsSection taskId={task.id} />

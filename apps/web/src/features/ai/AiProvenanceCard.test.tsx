@@ -8,6 +8,8 @@ const { provenanceQueryMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('@douyinfe/semi-icons', () => ({
+  IconChevronDown: () => <span>down</span>,
+  IconChevronUp: () => <span>up</span>,
   IconRefresh: () => <span>refresh</span>,
 }));
 
@@ -44,29 +46,36 @@ vi.mock('./useSubmissionAiProvenanceQuery', () => ({
 import { AiProvenanceCard } from './AiProvenanceCard';
 
 describe('AiProvenanceCard prompt evidence', () => {
-  it('renders prompt version id and provider adapter for modern AI calls', () => {
+  it('renders a Chinese owner-facing summary for modern AI calls', () => {
     provenanceQueryMock.mockReturnValueOnce(queryWithCall(makeAiCall({ promptVersionId: 7 })));
 
     const html = renderToString(<AiProvenanceCard submissionId={100} />);
 
-    expect(html).toContain('Prompt: <!-- -->promptVersion#7');
-    expect(html).toContain('Prompt ID:');
+    expect(html).toContain('AI 调用 #');
+    expect(html).toContain('已完成');
+    expect(html).toContain('提示词版本');
     expect(html).toContain('#<!-- -->7');
-    expect(html).toContain('Adapter: <!-- -->agent-default-v1');
+    expect(html).toContain('模型');
+    expect(html).toContain('费用');
+    expect(html).toContain('耗时');
+    expect(html).toContain('完成时间');
+    expect(html).toContain('技术指纹与适配器');
+    expect(html).not.toContain('Prompt:');
+    expect(html).not.toContain('Adapter:');
   });
 
-  it('omits the prompt id row for legacy AI calls', () => {
+  it('falls back to the prompt version label for legacy AI calls', () => {
     provenanceQueryMock.mockReturnValueOnce(queryWithCall(makeAiCall({ promptVersionId: null })));
 
     const html = renderToString(<AiProvenanceCard submissionId={100} />);
 
-    expect(html).toContain('Prompt: <!-- -->promptVersion#7');
-    expect(html).not.toContain('Prompt ID:');
+    expect(html).toContain('提示词版本');
+    expect(html).toContain('promptVersion#7');
     expect(html).not.toContain('#null');
-    expect(html).toContain('Adapter: <!-- -->agent-default-v1');
+    expect(html).not.toContain('Adapter:');
   });
 
-  it('renders raw prompt traces when the API exposes them', () => {
+  it('collapses prompt evidence when the API exposes raw prompts', () => {
     provenanceQueryMock.mockReturnValueOnce(queryWithCall(makeAiCall({
       businessPrompt: 'Score the answer against the owner rubric.',
       renderedPrompt: 'Task 12 / Submission 100 / Rubric v7',
@@ -74,10 +83,14 @@ describe('AiProvenanceCard prompt evidence', () => {
 
     const html = renderToString(<AiProvenanceCard submissionId={100} />);
 
-    expect(html).toContain('Business Prompt');
-    expect(html).toContain('Score the answer against the owner rubric.');
-    expect(html).toContain('Rendered Prompt');
-    expect(html).toContain('Task 12 / Submission 100 / Rubric v7');
+    expect(html).toContain('提示词证据');
+    expect(html).toContain('展开');
+    expect(html).toContain('2 段提示词');
+    expect(html).toContain('展开查看原始内容');
+    expect(html).not.toContain('Business Prompt');
+    expect(html).not.toContain('Rendered Prompt');
+    expect(html).not.toContain('Score the answer against the owner rubric.');
+    expect(html).not.toContain('Task 12 / Submission 100 / Rubric v7');
   });
 
   it('does not render raw prompt sections when the API withholds them', () => {
@@ -85,8 +98,7 @@ describe('AiProvenanceCard prompt evidence', () => {
 
     const html = renderToString(<AiProvenanceCard submissionId={100} />);
 
-    expect(html).not.toContain('Business Prompt');
-    expect(html).not.toContain('Rendered Prompt');
+    expect(html).not.toContain('提示词证据');
   });
 });
 

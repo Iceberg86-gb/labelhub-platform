@@ -21,6 +21,7 @@ import com.labelhub.api.module.quality.exception.LedgerEntryPayloadInvalidExcept
 import com.labelhub.api.module.quality.exception.LedgerEntryTypeNotSupportedException;
 import com.labelhub.api.module.quality.exception.SelfReviewNotAllowedException;
 import com.labelhub.api.module.schema.exception.InvalidSchemaDocumentException;
+import com.labelhub.api.module.schema.exception.SchemaArchiveNotAllowedException;
 import com.labelhub.api.module.schema.exception.SchemaAccessDeniedException;
 import com.labelhub.api.module.schema.exception.SchemaNotFoundException;
 import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
@@ -164,6 +165,12 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> taskEditingLocked(TaskEditingLockedException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
             .body(error("TASK_EDITING_LOCKED", exception.getMessage()));
+    }
+
+    @ExceptionHandler(SchemaArchiveNotAllowedException.class)
+    ResponseEntity<ApiError> schemaArchiveNotAllowed(SchemaArchiveNotAllowedException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(error("SCHEMA_ARCHIVE_NOT_ALLOWED", exception.getMessage()));
     }
 
     @ExceptionHandler(AiProviderFailureException.class)

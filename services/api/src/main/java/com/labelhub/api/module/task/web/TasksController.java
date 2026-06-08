@@ -1,31 +1,48 @@
 package com.labelhub.api.module.task.web;
 
 import com.labelhub.api.generated.model.CreateTaskRequest;
+import com.labelhub.api.generated.model.ApplySchemaTemplateRequest;
+import com.labelhub.api.generated.model.ApplySchemaTemplateResult;
+import com.labelhub.api.generated.model.ClaimTaskItemsRequest;
+import com.labelhub.api.generated.model.ClaimTaskItemsResult;
+import com.labelhub.api.generated.model.LabelerSessionWorkStatus;
 import com.labelhub.api.generated.model.MarketplaceTask;
 import com.labelhub.api.generated.model.PagedOwnerSubmissions;
 import com.labelhub.api.generated.model.PagedMarketplaceTasks;
 import com.labelhub.api.generated.model.PagedTasks;
 import com.labelhub.api.generated.model.Session;
 import com.labelhub.api.generated.model.SessionStatus;
+import com.labelhub.api.generated.model.SubmitTaskDraftsRequest;
+import com.labelhub.api.generated.model.SubmitTaskDraftsResult;
 import com.labelhub.api.generated.model.Task;
+import com.labelhub.api.generated.model.TaskAiPrereviewEnqueueResult;
+import com.labelhub.api.generated.model.TaskAiPrereviewSummary;
 import com.labelhub.api.generated.model.TaskStatus;
 import com.labelhub.api.generated.model.TaskTransition;
 import com.labelhub.api.generated.model.TaskTransitionRequest;
+import com.labelhub.api.generated.model.TaskWorkflowProgress;
 import com.labelhub.api.generated.model.UpdateTaskCurrentDatasetRequest;
 import com.labelhub.api.generated.model.UpdateTaskRequest;
 import com.labelhub.api.generated.web.TasksApi;
 import com.labelhub.api.module.session.entity.SessionEntity;
 import com.labelhub.api.module.session.service.SessionService;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskFilter;
+import com.labelhub.api.module.schema.service.SchemaService;
+import com.labelhub.api.module.schema.web.SchemaDtoMapper;
 import com.labelhub.api.module.submission.service.SubmissionService;
 import com.labelhub.api.module.submission.web.SubmissionDtoMapper;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.entity.TaskTransitionEntity;
 import com.labelhub.api.module.task.service.PagedResult;
+import com.labelhub.api.module.task.service.TaskAiPrereviewEnqueueResultView;
+import com.labelhub.api.module.task.service.TaskAiPrereviewService;
+import com.labelhub.api.module.task.service.TaskAiPrereviewSummaryView;
 import com.labelhub.api.module.task.service.TaskCreateCommand;
 import com.labelhub.api.module.task.service.TaskService;
 import com.labelhub.api.module.task.service.TaskUpdateCommand;
+import com.labelhub.api.module.task.service.TaskWorkflowProgressService;
+import com.labelhub.api.module.task.service.TaskWorkflowProgressView;
 import com.labelhub.api.security.JwtPrincipal;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -55,17 +72,29 @@ public class TasksController implements TasksApi {
     private final SessionService sessionService;
     private final SubmissionService submissionService;
     private final SubmissionDtoMapper submissionDtoMapper;
+    private final TaskWorkflowProgressService taskWorkflowProgressService;
+    private final TaskAiPrereviewService taskAiPrereviewService;
+    private final SchemaService schemaService;
+    private final SchemaDtoMapper schemaDtoMapper;
 
     public TasksController(
         TaskService taskService,
         SessionService sessionService,
         SubmissionService submissionService,
-        SubmissionDtoMapper submissionDtoMapper
+        SubmissionDtoMapper submissionDtoMapper,
+        TaskWorkflowProgressService taskWorkflowProgressService,
+        TaskAiPrereviewService taskAiPrereviewService,
+        SchemaService schemaService,
+        SchemaDtoMapper schemaDtoMapper
     ) {
         this.taskService = taskService;
         this.sessionService = sessionService;
         this.submissionService = submissionService;
         this.submissionDtoMapper = submissionDtoMapper;
+        this.taskWorkflowProgressService = taskWorkflowProgressService;
+        this.taskAiPrereviewService = taskAiPrereviewService;
+        this.schemaService = schemaService;
+        this.schemaDtoMapper = schemaDtoMapper;
     }
 
     @Override
@@ -147,9 +176,31 @@ public class TasksController implements TasksApi {
 
     @Override
     @PreAuthorize("hasRole('OWNER')")
+    @GetMapping(path = "/{taskId}/ai-prereview/summary", produces = "application/json")
+    public ResponseEntity<TaskAiPrereviewSummary> getTaskAiPrereviewSummary(@PathVariable("taskId") Long taskId) {
+        return ResponseEntity.ok(toDto(taskAiPrereviewService.getSummary(taskId, currentUserId())));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @PostMapping(path = "/{taskId}/ai-prereview/enqueue", produces = "application/json")
+    public ResponseEntity<TaskAiPrereviewEnqueueResult> enqueueTaskAiPrereviews(@PathVariable("taskId") Long taskId) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+            .body(toDto(taskAiPrereviewService.enqueueEligible(taskId, currentUserId())));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
     @GetMapping(path = "/{taskId}/transitions", produces = "application/json")
     public ResponseEntity<List<TaskTransition>> getTaskTransitions(@PathVariable("taskId") Long taskId) {
         return ResponseEntity.ok(taskService.listTransitions(taskId, currentUserId()).stream().map(this::toDto).toList());
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @GetMapping(path = "/{taskId}/workflow-progress", produces = "application/json")
+    public ResponseEntity<TaskWorkflowProgress> getTaskWorkflowProgress(@PathVariable("taskId") Long taskId) {
+        return ResponseEntity.ok(toDto(taskWorkflowProgressService.getProgress(taskId, currentUserId())));
     }
 
     @Override
@@ -168,6 +219,32 @@ public class TasksController implements TasksApi {
     }
 
     @Override
+    @PreAuthorize("hasRole('LABELER')")
+    @PostMapping(path = "/{taskId}/claim-batch", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<ClaimTaskItemsResult> claimTaskItems(
+        @PathVariable("taskId") Long taskId,
+        @Valid @RequestBody ClaimTaskItemsRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(toDto(sessionService.claimBatch(taskId, currentUserId(), request.getSize())));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('LABELER')")
+    @PostMapping(path = "/{taskId}/submit-drafts", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<SubmitTaskDraftsResult> submitTaskDrafts(
+        @PathVariable("taskId") Long taskId,
+        @Valid @RequestBody SubmitTaskDraftsRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(sessionService.submitTaskDrafts(
+            taskId,
+            currentUserId(),
+            request.getCurrentSessionId(),
+            request.getAnswerPayload()
+        )));
+    }
+
+    @Override
     @PreAuthorize("hasRole('OWNER')")
     @PatchMapping(path = "/{taskId}/current-dataset", consumes = "application/json", produces = "application/json")
     public ResponseEntity<Task> updateTaskCurrentDataset(
@@ -176,6 +253,21 @@ public class TasksController implements TasksApi {
     ) {
         TaskEntity updated = taskService.updateCurrentDataset(taskId, request.getDatasetId(), currentUserId());
         return ResponseEntity.ok(toDto(updated));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @PostMapping(path = "/{taskId}/schema-from-template", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<ApplySchemaTemplateResult> applySchemaTemplateToTask(
+        @PathVariable("taskId") Long taskId,
+        @Valid @RequestBody ApplySchemaTemplateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(schemaDtoMapper.toApplySchemaTemplateResult(schemaService.copyTemplateToTask(
+            taskId,
+            request.getSchemaId(),
+            request.getVersionId(),
+            currentUserId()
+        )));
     }
 
     @Override
@@ -228,6 +320,43 @@ public class TasksController implements TasksApi {
         return dto;
     }
 
+    private TaskWorkflowProgress toDto(TaskWorkflowProgressView view) {
+        TaskWorkflowProgress dto = new TaskWorkflowProgress();
+        dto.setTaskId(view.taskId());
+        dto.setQuotaTotal(view.quotaTotal());
+        dto.setQuotaClaimed(view.quotaClaimed());
+        dto.setUnclaimedCount(view.unclaimedCount());
+        dto.setLabelingCount(view.labelingCount());
+        dto.setSubmittedCount(view.submittedCount());
+        dto.setAiPrereviewCompletedCount(view.aiPrereviewCompletedCount());
+        dto.setPendingReviewCount(view.pendingReviewCount());
+        dto.setPendingSeniorReviewCount(view.pendingSeniorReviewCount());
+        dto.setApprovedCount(view.approvedCount());
+        dto.setRejectedCount(view.rejectedCount());
+        return dto;
+    }
+
+    private TaskAiPrereviewSummary toDto(TaskAiPrereviewSummaryView view) {
+        TaskAiPrereviewSummary dto = new TaskAiPrereviewSummary();
+        dto.setTaskId(view.taskId());
+        dto.setTotalCount(view.totalCount());
+        dto.setPendingCount(view.pendingCount());
+        dto.setProcessingCount(view.processingCount());
+        dto.setCompletedCount(view.completedCount());
+        dto.setFailedCount(view.failedCount());
+        dto.setEnqueueableCount(view.enqueueableCount());
+        return dto;
+    }
+
+    private TaskAiPrereviewEnqueueResult toDto(TaskAiPrereviewEnqueueResultView view) {
+        TaskAiPrereviewEnqueueResult dto = new TaskAiPrereviewEnqueueResult();
+        dto.setTaskId(view.taskId());
+        dto.setEnqueuedCount(view.enqueuedCount());
+        dto.setSkippedCount(view.skippedCount());
+        dto.setSummary(toDto(view.summary()));
+        return dto;
+    }
+
     private MarketplaceTask toDto(MarketplaceTaskView view) {
         TaskEntity entity = view.task();
         MarketplaceTask dto = new MarketplaceTask();
@@ -253,9 +382,25 @@ public class TasksController implements TasksApi {
         dto.setLabelerId(entity.getLabelerId());
         dto.setSchemaVersionId(entity.getSchemaVersionId());
         dto.setStatus(SessionStatus.fromValue(entity.getStatus()));
+        dto.setWorkStatus(LabelerSessionWorkStatus.fromValue(entity.getWorkStatus() == null ? "in_progress" : entity.getWorkStatus()));
         dto.setClaimSnapshot(entity.getClaimSnapshot());
         dto.setClaimedAt(entity.getClaimedAt() == null ? null : entity.getClaimedAt().atOffset(ZoneOffset.UTC));
         dto.setSubmittedAt(entity.getSubmittedAt() == null ? null : entity.getSubmittedAt().atOffset(ZoneOffset.UTC));
+        return dto;
+    }
+
+    private ClaimTaskItemsResult toDto(com.labelhub.api.module.session.service.view.ClaimBatchResultView view) {
+        ClaimTaskItemsResult dto = new ClaimTaskItemsResult();
+        dto.setRequestedSize(view.requestedSize());
+        dto.setClaimedCount(view.claimedCount());
+        dto.setSessions(view.sessions().stream().map(this::toDto).toList());
+        return dto;
+    }
+
+    private SubmitTaskDraftsResult toDto(com.labelhub.api.module.session.service.view.BatchSubmitResultView view) {
+        SubmitTaskDraftsResult dto = new SubmitTaskDraftsResult();
+        dto.setSubmittedCount(view.submittedCount());
+        dto.setSubmissions(view.submissions().stream().map(submissionDtoMapper::toSubmission).toList());
         return dto;
     }
 

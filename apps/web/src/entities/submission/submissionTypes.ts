@@ -14,6 +14,7 @@ export type SaveDraftRequest = components['schemas']['SaveDraftRequest'];
 export type MarketplaceTask = components['schemas']['MarketplaceTask'];
 export type PagedMarketplaceTasks = components['schemas']['PagedMarketplaceTasks'];
 export type PagedSessions = components['schemas']['PagedSessions'];
+export type ClaimTaskItemsResult = components['schemas']['ClaimTaskItemsResult'];
 
 export const SESSION_STATUSES = ['claimed', 'submitted', 'returned_for_revision', 'abandoned'] satisfies SessionStatus[];
 

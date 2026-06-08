@@ -8,6 +8,8 @@ public class ReviewerSubmissionQueueRow {
     private String taskTitle;
     private Long labelerId;
     private Long schemaVersionId;
+    private String schemaName;
+    private Integer schemaVersionNumber;
     private String statusCode;
     private LocalDateTime submittedAt;
     private Long derivedFromEntryId;
@@ -25,6 +27,10 @@ public class ReviewerSubmissionQueueRow {
     public void setLabelerId(Long labelerId) { this.labelerId = labelerId; }
     public Long getSchemaVersionId() { return schemaVersionId; }
     public void setSchemaVersionId(Long schemaVersionId) { this.schemaVersionId = schemaVersionId; }
+    public String getSchemaName() { return schemaName; }
+    public void setSchemaName(String schemaName) { this.schemaName = schemaName; }
+    public Integer getSchemaVersionNumber() { return schemaVersionNumber; }
+    public void setSchemaVersionNumber(Integer schemaVersionNumber) { this.schemaVersionNumber = schemaVersionNumber; }
     public String getStatusCode() { return statusCode; }
     public void setStatusCode(String statusCode) { this.statusCode = statusCode; }
     public LocalDateTime getSubmittedAt() { return submittedAt; }

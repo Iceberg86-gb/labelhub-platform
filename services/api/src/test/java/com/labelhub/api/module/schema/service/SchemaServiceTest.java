@@ -7,6 +7,7 @@ import com.labelhub.api.generated.model.SchemaDocument;
 import com.labelhub.api.generated.model.SchemaField;
 import com.labelhub.api.generated.model.SchemaFieldOption;
 import com.labelhub.api.generated.model.SchemaFieldType;
+import com.labelhub.api.generated.model.TaskStatus;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.admin.audit.AuditActions;
@@ -16,6 +17,7 @@ import com.labelhub.api.module.schema.entity.LabelSchemaEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.InvalidSchemaDocumentException;
+import com.labelhub.api.module.schema.exception.SchemaArchiveNotAllowedException;
 import com.labelhub.api.module.schema.exception.SchemaAccessDeniedException;
 import com.labelhub.api.module.schema.exception.SchemaNotFoundException;
 import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
@@ -300,6 +302,121 @@ class SchemaServiceTest {
 
         verify(taskMapper, never()).selectById(any());
         verify(taskMapper, never()).updateById(any(TaskEntity.class));
+    }
+
+    @Test
+    void importTemplate_creates_library_schema_and_publishes_initial_version() {
+        LabelSchemaEntity parent = schema(60L, null, 1001L);
+        when(labelSchemaMapper.selectByIdForUpdate(60L)).thenReturn(parent);
+        when(schemaVersionMapper.selectMaxVersionNumber(60L)).thenReturn(null);
+        doAnswer(invocation -> {
+            LabelSchemaEntity entity = invocation.getArgument(0);
+            entity.setId(60L);
+            return 1;
+        }).when(labelSchemaMapper).insert(any(LabelSchemaEntity.class));
+        doAnswer(invocation -> {
+            SchemaVersionEntity version = invocation.getArgument(0);
+            version.setId(91L);
+            return 1;
+        }).when(schemaVersionMapper).insert(any(SchemaVersionEntity.class));
+        when(labelSchemaMapper.updateById(any(LabelSchemaEntity.class))).thenReturn(1);
+
+        SchemaTemplateImportResultView result = schemaService.importTemplate(
+            "偏好对比模板",
+            "可复用模板",
+            simpleDocument(),
+            1001L
+        );
+
+        assertThat(result.schema().getId()).isEqualTo(60L);
+        assertThat(result.schema().getTaskId()).isNull();
+        assertThat(result.schema().getCurrentVersionId()).isEqualTo(91L);
+        assertThat(result.version().getVersionNumber()).isEqualTo(1);
+        verify(taskMapper, never()).updateById(any(TaskEntity.class));
+    }
+
+    @Test
+    void archiveTemplate_sets_archived_at_for_library_schema() {
+        when(labelSchemaMapper.selectByIdForUpdate(5L)).thenReturn(schema(5L, null, 1001L));
+        when(labelSchemaMapper.updateById(any(LabelSchemaEntity.class))).thenReturn(1);
+
+        schemaService.archiveTemplate(5L, 1001L);
+
+        ArgumentCaptor<LabelSchemaEntity> captor = ArgumentCaptor.forClass(LabelSchemaEntity.class);
+        verify(labelSchemaMapper).updateById(captor.capture());
+        assertThat(captor.getValue().getArchivedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void archiveTemplate_rejects_task_bound_schema() {
+        when(labelSchemaMapper.selectByIdForUpdate(5L)).thenReturn(schema(5L, 10L, 1001L));
+
+        assertThatThrownBy(() -> schemaService.archiveTemplate(5L, 1001L))
+            .isInstanceOf(SchemaArchiveNotAllowedException.class);
+        verify(labelSchemaMapper, never()).updateById(any(LabelSchemaEntity.class));
+    }
+
+    @Test
+    void copyTemplateToTask_creates_task_bound_schema_from_current_template_version() {
+        TaskEntity task = task(10L, 1001L);
+        task.setStatus(TaskStatus.DRAFT);
+        LabelSchemaEntity template = schema(5L, null, 1001L);
+        template.setCurrentVersionId(51L);
+        LabelSchemaEntity cloneParent = schema(77L, 10L, 1001L);
+        Map<String, Object> storageJson = schemaRuntimeAdapter.toStorageJson(
+            objectMapper.convertValue(simpleDocument(), new TypeReference<>() {})
+        );
+
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
+        when(labelSchemaMapper.selectById(5L)).thenReturn(template);
+        when(schemaVersionMapper.selectById(51L)).thenReturn(version(51L, 5L, 2, storageJson));
+        when(labelSchemaMapper.selectByIdForUpdate(77L)).thenReturn(cloneParent);
+        when(schemaVersionMapper.selectMaxVersionNumber(77L)).thenReturn(null);
+        doAnswer(invocation -> {
+            LabelSchemaEntity entity = invocation.getArgument(0);
+            entity.setId(77L);
+            return 1;
+        }).when(labelSchemaMapper).insert(any(LabelSchemaEntity.class));
+        doAnswer(invocation -> {
+            SchemaVersionEntity version = invocation.getArgument(0);
+            version.setId(88L);
+            return 1;
+        }).when(schemaVersionMapper).insert(any(SchemaVersionEntity.class));
+        when(labelSchemaMapper.updateById(any(LabelSchemaEntity.class))).thenReturn(1);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(taskMapper.updateById(any(TaskEntity.class))).thenReturn(1);
+
+        SchemaTemplateApplyResultView result = schemaService.copyTemplateToTask(10L, 5L, null, 1001L);
+
+        assertThat(result.schema().getTaskId()).isEqualTo(10L);
+        assertThat(result.version().getVersionNumber()).isEqualTo(1);
+        ArgumentCaptor<SchemaVersionEntity> versionCaptor = ArgumentCaptor.forClass(SchemaVersionEntity.class);
+        verify(schemaVersionMapper).insert(versionCaptor.capture());
+        assertThat(versionCaptor.getValue().getSchemaJson()).isEqualTo(storageJson);
+        ArgumentCaptor<TaskEntity> taskCaptor = ArgumentCaptor.forClass(TaskEntity.class);
+        verify(taskMapper).updateById(taskCaptor.capture());
+        assertThat(taskCaptor.getValue().getCurrentSchemaVersionId()).isEqualTo(88L);
+    }
+
+    @Test
+    void exportVersionPackage_returns_schema_metadata_and_schema_json() {
+        LabelSchemaEntity template = schema(5L, null, 1001L);
+        template.setName("偏好对比模板");
+        template.setDescription("导入导出测试");
+        Map<String, Object> storageJson = schemaRuntimeAdapter.toStorageJson(
+            objectMapper.convertValue(simpleDocument(), new TypeReference<>() {})
+        );
+        when(labelSchemaMapper.selectById(5L)).thenReturn(template);
+        when(schemaVersionMapper.selectById(51L)).thenReturn(version(51L, 5L, 2, storageJson));
+
+        SchemaExportPackageView exported = schemaService.exportVersionPackage(5L, 51L, 1001L);
+
+        assertThat(exported.packageVersion()).isEqualTo(1);
+        assertThat(exported.schemaId()).isEqualTo(5L);
+        assertThat(exported.versionId()).isEqualTo(51L);
+        assertThat(exported.versionNumber()).isEqualTo(2);
+        assertThat(exported.name()).isEqualTo("偏好对比模板");
+        assertThat(exported.schemaJson()).isEqualTo(storageJson);
     }
 
     @Test

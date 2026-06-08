@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.api.generated.model.SchemaDocument;
+import com.labelhub.api.generated.model.TaskStatus;
 import com.labelhub.api.module.dataset.entity.DatasetItemEntity;
 import com.labelhub.api.module.dataset.mapper.DatasetItemMapper;
 import com.labelhub.api.module.admin.audit.AuditActions;
@@ -13,6 +14,7 @@ import com.labelhub.api.module.admin.audit.AuditLogService;
 import com.labelhub.api.module.schema.entity.LabelSchemaEntity;
 import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
+import com.labelhub.api.module.schema.exception.SchemaArchiveNotAllowedException;
 import com.labelhub.api.module.schema.exception.SchemaAccessDeniedException;
 import com.labelhub.api.module.schema.exception.SchemaNotFoundException;
 import com.labelhub.api.module.schema.exception.SchemaVersionNotFoundException;
@@ -27,6 +29,7 @@ import com.labelhub.api.module.schema.util.StableIdExtractor;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.module.task.service.TaskAccessDeniedException;
+import com.labelhub.api.module.task.service.TaskEditingLockedException;
 import com.labelhub.api.module.task.service.TaskNotFoundException;
 import com.labelhub.api.shared.canonical.Canonicalizer;
 import java.time.Clock;
@@ -137,8 +140,20 @@ public class SchemaService {
     }
 
     public Page<LabelSchemaEntity> list(Long ownerId, long page, long size, String queryText) {
+        return list(ownerId, page, size, queryText, null, false);
+    }
+
+    public Page<LabelSchemaEntity> list(Long ownerId, long page, long size, String queryText, String scope, boolean includeArchived) {
         LambdaQueryWrapper<LabelSchemaEntity> query = new LambdaQueryWrapper<LabelSchemaEntity>()
             .eq(LabelSchemaEntity::getOwnerId, ownerId);
+        if (!includeArchived) {
+            query.isNull(LabelSchemaEntity::getArchivedAt);
+        }
+        if ("library".equals(scope)) {
+            query.isNull(LabelSchemaEntity::getTaskId);
+        } else if ("task".equals(scope)) {
+            query.isNotNull(LabelSchemaEntity::getTaskId);
+        }
         if (queryText != null && !queryText.isBlank()) {
             String trimmed = queryText.trim();
             query.and(wrapper -> wrapper
@@ -157,6 +172,103 @@ public class SchemaService {
     @Transactional
     public SchemaVersionEntity publishVersion(Long schemaId, SchemaDocument schemaDocument, Long ownerId) {
         Map<String, Object> requestedSchemaJson = objectMapper.convertValue(schemaDocument, new TypeReference<>() {});
+        return publishVersionFromStorageJson(schemaId, requestedSchemaJson, ownerId);
+    }
+
+    @Transactional
+    public SchemaTemplateImportResultView importTemplate(String name, String description, SchemaDocument schemaDocument, Long ownerId) {
+        LabelSchemaEntity schema = new LabelSchemaEntity();
+        schema.setTaskId(null);
+        schema.setName(name);
+        schema.setDescription(description);
+        schema.setOwnerId(ownerId);
+        schema.setCurrentVersionId(null);
+        requireOneRow(labelSchemaMapper.insert(schema), "insert library schema template");
+
+        SchemaVersionEntity version = publishVersion(schema.getId(), schemaDocument, ownerId);
+        schema.setCurrentVersionId(version.getId());
+        return new SchemaTemplateImportResultView(schema, version);
+    }
+
+    @Transactional
+    public void archiveTemplate(Long schemaId, Long ownerId) {
+        LabelSchemaEntity parent = labelSchemaMapper.selectByIdForUpdate(schemaId);
+        if (parent == null) {
+            throw new SchemaNotFoundException(schemaId);
+        }
+        if (!Objects.equals(parent.getOwnerId(), ownerId)) {
+            throw new SchemaAccessDeniedException(schemaId, ownerId);
+        }
+        if (parent.getTaskId() != null) {
+            throw new SchemaArchiveNotAllowedException(schemaId);
+        }
+        if (parent.getArchivedAt() != null) {
+            return;
+        }
+
+        parent.setArchivedAt(LocalDateTime.now(clock));
+        parent.setUpdatedAt(LocalDateTime.now(clock));
+        requireOneRow(labelSchemaMapper.updateById(parent), "archive schema template");
+        auditLogService.record(
+            AuditEventBuilder.forAction(AuditActions.SCHEMA_ARCHIVE)
+                .actorUser(ownerId)
+                .resource("schema", schemaId)
+                .payload("schemaId", schemaId)
+        );
+    }
+
+    @Transactional
+    public SchemaTemplateApplyResultView copyTemplateToTask(Long taskId, Long schemaId, Long versionId, Long ownerId) {
+        TaskEntity task = taskMapper.selectByIdForUpdate(taskId);
+        if (task == null || !Objects.equals(task.getOwnerId(), ownerId)) {
+            throw new TaskNotFoundException(taskId);
+        }
+        TaskStatus status = task.getStatus();
+        if (status != TaskStatus.DRAFT && status != TaskStatus.PAUSED) {
+            throw new TaskEditingLockedException(status);
+        }
+
+        LabelSchemaEntity sourceSchema = assertSchemaOwnership(schemaId, ownerId);
+        Long sourceVersionId = versionId == null ? sourceSchema.getCurrentVersionId() : versionId;
+        if (sourceVersionId == null) {
+            throw new SchemaVersionNotFoundException(0L);
+        }
+        SchemaVersionEntity sourceVersion = schemaVersionMapper.selectById(sourceVersionId);
+        if (sourceVersion == null || !Objects.equals(sourceVersion.getSchemaId(), schemaId)) {
+            throw new SchemaVersionNotFoundException(sourceVersionId);
+        }
+
+        LabelSchemaEntity taskSchema = new LabelSchemaEntity();
+        taskSchema.setTaskId(taskId);
+        taskSchema.setName(defaultTaskSchemaName(task));
+        taskSchema.setDescription(templateCopyDescription(sourceSchema, sourceVersion));
+        taskSchema.setOwnerId(ownerId);
+        taskSchema.setCurrentVersionId(null);
+        requireOneRow(labelSchemaMapper.insert(taskSchema), "insert task schema from template");
+
+        SchemaVersionEntity copiedVersion = publishVersionFromStorageJson(taskSchema.getId(), sourceVersion.getSchemaJson(), ownerId);
+        taskSchema.setCurrentVersionId(copiedVersion.getId());
+        return new SchemaTemplateApplyResultView(taskSchema, copiedVersion);
+    }
+
+    public SchemaExportPackageView exportVersionPackage(Long schemaId, Long versionId, Long ownerId) {
+        LabelSchemaEntity parent = assertSchemaOwnership(schemaId, ownerId);
+        SchemaVersionEntity version = schemaVersionMapper.selectById(versionId);
+        if (version == null || !Objects.equals(version.getSchemaId(), schemaId)) {
+            throw new SchemaVersionNotFoundException(versionId);
+        }
+        return new SchemaExportPackageView(
+            1,
+            parent.getId(),
+            version.getId(),
+            version.getVersionNumber(),
+            parent.getName(),
+            parent.getDescription(),
+            version.getSchemaJson()
+        );
+    }
+
+    private SchemaVersionEntity publishVersionFromStorageJson(Long schemaId, Map<String, Object> requestedSchemaJson, Long ownerId) {
         Map<String, Object> schemaJson = schemaRuntimeAdapter.toStorageJson(requestedSchemaJson);
         SchemaDocument runtimeDocument = schemaRuntimeAdapter.toSchemaDocument(schemaJson);
         schemaValidator.validate(runtimeDocument);
@@ -167,6 +279,9 @@ public class SchemaService {
         }
         if (!Objects.equals(parent.getOwnerId(), ownerId)) {
             throw new SchemaAccessDeniedException(schemaId, ownerId);
+        }
+        if (parent.getArchivedAt() != null) {
+            throw new SchemaNotFoundException(schemaId);
         }
 
         Integer currentMaxVersion = schemaVersionMapper.selectMaxVersionNumber(schemaId);
@@ -213,6 +328,17 @@ public class SchemaService {
                 .payload("taskId", parent.getTaskId())
         );
         return version;
+    }
+
+    private String defaultTaskSchemaName(TaskEntity task) {
+        if (task.getTitle() != null && !task.getTitle().isBlank()) {
+            return task.getTitle() + " Schema";
+        }
+        return "Task #" + task.getId() + " Schema";
+    }
+
+    private String templateCopyDescription(LabelSchemaEntity sourceSchema, SchemaVersionEntity sourceVersion) {
+        return "基于模板 " + sourceSchema.getName() + " v" + sourceVersion.getVersionNumber();
     }
 
     public List<SchemaVersionEntity> listVersions(Long schemaId, Long ownerId) {
@@ -276,7 +402,7 @@ public class SchemaService {
 
     private LabelSchemaEntity assertSchemaOwnership(Long schemaId, Long ownerId) {
         LabelSchemaEntity parent = labelSchemaMapper.selectById(schemaId);
-        if (parent == null) {
+        if (parent == null || parent.getArchivedAt() != null) {
             throw new SchemaNotFoundException(schemaId);
         }
         if (!Objects.equals(parent.getOwnerId(), ownerId)) {

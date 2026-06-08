@@ -52,7 +52,7 @@ export function TaskNextStepGuidance({
       status: schemaReady ? 'done' : 'pending',
       ctaLabel: schemaReady ? '查看 Schema' : '去设计',
       onClick: onNavigateToSchema,
-      helpText: schemaReady ? `已绑定 Schema #${task.currentSchemaVersionId}` : 'Schema 决定 labeler 看到和填写的字段。',
+      helpText: schemaReady ? '已绑定 Schema 模板' : 'Schema 决定 labeler 看到和填写的字段。',
     },
     {
       id: 'dataset',

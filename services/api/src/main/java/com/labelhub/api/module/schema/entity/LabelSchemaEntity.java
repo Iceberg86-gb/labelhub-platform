@@ -17,6 +17,7 @@ public class LabelSchemaEntity {
     private Long currentVersionId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime archivedAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -34,4 +35,6 @@ public class LabelSchemaEntity {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public LocalDateTime getArchivedAt() { return archivedAt; }
+    public void setArchivedAt(LocalDateTime archivedAt) { this.archivedAt = archivedAt; }
 }

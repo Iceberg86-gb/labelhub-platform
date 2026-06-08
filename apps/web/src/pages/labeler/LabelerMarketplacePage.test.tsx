@@ -51,6 +51,26 @@ vi.mock('@douyinfe/semi-ui', () => ({
   Input: ({ value, placeholder }: { value?: string; placeholder?: string }) => (
     <input placeholder={placeholder} value={value} readOnly />
   ),
+  InputNumber: ({
+    'aria-label': ariaLabel,
+    max,
+    onChange,
+    value,
+  }: {
+    'aria-label'?: string;
+    max?: number;
+    onChange?: (value: number) => void;
+    value?: number;
+  }) => (
+    <input
+      aria-label={ariaLabel}
+      data-max={max}
+      type="number"
+      value={value}
+      onChange={(event) => onChange?.(Number(event.currentTarget.value))}
+      onInput={(event) => onChange?.(Number(event.currentTarget.value))}
+    />
+  ),
   Select: MockSelect,
   Space: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Spin: () => <div />,
@@ -86,6 +106,7 @@ vi.mock('../../features/labeling/useMarketplaceQuery', () => ({
 
 vi.mock('../../features/labeling/useClaimMutation', () => ({
   ClaimTaskFailure: class ClaimTaskFailure extends Error {},
+  useClaimBatchMutation: () => ({ isPending: false, mutateAsync: claimMutateMock }),
   useClaimMutation: () => ({ isPending: false, mutateAsync: claimMutateMock }),
 }));
 
@@ -125,7 +146,7 @@ describe('LabelerMarketplacePage task detail drawer', () => {
       isLoading: false,
       refetch: vi.fn(),
     });
-    claimMutateMock.mockResolvedValue({ id: 11 });
+    claimMutateMock.mockResolvedValue({ claimedCount: 8, requestedSize: 8, sessions: [{ id: 11 }] });
 
     const rendered = await renderClient(<LabelerMarketplacePage />);
     const detailButton = buttonByText('查看详情');
@@ -150,11 +171,40 @@ describe('LabelerMarketplacePage task detail drawer', () => {
     expect(detailHtml).not.toContain('reviewer');
 
     await act(async () => {
-      buttonByText('领取任务')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      buttonByText('领取 8 条')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
-    expect(claimMutateMock).toHaveBeenCalledWith(22);
+    expect(claimMutateMock).toHaveBeenCalledWith({ size: 8, taskId: 22 });
     expect(routeState.navigate).toHaveBeenCalledWith('/labeler/sessions/11');
+
+    rendered.unmount();
+  });
+
+  it('caps manually entered claim size to available item count', async () => {
+    const taskWithMoreAvailableItems = { ...marketplaceTask, availableItemCount: 12, quotaClaimed: 0 };
+    marketplaceQueryMock.mockReturnValue({
+      data: { items: [taskWithMoreAvailableItems], total: 1 },
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    claimMutateMock.mockResolvedValue({ claimedCount: 12, requestedSize: 12, sessions: [{ id: 11 }] });
+
+    const rendered = await renderClient(<LabelerMarketplacePage />);
+    const sizeInput = document.querySelector<HTMLInputElement>('input[aria-label="领取客服回复质检数量"]');
+
+    await act(async () => {
+      if (sizeInput) {
+        setInputValue(sizeInput, '99');
+        sizeInput.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+    await act(async () => {
+      buttonByText('领取 12 条')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(claimMutateMock).toHaveBeenCalledWith({ size: 12, taskId: 22 });
 
     rendered.unmount();
   });
@@ -162,6 +212,11 @@ describe('LabelerMarketplacePage task detail drawer', () => {
 
 function buttonByText(text: string) {
   return Array.from(document.querySelectorAll('button')).find((button) => button.textContent?.includes(text));
+}
+
+function setInputValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  setter?.call(input, value);
 }
 
 async function renderClient(element: ReactElement) {
