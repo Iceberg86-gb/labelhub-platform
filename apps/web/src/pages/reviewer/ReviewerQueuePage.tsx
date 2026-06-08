@@ -47,42 +47,46 @@ export function ReviewerQueuePage() {
     () => [
       {
         title: 'Submission',
+        align: 'center' as const,
         render: (_: unknown, record: ReviewerSubmissionSummary) => (
           <div className="reviewer-submission-cell">
-            <Typography.Text strong>#{record.id}</Typography.Text>
-            <Typography.Text type="tertiary">Task #{record.taskId}</Typography.Text>
+            <Typography.Text strong>{formatSubmissionLabel(record.id)}</Typography.Text>
           </div>
         ),
       },
       {
         title: '任务',
+        align: 'center' as const,
         render: (_: unknown, record: ReviewerSubmissionSummary) => (
           <div className="task-title-cell">
             <Typography.Text strong>{record.taskTitle}</Typography.Text>
-            <Typography.Text type="tertiary">Labeler #{record.labelerId}</Typography.Text>
           </div>
         ),
       },
-      { title: 'Schema', width: 110, render: (_: unknown, record: ReviewerSubmissionSummary) => `#${record.schemaVersionId}` },
-      { title: '提交时间', width: 150, render: (_: unknown, record: ReviewerSubmissionSummary) => formatDateTime(record.submittedAt) },
+      { title: 'Schema', width: 180, align: 'center' as const, render: (_: unknown, record: ReviewerSubmissionSummary) => formatSchemaLabel(record) },
+      { title: '提交时间', width: 150, align: 'center' as const, render: (_: unknown, record: ReviewerSubmissionSummary) => formatDateTime(record.submittedAt) },
       {
         title: 'AI 预审',
         width: 120,
+        align: 'center' as const,
         render: (_: unknown, record: ReviewerSubmissionSummary) => <PrereviewStatusTag status={record.prereviewStatus} signals={record.prereviewSignals} />,
       },
       {
         title: 'Verdict',
         width: 120,
+        align: 'center' as const,
         render: (_: unknown, record: ReviewerSubmissionSummary) => <VerdictTag status={record.verdict.status} />,
       },
       {
         title: '层级',
         width: 90,
+        align: 'center' as const,
         render: (_: unknown, record: ReviewerSubmissionSummary) => <ReviewLevelTag reviewLevel={record.reviewLevel} />,
       },
       {
         title: '操作',
         width: 130,
+        align: 'center' as const,
         render: (_: unknown, record: ReviewerSubmissionSummary) => (
           <Button size="small" icon={<IconPlay />} onClick={() => navigate(`/reviewer/submissions/${record.id}?reviewLevel=${record.reviewLevel}`)}>
             开始审核
@@ -304,6 +308,17 @@ function parseVerdict(value: string | null): VerdictStatus | undefined {
 
 function parseReviewLevel(value: string | null): ReviewLevel | undefined {
   return REVIEW_LEVELS.includes(value as ReviewLevel) ? (value as ReviewLevel) : undefined;
+}
+
+function formatSubmissionLabel(id: number) {
+  return `提交 ${id}`;
+}
+
+function formatSchemaLabel(record: ReviewerSubmissionSummary) {
+  const schemaName = record.schemaName?.trim();
+  const versionLabel = record.schemaVersionNumber ? `v${record.schemaVersionNumber}` : '';
+  const readableLabel = [schemaName, versionLabel].filter(Boolean).join(' ');
+  return readableLabel || `Schema 版本 ${record.schemaVersionId}`;
 }
 
 function formatDateTime(value?: string) {

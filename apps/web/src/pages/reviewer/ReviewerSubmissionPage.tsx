@@ -1,6 +1,6 @@
 import { Button, Card, Empty, Space, Spin, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
-import { IconArrowLeft, IconClose, IconInfoCircle, IconTickCircle } from '@douyinfe/semi-icons';
-import { useState } from 'react';
+import { IconArrowLeft, IconChevronLeft, IconChevronRight, IconClose, IconInfoCircle, IconTickCircle } from '@douyinfe/semi-icons';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
@@ -19,10 +19,12 @@ import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
 import { useSubmissionRenderSchemaQuery } from '../../features/labeling/useSubmissionRenderSchemaQuery';
 import { CreateLedgerEntryFailure, useCreateLedgerEntryMutation } from '../../features/quality/useCreateLedgerEntryMutation';
 import { useLedgerEntriesQuery } from '../../features/quality/useLedgerEntriesQuery';
+import { useReviewerQueueQuery } from '../../features/quality/useReviewerQueueQuery';
 import { useSubmissionVerdictQuery } from '../../features/quality/useSubmissionVerdictQuery';
 import { getUser } from '../../shared/api/auth-storage';
 import { ReviewerAnswerSummary } from './ReviewerAnswerSummary';
 import { ReviewFlowStrip } from './ReviewFlowStrip';
+import { buildReviewerQueueNavigation, reviewerCompletionPath, reviewerQueuePath, reviewerSubmissionPath } from './reviewerQueueNavigation';
 
 // ReviewerAnswerSummary is this page's read-only replacement for the previous SchemaFormilyRenderer consumer.
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -31,6 +33,7 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   hour: '2-digit',
   minute: '2-digit',
 });
+const REVIEWER_DETAIL_QUEUE_SIZE = 100;
 
 export function ReviewerSubmissionPage() {
   const navigate = useNavigate();
@@ -40,10 +43,19 @@ export function ReviewerSubmissionPage() {
   const currentUser = getUser();
   const reviewLevel = parseReviewLevel(searchParams.get('reviewLevel'))
     ?? (currentUser?.roles.includes('SENIOR_REVIEWER') ? 'senior_reviewer' : 'reviewer');
+  const queuePage = parsePositiveInt(searchParams.get('queuePage')) ?? 1;
+  const queueSize = parsePositiveInt(searchParams.get('queueSize')) ?? REVIEWER_DETAIL_QUEUE_SIZE;
   const [reason, setReason] = useState('');
   const renderSchemaQuery = useSubmissionRenderSchemaQuery(submissionId ?? 0, { enabled: Boolean(submissionId) });
   const verdictQuery = useSubmissionVerdictQuery(submissionId ?? 0, { enabled: Boolean(submissionId) });
   const ledgerQuery = useLedgerEntriesQuery(submissionId ?? 0, { enabled: Boolean(submissionId), page: 1, size: 50 });
+  const queueQuery = useReviewerQueueQuery({
+    page: queuePage,
+    size: Math.min(queueSize, REVIEWER_DETAIL_QUEUE_SIZE),
+    verdict: 'pending',
+    reviewLevel,
+    enabled: Boolean(submissionId),
+  });
   const createLedgerEntry = useCreateLedgerEntryMutation();
 
   const renderSchema = renderSchemaQuery.data;
@@ -53,6 +65,14 @@ export function ReviewerSubmissionPage() {
   const aiOverallEntry = latestEntry(ledgerEntries, isAiOverallRecommendationEntry);
   const aiFindingEntries = ledgerEntries.filter(isAiFieldFindingEntry);
   const reviewerVerdictEntries = ledgerEntries.filter(isReviewerVerdictEntry);
+  const queueNavigation = useMemo(
+    () => buildReviewerQueueNavigation({
+      currentSubmissionId: submissionId,
+      submissions: queueQuery.data?.items ?? [],
+    }),
+    [queueQuery.data?.items, submissionId],
+  );
+  const queueListPath = reviewerQueuePath(reviewLevel);
 
   if (!submissionId) {
     return <Empty title="Submission 地址无效" description="请从审核队列进入 submission 详情。" />;
@@ -87,8 +107,15 @@ export function ReviewerSubmissionPage() {
         entryType: 'reviewer_overall_verdict',
         payload: { verdict, reviewLevel, reason: reason.trim() || null },
       });
-      Toast.success(successMessage(verdict, reviewLevel));
       setReason('');
+      const nextSubmissionId = queueNavigation.nextSubmissionId;
+      if (nextSubmissionId) {
+        Toast.success(`${successMessage(verdict, reviewLevel)},进入下一条`);
+        navigate(reviewerCompletionPath({ nextSubmissionId, reviewLevel }));
+        return;
+      }
+      Toast.success(`${successMessage(verdict, reviewLevel)},当前待审队列已处理完`);
+      navigate(reviewerCompletionPath({ nextSubmissionId, reviewLevel }));
     } catch (error) {
       const failure = error instanceof CreateLedgerEntryFailure ? error : null;
       Toast.error(failure?.userMessage ?? '提交审核失败,请稍后重试');
@@ -101,7 +128,7 @@ export function ReviewerSubmissionPage() {
     <section className="reviewer-submission-page reviewer-submission-page--decision" aria-label="Reviewer submission detail">
       <header className="reviewer-submission-header reviewer-decision-hero">
         <div className="reviewer-decision-hero__copy">
-          <Button icon={<IconArrowLeft />} theme="borderless" onClick={() => navigate(`/reviewer/submissions?reviewLevel=${reviewLevel}`)}>
+          <Button icon={<IconArrowLeft />} theme="borderless" onClick={() => navigate(queueListPath)}>
             返回审核队列
           </Button>
           <Typography.Title heading={3} className="page-title">
@@ -112,6 +139,27 @@ export function ReviewerSubmissionPage() {
             <ReviewLevelTag reviewLevel={reviewLevel} />
             <VerdictTag status={verdictQuery.data?.status ?? 'pending'} />
           </Space>
+          <div className="reviewer-submission-queue-nav" aria-label="待审队列导航">
+            <Button
+              icon={<IconChevronLeft />}
+              size="small"
+              disabled={!queueNavigation.previousSubmissionId}
+              onClick={() => queueNavigation.previousSubmissionId ? navigate(reviewerSubmissionPath(queueNavigation.previousSubmissionId, reviewLevel)) : undefined}
+            >
+              上一条
+            </Button>
+            <Typography.Text type="tertiary">
+              待审队列 {queueNavigation.position > 0 ? `${queueNavigation.position}/${queueNavigation.total}` : `未定位/${queueNavigation.total}`}
+            </Typography.Text>
+            <Button
+              icon={<IconChevronRight />}
+              size="small"
+              disabled={!queueNavigation.nextSubmissionId}
+              onClick={() => queueNavigation.nextSubmissionId ? navigate(reviewerSubmissionPath(queueNavigation.nextSubmissionId, reviewLevel)) : undefined}
+            >
+              下一条
+            </Button>
+          </div>
         </div>
         <div className="verdict-source-line">
           <Typography.Text>
@@ -504,6 +552,11 @@ function ReviewLevelTag({ reviewLevel }: { reviewLevel: ReviewLevel }) {
 }
 
 function parseId(value?: string) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parsePositiveInt(value: string | null) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }

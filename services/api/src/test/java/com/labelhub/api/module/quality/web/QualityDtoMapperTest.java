@@ -106,6 +106,8 @@ class QualityDtoMapperTest {
         assertThat(result.getItems()).singleElement()
             .satisfies(item -> {
                 assertThat(item.getTaskTitle()).isEqualTo("Reviewable task");
+                assertThat(item.getSchemaName()).isEqualTo("偏好对比标注");
+                assertThat(item.getSchemaVersionNumber()).isEqualTo(1);
                 assertThat(item.getVerdict().getStatus()).isEqualTo(Verdict.StatusEnum.PENDING);
                 assertThat(item.getVerdict().getDerivedFromEntryId()).isNull();
                 assertThat(item.getVerdict().getDerivedAt()).isEqualTo(
@@ -156,6 +158,8 @@ class QualityDtoMapperTest {
         row.setTaskTitle("Reviewable task");
         row.setLabelerId(2002L);
         row.setSchemaVersionId(70L);
+        row.setSchemaName("偏好对比标注");
+        row.setSchemaVersionNumber(1);
         row.setStatusCode("submitted");
         row.setSubmittedAt(LocalDateTime.parse("2026-05-25T11:00:00"));
         return row;

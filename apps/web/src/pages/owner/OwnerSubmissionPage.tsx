@@ -1,17 +1,16 @@
 import { Button, Card, Empty, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconBolt } from '@douyinfe/semi-icons';
-import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
 import { coerceAnswerPayload, EMPTY_ANSWER_PAYLOAD } from '../../entities/submission/answerPayload';
 import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
-import { AiReviewDrawer } from '../../features/ai/AiReviewDrawer';
-import { useDefaultPromptVersionQuery } from '../../features/ai/useDefaultPromptVersionQuery';
-import { TriggerAiReviewFailure, useTriggerAiReviewMutation } from '../../features/ai/useTriggerAiReviewMutation';
+import {
+  EnqueueSubmissionAiPrereviewFailure,
+  useEnqueueSubmissionAiPrereviewMutation,
+} from '../../features/ai/useEnqueueSubmissionAiPrereviewMutation';
 import { SchemaFormilyRenderer } from '../../features/labeling/formily/SchemaFormilyRenderer';
 import { useSubmissionRenderSchemaQuery } from '../../features/labeling/useSubmissionRenderSchemaQuery';
-import type { AiReviewResult } from '../../entities/ai/aiTypes';
 
 function parseId(value?: string) {
   const parsed = Number(value);
@@ -24,10 +23,7 @@ export function OwnerSubmissionPage() {
   const taskId = parseId(rawTaskId);
   const submissionId = parseId(rawSubmissionId);
   const renderSchemaQuery = useSubmissionRenderSchemaQuery(submissionId ?? 0, { enabled: Boolean(submissionId) });
-  const defaultPromptVersionQuery = useDefaultPromptVersionQuery(Boolean(submissionId));
-  const triggerAiReview = useTriggerAiReviewMutation();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [latestResult, setLatestResult] = useState<AiReviewResult | null>(null);
+  const enqueueAiPrereview = useEnqueueSubmissionAiPrereviewMutation(taskId ?? 0);
 
   const renderSchema = renderSchemaQuery.data;
   const schemaVersion = renderSchema?.schemaVersion;
@@ -56,21 +52,14 @@ export function OwnerSubmissionPage() {
 
   async function runAiReview() {
     if (!submissionId) return;
-    if (!defaultPromptVersionQuery.data?.id) {
-      Toast.error('默认 Prompt 版本不可用,请稍后重试');
-      return;
-    }
-    setDrawerOpen(true);
     try {
-      const result = await triggerAiReview.mutateAsync({
+      const result = await enqueueAiPrereview.mutateAsync({
         submissionId,
-        promptVersionId: defaultPromptVersionQuery.data.id,
       });
-      setLatestResult(result);
-      Toast.success(result.idempotencyHit ? '已复用历史 AI 检查结果' : 'AI 检查完成');
+      Toast.success(result.enqueuedCount > 0 ? '已进入 AI 预审队列' : '该 submission 已在预审中或已有结果');
     } catch (error) {
-      const failure = error instanceof TriggerAiReviewFailure ? error : null;
-      Toast.error(failure?.userMessage ?? 'AI 检查失败,请稍后重试');
+      const failure = error instanceof EnqueueSubmissionAiPrereviewFailure ? error : null;
+      Toast.error(failure?.userMessage ?? 'AI 预审发起失败,请稍后重试');
     }
   }
 
@@ -93,11 +82,10 @@ export function OwnerSubmissionPage() {
           icon={<IconBolt />}
           theme="solid"
           type="primary"
-          loading={triggerAiReview.isPending || defaultPromptVersionQuery.isLoading}
-          disabled={defaultPromptVersionQuery.isError}
+          loading={enqueueAiPrereview.isPending}
           onClick={runAiReview}
         >
-          AI 检查
+          发起 AI 预审
         </Button>
       </div>
 
@@ -112,15 +100,8 @@ export function OwnerSubmissionPage() {
           />
         </Card>
 
-        <AiProvenanceCard submissionId={submissionId} />
+        <AiProvenanceCard className="owner-submission-provenance-card" submissionId={submissionId} />
       </div>
-
-      <AiReviewDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        result={latestResult}
-        loading={triggerAiReview.isPending}
-      />
     </section>
   );
 }

@@ -403,6 +403,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{taskId}/ai-prereview/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskAiPrereviewSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{taskId}/ai-prereview/enqueue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["enqueueTaskAiPrereviews"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{taskId}/workflow-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTaskWorkflowProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks/{taskId}/exports": {
         parameters: {
             query?: never;
@@ -481,6 +529,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["updateTaskCurrentDataset"];
+        trace?: never;
+    };
+    "/tasks/{taskId}/schema-from-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["applySchemaTemplateToTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/datasets": {
@@ -563,6 +627,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{taskId}/claim-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["claimTaskItems"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{taskId}/submit-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Submit all editable sessions claimed by the authenticated labeler for this task. The current session uses the provided payload; other sessions use their latest saved drafts. */
+        post: operations["submitTaskDrafts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/schemas": {
         parameters: {
             query?: never;
@@ -579,6 +676,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/schemas/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["importSchemaTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/schemas/{schemaId}": {
         parameters: {
             query?: never;
@@ -589,7 +702,8 @@ export interface paths {
         get: operations["getSchema"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** @description Archive a library schema template. Task-bound schemas are intentionally not archived through this endpoint. */
+        delete: operations["archiveSchemaTemplate"];
         options?: never;
         head?: never;
         patch?: never;
@@ -619,6 +733,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getSchemaVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/schemas/{schemaId}/versions/{versionId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportSchemaVersionPackage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -835,6 +965,22 @@ export interface paths {
         get: operations["getDefaultPromptVersion"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/submissions/{submissionId}/ai-prereview/enqueue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["enqueueSubmissionAiPrereview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1377,6 +1523,53 @@ export interface components {
             page: number;
             size: number;
         };
+        TaskAiPrereviewSummary: {
+            /** Format: int64 */
+            taskId: number;
+            /** Format: int64 */
+            totalCount: number;
+            /** Format: int64 */
+            pendingCount: number;
+            /** Format: int64 */
+            processingCount: number;
+            /** Format: int64 */
+            completedCount: number;
+            /** Format: int64 */
+            failedCount: number;
+            /** Format: int64 */
+            enqueueableCount: number;
+        };
+        TaskAiPrereviewEnqueueResult: {
+            /** Format: int64 */
+            taskId: number;
+            /** Format: int64 */
+            enqueuedCount: number;
+            /** Format: int64 */
+            skippedCount: number;
+            summary: components["schemas"]["TaskAiPrereviewSummary"];
+        };
+        TaskWorkflowProgress: {
+            /** Format: int64 */
+            taskId: number;
+            quotaTotal: number;
+            quotaClaimed: number;
+            /** Format: int64 */
+            unclaimedCount: number;
+            /** Format: int64 */
+            labelingCount: number;
+            /** Format: int64 */
+            submittedCount: number;
+            /** Format: int64 */
+            aiPrereviewCompletedCount: number;
+            /** Format: int64 */
+            pendingReviewCount: number;
+            /** Format: int64 */
+            pendingSeniorReviewCount: number;
+            /** Format: int64 */
+            approvedCount: number;
+            /** Format: int64 */
+            rejectedCount: number;
+        };
         MarketplaceTask: {
             /** Format: int64 */
             id: number;
@@ -1454,11 +1647,35 @@ export interface components {
             /** Format: int64 */
             datasetId: number;
         };
+        ApplySchemaTemplateRequest: {
+            /** Format: int64 */
+            schemaId: number;
+            /**
+             * Format: int64
+             * @description Optional immutable template version. Defaults to the template current version.
+             */
+            versionId?: number;
+        };
+        ApplySchemaTemplateResult: {
+            schema: components["schemas"]["LabelSchema"];
+            version: components["schemas"]["SchemaVersion"];
+        };
+        /** @enum {string} */
+        SchemaListScope: "all" | "library" | "task";
         CreateSchemaRequest: {
             /** Format: int64 */
             taskId: number;
             name: string;
             description?: string;
+        };
+        SchemaImportRequest: {
+            name: string;
+            description?: string;
+            schemaJson: components["schemas"]["SchemaDocument"];
+        };
+        SchemaImportResult: {
+            schema: components["schemas"]["LabelSchema"];
+            version: components["schemas"]["SchemaVersion"];
         };
         LabelSchema: {
             /** Format: int64 */
@@ -1475,6 +1692,8 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: date-time */
+            archivedAt?: string;
         };
         PagedSchemas: {
             items: components["schemas"]["LabelSchema"][];
@@ -1591,6 +1810,18 @@ export interface components {
             /** Format: int64 */
             ownerId: number;
         };
+        SchemaExportPackage: {
+            /** @enum {integer} */
+            packageVersion: 1;
+            /** Format: int64 */
+            schemaId: number;
+            /** Format: int64 */
+            versionId: number;
+            versionNumber: number;
+            name: string;
+            description?: string;
+            schemaJson: components["schemas"]["SchemaDocument"];
+        };
         SubmissionRenderSchema: {
             /** Format: int64 */
             submissionId: number;
@@ -1640,6 +1871,29 @@ export interface components {
             claimedAt?: string;
             /** Format: date-time */
             submittedAt?: string;
+        };
+        ClaimTaskItemsRequest: {
+            /** @description Desired number of dataset items to claim. The server caps this to remaining quota and available items. */
+            size: number;
+        };
+        ClaimTaskItemsResult: {
+            requestedSize: number;
+            claimedCount: number;
+            sessions: components["schemas"]["Session"][];
+        };
+        SubmitTaskDraftsRequest: {
+            /**
+             * Format: int64
+             * @description Session currently open in the labeler workspace. Its unsaved form payload is submitted from this request.
+             */
+            currentSessionId: number;
+            answerPayload: {
+                [key: string]: unknown;
+            };
+        };
+        SubmitTaskDraftsResult: {
+            submittedCount: number;
+            submissions: components["schemas"]["Submission"][];
         };
         DatasetItem: {
             /** Format: int64 */
@@ -2046,6 +2300,8 @@ export interface components {
             labelerId: number;
             /** Format: int64 */
             schemaVersionId: number;
+            schemaName: string;
+            schemaVersionNumber: number;
             status: string;
             /** Format: date-time */
             submittedAt: string;
@@ -3040,6 +3296,81 @@ export interface operations {
             404: components["responses"]["ErrorNotFound"];
         };
     };
+    getTaskAiPrereviewSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Owner-visible AI prereview aggregate status for all eligible task submissions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskAiPrereviewSummary"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    enqueueTaskAiPrereviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Eligible task submissions were accepted into the asynchronous AI prereview queue. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskAiPrereviewEnqueueResult"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    getTaskWorkflowProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Owner-visible aggregate progress for the task labeling and review workflow. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskWorkflowProgress"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
     listTaskExports: {
         parameters: {
             query?: {
@@ -3217,6 +3548,37 @@ export interface operations {
             409: components["responses"]["ErrorStateConflict"];
         };
     };
+    applySchemaTemplateToTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplySchemaTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created a task-bound schema copy from a reusable template. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplySchemaTemplateResult"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+            409: components["responses"]["ErrorStateConflict"];
+        };
+    };
     listDatasets: {
         parameters: {
             query: {
@@ -3384,12 +3746,75 @@ export interface operations {
             };
         };
     };
+    claimTaskItems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClaimTaskItemsRequest"];
+            };
+        };
+        responses: {
+            /** @description Claimed annotation sessions. Fewer sessions may be returned when fewer items are available. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimTaskItemsResult"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            409: components["responses"]["ErrorStateConflict"];
+        };
+    };
+    submitTaskDrafts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitTaskDraftsRequest"];
+            };
+        };
+        responses: {
+            /** @description Submissions created and queued for AI review. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmitTaskDraftsResult"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+            409: components["responses"]["ErrorStateConflict"];
+        };
+    };
     listSchemas: {
         parameters: {
             query?: {
                 page?: number;
                 size?: number;
                 q?: string;
+                scope?: components["schemas"]["SchemaListScope"];
+                includeArchived?: boolean;
             };
             header?: never;
             path?: never;
@@ -3437,6 +3862,33 @@ export interface operations {
             403: components["responses"]["ErrorForbidden"];
         };
     };
+    importSchemaTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchemaImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Imported reusable schema template and its initial published version. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchemaImportResult"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+        };
+    };
     getSchema: {
         parameters: {
             query?: never;
@@ -3460,6 +3912,30 @@ export interface operations {
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    archiveSchemaTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schemaId: components["parameters"]["SchemaId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Schema template archived. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+            409: components["responses"]["ErrorStateConflict"];
         };
     };
     listSchemaVersions: {
@@ -3536,6 +4012,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SchemaVersion"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    exportSchemaVersionPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                schemaId: components["parameters"]["SchemaId"];
+                versionId: components["parameters"]["SchemaVersionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Portable LabelHub schema template package. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchemaExportPackage"];
                 };
             };
             401: components["responses"]["ErrorUnauthorized"];
@@ -3995,6 +4497,31 @@ export interface operations {
                     "application/json": components["schemas"]["PromptVersion"];
                 };
             };
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    enqueueSubmissionAiPrereview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submissionId: components["parameters"]["SubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The submission was accepted into the asynchronous AI prereview queue when eligible. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskAiPrereviewEnqueueResult"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
         };
     };

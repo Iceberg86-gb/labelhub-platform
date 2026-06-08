@@ -1,8 +1,11 @@
-import { Button, Empty, Input, Space, Spin, Table, Tag, Typography } from '@douyinfe/semi-ui';
-import { IconEdit, IconRefresh, IconSearch } from '@douyinfe/semi-icons';
-import { useMemo } from 'react';
+import { Button, Empty, Input, Popconfirm, Space, Spin, Table, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { IconDelete, IconDownload, IconEdit, IconRefresh, IconSearch, IconUpload } from '@douyinfe/semi-icons';
+import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { LabelSchema } from '../../entities/schema/schemaTypes';
+import { downloadSchemaPackage, exportSchemaVersionPackage } from '../../features/schema-design/schemaExport';
+import { SchemaImportModal } from '../../features/schema-design/SchemaImportModal';
+import { useArchiveSchemaTemplateMutation } from '../../features/schema-design/useArchiveSchemaTemplateMutation';
 import { useSchemasQuery } from '../../features/schema-design/useSchemasQuery';
 import { useSchemaVersionQuery } from '../../features/schema-design/useSchemaVersionQuery';
 
@@ -43,6 +46,8 @@ function CurrentVersionCell({ schema }: { schema: LabelSchema }) {
 
 export function OwnerSchemasListPage() {
   const navigate = useNavigate();
+  const archiveTemplate = useArchiveSchemaTemplateMutation();
+  const [importVisible, setImportVisible] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const page = parsePositiveInt(searchParams.get('page'), DEFAULT_PAGE);
   const size = parsePositiveInt(searchParams.get('size'), DEFAULT_SIZE);
@@ -61,6 +66,30 @@ export function OwnerSchemasListPage() {
     setSearchParams(next);
   };
 
+  const handleExport = async (record: LabelSchema) => {
+    if (!record.currentVersionId) {
+      Toast.warning('该模板还没有可导出的版本。');
+      return;
+    }
+
+    try {
+      const pkg = await exportSchemaVersionPackage(record.id, record.currentVersionId);
+      downloadSchemaPackage(pkg);
+    } catch (error) {
+      Toast.error(error instanceof Error ? error.message : '模板导出失败。');
+    }
+  };
+
+  const handleArchive = async (record: LabelSchema) => {
+    try {
+      await archiveTemplate.mutateAsync(record.id);
+      Toast.success('模板已删除。');
+    } catch (error) {
+      const message = typeof error === 'object' && error && 'message' in error ? String(error.message) : '模板删除失败。';
+      Toast.error(message);
+    }
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -74,32 +103,82 @@ export function OwnerSchemasListPage() {
         ),
       },
       {
+        title: '类型',
+        width: 110,
+        align: 'center' as const,
+        render: (_: unknown, record: LabelSchema) => (
+          record.taskId == null
+            ? <Tag className="semantic-tag semantic-tag--success">模板库</Tag>
+            : <Tag className="semantic-tag semantic-tag--neutral">任务绑定</Tag>
+        ),
+      },
+      {
         title: '当前版本',
         width: 120,
+        align: 'center' as const,
         render: (_: unknown, record: LabelSchema) => <CurrentVersionCell schema={record} />,
       },
       {
         title: '更新时间',
         dataIndex: 'updatedAt',
         width: 150,
+        align: 'center' as const,
         render: (value?: string, record?: LabelSchema) => formatDateTime(value ?? record?.createdAt),
       },
       {
         title: '操作',
-        width: 140,
+        width: 300,
+        align: 'center' as const,
         render: (_: unknown, record: LabelSchema) => (
-          <Button
-            icon={<IconEdit />}
-            size="small"
-            theme="borderless"
-            onClick={() => navigate(`/owner/schemas/${record.id}/design`)}
-          >
-            进 Designer
-          </Button>
+          <Space className="schema-action-cell">
+            <Button
+              icon={<IconEdit />}
+              size="small"
+              theme="borderless"
+              onClick={() => navigate(`/owner/schemas/${record.id}/design`)}
+            >
+              进 Designer
+            </Button>
+            <Button
+              icon={<IconDownload />}
+              size="small"
+              theme="borderless"
+              disabled={!record.currentVersionId}
+              onClick={() => handleExport(record)}
+            >
+              导出
+            </Button>
+            {record.taskId == null ? (
+              <Popconfirm
+                title="删除该模板？"
+                content="只会从模板库移除，不影响已创建任务和历史提交。"
+                okText="删除"
+                cancelText="取消"
+                position="bottomRight"
+                onConfirm={() => handleArchive(record)}
+              >
+                <Button
+                  icon={<IconDelete />}
+                  size="small"
+                  theme="borderless"
+                  type="danger"
+                  loading={archiveTemplate.isPending}
+                >
+                  删除
+                </Button>
+              </Popconfirm>
+            ) : (
+              <Tooltip content="任务绑定 Schema 暂不从这里删除。">
+                <Button icon={<IconDelete />} size="small" theme="borderless" type="danger" disabled>
+                  删除
+                </Button>
+              </Tooltip>
+            )}
+          </Space>
         ),
       },
     ],
-    [navigate],
+    [archiveTemplate.isPending, navigate],
   );
 
   const data = schemasQuery.data;
@@ -113,11 +192,16 @@ export function OwnerSchemasListPage() {
           <Typography.Title heading={3} className="page-title">
             模板（Schema）管理
           </Typography.Title>
-          <Typography.Text type="tertiary">查看任务绑定的模板（Schema），进入 Designer 发布不可变版本。</Typography.Text>
+          <Typography.Text type="tertiary">管理可复用模板和任务绑定 Schema，进入 Designer 发布不可变版本。</Typography.Text>
         </div>
-        <Button icon={<IconRefresh />} onClick={() => schemasQuery.refetch()} loading={schemasQuery.isFetching}>
-          刷新
-        </Button>
+        <Space>
+          <Button icon={<IconUpload />} onClick={() => setImportVisible(true)}>
+            导入模板
+          </Button>
+          <Button icon={<IconRefresh />} onClick={() => schemasQuery.refetch()} loading={schemasQuery.isFetching}>
+            刷新
+          </Button>
+        </Space>
       </div>
 
       <div className="task-toolbar">
@@ -153,7 +237,7 @@ export function OwnerSchemasListPage() {
 
         {isEmpty ? (
           <div className="task-state-panel">
-            <Empty title="暂无模板（Schema）" description="请先进入任务详情页，点击“去设计”创建并绑定模板（Schema）。" />
+            <Empty title="暂无模板（Schema）" description="可以从 JSON 导入模板，或在任务详情页进入 Designer 创建任务绑定 Schema。" />
           </div>
         ) : null}
 
@@ -161,6 +245,7 @@ export function OwnerSchemasListPage() {
           <Table columns={columns} dataSource={items} rowKey="id" pagination={false} />
         ) : null}
       </div>
+      <SchemaImportModal visible={importVisible} onClose={() => setImportVisible(false)} />
     </section>
   );
 }

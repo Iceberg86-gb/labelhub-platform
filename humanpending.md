@@ -731,3 +731,7 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 ## 256. Senior Reviewer 复核详情权限修复与生产同步(2026-06-08)
 
 交付:全过程验证中 senior_reviewer_demo 可见复核队列但进入 submission 详情被判无权的问题已修复,锚点为 `/reviewer/submissions/:id?reviewLevel=senior_reviewer` 详情依赖的 render-schema、verdict、ledger、AI provenance 读取权限统一放行 `SENIOR_REVIEWER` 并补回归测试。
+
+## 257. 全流程验证修复:进度、批量作业、AI 预审与 Schema 模板库(2026-06-08)
+
+交付:本轮全流程验证修复批完成 owner 全过程进度卡替换首屏审计记录位置并下沉弱化旧迁移记录;AI 预审模块显性化,任务级一键预审走统一 agent/outbox 链路并补等待 Agent 状态;labeler 支持自定义数量批量领取与本批次草稿批量提交,避免最后一题单独提交丢失前序题;reviewer/senior reviewer 支持队列连续审核;Schema 管理新增模板导入、导出、删除与创建任务选择模板并联动 Designer;reviewer 队列去除 Task#/Labeler#/Schema# 技术编号,改为 `提交 N / 任务名 / Schema 名 vN` 单行可读展示并保证列头列内容居中。生产同步使用 web+api 双脚本闭环执行。

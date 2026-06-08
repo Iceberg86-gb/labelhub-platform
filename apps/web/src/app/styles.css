@@ -2084,6 +2084,28 @@ a {
   gap: var(--space-8);
 }
 
+.marketplace-claim-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+  margin-left: auto;
+}
+
+.marketplace-claim-control {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  white-space: nowrap;
+}
+
+.marketplace-claim-control .semi-input-number {
+  width: 92px;
+}
+
 .labeler-task-card__cta {
   align-self: flex-start;
 }
@@ -2195,11 +2217,20 @@ a {
 
 .labeler-task-detail-drawer__footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-8);
   padding: var(--space-16) var(--space-20);
   border-top: 1px solid var(--color-border-subtle);
   background: var(--color-main-surface);
+}
+
+.labeler-task-detail-drawer__claim-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
 }
 
 .labeler-task-detail-drawer__claim {
@@ -2313,6 +2344,24 @@ a {
   gap: 4px;
 }
 
+.schema-action-cell {
+  justify-content: center;
+}
+
+.schema-import-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.schema-import-modal__file-input {
+  display: none;
+}
+
+.schema-import-modal__preview {
+  min-height: 22px;
+}
+
 .task-pagination {
   display: flex;
   justify-content: flex-end;
@@ -2325,6 +2374,17 @@ a {
   justify-content: flex-end;
   gap: 10px;
   padding-top: 8px;
+}
+
+.create-task-schema-template {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.create-task-modal-actions {
+  padding-bottom: 22px;
 }
 
 .transition-task-modal-actions {
@@ -2404,6 +2464,8 @@ a {
 }
 
 .detail-main-card,
+.owner-workflow-progress-card,
+.task-ai-prereview-card,
 .detail-timeline-card,
 .detail-dataset-card,
 .detail-submissions-card,
@@ -2413,6 +2475,8 @@ a {
 }
 
 .task-detail-page--owner .detail-main-card,
+.task-detail-page--owner .owner-workflow-progress-card,
+.task-detail-page--owner .task-ai-prereview-card,
 .task-detail-page--owner .detail-timeline-card,
 .task-detail-page--owner .detail-dataset-card,
 .task-detail-page--owner .detail-submissions-card,
@@ -2428,11 +2492,297 @@ a {
   overflow: hidden;
 }
 
+.owner-workflow-progress-card {
+  min-width: 0;
+}
+
+.task-ai-prereview-card {
+  min-width: 0;
+}
+
+.task-ai-prereview-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.task-ai-prereview-card__head h5 {
+  margin: 0 0 var(--space-4);
+}
+
+.task-ai-prereview-card__actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.task-ai-prereview-card__actions .semi-button {
+  min-width: 112px;
+  height: 36px;
+  justify-content: center;
+}
+
+.task-ai-prereview-card__state {
+  display: grid;
+  min-height: 140px;
+  place-items: center;
+}
+
+.task-ai-prereview-meter {
+  position: relative;
+  overflow: hidden;
+  height: 8px;
+  margin: var(--space-18) 0 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-subtle);
+}
+
+.task-ai-prereview-meter span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--color-success);
+  transition: width 160ms ease;
+}
+
+.task-ai-prereview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-10);
+  margin-top: var(--space-16);
+}
+
+.task-ai-prereview-stat {
+  display: grid;
+  min-height: 72px;
+  align-content: center;
+  justify-items: center;
+  gap: var(--space-6);
+  padding: var(--space-12);
+  border-radius: var(--radius-button-default);
+  background: var(--color-surface-subtle);
+  text-align: center;
+}
+
+.task-ai-prereview-stat span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-table-header);
+}
+
+.task-ai-prereview-stat strong {
+  color: var(--color-text-primary);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.task-ai-prereview-stat--info {
+  background: var(--color-info-soft);
+}
+
+.task-ai-prereview-stat--info span,
+.task-ai-prereview-stat--info strong {
+  color: var(--color-info);
+}
+
+.task-ai-prereview-stat--success {
+  background: var(--color-success-soft);
+}
+
+.task-ai-prereview-stat--success span,
+.task-ai-prereview-stat--success strong {
+  color: var(--color-success);
+}
+
+.task-ai-prereview-stat--danger {
+  background: var(--color-danger-soft);
+}
+
+.task-ai-prereview-stat--danger span,
+.task-ai-prereview-stat--danger strong {
+  color: var(--color-danger);
+}
+
+.task-ai-prereview-card__foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-12);
+}
+
+.owner-workflow-progress-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+
+.owner-workflow-progress-card__quota {
+  display: inline-flex;
+  min-width: 112px;
+  min-height: 56px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-8) var(--space-12);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-button-default);
+  background: var(--color-surface-subtle);
+  box-sizing: border-box;
+}
+
+.owner-workflow-progress-card__quota span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-table-header);
+  line-height: 1;
+}
+
+.owner-workflow-progress-card__quota strong {
+  color: var(--color-text-primary);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.owner-workflow-progress-card__loading {
+  display: flex;
+  min-height: 180px;
+  align-items: center;
+  flex-direction: column;
+  gap: var(--space-12);
+  justify-content: center;
+}
+
+.owner-workflow-progress-meter {
+  position: relative;
+  overflow: hidden;
+  height: 8px;
+  margin: var(--space-18) 0 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-subtle);
+}
+
+.owner-workflow-progress-meter span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: var(--color-accent-blue);
+  transition: width 160ms ease;
+}
+
+.owner-workflow-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 0;
+  row-gap: var(--space-12);
+  margin-top: var(--space-18);
+  padding-top: var(--space-16);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.owner-workflow-progress-step {
+  display: grid;
+  grid-template-rows: minmax(18px, auto) 1fr;
+  min-height: 64px;
+  min-width: 0;
+  align-items: center;
+  justify-items: center;
+  gap: var(--space-4);
+  padding: var(--space-10);
+  border-radius: var(--radius-button-default);
+  background: var(--color-surface-subtle);
+  box-sizing: border-box;
+}
+
+.owner-workflow-progress-step:nth-child(odd) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.owner-workflow-progress-step:nth-child(even) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.owner-workflow-progress-step span {
+  overflow-wrap: anywhere;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-table-header);
+  line-height: 1.35;
+  text-align: center;
+}
+
+.owner-workflow-progress-step strong {
+  color: var(--color-text-primary);
+  font-size: 22px;
+  line-height: 1;
+  align-self: center;
+  text-align: center;
+}
+
+.owner-workflow-progress-step--accent {
+  background: var(--color-accent-blue-soft);
+}
+
+.owner-workflow-progress-step--accent strong,
+.owner-workflow-progress-step--accent span {
+  color: var(--color-accent-blue);
+}
+
+.owner-workflow-progress-step--info {
+  background: var(--color-info-soft);
+}
+
+.owner-workflow-progress-step--info strong,
+.owner-workflow-progress-step--info span {
+  color: var(--color-info);
+}
+
+.owner-workflow-progress-step--success {
+  background: var(--color-success-soft);
+}
+
+.owner-workflow-progress-step--success strong,
+.owner-workflow-progress-step--success span {
+  color: var(--color-success);
+}
+
+.owner-workflow-progress-step--warning {
+  background: var(--color-warning-soft);
+}
+
+.owner-workflow-progress-step--warning strong,
+.owner-workflow-progress-step--warning span {
+  color: var(--color-warning);
+}
+
+.owner-workflow-progress-step--danger {
+  background: var(--color-danger-soft);
+}
+
+.owner-workflow-progress-step--danger strong,
+.owner-workflow-progress-step--danger span {
+  color: var(--color-danger);
+}
+
 .detail-dataset-card,
 .detail-submissions-card,
+.task-ai-prereview-card,
 .ai-review-rule-entry-card,
 .task-setup-guidance-card {
   grid-column: 1 / -1;
+}
+
+.detail-timeline-card--compact {
+  grid-column: 1 / -1;
+}
+
+.detail-timeline-card--compact .transition-item {
+  gap: 2px;
 }
 
 .task-setup-guidance {
@@ -2506,6 +2856,13 @@ a {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.ai-review-rule-editor-sidesheet .semi-sidesheet-title {
+  margin-left: var(--space-24);
+  font-size: 26px;
+  line-height: 34px;
+  font-weight: 700;
 }
 
 .ai-review-rule-entry-card--assistive,
@@ -2848,6 +3205,14 @@ a {
   min-width: 180px;
   flex-direction: column;
   gap: 4px;
+}
+
+.dataset-upload-section .semi-table-tbody > .semi-table-row > .semi-table-row-cell {
+  vertical-align: middle;
+}
+
+.dataset-upload-section .semi-table-tbody .semi-space {
+  align-items: center;
 }
 
 .owner-submissions-section {
@@ -3943,9 +4308,20 @@ a {
   .task-toolbar,
   .labeler-workbench-hero,
   .owner-page-hero,
-  .owner-task-command-head {
+  .owner-task-command-head,
+  .owner-workflow-progress-card__head,
+  .task-ai-prereview-card__head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .owner-workflow-progress-card__quota {
+    align-items: flex-start;
+  }
+
+  .task-ai-prereview-card__actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .labeler-workbench-hero__actions {
@@ -3983,8 +4359,15 @@ a {
 
 @media (max-width: 560px) {
   .owner-task-overview,
-  .owner-task-summary-grid {
+  .owner-task-summary-grid,
+  .owner-workflow-progress-grid,
+  .task-ai-prereview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .owner-workflow-progress-step:nth-child(odd),
+  .owner-workflow-progress-step:nth-child(even) {
+    border-radius: var(--radius-button-default);
   }
 }
 
@@ -4484,7 +4867,7 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.65fr);
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .reviewer-queue-page,
@@ -4632,11 +5015,34 @@ a {
   color: var(--color-info);
 }
 
+.reviewer-submission-queue-nav {
+  display: inline-flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-subtle);
+}
+
+.reviewer-submission-queue-nav .semi-typography {
+  font-weight: var(--font-weight-table-header);
+  white-space: nowrap;
+}
+
 .reviewer-submission-cell {
   display: flex;
   min-width: 120px;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
+  text-align: center;
+}
+
+.task-table-surface--reviewer .task-title-cell {
+  align-items: center;
+  text-align: center;
 }
 
 .task-table-surface .semi-table-row:hover td {
@@ -5253,7 +5659,31 @@ a {
   min-width: 0;
 }
 
+.owner-submission-render-card,
+.owner-submission-provenance-card {
+  height: 100%;
+}
+
+.owner-submission-provenance-card {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.owner-submission-provenance-card .semi-card-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .ai-provenance-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
   margin-bottom: 14px;
 }
 
@@ -5263,6 +5693,13 @@ a {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.owner-submission-provenance-card .ai-call-list {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding-right: var(--space-4);
 }
 
 .ai-call-item,
@@ -5281,6 +5718,28 @@ a {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.ai-call-item__title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-call-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+}
+
+.ai-call-summary-grid > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: var(--space-10);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-main-surface);
 }
 
 .ai-call-stat-grid {
@@ -5375,6 +5834,61 @@ a {
   padding: 12px;
   border: 1px solid var(--color-border-subtle);
   background: var(--color-main-surface);
+}
+
+.ai-review-summary--trace {
+  gap: var(--space-8);
+}
+
+.ai-call-trace-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.ai-call-trace {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ai-call-technical-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+}
+
+.ai-call-technical-item {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: var(--space-8);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-subtle);
+}
+
+.ai-call-technical-item .semi-typography {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ai-review-summary__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.ai-review-summary__hint {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-review-summary__body {
+  max-height: 280px;
+  overflow: auto;
 }
 
 .mono-value {
@@ -5993,6 +6507,9 @@ a {
 
 .dataset-items-modal-body {
   width: 100%;
+  align-items: stretch;
+  box-sizing: border-box;
+  padding-bottom: var(--space-24);
 }
 
 .dataset-item-preview-json {
@@ -6008,8 +6525,20 @@ a {
 
 .dataset-bulk-editor {
   display: flex;
+  width: 100%;
+  box-sizing: border-box;
   flex-direction: column;
   gap: 10px;
+}
+
+.dataset-bulk-editor .dataset-list-toolbar,
+.dataset-bulk-editor .semi-input-textarea-wrapper {
+  width: 100%;
+}
+
+.dataset-bulk-editor > .semi-button {
+  align-self: stretch;
+  justify-content: center;
 }
 
 .llm-settings-page {
@@ -6343,6 +6872,12 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .ai-call-summary-grid,
+  .ai-call-stat-grid,
+  .ai-call-technical-grid {
+    grid-template-columns: 1fr;
+  }
+
   .owner-submission-header {
     flex-direction: column;
   }
@@ -6471,6 +7006,16 @@ a {
   flex-direction: column;
   gap: var(--space-6);
 }
+
+.ai-review-rule-entry-thresholds span {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.ai-review-rule-entry-thresholds span .semi-typography {
+  text-align: center;
+}
 .ai-review-rule-entry-summary__item--wide {
   gap: var(--space-8);
 }
@@ -6590,6 +7135,21 @@ a {
   .labeler-task-detail-drawer__footer {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .marketplace-claim-actions,
+  .labeler-task-detail-drawer__claim-row {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .marketplace-claim-control {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .marketplace-claim-control .semi-input-number {
+    width: 116px;
   }
 
   .marketplace-task-card__actions .semi-button,

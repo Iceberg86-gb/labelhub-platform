@@ -73,6 +73,18 @@ public interface SubmissionMapper {
     List<SubmissionEntity> selectSubmittedByTaskOrderedById(@Param("taskId") Long taskId);
 
     @Select("""
+        SELECT id, session_id, task_id, dataset_item_id, labeler_id, schema_version_id,
+               answer_payload, provenance, content_hash, status AS status_code,
+               created_at, superseded_by_id
+        FROM submissions
+        WHERE task_id = #{taskId}
+          AND status IN ('submitted', 'under_ai_review')
+        ORDER BY id ASC
+        """)
+    @ResultMap("submissionResultMap")
+    List<SubmissionEntity> selectAiPrereviewCandidatesByTaskOrderedById(@Param("taskId") Long taskId);
+
+    @Select("""
         SELECT s.id, s.session_id, s.task_id, s.dataset_item_id, s.labeler_id, s.schema_version_id,
                s.answer_payload, s.provenance, s.content_hash, s.status AS status_code,
                s.created_at, s.superseded_by_id

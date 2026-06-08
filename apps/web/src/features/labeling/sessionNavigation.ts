@@ -1,6 +1,7 @@
 import type { Session } from '../../entities/submission/submissionTypes';
 
 const NAVIGABLE_STATUSES: ReadonlySet<Session['status']> = new Set(['claimed', 'returned_for_revision', 'submitted']);
+const EDITABLE_STATUSES: ReadonlySet<Session['status']> = new Set(['claimed', 'returned_for_revision']);
 
 export type SessionNavigationItem = Pick<Session, 'id' | 'status' | 'datasetItemId'> & {
   ordinal: number;
@@ -44,6 +45,15 @@ export function buildSessionNavigation({
     previousSessionId,
     nextSessionId,
   };
+}
+
+export function nextEditableSessionId(navigation: SessionNavigation): number | null {
+  const currentIndex = navigation.position > 0 ? navigation.position - 1 : -1;
+  const candidates =
+    currentIndex >= 0
+      ? [...navigation.items.slice(currentIndex + 1), ...navigation.items.slice(0, currentIndex)]
+      : navigation.items;
+  return candidates.find((item) => EDITABLE_STATUSES.has(item.status))?.id ?? null;
 }
 
 function datasetItemOrdinal(session: Session) {

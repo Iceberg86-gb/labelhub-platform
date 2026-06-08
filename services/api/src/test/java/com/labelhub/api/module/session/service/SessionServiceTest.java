@@ -30,6 +30,7 @@ import com.labelhub.api.module.session.exception.SessionNotFoundException;
 import com.labelhub.api.module.session.exception.TaskNotAvailableException;
 import com.labelhub.api.module.session.mapper.DraftMapper;
 import com.labelhub.api.module.session.mapper.SessionMapper;
+import com.labelhub.api.module.session.service.view.ClaimBatchResultView;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskView;
 import com.labelhub.api.module.session.service.view.MarketplaceTaskFilter;
 import com.labelhub.api.module.session.service.view.SessionDetailView;
@@ -119,6 +120,73 @@ class SessionServiceTest {
         assertThat(session.getClaimSnapshot()).containsEntry("schemaVersionId", 300L);
         assertThat(session.getClaimSnapshot()).containsEntry("datasetItemId", 700L);
         verify(datasetItemMapper).updateStatus(700L, "claimed");
+    }
+
+    @Test
+    void claimBatch_caps_requested_size_to_remaining_quota_and_creates_sessions() {
+        TaskEntity task = publishedTask();
+        task.setQuotaTotal(5);
+        task.setQuotaClaimed(3);
+        DatasetItemEntity first = item(701L, 1);
+        DatasetItemEntity second = item(702L, 2);
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
+        when(datasetItemMapper.selectAvailableForUpdate(500L, 10L, 2)).thenReturn(List.of(first, second));
+        when(datasetItemMapper.updateStatus(701L, "claimed")).thenReturn(1);
+        when(datasetItemMapper.updateStatus(702L, "claimed")).thenReturn(1);
+        when(taskMapper.incrementQuotaClaimedBy(10L, 2)).thenReturn(1);
+        when(sessionMapper.insert(any(SessionEntity.class))).thenAnswer(invocation -> {
+            SessionEntity entity = invocation.getArgument(0);
+            entity.setId(900L + entity.getDatasetItemId());
+            return 1;
+        });
+
+        ClaimBatchResultView result = sessionService.claimBatch(10L, 1002L, 10);
+
+        assertThat(result.requestedSize()).isEqualTo(10);
+        assertThat(result.claimedCount()).isEqualTo(2);
+        assertThat(result.sessions()).extracting(SessionEntity::getDatasetItemId).containsExactly(701L, 702L);
+        assertThat(result.sessions()).extracting(SessionEntity::getLabelerId).containsExactly(1002L, 1002L);
+        verify(datasetItemMapper).selectAvailableForUpdate(500L, 10L, 2);
+        verify(taskMapper).incrementQuotaClaimedBy(10L, 2);
+    }
+
+    @Test
+    void claimBatch_allows_partial_success_when_fewer_items_are_available_than_requested() {
+        TaskEntity task = publishedTask();
+        task.setQuotaTotal(20);
+        task.setQuotaClaimed(0);
+        DatasetItemEntity first = item(701L, 1);
+        DatasetItemEntity second = item(702L, 2);
+        DatasetItemEntity third = item(703L, 3);
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
+        when(datasetItemMapper.selectAvailableForUpdate(500L, 10L, 10)).thenReturn(List.of(first, second, third));
+        when(datasetItemMapper.updateStatus(701L, "claimed")).thenReturn(1);
+        when(datasetItemMapper.updateStatus(702L, "claimed")).thenReturn(1);
+        when(datasetItemMapper.updateStatus(703L, "claimed")).thenReturn(1);
+        when(taskMapper.incrementQuotaClaimedBy(10L, 3)).thenReturn(1);
+        when(sessionMapper.insert(any(SessionEntity.class))).thenReturn(1);
+
+        ClaimBatchResultView result = sessionService.claimBatch(10L, 1002L, 10);
+
+        assertThat(result.requestedSize()).isEqualTo(10);
+        assertThat(result.claimedCount()).isEqualTo(3);
+        assertThat(result.sessions()).hasSize(3);
+        verify(taskMapper).incrementQuotaClaimedBy(10L, 3);
+    }
+
+    @Test
+    void claimBatch_rejects_when_no_items_can_be_claimed() {
+        TaskEntity task = publishedTask();
+        task.setQuotaTotal(20);
+        task.setQuotaClaimed(0);
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
+        when(datasetItemMapper.selectAvailableForUpdate(500L, 10L, 10)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> sessionService.claimBatch(10L, 1002L, 10))
+            .isInstanceOf(NoAvailableDatasetItemException.class);
+
+        verify(taskMapper, never()).incrementQuotaClaimedBy(any(), any());
+        verify(sessionMapper, never()).insert(any(SessionEntity.class));
     }
 
     @Test
@@ -773,6 +841,57 @@ class SessionServiceTest {
     }
 
     @Test
+    void submitTaskDrafts_submits_all_editable_sessions_for_task_using_current_payload_and_saved_drafts() {
+        SessionEntity first = claimedSession(901L, 1002L);
+        first.setDatasetItemId(701L);
+        SessionEntity second = claimedSession(902L, 1002L);
+        second.setDatasetItemId(702L);
+        SessionEntity current = claimedSession(903L, 1002L);
+        current.setDatasetItemId(703L);
+        when(sessionMapper.selectEditableByTaskAndLabelerForUpdate(10L, 1002L))
+            .thenReturn(List.of(first, second, current));
+        when(draftMapper.selectLatestBySession(901L)).thenReturn(draft(901L, Map.of("field_0", "first")));
+        when(draftMapper.selectLatestBySession(902L)).thenReturn(draft(902L, Map.of("field_0", "second")));
+        when(submissionMapper.insert(any(SubmissionEntity.class))).thenAnswer(invocation -> {
+            SubmissionEntity submission = invocation.getArgument(0);
+            submission.setId(1200L + submission.getSessionId());
+            return 1;
+        });
+        when(sessionMapper.updateById(any(SessionEntity.class))).thenReturn(1);
+
+        List<SubmissionEntity> submissions = sessionService.submitTaskDrafts(
+            10L,
+            1002L,
+            903L,
+            Map.of("field_0", "current")
+        ).submissions();
+
+        assertThat(submissions).extracting(SubmissionEntity::getSessionId).containsExactly(901L, 902L, 903L);
+        assertThat(submissions).extracting(SubmissionEntity::getAnswerPayload)
+            .containsExactly(Map.of("field_0", "first"), Map.of("field_0", "second"), Map.of("field_0", "current"));
+        verify(draftMapper, never()).selectLatestBySession(903L);
+        verify(outboxEventService, org.mockito.Mockito.times(3))
+            .enqueueSubmissionAiReview(any(SubmissionEntity.class), any());
+    }
+
+    @Test
+    void submitTaskDrafts_rejects_when_another_editable_session_has_no_saved_draft() {
+        SessionEntity first = claimedSession(901L, 1002L);
+        SessionEntity current = claimedSession(902L, 1002L);
+        when(sessionMapper.selectEditableByTaskAndLabelerForUpdate(10L, 1002L)).thenReturn(List.of(first, current));
+        when(draftMapper.selectLatestBySession(901L)).thenReturn(null);
+
+        assertThatThrownBy(() -> sessionService.submitTaskDrafts(
+            10L,
+            1002L,
+            902L,
+            Map.of("field_0", "current")
+        )).isInstanceOf(DraftNotFoundException.class);
+
+        verify(submissionMapper, never()).insert(any(SubmissionEntity.class));
+    }
+
+    @Test
     void getSubmissionForLabeler_returns_submission_for_owner() {
         SubmissionEntity submission = submission(1200L, 1002L);
         when(submissionMapper.selectById(1200L)).thenReturn(submission);
@@ -807,11 +926,15 @@ class SessionServiceTest {
     }
 
     private DatasetItemEntity item(Long id) {
+        return item(id, 1);
+    }
+
+    private DatasetItemEntity item(Long id, int ordinal) {
         DatasetItemEntity item = new DatasetItemEntity();
         item.setId(id);
         item.setDatasetId(500L);
         item.setTaskId(10L);
-        item.setOrdinal(1);
+        item.setOrdinal(ordinal);
         item.setItemPayload(Map.of("source", "demo"));
         item.setItemHash("abc123");
         item.setStatus("available");
@@ -858,6 +981,16 @@ class SessionServiceTest {
         draft.setRevisionNo(revisionNo);
         draft.setDraftPayload(Map.of("field_0", "answer-" + revisionNo));
         draft.setSavedAt(NOW.plusMinutes(revisionNo));
+        return draft;
+    }
+
+    private DraftEntity draft(Long sessionId, Map<String, Object> payload) {
+        DraftEntity draft = new DraftEntity();
+        draft.setId(1000L + sessionId);
+        draft.setSessionId(sessionId);
+        draft.setRevisionNo(1);
+        draft.setDraftPayload(payload);
+        draft.setSavedAt(NOW);
         return draft;
     }
 

@@ -1,4 +1,4 @@
-import { Button, Space, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, InputNumber, Space, Tag, Typography } from '@douyinfe/semi-ui';
 import { IconPlay } from '@douyinfe/semi-icons';
 
 export type LabelerTaskDetailDrawerTask = {
@@ -15,8 +15,11 @@ export type LabelerTaskDetailDrawerTask = {
 };
 
 type LabelerTaskDetailDrawerProps = {
+  claimLimit: number;
+  claimSize: number;
   claiming: boolean;
-  onClaim: (taskId: number) => void;
+  onClaim: (taskId: number, size: number) => void;
+  onClaimSizeChange: (value: unknown) => void;
   onClose: () => void;
   task: LabelerTaskDetailDrawerTask | null;
 };
@@ -34,7 +37,15 @@ function displayText(value: string | undefined, fallback: string) {
   return normalized && normalized.length > 0 ? normalized : fallback;
 }
 
-export function LabelerTaskDetailDrawer({ claiming, onClaim, onClose, task }: LabelerTaskDetailDrawerProps) {
+export function LabelerTaskDetailDrawer({
+  claimLimit,
+  claimSize,
+  claiming,
+  onClaim,
+  onClaimSizeChange,
+  onClose,
+  task,
+}: LabelerTaskDetailDrawerProps) {
   if (!task) {
     return null;
   }
@@ -112,17 +123,31 @@ export function LabelerTaskDetailDrawer({ claiming, onClaim, onClose, task }: La
         </div>
         <div className="labeler-task-detail-drawer__footer">
           <Button onClick={onClose}>关闭</Button>
-          <Button
-            className="labeler-task-detail-drawer__claim"
-            disabled={task.availableItemCount <= 0}
-            icon={<IconPlay />}
-            loading={claiming}
-            onClick={() => onClaim(task.id)}
-            theme="solid"
-            type="primary"
-          >
-            领取任务
-          </Button>
+          <div className="labeler-task-detail-drawer__claim-row">
+            <label className="marketplace-claim-control">
+              <span>领取数量</span>
+              <InputNumber
+                aria-label={`领取${task.title}数量`}
+                disabled={claimLimit <= 0}
+                max={Math.max(1, claimLimit)}
+                min={1}
+                precision={0}
+                value={claimSize}
+                onChange={onClaimSizeChange}
+              />
+            </label>
+            <Button
+              className="labeler-task-detail-drawer__claim"
+              disabled={claimLimit <= 0}
+              icon={<IconPlay />}
+              loading={claiming}
+              onClick={() => onClaim(task.id, claimSize)}
+              theme="solid"
+              type="primary"
+            >
+              领取 {claimSize} 条
+            </Button>
+          </div>
         </div>
       </aside>
     </div>

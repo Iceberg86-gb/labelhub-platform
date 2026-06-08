@@ -101,6 +101,7 @@ public interface QualityLedgerEntryMapper {
 
     @Select("""
         SELECT s.id, s.task_id, t.title AS task_title, s.labeler_id, s.schema_version_id,
+               ls.name AS schema_name, sv.version_no AS schema_version_number,
                s.status AS status_code, s.created_at AS submitted_at,
                CASE WHEN #{reviewLevel} = 'senior_reviewer' THEN latest_senior.id ELSE latest_reviewer.id END AS derived_from_entry_id,
                CASE WHEN #{reviewLevel} = 'senior_reviewer'
@@ -111,6 +112,8 @@ public interface QualityLedgerEntryMapper {
                JSON_UNQUOTE(JSON_EXTRACT(latest_ai.payload, '$.recommendation')) AS ai_recommendation
         FROM submissions s
         JOIN tasks t ON t.id = s.task_id
+        JOIN schema_versions sv ON sv.id = s.schema_version_id
+        JOIN label_schemas ls ON ls.id = sv.schema_id
         LEFT JOIN (
             SELECT ranked.*
             FROM (
@@ -178,6 +181,8 @@ public interface QualityLedgerEntryMapper {
         @Result(column = "task_title", property = "taskTitle"),
         @Result(column = "labeler_id", property = "labelerId"),
         @Result(column = "schema_version_id", property = "schemaVersionId"),
+        @Result(column = "schema_name", property = "schemaName"),
+        @Result(column = "schema_version_number", property = "schemaVersionNumber"),
         @Result(column = "status_code", property = "statusCode"),
         @Result(column = "submitted_at", property = "submittedAt"),
         @Result(column = "derived_from_entry_id", property = "derivedFromEntryId"),

@@ -4,6 +4,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.labelhub.api.generated.model.CreateSchemaRequest;
 import com.labelhub.api.generated.model.LabelSchema;
 import com.labelhub.api.generated.model.PagedSchemas;
+import com.labelhub.api.generated.model.SchemaExportPackage;
+import com.labelhub.api.generated.model.SchemaImportRequest;
+import com.labelhub.api.generated.model.SchemaImportResult;
+import com.labelhub.api.generated.model.SchemaListScope;
 import com.labelhub.api.generated.model.SchemaVersion;
 import com.labelhub.api.generated.model.SchemaVersionRequest;
 import com.labelhub.api.generated.web.SchemasApi;
@@ -17,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -56,10 +61,24 @@ public class SchemasController implements SchemasApi {
     public ResponseEntity<PagedSchemas> listSchemas(
         @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
         @RequestParam(value = "size", required = false, defaultValue = "20") Integer size,
-        @RequestParam(value = "q", required = false) String q
+        @RequestParam(value = "q", required = false) String q,
+        @RequestParam(value = "scope", required = false) SchemaListScope scope,
+        @RequestParam(value = "includeArchived", required = false, defaultValue = "false") Boolean includeArchived
     ) {
-        Page<LabelSchemaEntity> result = schemaService.list(currentUserId(), page, size, q);
+        Page<LabelSchemaEntity> result = schemaService.list(currentUserId(), page, size, q, scopeValue(scope), Boolean.TRUE.equals(includeArchived));
         return ResponseEntity.ok(schemaDtoMapper.toPagedSchemas(result.getRecords(), result.getTotal(), (int) result.getCurrent(), (int) result.getSize()));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @PostMapping(path = "/import", consumes = "application/json", produces = "application/json")
+    public ResponseEntity<SchemaImportResult> importSchemaTemplate(@Valid @RequestBody SchemaImportRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(schemaDtoMapper.toSchemaImportResult(schemaService.importTemplate(
+            request.getName(),
+            request.getDescription(),
+            request.getSchemaJson(),
+            currentUserId()
+        )));
     }
 
     @Override
@@ -67,6 +86,14 @@ public class SchemasController implements SchemasApi {
     @GetMapping(path = "/{schemaId}", produces = "application/json")
     public ResponseEntity<LabelSchema> getSchema(@PathVariable("schemaId") Long schemaId) {
         return ResponseEntity.ok(schemaDtoMapper.toLabelSchema(schemaService.getById(schemaId, currentUserId())));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @DeleteMapping(path = "/{schemaId}")
+    public ResponseEntity<Void> archiveSchemaTemplate(@PathVariable("schemaId") Long schemaId) {
+        schemaService.archiveTemplate(schemaId, currentUserId());
+        return ResponseEntity.noContent().build();
     }
 
     @Override
@@ -95,6 +122,23 @@ public class SchemasController implements SchemasApi {
         @PathVariable("versionId") Long versionId
     ) {
         return ResponseEntity.ok(schemaDtoMapper.toSchemaVersion(schemaService.getVersion(schemaId, versionId, currentUserId())));
+    }
+
+    @Override
+    @PreAuthorize("hasRole('OWNER')")
+    @GetMapping(path = "/{schemaId}/versions/{versionId}/export", produces = "application/json")
+    public ResponseEntity<SchemaExportPackage> exportSchemaVersionPackage(
+        @PathVariable("schemaId") Long schemaId,
+        @PathVariable("versionId") Long versionId
+    ) {
+        return ResponseEntity.ok(schemaDtoMapper.toSchemaExportPackage(schemaService.exportVersionPackage(schemaId, versionId, currentUserId())));
+    }
+
+    private String scopeValue(SchemaListScope scope) {
+        if (scope == null || scope == SchemaListScope.ALL) {
+            return null;
+        }
+        return scope.getValue();
     }
 
     private Long currentUserId() {

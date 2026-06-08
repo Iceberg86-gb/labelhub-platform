@@ -12,6 +12,9 @@ import com.labelhub.api.module.ai.service.AiReviewRuleService;
 import com.labelhub.api.module.ai.service.FieldAssistService;
 import com.labelhub.api.module.ai.service.view.AiReviewRuleView;
 import com.labelhub.api.module.ai.service.view.SubmissionAiProvenanceView;
+import com.labelhub.api.module.task.service.TaskAiPrereviewEnqueueResultView;
+import com.labelhub.api.module.task.service.TaskAiPrereviewService;
+import com.labelhub.api.module.task.service.TaskAiPrereviewSummaryView;
 import com.labelhub.api.security.JwtPrincipal;
 import java.math.BigDecimal;
 import java.util.List;
@@ -33,6 +36,7 @@ class AiReviewControllerTest {
     private final AiReviewService aiReviewService = mock(AiReviewService.class);
     private final FieldAssistService fieldAssistService = mock(FieldAssistService.class);
     private final AiReviewRuleService aiReviewRuleService = mock(AiReviewRuleService.class);
+    private final TaskAiPrereviewService taskAiPrereviewService = mock(TaskAiPrereviewService.class);
     private final AiReviewDtoMapper aiReviewDtoMapper = mock(AiReviewDtoMapper.class);
     private final AiReviewRuleDtoMapper aiReviewRuleDtoMapper = mock(AiReviewRuleDtoMapper.class);
     private final AiReviewController controller = new AiReviewController(
@@ -40,7 +44,8 @@ class AiReviewControllerTest {
         fieldAssistService,
         aiReviewDtoMapper,
         aiReviewRuleService,
-        aiReviewRuleDtoMapper
+        aiReviewRuleDtoMapper,
+        taskAiPrereviewService
     );
 
     @AfterEach
@@ -107,6 +112,25 @@ class AiReviewControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(response.getBody()).isSameAs(dto);
         verify(fieldAssistService).assist(request, 2002L);
+    }
+
+    @Test
+    void enqueueSubmissionAiPrereview_delegates_to_task_prereview_queue_with_current_owner() {
+        TaskAiPrereviewSummaryView summary = new TaskAiPrereviewSummaryView(44L, 10L, 8L, 1L, 1L, 0L, 8L);
+        when(taskAiPrereviewService.enqueueSubmission(55L, 1001L))
+            .thenReturn(new TaskAiPrereviewEnqueueResultView(44L, 1L, 0L, summary));
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
+            new JwtPrincipal(1001L, "owner_demo", List.of("OWNER")),
+            null,
+            List.of(new SimpleGrantedAuthority("ROLE_OWNER"))
+        ));
+
+        var response = controller.enqueueSubmissionAiPrereview(55L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getEnqueuedCount()).isEqualTo(1L);
+        verify(taskAiPrereviewService).enqueueSubmission(55L, 1001L);
     }
 
     @Test

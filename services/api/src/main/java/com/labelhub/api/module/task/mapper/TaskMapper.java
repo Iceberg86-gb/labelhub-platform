@@ -101,6 +101,15 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
 
     @Update("""
         UPDATE tasks
+        SET quota_claimed = quota_claimed + #{amount},
+            updated_at = NOW(3)
+        WHERE id = #{taskId}
+          AND quota_claimed + #{amount} <= quota_total
+        """)
+    int incrementQuotaClaimedBy(@Param("taskId") Long taskId, @Param("amount") Integer amount);
+
+    @Update("""
+        UPDATE tasks
         SET current_ai_review_rule_id = #{ruleId},
             updated_at = NOW(3)
         WHERE id = #{taskId}

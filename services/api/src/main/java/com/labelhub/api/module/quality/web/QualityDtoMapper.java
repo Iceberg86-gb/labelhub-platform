@@ -236,6 +236,8 @@ public class QualityDtoMapper {
         dto.setTaskTitle(row.getTaskTitle());
         dto.setLabelerId(row.getLabelerId());
         dto.setSchemaVersionId(row.getSchemaVersionId());
+        dto.setSchemaName(row.getSchemaName());
+        dto.setSchemaVersionNumber(row.getSchemaVersionNumber());
         dto.setStatus(row.getStatusCode());
         dto.setSubmittedAt(offset(row.getSubmittedAt()));
         dto.setVerdict(toVerdict(new VerdictView(

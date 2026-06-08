@@ -9,6 +9,8 @@ export type SchemaListParams = {
   page: number;
   size: number;
   q?: string;
+  scope?: components['schemas']['SchemaListScope'];
+  includeArchived?: boolean;
   enabled?: boolean;
 };
 
@@ -29,6 +31,8 @@ export function useSchemasQuery(params: SchemaListParams) {
             page: queryParams.page,
             size: queryParams.size,
             q: queryParams.q,
+            scope: queryParams.scope,
+            includeArchived: queryParams.includeArchived,
           },
         },
       });

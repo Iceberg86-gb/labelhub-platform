@@ -6,11 +6,16 @@ import com.labelhub.api.generated.model.AiReviewRuleRequest;
 import com.labelhub.api.generated.model.FieldAssistRequest;
 import com.labelhub.api.generated.model.FieldAssistResponse;
 import com.labelhub.api.generated.model.SubmissionAiProvenance;
+import com.labelhub.api.generated.model.TaskAiPrereviewEnqueueResult;
+import com.labelhub.api.generated.model.TaskAiPrereviewSummary;
 import com.labelhub.api.generated.model.TriggerAiReviewRequest;
 import com.labelhub.api.generated.web.AiReviewApi;
 import com.labelhub.api.module.ai.service.AiReviewService;
 import com.labelhub.api.module.ai.service.AiReviewRuleService;
 import com.labelhub.api.module.ai.service.FieldAssistService;
+import com.labelhub.api.module.task.service.TaskAiPrereviewEnqueueResultView;
+import com.labelhub.api.module.task.service.TaskAiPrereviewService;
+import com.labelhub.api.module.task.service.TaskAiPrereviewSummaryView;
 import com.labelhub.api.security.JwtPrincipal;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -33,19 +38,22 @@ public class AiReviewController implements AiReviewApi {
     private final AiReviewDtoMapper aiReviewDtoMapper;
     private final AiReviewRuleService aiReviewRuleService;
     private final AiReviewRuleDtoMapper aiReviewRuleDtoMapper;
+    private final TaskAiPrereviewService taskAiPrereviewService;
 
     public AiReviewController(
         AiReviewService aiReviewService,
         FieldAssistService fieldAssistService,
         AiReviewDtoMapper aiReviewDtoMapper,
         AiReviewRuleService aiReviewRuleService,
-        AiReviewRuleDtoMapper aiReviewRuleDtoMapper
+        AiReviewRuleDtoMapper aiReviewRuleDtoMapper,
+        TaskAiPrereviewService taskAiPrereviewService
     ) {
         this.aiReviewService = aiReviewService;
         this.fieldAssistService = fieldAssistService;
         this.aiReviewDtoMapper = aiReviewDtoMapper;
         this.aiReviewRuleService = aiReviewRuleService;
         this.aiReviewRuleDtoMapper = aiReviewRuleDtoMapper;
+        this.taskAiPrereviewService = taskAiPrereviewService;
     }
 
     @Override
@@ -76,6 +84,14 @@ public class AiReviewController implements AiReviewApi {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(fieldAssistService.assist(fieldAssistRequest, currentUserId()));
+    }
+
+    @Override
+    public ResponseEntity<TaskAiPrereviewEnqueueResult> enqueueSubmissionAiPrereview(
+        @PathVariable("submissionId") Long submissionId
+    ) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED)
+            .body(toDto(taskAiPrereviewService.enqueueSubmission(submissionId, currentUserId())));
     }
 
     @Override
@@ -127,5 +143,24 @@ public class AiReviewController implements AiReviewApi {
             return Set.copyOf(jwtPrincipal.roles());
         }
         return Set.of();
+    }
+
+    private TaskAiPrereviewEnqueueResult toDto(TaskAiPrereviewEnqueueResultView view) {
+        return new TaskAiPrereviewEnqueueResult()
+            .taskId(view.taskId())
+            .enqueuedCount(view.enqueuedCount())
+            .skippedCount(view.skippedCount())
+            .summary(toDto(view.summary()));
+    }
+
+    private TaskAiPrereviewSummary toDto(TaskAiPrereviewSummaryView view) {
+        return new TaskAiPrereviewSummary()
+            .taskId(view.taskId())
+            .totalCount(view.totalCount())
+            .pendingCount(view.pendingCount())
+            .processingCount(view.processingCount())
+            .completedCount(view.completedCount())
+            .failedCount(view.failedCount())
+            .enqueueableCount(view.enqueueableCount());
     }
 }

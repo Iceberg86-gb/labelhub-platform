@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 const taskListQueryMock = vi.hoisted(() => vi.fn());
 const taskDetailQueryMock = vi.hoisted(() => vi.fn());
 const taskTransitionsQueryMock = vi.hoisted(() => vi.fn());
+const taskWorkflowProgressQueryMock = vi.hoisted(() => vi.fn());
 
 function textFrom(value: ReactNode) {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
@@ -12,6 +13,7 @@ function textFrom(value: ReactNode) {
 
 vi.mock('@douyinfe/semi-icons', () => ({
   IconArrowLeft: () => <span />,
+  IconBolt: () => <span />,
   IconDelete: () => <span />,
   IconEdit: () => <span />,
   IconExternalOpen: () => <span />,
@@ -120,6 +122,10 @@ vi.mock('../../features/ai-review-rule/AiReviewRuleEditorDrawer', () => ({
   AiReviewRuleEditorDrawer: () => null,
 }));
 
+vi.mock('../../features/ai/TaskAiPrereviewPanel', () => ({
+  TaskAiPrereviewPanel: () => <section>AI prereview panel</section>,
+}));
+
 vi.mock('../../features/schema-design/taskSchemaNavigation', () => ({
   buildTaskSchemaDraft: vi.fn(),
   findSchemaForTask: () => undefined,
@@ -147,6 +153,10 @@ vi.mock('../../features/task/task-detail/useTaskDetailQuery', () => ({
 
 vi.mock('../../features/task/task-transitions/useTaskTransitionsQuery', () => ({
   useTaskTransitionsQuery: taskTransitionsQueryMock,
+}));
+
+vi.mock('../../features/task/workflow-progress/useTaskWorkflowProgressQuery', () => ({
+  useTaskWorkflowProgressQuery: taskWorkflowProgressQueryMock,
 }));
 
 vi.mock('../../features/task/transition-task/TransitionButtons', () => ({
@@ -234,15 +244,38 @@ describe('Owner task pages design shell', () => {
       isLoading: false,
       refetch: vi.fn(),
     });
+    taskWorkflowProgressQueryMock.mockReturnValue({
+      data: {
+        aiPrereviewCompletedCount: 8,
+        approvedCount: 2,
+        labelingCount: 1,
+        pendingReviewCount: 3,
+        pendingSeniorReviewCount: 4,
+        quotaClaimed: 12,
+        quotaTotal: 80,
+        rejectedCount: 1,
+        submittedCount: 10,
+        taskId: 42,
+        unclaimedCount: 68,
+      },
+      isLoading: false,
+      refetch: vi.fn(),
+    });
 
     const html = renderToString(<OwnerTaskDetailPage />);
 
     expect(html).toContain('task-detail-page task-detail-page--owner');
     expect(html).toContain('owner-task-command-center');
     expect(html).toContain('owner-task-summary-grid');
-    expect(html).toContain('detail-timeline-card detail-timeline-card--quiet');
+    expect(html).toContain('owner-workflow-progress-card');
+    expect(html).toContain('全过程进度');
+    expect(html).toContain('AI prereview panel');
+    expect(html).toContain('待领取');
+    expect(html).toContain('待复审');
+    expect(html).toContain('任务状态日志');
+    expect(html).toContain('仅记录发布、暂停、恢复或结束等任务状态变化。');
     expect(html).toContain('状态操作');
-    expect(html).toContain('Owner 可从这里进入历史模板（Schema）作答与 AI 检查。');
+    expect(html).toContain('Owner 可从这里进入历史模板（Schema）作答与 AI 预审。');
     expect(html).toContain('客服对话质检');
   });
 

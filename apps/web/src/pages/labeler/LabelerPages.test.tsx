@@ -53,6 +53,26 @@ vi.mock('@douyinfe/semi-ui', () => ({
   Input: ({ value, placeholder }: { value?: string; placeholder?: string }) => (
     <input placeholder={placeholder} value={value} readOnly />
   ),
+  InputNumber: ({
+    'aria-label': ariaLabel,
+    max,
+    onChange,
+    value,
+  }: {
+    'aria-label'?: string;
+    max?: number;
+    onChange?: (value: number) => void;
+    value?: number;
+  }) => (
+    <input
+      aria-label={ariaLabel}
+      data-max={max}
+      type="number"
+      value={value}
+      onChange={(event) => onChange?.(Number(event.currentTarget.value))}
+      onInput={(event) => onChange?.(Number(event.currentTarget.value))}
+    />
+  ),
   Select: MockSelect,
   Space: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Spin: () => <div />,
@@ -104,6 +124,7 @@ vi.mock('../../features/labeling/useMarketplaceQuery', () => ({
 
 vi.mock('../../features/labeling/useClaimMutation', () => ({
   ClaimTaskFailure: class ClaimTaskFailure extends Error {},
+  useClaimBatchMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
   useClaimMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
 }));
 
@@ -128,6 +149,10 @@ vi.mock('../../features/labeling/useSubmitMutation', () => ({
     fieldErrors = [];
   },
   useSubmitMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
+}));
+
+vi.mock('../../features/labeling/useSubmitTaskDraftsMutation', () => ({
+  useSubmitTaskDraftsMutation: () => ({ isPending: false, mutateAsync: vi.fn() }),
 }));
 
 vi.mock('../../features/labeling/useAutosave', () => ({
@@ -325,6 +350,35 @@ describe('Labeler pages design shell', () => {
     expect(rendered.html()).toContain('labeler-context-rail');
     expect(rendered.html()).toContain('labeler-answer-panel');
     expect(rendered.html()).toContain('labeler-session-card labeler-session-card--answer');
+
+    rendered.unmount();
+  });
+
+  it('renders a batch submit action when the labeler has multiple editable sessions in the task', async () => {
+    sessionDetailQueryMock.mockReturnValue({
+      data: sessionDetail,
+      isError: false,
+      isLoading: false,
+      isSuccess: true,
+    });
+    latestDraftQueryMock.mockReturnValue({
+      data: { payload: { answer: '合规' } },
+      isLoading: false,
+    });
+    mySessionsQueryMock.mockImplementation(({ status }: { status?: string }) => ({
+      data: {
+        items: status === 'claimed'
+          ? [session, { ...session, id: 12, datasetItemId: 302, claimSnapshot: { datasetItemOrdinal: 2 } }]
+          : [],
+        total: status === 'claimed' ? 2 : 0,
+      },
+      isError: false,
+      isLoading: false,
+    }));
+
+    const rendered = await renderClient(<LabelerSessionPage />);
+
+    expect(rendered.html()).toContain('提交本批次');
 
     rendered.unmount();
   });

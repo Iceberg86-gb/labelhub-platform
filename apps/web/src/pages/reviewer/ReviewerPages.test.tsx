@@ -22,6 +22,8 @@ function textFrom(value: ReactNode) {
 
 vi.mock('@douyinfe/semi-icons', () => ({
   IconArrowLeft: () => <span />,
+  IconChevronLeft: () => <span />,
+  IconChevronRight: () => <span />,
   IconClose: () => <span />,
   IconInfoCircle: () => <span />,
   IconPlay: () => <span />,
@@ -66,12 +68,21 @@ vi.mock('@douyinfe/semi-ui', () => ({
   Space: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Spin: () => <div />,
   Table: ({ columns, dataSource }: { columns: Array<any>; dataSource: Array<any> }) => (
-    <table>
+    <table data-column-aligns={columns.map((column) => column.align ?? 'left').join('|')}>
+      <thead>
+        <tr>
+          {columns.map((column, index) => (
+            <th key={column.dataIndex ?? index} data-align={column.align ?? 'left'}>
+              {textFrom(column.title)}
+            </th>
+          ))}
+        </tr>
+      </thead>
       <tbody>
         {dataSource.map((record) => (
           <tr key={record.id}>
             {columns.map((column, index) => (
-              <td key={column.dataIndex ?? index}>
+              <td key={column.dataIndex ?? index} data-align={column.align ?? 'left'}>
                 {column.render ? column.render(record[column.dataIndex], record) : textFrom(record[column.dataIndex])}
               </td>
             ))}
@@ -175,7 +186,9 @@ const queueSubmission = {
   id: 501,
   labelerId: 1002,
   reviewLevel: 'senior_reviewer',
+  schemaName: '偏好对比标注',
   schemaVersionId: 77,
+  schemaVersionNumber: 1,
   submittedAt: '2026-05-30T09:00:00Z',
   taskId: 22,
   taskTitle: '客服回复质检',
@@ -239,14 +252,59 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('reviewer-queue-flow-strip');
     expect(html).toContain('task-table-surface task-table-surface--reviewer');
     expect(html).toContain('reviewer-level-tag reviewer-level-tag--senior');
+    expect(html).toContain('data-column-aligns="center|center|center|center|center|center|center|center"');
     expect(html).toContain('REVIEWER');
     expect(html).toContain('SENIOR REVIEWER');
+    expect(html).toContain('提交 501');
     expect(html).toContain('客服回复质检');
+    expect(html).toContain('偏好对比标注 v1');
+    expect(html).not.toContain('Task #22');
+    expect(html).not.toContain('Labeler #1002');
+    expect(html).not.toContain('#77');
+  });
+
+  it('keeps the schema column non-empty while older queue responses are still missing readable schema metadata', () => {
+    userMock.mockReturnValue({ id: 1003, roles: ['REVIEWER'] });
+    reviewerQueueQueryMock.mockReturnValue({
+      data: {
+        items: [
+          {
+            ...queueSubmission,
+            schemaName: undefined,
+            schemaVersionNumber: undefined,
+          },
+        ],
+        total: 1,
+      },
+      error: null,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    batchReviewMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+
+    const html = renderToString(<ReviewerQueuePage />);
+
+    expect(html).toContain('Schema 版本 77');
   });
 
   it('renders submission detail as a three-zone reviewer workbench', () => {
     userMock.mockReturnValue({ id: 1003, roles: ['REVIEWER'] });
     routeState.searchParams = new URLSearchParams('reviewLevel=reviewer');
+    reviewerQueueQueryMock.mockReturnValue({
+      data: {
+        items: [
+          { ...queueSubmission, id: 501, reviewLevel: 'reviewer' },
+          { ...queueSubmission, id: 502, reviewLevel: 'reviewer' },
+        ],
+        total: 2,
+      },
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
     renderSchemaQueryMock.mockReturnValue({
       data: renderSchema,
       isError: false,
@@ -273,6 +331,10 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('reviewer-workbench-rail');
     expect(html).toContain('reviewer-decision-rail');
     expect(html).toContain('reviewer-decision-rail__sticky');
+    expect(html).toContain('reviewer-submission-queue-nav');
+    expect(html).toContain('待审队列');
+    expect(html).toContain('1/2');
+    expect(html).toContain('下一条');
     expect(html).toContain('reviewer-human-decision-panel');
     expect(html).toContain('review-actions-card review-actions-card--primary');
     expect(html).toContain('review-reason-field review-reason-field--required');
@@ -291,6 +353,13 @@ describe('Reviewer pages design shell', () => {
   it('renders AI recommendation separately from the human final verdict', () => {
     userMock.mockReturnValue({ id: 1003, roles: ['REVIEWER'] });
     routeState.searchParams = new URLSearchParams('reviewLevel=reviewer');
+    reviewerQueueQueryMock.mockReturnValue({
+      data: { items: [{ ...queueSubmission, id: 501, reviewLevel: 'reviewer' }], total: 1 },
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
     renderSchemaQueryMock.mockReturnValue({
       data: renderSchema,
       isError: false,

@@ -1,15 +1,16 @@
-import { Button, Empty, Input, Select, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Empty, Input, InputNumber, Select, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconChevronLeft, IconChevronRight, IconPlay, IconRefresh, IconSearch } from '@douyinfe/semi-icons';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { MarketplaceTask } from '../../entities/submission/submissionTypes';
-import { ClaimTaskFailure, useClaimMutation } from '../../features/labeling/useClaimMutation';
+import { ClaimTaskFailure, useClaimBatchMutation } from '../../features/labeling/useClaimMutation';
 import { useMarketplaceQuery } from '../../features/labeling/useMarketplaceQuery';
 import { RoleBadge } from '../../shared/ui/RoleBadge';
 import { LabelerTaskDetailDrawer } from './LabelerTaskDetailDrawer';
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_SIZE = 10;
+const DEFAULT_CLAIM_SIZE_CAP = 10;
 
 function parsePositiveInt(value: string | null, fallback: number) {
   const parsed = Number(value);
@@ -33,6 +34,24 @@ function marketplaceDeadline(value: string | null): 'day' | 'week' | undefined {
   return value === 'day' || value === 'week' ? value : undefined;
 }
 
+function claimLimitForTask(task: MarketplaceTask) {
+  return Math.max(0, Math.min(task.availableItemCount, task.quotaTotal - task.quotaClaimed));
+}
+
+function normalizeClaimSize(value: unknown, max: number) {
+  const upperBound = Math.max(1, Math.trunc(max));
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 1;
+  }
+  return Math.min(Math.max(1, Math.trunc(numeric)), upperBound);
+}
+
+function defaultClaimSizeForTask(task: MarketplaceTask) {
+  const limit = claimLimitForTask(task);
+  return limit > 0 ? Math.min(DEFAULT_CLAIM_SIZE_CAP, limit) : 1;
+}
+
 export function LabelerMarketplacePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -50,8 +69,9 @@ export function LabelerMarketplacePage() {
     hasReward: hasReward || undefined,
     deadline,
   });
-  const claimMutation = useClaimMutation();
+  const claimMutation = useClaimBatchMutation();
   const [claimingTaskId, setClaimingTaskId] = useState<number | null>(null);
+  const [claimSizeByTaskId, setClaimSizeByTaskId] = useState<Record<number, number>>({});
   const [draftSearch, setDraftSearch] = useState({ q, tag });
   const [selectedTask, setSelectedTask] = useState<MarketplaceTask | null>(null);
 
@@ -104,13 +124,32 @@ export function LabelerMarketplacePage() {
     setSearchParams(next);
   };
 
-  const handleClaim = async (taskId: number) => {
+  const claimSizeForTask = (task: MarketplaceTask) =>
+    normalizeClaimSize(claimSizeByTaskId[task.id] ?? defaultClaimSizeForTask(task), claimLimitForTask(task));
+
+  const setClaimSizeForTask = (task: MarketplaceTask, value: unknown) => {
+    setClaimSizeByTaskId((current) => ({
+      ...current,
+      [task.id]: normalizeClaimSize(value, claimLimitForTask(task)),
+    }));
+  };
+
+  const taskById = (taskId: number) => items.find((item) => item.id === taskId) ?? selectedTask;
+
+  const handleClaim = async (taskId: number, requestedSize?: number) => {
+    const task = taskById(taskId);
+    const size = task ? normalizeClaimSize(requestedSize ?? claimSizeForTask(task), claimLimitForTask(task)) : 1;
     setClaimingTaskId(taskId);
     try {
-      const session = await claimMutation.mutateAsync(taskId);
-      Toast.success('已领取,开始作答');
+      const result = await claimMutation.mutateAsync({ size, taskId });
+      const firstSession = result.sessions[0];
+      if (!firstSession) {
+        Toast.warning('暂无可领取的数据项');
+        return;
+      }
+      Toast.success(result.claimedCount < result.requestedSize ? `已领取 ${result.claimedCount} 条,已按剩余数量截断` : `已领取 ${result.claimedCount} 条,开始作答`);
       setSelectedTask(null);
-      navigate(`/labeler/sessions/${session.id}`);
+      navigate(`/labeler/sessions/${firstSession.id}`);
     } catch (error) {
       if (error instanceof ClaimTaskFailure) {
         Toast.warning(error.message);
@@ -239,16 +278,30 @@ export function LabelerMarketplacePage() {
                 </div>
                 <div className="marketplace-task-card__actions">
                   <Button onClick={() => setSelectedTask(record)}>查看详情</Button>
-                  <Button
-                    className="labeler-task-card__cta"
-                    icon={<IconPlay />}
-                    theme="solid"
-                    type="primary"
-                    loading={claimingTaskId === record.id && claimMutation.isPending}
-                    onClick={() => handleClaim(record.id)}
-                  >
-                    领取
-                  </Button>
+                  <div className="marketplace-claim-actions">
+                    <label className="marketplace-claim-control">
+                      <span>领取数量</span>
+                      <InputNumber
+                        aria-label={`领取${record.title}数量`}
+                        disabled={claimLimitForTask(record) <= 0}
+                        max={Math.max(1, claimLimitForTask(record))}
+                        min={1}
+                        precision={0}
+                        value={claimSizeForTask(record)}
+                        onChange={(value) => setClaimSizeForTask(record, value)}
+                      />
+                    </label>
+                    <Button
+                      className="labeler-task-card__cta"
+                      icon={<IconPlay />}
+                      theme="solid"
+                      type="primary"
+                      loading={claimingTaskId === record.id && claimMutation.isPending}
+                      onClick={() => handleClaim(record.id, claimSizeForTask(record))}
+                    >
+                      领取 {claimSizeForTask(record)} 条
+                    </Button>
+                  </div>
                 </div>
               </article>
             ))}
@@ -256,8 +309,15 @@ export function LabelerMarketplacePage() {
         ) : null}
       </div>
       <LabelerTaskDetailDrawer
+        claimLimit={selectedTask ? claimLimitForTask(selectedTask) : 0}
+        claimSize={selectedTask ? claimSizeForTask(selectedTask) : 1}
         claiming={selectedTask ? claimingTaskId === selectedTask.id && claimMutation.isPending : false}
         onClaim={handleClaim}
+        onClaimSizeChange={(value) => {
+          if (selectedTask) {
+            setClaimSizeForTask(selectedTask, value);
+          }
+        }}
         onClose={() => setSelectedTask(null)}
         task={selectedTask}
       />
