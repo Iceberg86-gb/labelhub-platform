@@ -246,7 +246,7 @@ public class SchemaService {
         TaskEntity task = taskMapper.selectById(submission.getTaskId());
         boolean isLabeler = Objects.equals(submission.getLabelerId(), requesterUserId);
         boolean isOwner = task != null && Objects.equals(task.getOwnerId(), requesterUserId);
-        boolean isReviewer = hasRole(requesterRoles, "REVIEWER");
+        boolean isReviewer = hasRole(requesterRoles, "REVIEWER") || hasRole(requesterRoles, "SENIOR_REVIEWER");
         if (!isLabeler && !isOwner && !isReviewer) {
             throw new SubmissionNotFoundException(submissionId);
         }

@@ -63,7 +63,7 @@ public class VerdictService {
         if (Objects.equals(submission.getLabelerId(), requesterUserId)) {
             return true;
         }
-        if (hasRole(requesterRoles, "REVIEWER")) {
+        if (hasRole(requesterRoles, "REVIEWER") || hasRole(requesterRoles, "SENIOR_REVIEWER")) {
             return true;
         }
         TaskEntity task = taskMapper.selectById(submission.getTaskId());
