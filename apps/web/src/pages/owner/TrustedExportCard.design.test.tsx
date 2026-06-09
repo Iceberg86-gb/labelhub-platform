@@ -6,8 +6,9 @@ import type { ExportSnapshot } from '../../entities/export/exportTypes';
 
 const taskExportsQueryMock = vi.hoisted(() => vi.fn());
 const createExportMutationMock = vi.hoisted(() => vi.fn());
-const downloadExportFileMutationMock = vi.hoisted(() => vi.fn());
+const downloadExportPackageMutationMock = vi.hoisted(() => vi.fn());
 const archiveExportSnapshotMutationMock = vi.hoisted(() => vi.fn());
+const taskExportFieldsQueryMock = vi.hoisted(() => vi.fn());
 const routeState = vi.hoisted(() => ({
   searchParams: new URLSearchParams(),
   setSearchParams: vi.fn(),
@@ -114,8 +115,12 @@ vi.mock('../../features/export/useCreateExportMutation', async () => {
   };
 });
 
-vi.mock('../../features/export/useDownloadExportFileMutation', () => ({
-  useDownloadExportFileMutation: downloadExportFileMutationMock,
+vi.mock('../../features/export/useDownloadExportPackageMutation', () => ({
+  useDownloadExportPackageMutation: downloadExportPackageMutationMock,
+}));
+
+vi.mock('../../features/export/useTaskExportFieldsQuery', () => ({
+  useTaskExportFieldsQuery: taskExportFieldsQueryMock,
 }));
 
 vi.mock('../../features/export/useArchiveExportSnapshotMutation', () => ({
@@ -140,8 +145,9 @@ describe('TrustedExportCard design shell', () => {
       isLoading: false,
     });
     createExportMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
-    downloadExportFileMutationMock.mockReturnValue({ isPending: false, mutate: vi.fn() });
+    downloadExportPackageMutationMock.mockReturnValue({ isPending: false, mutate: vi.fn() });
     archiveExportSnapshotMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    taskExportFieldsQueryMock.mockReturnValue({ data: makeCatalog(), isLoading: false, isError: false });
 
     const html = renderToString(<TrustedExportCard taskId={22} />);
 
@@ -175,15 +181,63 @@ describe('TrustedExportCard design shell', () => {
     expect(html).toContain('2');
     expect(html).toContain('展开编辑');
     expect(html).toContain('可复现');
-    expect(html).toContain('CSV');
-    expect(html).toContain('Excel');
-    expect(html).not.toContain('OpenAI 对话');
-    expect(html).toContain('Manifest');
+    expect(html).toContain('导出标注结果包');
+    expect(html).toContain('导出训练数据包');
+    expect(html).toContain('标注包');
+    expect(html).not.toContain('训练包');
     expect(html).not.toContain('trusted-export-mapping-row');
+    expect(html).toContain('trusted-export-recommendation');
+    expect(html).toContain('trusted-export-recommendation__tag');
+    expect(html).toContain('偏好对比训练');
+    expect(html).toContain('检测到成对候选');
+    expect(html).toContain('采用推荐');
+  });
+
+  it('shows the training package download when a non-empty training jsonl exists', () => {
+    routeState.searchParams = new URLSearchParams();
+    taskExportsQueryMock.mockReturnValue({
+      data: { items: [makeSnapshot({ trainingLines: 12 })], total: 1 },
+      error: null,
+      isError: false,
+      isLoading: false,
+    });
+    createExportMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    downloadExportPackageMutationMock.mockReturnValue({ isPending: false, mutate: vi.fn() });
+    archiveExportSnapshotMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    taskExportFieldsQueryMock.mockReturnValue({ data: makeCatalog(), isLoading: false, isError: false });
+
+    const html = renderToString(<TrustedExportCard taskId={22} />);
+
+    expect(html).toContain('标注包');
+    expect(html).toContain('训练包');
   });
 });
 
-function makeSnapshot(): ExportSnapshot {
+function makeCatalog() {
+  return {
+    submissionCount: 12,
+    fields: [
+      { source: 'task_id', label: '任务 ID', group: 'system', nonEmptyRatio: 1, sampleValues: ['1'] },
+      { source: 'item.prompt', label: 'prompt', group: 'item', nonEmptyRatio: 1, sampleValues: ['解释什么是过拟合'] },
+      { source: 'item.response_a', label: 'response_a', group: 'item', nonEmptyRatio: 1, sampleValues: ['回答A'] },
+      { source: 'item.response_b', label: 'response_b', group: 'item', nonEmptyRatio: 1, sampleValues: ['回答B'] },
+      { source: 'answer.preferred', label: 'preferred', group: 'answer', nonEmptyRatio: 1, sampleValues: ['A'], distinctValues: ['A', 'B'] },
+    ],
+    sampleRows: [
+      { 'item.prompt': '解释什么是过拟合', 'item.response_a': '回答A', 'item.response_b': '回答B', 'answer.preferred': 'A' },
+    ],
+    recommendedFormat: 'trl_dpo_jsonl',
+    recommendationReason: '检测到成对候选回答与偏好字段,建议使用偏好对比训练。',
+    recommendedBindings: {
+      promptSource: 'item.prompt',
+      preferenceSource: 'answer.preferred',
+      choiceSources: { A: 'item.response_a', B: 'item.response_b' },
+    },
+  };
+}
+
+function makeSnapshot(options: { trainingLines?: number } = {}): ExportSnapshot {
+  const trainingLines = options.trainingLines ?? 0;
   return {
     id: 91,
     archivedAt: null,
@@ -193,7 +247,7 @@ function makeSnapshot(): ExportSnapshot {
     fileManifest: [
       { lines: 12, name: 'training-results.csv', sha256: 'csv-sha', sizeBytes: 1024 },
       { lines: 12, name: 'training-results.xlsx', sha256: 'xlsx-sha', sizeBytes: 2048 },
-      { lines: 0, name: 'openai-chat-sft.jsonl', sha256: 'openai-jsonl-sha', sizeBytes: 0 },
+      { lines: trainingLines, name: 'trl-dpo.jsonl', sha256: 'dpo-jsonl-sha', sizeBytes: trainingLines * 10 },
       { lines: 1, name: 'manifest.json', sha256: 'manifest-sha', sizeBytes: 512 },
     ],
     generatedAt: '2026-05-30T09:00:00Z',

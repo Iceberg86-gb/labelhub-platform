@@ -14,15 +14,31 @@ import {
   IconUpload,
   IconUser,
 } from '@douyinfe/semi-icons';
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { ExportFieldMapping, ExportSnapshot, TrainingExportFormat, TrainingExportProfile } from '../../entities/export/exportTypes';
+import type {
+  ExportFieldCatalog,
+  ExportFieldMapping,
+  ExportSnapshot,
+  TrainingExportFormat,
+  TrainingExportProfile,
+} from '../../entities/export/exportTypes';
 import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { CreateExportFailure, useCreateExportMutation } from './useCreateExportMutation';
 import { ExportSnapshotDiffModal } from './ExportSnapshotDiffModal';
 import { useTaskExportsQuery } from './useTaskExportsQuery';
-import { useDownloadExportFileMutation } from './useDownloadExportFileMutation';
+import { useTaskExportFieldsQuery } from './useTaskExportFieldsQuery';
+import { useDownloadExportPackageMutation } from './useDownloadExportPackageMutation';
 import { useArchiveExportSnapshotMutation } from './useArchiveExportSnapshotMutation';
+import {
+  buildFieldLabelMap,
+  buildFieldOptions,
+  buildMappingRowsFromCatalog,
+  computeBindingPreview,
+  truncate,
+  type BindingPreviewResult,
+  type FieldOption,
+} from './exportBindingPreview';
 
 type TrustedExportCardProps = {
   taskId: number;
@@ -52,9 +68,9 @@ const DEFAULT_TRAINING_PROFILE: TrainingProfileDraft = {
 
 const TRAINING_FORMAT_OPTIONS: Array<{ value: TrainingExportFormat; label: string }> = [
   { value: 'flat_table', label: '表格快照' },
-  { value: 'openai_chat_sft_jsonl', label: 'OpenAI 对话微调' },
-  { value: 'trl_sft_jsonl', label: 'TRL 指令微调' },
-  { value: 'trl_dpo_jsonl', label: 'TRL 偏好训练' },
+  { value: 'openai_chat_sft_jsonl', label: '对话微调' },
+  { value: 'trl_sft_jsonl', label: '指令微调' },
+  { value: 'trl_dpo_jsonl', label: '偏好对比训练' },
 ];
 
 const TRAINING_FORMAT_COPY: Record<TrainingExportFormat, string> = {
@@ -76,24 +92,24 @@ const TRAINING_FORMAT_DETAIL: Record<
     requiredFields: ['无需额外绑定'],
   },
   openai_chat_sft_jsonl: {
-    title: 'OpenAI 对话微调',
+    title: '对话微调',
     fileName: '对话微调数据',
     audience: '适合对话式监督微调数据准备。',
     structure: '用户提示 → 助手回答',
     requiredFields: ['用户提示', '助手回答'],
   },
   trl_sft_jsonl: {
-    title: 'TRL 指令微调',
+    title: '指令微调',
     fileName: '指令微调数据',
     audience: '适合提示与答案形式的监督微调。',
     structure: '用户提示 → 标准答案',
     requiredFields: ['用户提示', '标准答案'],
   },
   trl_dpo_jsonl: {
-    title: 'TRL 偏好训练',
-    fileName: '偏好训练数据',
-    audience: '适合偏好对比训练,生成优选答案与拒绝答案。',
-    structure: '用户提示 → 优选答案 / 拒绝答案',
+    title: '偏好对比训练',
+    fileName: '偏好对比数据',
+    audience: '适合偏好对比训练,生成优选回答与拒绝回答。',
+    structure: '用户提示 → 优选回答 / 拒绝回答',
     requiredFields: ['用户提示', '偏好字段', '回答 A', '回答 B'],
   },
 };
@@ -150,9 +166,45 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const size = parsePositiveInt(searchParams.get('exportSize')) ?? DEFAULT_SIZE;
   const showArchived = searchParams.get('exportArchived') === 'true';
   const exportsQuery = useTaskExportsQuery(taskId, { page, size, archived: showArchived });
+  const exportFieldsQuery = useTaskExportFieldsQuery(taskId);
+  const catalog = exportFieldsQuery.data;
   const createExport = useCreateExportMutation();
-  const downloadExportFile = useDownloadExportFileMutation();
+  const downloadExportPackage = useDownloadExportPackageMutation();
   const archiveExportSnapshot = useArchiveExportSnapshotMutation();
+  const fieldOptions = useMemo(() => buildFieldOptions(catalog), [catalog]);
+  const fieldLabelMap = useMemo(() => buildFieldLabelMap(catalog), [catalog]);
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (!catalog || prefilledRef.current) {
+      return;
+    }
+    prefilledRef.current = true;
+    const recommended = catalog.recommendedFormat;
+    if (recommended && recommended !== 'flat_table') {
+      setTrainingFormat((current) => (current === 'flat_table' ? recommended : current));
+    }
+    const bindings = catalog.recommendedBindings;
+    if (bindings) {
+      setTrainingProfile((current) => ({
+        ...current,
+        promptSource: bindings.promptSource ?? current.promptSource,
+        completionSource: bindings.completionSource ?? current.completionSource,
+        preferenceSource: bindings.preferenceSource ?? current.preferenceSource,
+        choiceASource: bindings.choiceSources?.A ?? current.choiceASource,
+        choiceBSource: bindings.choiceSources?.B ?? current.choiceBSource,
+      }));
+    }
+    const catalogRows = buildMappingRowsFromCatalog(catalog);
+    if (catalogRows.length > 0) {
+      setMappingRows(catalogRows);
+    }
+  }, [catalog]);
+  const bindingPreview = useMemo(
+    () => computeBindingPreview(trainingFormat, trainingProfile, catalog?.sampleRows ?? []),
+    [trainingFormat, trainingProfile, catalog],
+  );
+  const trainingExportBlocked =
+    trainingFormat !== 'flat_table' && bindingPreview.total > 0 && bindingPreview.validCount === 0;
   const items = exportsQuery.data?.items ?? [];
   const manifestHashCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -218,16 +270,22 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         width: 220,
         render: (_: unknown, record: ExportSnapshot) => (
           <Space spacing="tight" wrap>
-            {downloadableFiles(record).map((fileName) => (
+            <Button
+              size="small"
+              loading={downloadExportPackage.isPending}
+              onClick={() => downloadExportPackage.mutate({ snapshotId: record.id, packageType: 'annotation_results' })}
+            >
+              标注包
+            </Button>
+            {hasTrainingPackage(record) ? (
               <Button
-                key={fileName}
                 size="small"
-                loading={downloadExportFile.isPending}
-                onClick={() => downloadExportFile.mutate({ snapshotId: record.id, fileName })}
+                loading={downloadExportPackage.isPending}
+                onClick={() => downloadExportPackage.mutate({ snapshotId: record.id, packageType: 'training_data' })}
               >
-                {downloadLabel(fileName)}
+                训练包
               </Button>
-            ))}
+            ) : null}
           </Space>
         ),
       },
@@ -259,10 +317,29 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
             },
           ]),
     ],
-    [archiveExportSnapshot, archivingSnapshotId, downloadExportFile, manifestHashCounts, selectedIds, showArchived, taskId],
+    [archiveExportSnapshot, archivingSnapshotId, downloadExportPackage, manifestHashCounts, selectedIds, showArchived, taskId],
   );
 
-  async function handleCreateExport() {
+  async function handleCreateAnnotationExport() {
+    try {
+      await createExport.mutateAsync({
+        taskId,
+        fieldMapping: buildFieldMapping(mappingRows),
+        trainingFormat: 'flat_table',
+        trainingProfile: undefined,
+      });
+      Toast.success('标注结果包快照已提交');
+    } catch (error) {
+      const failure = error instanceof CreateExportFailure ? error : null;
+      Toast.error(failure?.userMessage ?? '导出失败');
+    }
+  }
+
+  async function handleCreateTrainingExport() {
+    if (trainingFormat === 'flat_table') {
+      Toast.warning('请先选择训练格式');
+      return;
+    }
     try {
       await createExport.mutateAsync({
         taskId,
@@ -270,7 +347,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         trainingFormat,
         trainingProfile: buildTrainingProfile(trainingFormat, trainingProfile),
       });
-      Toast.success('导出任务已提交');
+      Toast.success('训练数据包快照已提交');
     } catch (error) {
       const failure = error instanceof CreateExportFailure ? error : null;
       Toast.error(failure?.userMessage ?? '导出失败');
@@ -283,6 +360,24 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 
   function updateTrainingProfile(patch: Partial<TrainingProfileDraft>) {
     setTrainingProfile((current) => ({ ...current, ...patch }));
+  }
+
+  function applyRecommendation() {
+    if (!catalog?.recommendedFormat || catalog.recommendedFormat === 'flat_table') {
+      return;
+    }
+    setTrainingFormat(catalog.recommendedFormat);
+    const bindings = catalog.recommendedBindings;
+    if (bindings) {
+      setTrainingProfile((current) => ({
+        ...current,
+        promptSource: bindings.promptSource ?? current.promptSource,
+        completionSource: bindings.completionSource ?? current.completionSource,
+        preferenceSource: bindings.preferenceSource ?? current.preferenceSource,
+        choiceASource: bindings.choiceSources?.A ?? current.choiceASource,
+        choiceBSource: bindings.choiceSources?.B ?? current.choiceBSource,
+      }));
+    }
   }
 
   function addMappingRow() {
@@ -397,11 +492,31 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
             icon={<IconUpload />}
             theme="solid"
             type="primary"
-            loading={createExport.isPending}
-            onClick={handleCreateExport}
+            loading={createExport.isPending && trainingFormat === 'flat_table'}
+            onClick={handleCreateAnnotationExport}
           >
-            导出
+            导出标注结果包
           </Button>
+          <Tooltip
+            content={
+              trainingFormat === 'flat_table'
+                ? '请先在下方「训练格式详情」中选择一种训练格式(如 OpenAI 对话微调 / TRL 指令微调 / TRL 偏好训练),再导出训练数据包;表格快照只需用「导出标注结果包」。'
+                : '当前字段绑定在样本数据中产生 0 行有效记录,请在下方预览中检查绑定(必填字段为空或偏好取值不匹配回答)。'
+            }
+            trigger={trainingFormat === 'flat_table' || trainingExportBlocked ? 'hover' : 'custom'}
+            visible={trainingFormat === 'flat_table' || trainingExportBlocked ? undefined : false}
+          >
+            <span className="trusted-export-training-export-trigger">
+              <Button
+                icon={<IconUpload />}
+                disabled={trainingFormat === 'flat_table' || trainingExportBlocked}
+                loading={createExport.isPending && trainingFormat !== 'flat_table'}
+                onClick={handleCreateTrainingExport}
+              >
+                导出训练数据包
+              </Button>
+            </span>
+          </Tooltip>
         </Space>
       </div>
 
@@ -421,6 +536,21 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
                 optionList={TRAINING_FORMAT_OPTIONS}
               />
             </div>
+            {catalog?.recommendedFormat && catalog.recommendedFormat !== 'flat_table' ? (
+              <div className="trusted-export-recommendation">
+                <Tag color="blue" className="trusted-export-recommendation__tag">
+                  推荐 {formatLabel(catalog.recommendedFormat)}
+                </Tag>
+                <Typography.Text type="tertiary" className="trusted-export-recommendation__reason">
+                  {catalog.recommendationReason}
+                </Typography.Text>
+                {trainingFormat !== catalog.recommendedFormat ? (
+                  <Button size="small" theme="borderless" type="primary" onClick={applyRecommendation}>
+                    采用推荐
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
               <div className="trusted-export-training-detail__body">
                 <div className="trusted-export-training-detail__summary">
                 <Typography.Text strong>{trainingFormatDetail.fileName}</Typography.Text>
@@ -432,48 +562,65 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
               </div>
             </div>
             <div className="trusted-export-training-bindings">
-              <div className="trusted-export-training-bindings__title">
-                <Typography.Text strong>字段绑定</Typography.Text>
-                <Typography.Text type="tertiary">{trainingBindingNote}</Typography.Text>
-              </div>
-              <div className="trusted-export-training-bindings__required">
-                {trainingFormatDetail.requiredFields.map((field) => (
-                  <Tag key={field}>{field}</Tag>
-                ))}
+              <div className="trusted-export-training-bindings__head">
+                <div className="trusted-export-training-bindings__title">
+                  <Typography.Text strong>字段绑定</Typography.Text>
+                  <Typography.Text type="tertiary">{trainingBindingNote}</Typography.Text>
+                </div>
+                {trainingFormat === 'flat_table' ? (
+                  <div className="trusted-export-training-bindings__required">
+                    {trainingFormatDetail.requiredFields.map((field) => (
+                      <Tag key={field} size="small">{field}</Tag>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               {trainingFormat !== 'flat_table' ? (
                 <div className="trusted-export-training-profile__fields">
-                  <TrainingSourceInput
+                  <FieldBindingSelect
                     label="用户提示"
                     value={trainingProfile.promptSource}
+                    options={fieldOptions}
                     onChange={(promptSource) => updateTrainingProfile({ promptSource })}
                   />
                   {trainingFormat === 'trl_dpo_jsonl' ? (
                     <>
-                      <TrainingSourceInput
+                      <FieldBindingSelect
                         label="偏好字段"
                         value={trainingProfile.preferenceSource}
+                        options={fieldOptions}
                         onChange={(preferenceSource) => updateTrainingProfile({ preferenceSource })}
                       />
-                      <TrainingSourceInput
+                      <FieldBindingSelect
                         label="回答 A"
                         value={trainingProfile.choiceASource}
+                        options={fieldOptions}
                         onChange={(choiceASource) => updateTrainingProfile({ choiceASource })}
                       />
-                      <TrainingSourceInput
+                      <FieldBindingSelect
                         label="回答 B"
                         value={trainingProfile.choiceBSource}
+                        options={fieldOptions}
                         onChange={(choiceBSource) => updateTrainingProfile({ choiceBSource })}
                       />
                     </>
                   ) : (
-                    <TrainingSourceInput
+                    <FieldBindingSelect
                       label="助手回答"
                       value={trainingProfile.completionSource}
+                      options={fieldOptions}
                       onChange={(completionSource) => updateTrainingProfile({ completionSource })}
                     />
                   )}
                 </div>
+              ) : null}
+              {trainingFormat !== 'flat_table' ? (
+                <BindingPreview
+                  preview={bindingPreview}
+                  fieldLabels={fieldLabelMap}
+                  loading={exportFieldsQuery.isLoading}
+                  hasCatalog={Boolean(catalog)}
+                />
               ) : null}
             </div>
           </div>
@@ -515,7 +662,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
                         {group.rows.map((row) => (
                           <div className="trusted-export-mapping-row" key={row.id}>
                             <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
-                            <SourceFieldCell row={row} onChange={(patch) => updateMappingRow(row.id, patch)} />
+                            <SourceFieldCell row={row} options={fieldOptions} onChange={(patch) => updateMappingRow(row.id, patch)} />
                             <Input
                               className="trusted-export-mapping-row__column-input"
                               size="small"
@@ -575,17 +722,29 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   );
 }
 
-function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChange: (patch: Partial<FieldMappingDraftRow>) => void }) {
+function SourceFieldCell({
+  row,
+  options,
+  onChange,
+}: {
+  row: FieldMappingDraftRow;
+  options: FieldOption[];
+  onChange: (patch: Partial<FieldMappingDraftRow>) => void;
+}) {
   const meta = SYSTEM_FIELD_META[row.source];
   if (!meta) {
     return (
       <span className="trusted-export-mapping-row__source trusted-export-mapping-row__source--custom">
-        <Input
-          className="trusted-export-mapping-row__source-input"
+        <Select
+          className="trusted-export-mapping-row__source-select"
           size="small"
-          value={row.source}
+          value={row.source || undefined}
+          optionList={options}
+          filter
+          allowCreate
+          showClear
           placeholder="source: item.prompt / answer.label"
-          onChange={(source) => onChange({ source })}
+          onChange={(source) => onChange({ source: String(source ?? '') })}
         />
       </span>
     );
@@ -604,19 +763,82 @@ function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChang
   );
 }
 
-function TrainingSourceInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+function FieldBindingSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: FieldOption[];
+  onChange: (value: string) => void;
+}) {
   return (
     <label className="trusted-export-training-source">
       <span>{label}</span>
-      <Input
-        className="trusted-export-training-source__input"
+      <Select
+        className="trusted-export-training-source__select"
         size="small"
-        value={value}
-        placeholder="item.prompt / answer.label"
-        onChange={onChange}
+        value={value || undefined}
+        optionList={options}
+        filter
+        allowCreate
+        showClear
+        placeholder="选择字段"
+        onChange={(next) => onChange(String(next ?? ''))}
       />
     </label>
   );
+}
+
+function BindingPreview({
+  preview,
+  fieldLabels,
+  loading,
+  hasCatalog,
+}: {
+  preview: BindingPreviewResult;
+  fieldLabels: Record<string, string>;
+  loading: boolean;
+  hasCatalog: boolean;
+}) {
+  if (loading) {
+    return <div className="trusted-export-binding-preview trusted-export-binding-preview--empty">加载样本数据…</div>;
+  }
+  if (!hasCatalog || preview.total === 0) {
+    return (
+      <div className="trusted-export-binding-preview trusted-export-binding-preview--empty">
+        暂无已审核样本可预览(需要至少 1 条审核通过的提交)。
+      </div>
+    );
+  }
+  const ok = preview.validCount > 0;
+  return (
+    <div className="trusted-export-binding-preview">
+      <div className="trusted-export-binding-preview__caption">第 1 行将生成 →</div>
+      <div className="trusted-export-binding-preview__rows">
+        {preview.slots.map((slot) => (
+          <div className="trusted-export-binding-preview__row" key={slot.label}>
+            <span className={`trusted-export-binding-preview__slot trusted-export-binding-preview__slot--${slot.tone}`}>
+              {slot.label}
+            </span>
+            <span className="trusted-export-binding-preview__source">{slot.source ? fieldLabels[slot.source] ?? slot.source : '未绑定'}</span>
+            <span className="trusted-export-binding-preview__value">{slot.value ? truncate(slot.value, 48) : '(空)'}</span>
+          </div>
+        ))}
+      </div>
+      <div className={`trusted-export-binding-preview__verdict ${ok ? 'is-ok' : 'is-bad'}`}>
+        {ok
+          ? `预计可用 · 样本 ${preview.validCount}/${preview.total} 行可生成`
+          : `样本 ${preview.total} 行均无法生成,请检查字段绑定`}
+      </div>
+    </div>
+  );
+}
+
+function formatLabel(format: TrainingExportFormat) {
+  return TRAINING_FORMAT_OPTIONS.find((option) => option.value === format)?.label ?? format;
 }
 
 function groupMappingRows(rows: FieldMappingDraftRow[]) {
@@ -678,33 +900,12 @@ function formatDateTime(value?: string) {
   return value ? dateFormatter.format(new Date(value)) : '-';
 }
 
-function downloadableFiles(snapshot: ExportSnapshot) {
-  const names = snapshot.fileManifest
-    .filter((file) => (file.lines ?? 0) > 0 || !isTrainingJsonlFile(file.name))
-    .map((file) => file.name)
-    .filter(Boolean);
-  const preferred = [
-    'training-results.csv',
-    'training-results.xlsx',
-    'openai-chat-sft.jsonl',
-    'trl-sft.jsonl',
-    'trl-dpo.jsonl',
-    'manifest.json',
-  ];
-  return preferred.filter((name) => names.includes(name));
+function hasTrainingPackage(snapshot: ExportSnapshot) {
+  return snapshot.fileManifest.some((file) => isTrainingJsonlFile(file.name) && (file.lines ?? 0) > 0);
 }
 
 function isTrainingJsonlFile(fileName?: string | null) {
   return fileName === 'openai-chat-sft.jsonl'
     || fileName === 'trl-sft.jsonl'
     || fileName === 'trl-dpo.jsonl';
-}
-
-function downloadLabel(fileName: string) {
-  if (fileName.endsWith('.csv')) return 'CSV';
-  if (fileName.endsWith('.xlsx')) return 'Excel';
-  if (fileName === 'openai-chat-sft.jsonl') return 'OpenAI 对话';
-  if (fileName === 'trl-sft.jsonl') return 'TRL 指令';
-  if (fileName === 'trl-dpo.jsonl') return 'TRL 偏好';
-  return 'Manifest';
 }

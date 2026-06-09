@@ -1,14 +1,19 @@
 package com.labelhub.api.module.export.web;
 
+import com.labelhub.api.generated.model.ExportFieldCatalog;
+import com.labelhub.api.generated.model.ExportFieldDescriptor;
 import com.labelhub.api.generated.model.ExportFileEntry;
 import com.labelhub.api.generated.model.ExportJob;
+import com.labelhub.api.generated.model.ExportRecommendedBindings;
 import com.labelhub.api.generated.model.ExportSnapshot;
 import com.labelhub.api.generated.model.ExportSnapshotDiff;
 import com.labelhub.api.generated.model.ExportSnapshotDiffFileLevelMatchesInner;
 import com.labelhub.api.generated.model.ExportSnapshotDiffHashMatches;
 import com.labelhub.api.generated.model.PagedExportSnapshots;
+import com.labelhub.api.generated.model.TrainingExportFormat;
 import com.labelhub.api.module.export.entity.ExportSnapshotEntity;
 import com.labelhub.api.module.export.entity.ExportJobEntity;
+import com.labelhub.api.module.export.service.ExportFieldCatalogView;
 import com.labelhub.api.module.export.service.ExportSnapshotDiffView;
 import com.labelhub.api.module.task.service.PagedResult;
 import java.util.ArrayList;
@@ -84,6 +89,37 @@ public class ExportDtoMapper {
             return item;
         }).toList());
         return dto;
+    }
+
+    public ExportFieldCatalog toExportFieldCatalog(ExportFieldCatalogView view) {
+        ExportFieldCatalog dto = new ExportFieldCatalog();
+        dto.setSubmissionCount(view.submissionCount());
+        dto.setFields(view.fields().stream().map(this::toFieldDescriptor).toList());
+        dto.setSampleRows(view.sampleRows());
+        if (view.recommendedFormat() != null) {
+            dto.setRecommendedFormat(TrainingExportFormat.fromValue(view.recommendedFormat()));
+        }
+        dto.setRecommendationReason(view.recommendationReason());
+        if (view.recommendedBindings() != null) {
+            ExportRecommendedBindings bindings = new ExportRecommendedBindings();
+            bindings.setPromptSource(view.recommendedBindings().promptSource());
+            bindings.setCompletionSource(view.recommendedBindings().completionSource());
+            bindings.setPreferenceSource(view.recommendedBindings().preferenceSource());
+            bindings.setChoiceSources(view.recommendedBindings().choiceSources());
+            dto.setRecommendedBindings(bindings);
+        }
+        return dto;
+    }
+
+    private ExportFieldDescriptor toFieldDescriptor(ExportFieldCatalogView.Field field) {
+        ExportFieldDescriptor descriptor = new ExportFieldDescriptor();
+        descriptor.setSource(field.source());
+        descriptor.setLabel(field.label());
+        descriptor.setGroup(ExportFieldDescriptor.GroupEnum.fromValue(field.group()));
+        descriptor.setNonEmptyRatio(field.nonEmptyRatio());
+        descriptor.setSampleValues(field.sampleValues());
+        descriptor.setDistinctValues(field.distinctValues());
+        return descriptor;
     }
 
     @SuppressWarnings("unchecked")

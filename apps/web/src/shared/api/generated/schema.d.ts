@@ -467,6 +467,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{taskId}/export-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Data-driven catalog of bindable export source fields with sample values, coverage, and a format recommendation. */
+        get: operations["getTaskExportFields"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks/{taskId}/transitions": {
         parameters: {
             query?: never;
@@ -1171,6 +1188,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["downloadExportSnapshotFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/exports/snapshots/{snapshotId}/packages/{packageType}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["downloadExportSnapshotPackage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2471,6 +2504,49 @@ export interface components {
          * @enum {string}
          */
         TrainingExportFormat: "flat_table" | "openai_chat_sft_jsonl" | "trl_sft_jsonl" | "trl_dpo_jsonl";
+        /**
+         * @description Package-level export bundle to download from an export snapshot.
+         * @enum {string}
+         */
+        ExportSnapshotPackageType: "annotation_results" | "training_data";
+        /** @description Data-driven catalog of bindable export source fields, sample rows, and a format recommendation. */
+        ExportFieldCatalog: {
+            /** @description Number of approved submissions the catalog is derived from. */
+            submissionCount: number;
+            fields: components["schemas"]["ExportFieldDescriptor"][];
+            /** @description Up to 5 sample business rows (source key to stringified value) for live binding preview. */
+            sampleRows: {
+                [key: string]: string;
+            }[];
+            recommendedFormat?: components["schemas"]["TrainingExportFormat"];
+            recommendationReason?: string | null;
+            recommendedBindings?: components["schemas"]["ExportRecommendedBindings"];
+        };
+        /** @description A single bindable export source field with coverage and sample values. */
+        ExportFieldDescriptor: {
+            /** @description Source key, for example task_id, item.prompt, or answer.preferred. */
+            source: string;
+            label?: string | null;
+            /** @enum {string} */
+            group: "system" | "item" | "answer";
+            /**
+             * Format: double
+             * @description Fraction of rows where this field has a non-empty value (0 to 1).
+             */
+            nonEmptyRatio: number;
+            sampleValues: string[];
+            /** @description Present only for low-cardinality fields; the full set of distinct non-empty values. */
+            distinctValues?: string[] | null;
+        };
+        /** @description Suggested training-profile bindings derived from the task's data shape. */
+        ExportRecommendedBindings: {
+            promptSource?: string | null;
+            completionSource?: string | null;
+            preferenceSource?: string | null;
+            choiceSources?: {
+                [key: string]: string;
+            } | null;
+        };
         /** @description Source column mapping used to derive a training-ready JSONL artifact from training-results rows. */
         TrainingExportProfile: {
             /** @description Source column used as the model prompt. */
@@ -3561,6 +3637,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportJob"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    getTaskExportFields: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Export field catalog for the task's approved data. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportFieldCatalog"];
                 };
             };
             401: components["responses"]["ErrorUnauthorized"];
@@ -5007,6 +5108,33 @@ export interface operations {
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    downloadExportSnapshotPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshotId: components["parameters"]["SnapshotId"];
+                packageType: components["schemas"]["ExportSnapshotPackageType"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Download a packaged export snapshot bundle. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+            409: components["responses"]["ErrorStateConflict"];
         };
     };
     diffExportSnapshots: {

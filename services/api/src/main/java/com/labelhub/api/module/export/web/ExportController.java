@@ -1,6 +1,7 @@
 package com.labelhub.api.module.export.web;
 
 import com.labelhub.api.generated.model.CreateTaskExportRequest;
+import com.labelhub.api.generated.model.ExportFieldCatalog;
 import com.labelhub.api.generated.model.ExportJob;
 import com.labelhub.api.generated.model.ExportSnapshot;
 import com.labelhub.api.generated.model.ExportSnapshotDiff;
@@ -11,6 +12,9 @@ import com.labelhub.api.module.export.service.ExportFieldMapping;
 import com.labelhub.api.module.export.service.ExportFieldMappingColumn;
 import com.labelhub.api.module.export.service.ExportDataScope;
 import com.labelhub.api.module.export.service.ExportDownloadFile;
+import com.labelhub.api.module.export.service.ExportDownloadPackage;
+import com.labelhub.api.module.export.service.ExportFieldCatalogService;
+import com.labelhub.api.module.export.service.ExportSnapshotPackageType;
 import com.labelhub.api.module.export.service.ExportService;
 import com.labelhub.api.module.export.service.ExportSnapshotDiffView;
 import com.labelhub.api.module.export.service.TrainingExportProfile;
@@ -38,10 +42,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class ExportController implements ExportsApi {
 
     private final ExportService exportService;
+    private final ExportFieldCatalogService fieldCatalogService;
     private final ExportDtoMapper dtoMapper;
 
-    public ExportController(ExportService exportService, ExportDtoMapper dtoMapper) {
+    public ExportController(ExportService exportService, ExportFieldCatalogService fieldCatalogService, ExportDtoMapper dtoMapper) {
         this.exportService = exportService;
+        this.fieldCatalogService = fieldCatalogService;
         this.dtoMapper = dtoMapper;
     }
 
@@ -76,6 +82,13 @@ public class ExportController implements ExportsApi {
     }
 
     @Override
+    public ResponseEntity<ExportFieldCatalog> getTaskExportFields(@PathVariable("taskId") Long taskId) {
+        return ResponseEntity.ok(dtoMapper.toExportFieldCatalog(
+            fieldCatalogService.buildForOwner(taskId, currentUserId())
+        ));
+    }
+
+    @Override
     public ResponseEntity<ExportSnapshot> getExportSnapshot(@PathVariable("snapshotId") Long snapshotId) {
         ExportSnapshotEntity snapshot = exportService.getSnapshotForOwner(snapshotId, currentUserId());
         return ResponseEntity.ok(dtoMapper.toExportSnapshot(snapshot));
@@ -100,6 +113,27 @@ public class ExportController implements ExportsApi {
             .header(
                 HttpHeaders.CONTENT_DISPOSITION,
                 ContentDisposition.attachment().filename(downloadFile.fileName()).build().toString()
+            )
+            .body(resource);
+    }
+
+    @Override
+    public ResponseEntity<org.springframework.core.io.Resource> downloadExportSnapshotPackage(
+        @PathVariable("snapshotId") Long snapshotId,
+        @PathVariable("packageType") com.labelhub.api.generated.model.ExportSnapshotPackageType packageType
+    ) {
+        ExportDownloadPackage downloadPackage = exportService.downloadSnapshotPackage(
+            snapshotId,
+            ExportSnapshotPackageType.fromValue(packageType.getValue()),
+            currentUserId()
+        );
+        ByteArrayResource resource = new ByteArrayResource(downloadPackage.content());
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(downloadPackage.contentType()))
+            .contentLength(downloadPackage.content().length)
+            .header(
+                HttpHeaders.CONTENT_DISPOSITION,
+                ContentDisposition.attachment().filename(downloadPackage.fileName()).build().toString()
             )
             .body(resource);
     }
