@@ -6,6 +6,7 @@ import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.shared.canonical.Canonicalizer;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -20,7 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ExportArtifactBuilderBusinessFormatTest {
 
-    private final ExportArtifactBuilder builder = new ExportArtifactBuilder(new Canonicalizer(new ObjectMapper()));
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ExportArtifactBuilder builder = new ExportArtifactBuilder(new Canonicalizer(objectMapper));
 
     @Test
     void build_includes_flat_csv_training_results_for_approved_submissions() {
@@ -73,6 +75,59 @@ class ExportArtifactBuilderBusinessFormatTest {
         assertThat(mappedArtifact.manifestHash()).isNotEqualTo(defaultArtifact.manifestHash());
     }
 
+    @Test
+    void build_includes_openai_chat_sft_jsonl_when_profile_is_configured() throws Exception {
+        ExportArtifact artifact = builder.build(
+            bundle(),
+            ExportFieldMapping.empty(),
+            TrainingExportProfile.openAiChatSft("item.prompt", "answer.label")
+        );
+
+        JsonNode line = objectMapper.readTree(utf8(file(artifact, "openai-chat-sft.jsonl")));
+
+        assertThat(line.get("messages")).hasSize(2);
+        assertThat(line.get("messages").get(0).get("role").asText()).isEqualTo("user");
+        assertThat(line.get("messages").get(0).get("content").asText()).isEqualTo("hello world");
+        assertThat(line.get("messages").get(1).get("role").asText()).isEqualTo("assistant");
+        assertThat(line.get("messages").get(1).get("content").asText()).isEqualTo("positive");
+        assertThat(artifact.recordCounts()).containsEntry("openaiChatSft", 1);
+    }
+
+    @Test
+    void build_includes_trl_sft_jsonl_when_profile_is_configured() throws Exception {
+        ExportArtifact artifact = builder.build(
+            bundle(),
+            ExportFieldMapping.empty(),
+            TrainingExportProfile.trlSft("item.prompt", "answer.label")
+        );
+
+        JsonNode line = objectMapper.readTree(utf8(file(artifact, "trl-sft.jsonl")));
+
+        assertThat(line.get("prompt").asText()).isEqualTo("hello world");
+        assertThat(line.get("completion").asText()).isEqualTo("positive");
+        assertThat(artifact.recordCounts()).containsEntry("trlSft", 1);
+    }
+
+    @Test
+    void build_includes_trl_dpo_jsonl_when_profile_maps_preferred_option() throws Exception {
+        ExportArtifact artifact = builder.build(
+            preferenceBundle(),
+            ExportFieldMapping.empty(),
+            TrainingExportProfile.trlDpo(
+                "item.prompt",
+                "answer.preferred",
+                linkedStringMap("A", "item.response_a", "B", "item.response_b")
+            )
+        );
+
+        JsonNode line = objectMapper.readTree(utf8(file(artifact, "trl-dpo.jsonl")));
+
+        assertThat(line.get("prompt").asText()).isEqualTo("Which answer is safer?");
+        assertThat(line.get("chosen").asText()).isEqualTo("Refuse unsafe data deletion.");
+        assertThat(line.get("rejected").asText()).isEqualTo("Run the destructive SQL.");
+        assertThat(artifact.recordCounts()).containsEntry("trlDpo", 1);
+    }
+
     private static ArtifactFile file(ExportArtifact artifact, String name) {
         return artifact.files().stream()
             .filter(file -> name.equals(file.name()))
@@ -91,6 +146,21 @@ class ExportArtifactBuilderBusinessFormatTest {
             List.of(),
             List.of(datasetItem()),
             List.of(submission()),
+            List.of(),
+            List.of(),
+            List.of(ledger),
+            Map.of(300L, DerivedVerdictSnapshot.derive(300L, ledger)),
+            ExportDataScope.APPROVED_ONLY
+        );
+    }
+
+    private static ExportFactBundle preferenceBundle() {
+        QualityLedgerEntryEntity ledger = ledgerEntry();
+        return new ExportFactBundle(
+            task(),
+            List.of(),
+            List.of(preferenceDatasetItem()),
+            List.of(preferenceSubmission()),
             List.of(),
             List.of(),
             List.of(ledger),
@@ -131,6 +201,29 @@ class ExportArtifactBuilderBusinessFormatTest {
         return submission;
     }
 
+    private static DatasetItemEntity preferenceDatasetItem() {
+        DatasetItemEntity item = new DatasetItemEntity();
+        item.setId(200L);
+        item.setTaskId(100L);
+        item.setItemPayload(linkedMap(
+            "prompt", "Which answer is safer?",
+            "response_a", "Refuse unsafe data deletion.",
+            "response_b", "Run the destructive SQL."
+        ));
+        return item;
+    }
+
+    private static SubmissionEntity preferenceSubmission() {
+        SubmissionEntity submission = new SubmissionEntity();
+        submission.setId(300L);
+        submission.setTaskId(100L);
+        submission.setDatasetItemId(200L);
+        submission.setSchemaVersionId(400L);
+        submission.setCreatedAt(LocalDateTime.parse("2026-05-30T10:15:00"));
+        submission.setAnswerPayload(linkedMap("preferred", "A"));
+        return submission;
+    }
+
     private static QualityLedgerEntryEntity ledgerEntry() {
         QualityLedgerEntryEntity entry = new QualityLedgerEntryEntity();
         entry.setId(700L);
@@ -146,6 +239,14 @@ class ExportArtifactBuilderBusinessFormatTest {
         Map<String, Object> map = new LinkedHashMap<>();
         for (int i = 0; i < pairs.length; i += 2) {
             map.put(String.valueOf(pairs[i]), pairs[i + 1]);
+        }
+        return map;
+    }
+
+    private static Map<String, String> linkedStringMap(String... pairs) {
+        Map<String, String> map = new LinkedHashMap<>();
+        for (int i = 0; i < pairs.length; i += 2) {
+            map.put(pairs[i], pairs[i + 1]);
         }
         return map;
     }

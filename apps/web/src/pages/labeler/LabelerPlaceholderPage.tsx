@@ -2,8 +2,8 @@ import { Button, Card, Tag, Typography } from '@douyinfe/semi-ui';
 import { Link } from 'react-router-dom';
 
 const m2Features = [
-  ['任务广场', '浏览可领取任务与剩余配额。'],
-  ['任务领取', '按先到先得策略认领作答配额。'],
+  ['任务广场', '浏览可领取任务与可用题目。'],
+  ['任务领取', '按先到先得策略领取可用题目。'],
   ['Schema 渲染', '根据 Owner 发布的 schema 动态表单作答。'],
   ['草稿自动保存', '字段变更后自动保存，刷新后可恢复。'],
   ['提交流转', '提交后进入 AI 预审与人工审核队列。'],

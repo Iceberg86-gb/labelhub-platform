@@ -130,7 +130,7 @@ function WorkflowProgressCard({
           <Typography.Title heading={5}>全过程进度</Typography.Title>
           <Typography.Text type="tertiary">标注、AI 预审与审核阶段聚合。</Typography.Text>
         </div>
-        <div className="owner-workflow-progress-card__quota" aria-label="领取配额进度">
+        <div className="owner-workflow-progress-card__quota" aria-label="领取进度">
           <span>领取</span>
           <strong>{progress ? `${progress.quotaClaimed}/${progress.quotaTotal}` : '-'}</strong>
         </div>
@@ -290,7 +290,7 @@ export function OwnerTaskDetailPage() {
 
           <dl className="task-meta-grid owner-task-summary-grid">
             <div>
-              <dt>配额</dt>
+              <dt>领取/题量</dt>
               <dd>{task.quotaClaimed}/{task.quotaTotal}</dd>
             </div>
             <div>

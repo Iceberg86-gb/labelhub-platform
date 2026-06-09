@@ -26,7 +26,6 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
         WHERE status = 'published'
           AND current_dataset_id IS NOT NULL
           AND current_schema_version_id IS NOT NULL
-          AND quota_claimed &lt; quota_total
           AND deadline_at > NOW(3)
           AND EXISTS (
             SELECT 1
@@ -92,7 +91,6 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
             updated_at = NOW(3)
         WHERE id = #{taskId}
           AND status = 'published'
-          AND quota_claimed < quota_total
           AND deadline_at > NOW(3)
           AND current_schema_version_id IS NOT NULL
           AND current_dataset_id IS NOT NULL
@@ -104,7 +102,6 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
         SET quota_claimed = quota_claimed + #{amount},
             updated_at = NOW(3)
         WHERE id = #{taskId}
-          AND quota_claimed + #{amount} <= quota_total
         """)
     int incrementQuotaClaimedBy(@Param("taskId") Long taskId, @Param("amount") Integer amount);
 

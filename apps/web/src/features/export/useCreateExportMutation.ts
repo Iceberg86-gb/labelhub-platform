@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ExportFieldMapping, ExportJob } from '../../entities/export/exportTypes';
+import type { ExportFieldMapping, ExportJob, TrainingExportFormat, TrainingExportProfile } from '../../entities/export/exportTypes';
 import { apiClient } from '../../shared/api/client';
 
 export class CreateExportFailure extends Error {
@@ -15,16 +15,18 @@ export class CreateExportFailure extends Error {
 type CreateExportVariables = {
   taskId: number;
   fieldMapping?: ExportFieldMapping;
+  trainingFormat?: TrainingExportFormat;
+  trainingProfile?: TrainingExportProfile;
 };
 
 export function useCreateExportMutation() {
   const queryClient = useQueryClient();
 
   return useMutation<ExportJob, CreateExportFailure, CreateExportVariables>({
-    mutationFn: async ({ taskId, fieldMapping }) => {
+    mutationFn: async ({ taskId, fieldMapping, trainingFormat, trainingProfile }) => {
       const { data, error, response } = await apiClient.POST('/tasks/{taskId}/exports', {
         params: { path: { taskId } },
-        body: { mode: 'approved_only', fieldMapping },
+        body: { mode: 'approved_only', fieldMapping, trainingFormat: trainingFormat ?? 'flat_table', trainingProfile },
       });
       if (error || !data) {
         const body = error as { code?: string; message?: string } | undefined;

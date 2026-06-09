@@ -78,8 +78,20 @@ public class ExportService {
 
     @Transactional
     public ExportJobEntity requestExport(Long taskId, Long ownerUserId, ExportDataScope dataScope, ExportFieldMapping fieldMapping) {
+        return requestExport(taskId, ownerUserId, dataScope, fieldMapping, TrainingExportProfile.flatTable());
+    }
+
+    @Transactional
+    public ExportJobEntity requestExport(
+        Long taskId,
+        Long ownerUserId,
+        ExportDataScope dataScope,
+        ExportFieldMapping fieldMapping,
+        TrainingExportProfile trainingProfile
+    ) {
         ExportDataScope effectiveScope = dataScope == null ? ExportDataScope.APPROVED_ONLY : dataScope;
         ExportFieldMapping effectiveFieldMapping = fieldMapping == null ? ExportFieldMapping.empty() : fieldMapping;
+        TrainingExportProfile effectiveTrainingProfile = trainingProfile == null ? TrainingExportProfile.flatTable() : trainingProfile;
         TaskEntity task = taskMapper.selectById(taskId);
         if (task == null || !Objects.equals(task.getOwnerId(), ownerUserId)) {
             throw new TaskNotFoundException(taskId);
@@ -95,7 +107,8 @@ public class ExportService {
         job.setStatus("created");
         job.setParameters(Map.of(
             "mode", effectiveScope.mode(),
-            "fieldMapping", effectiveFieldMapping.toParameter()
+            "fieldMapping", effectiveFieldMapping.toParameter(),
+            "trainingProfile", effectiveTrainingProfile.snapshot()
         ));
         job.setCreatedAt(now);
         job.setDownloadCount(0);
@@ -118,8 +131,20 @@ public class ExportService {
 
     @Transactional
     public ExportSnapshotEntity createSnapshot(Long taskId, Long ownerUserId, ExportDataScope dataScope, ExportFieldMapping fieldMapping) {
+        return createSnapshot(taskId, ownerUserId, dataScope, fieldMapping, TrainingExportProfile.flatTable());
+    }
+
+    @Transactional
+    public ExportSnapshotEntity createSnapshot(
+        Long taskId,
+        Long ownerUserId,
+        ExportDataScope dataScope,
+        ExportFieldMapping fieldMapping,
+        TrainingExportProfile trainingProfile
+    ) {
         ExportDataScope effectiveScope = dataScope == null ? ExportDataScope.APPROVED_ONLY : dataScope;
         ExportFieldMapping effectiveFieldMapping = fieldMapping == null ? ExportFieldMapping.empty() : fieldMapping;
+        TrainingExportProfile effectiveTrainingProfile = trainingProfile == null ? TrainingExportProfile.flatTable() : trainingProfile;
         TaskEntity task = taskMapper.selectById(taskId);
         if (task == null || !Objects.equals(task.getOwnerId(), ownerUserId)) {
             throw new TaskNotFoundException(taskId);
@@ -131,12 +156,15 @@ public class ExportService {
         job.setRequestedBy(ownerUserId);
         job.setFormat("jsonl-bundle");
         job.setStatus("created");
-        job.setParameters(Map.of("mode", effectiveScope.mode()));
+        job.setParameters(Map.of(
+            "mode", effectiveScope.mode(),
+            "trainingProfile", effectiveTrainingProfile.snapshot()
+        ));
         job.setCreatedAt(now);
         job.setStartedAt(now);
         job.setDownloadCount(0);
         requireOneRow(exportJobMapper.insert(job), "insert export job");
-        return writeSnapshotForJob(job, effectiveScope, effectiveFieldMapping);
+        return writeSnapshotForJob(job, effectiveScope, effectiveFieldMapping, effectiveTrainingProfile);
     }
 
     @Transactional
@@ -155,7 +183,8 @@ public class ExportService {
             ExportSnapshotEntity snapshot = writeSnapshotForJob(
                 job,
                 dataScopeFromJob(job),
-                ExportFieldMapping.fromParameter(job.getParameters() == null ? null : job.getParameters().get("fieldMapping"))
+                ExportFieldMapping.fromParameter(job.getParameters() == null ? null : job.getParameters().get("fieldMapping")),
+                trainingProfileFromJob(job)
             );
             requireOneRow(exportJobMapper.markSucceeded(
                 job.getId(),
@@ -170,15 +199,21 @@ public class ExportService {
         }
     }
 
-    private ExportSnapshotEntity writeSnapshotForJob(ExportJobEntity job, ExportDataScope effectiveScope, ExportFieldMapping effectiveFieldMapping) {
+    private ExportSnapshotEntity writeSnapshotForJob(
+        ExportJobEntity job,
+        ExportDataScope effectiveScope,
+        ExportFieldMapping effectiveFieldMapping,
+        TrainingExportProfile effectiveTrainingProfile
+    ) {
         List<String> writtenKeys = new ArrayList<>();
         try {
             ExportFactBundle bundle = factCollector.collectForTask(job.getTaskId(), effectiveScope);
             ExportFactBundle businessBundle = effectiveScope == ExportDataScope.APPROVED_ONLY
                 ? bundle
                 : factCollector.collectForTask(job.getTaskId(), ExportDataScope.APPROVED_ONLY);
-            ExportArtifact artifact = artifactBuilder.build(bundle, businessBundle, effectiveFieldMapping);
+            ExportArtifact artifact = artifactBuilder.build(bundle, businessBundle, effectiveFieldMapping, effectiveTrainingProfile);
             Map<String, Object> fieldMappingSnapshot = fieldMappingSnapshot(artifact);
+            Map<String, Object> trainingProfileSnapshot = trainingProfileSnapshot(artifact);
             String objectKeyPrefix = "exports/tasks/" + job.getTaskId() + "/jobs/" + job.getId() + "/";
             LocalDateTime now = LocalDateTime.now(clock);
 
@@ -218,6 +253,7 @@ public class ExportService {
                     .payload("objectKey", snapshot.getObjectKey())
                     .payload("mode", effectiveScope.mode())
                     .payload("fieldMappingSnapshot", fieldMappingSnapshot)
+                    .payload("trainingProfileSnapshot", trainingProfileSnapshot)
             );
             return snapshot;
         } catch (RuntimeException e) {
@@ -229,6 +265,10 @@ public class ExportService {
     private ExportDataScope dataScopeFromJob(ExportJobEntity job) {
         Object mode = job.getParameters() == null ? null : job.getParameters().get("mode");
         return ExportDataScope.fromMode(mode == null ? null : String.valueOf(mode));
+    }
+
+    private TrainingExportProfile trainingProfileFromJob(ExportJobEntity job) {
+        return TrainingExportProfile.fromParameter(job.getParameters() == null ? null : job.getParameters().get("trainingProfile"));
     }
 
     private Long totalFileSize(Map<String, Object> fileManifest) {
@@ -247,6 +287,12 @@ public class ExportService {
     @SuppressWarnings("unchecked")
     private Map<String, Object> fieldMappingSnapshot(ExportArtifact artifact) {
         Object value = artifact.manifestContent().get("fieldMappingSnapshot");
+        return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> trainingProfileSnapshot(ExportArtifact artifact) {
+        Object value = artifact.manifestContent().get("trainingProfileSnapshot");
         return value instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
     }
 

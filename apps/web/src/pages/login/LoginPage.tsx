@@ -63,12 +63,19 @@ export function LoginPage() {
 
           {LOGIN_BRAND_PANEL_VARIANT === 'workflow' ? (
             <div className="login-workflow-strip" aria-hidden>
-              {LOGIN_WORKFLOW_STEPS.map((step, index) => (
-                <div className="login-workflow-node" key={step}>
-                  <span className="login-workflow-index">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="login-workflow-label">{step}</span>
-                </div>
-              ))}
+              <div className="login-workflow-copy">
+                <span>DATA QUALITY LOOP</span>
+                <strong>全过程质量链路</strong>
+                <small>从发布到导出,每一步都有记录可追溯。</small>
+              </div>
+              <div className="login-workflow-track">
+                {LOGIN_WORKFLOW_STEPS.map((step, index) => (
+                  <div className="login-workflow-node" key={step}>
+                    <span className="login-workflow-index">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="login-workflow-label">{step}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
         </div>

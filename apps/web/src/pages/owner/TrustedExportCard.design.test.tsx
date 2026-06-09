@@ -16,7 +16,10 @@ const routeState = vi.hoisted(() => ({
 vi.mock('@douyinfe/semi-icons', () => ({
   IconArchive: () => <span />,
   IconArrowRight: () => <span />,
+  IconChevronDown: () => <span />,
+  IconChevronUp: () => <span />,
   IconConfigStroked: () => <span />,
+  IconDelete: () => <span />,
   IconDownload: () => <span />,
   IconInfoCircle: () => <span />,
   IconList: () => <span />,
@@ -148,24 +151,35 @@ describe('TrustedExportCard design shell', () => {
     expect(html).toContain('trusted-export-flow-strip');
     expect(html).toContain('trusted-export-command-strip');
     expect(html).toContain('trusted-export-builder');
-    expect(html).toContain('trusted-export-mapping-row');
+    expect(html).toContain('trusted-export-training-detail');
+    expect(html).toContain('trusted-export-training-schema-preview');
+    expect(html).toContain('trusted-export-mapping-panel');
+    expect(html).toContain('trusted-export-mapping-summary');
     expect(html).toContain('trusted-export-snapshot-panel');
     expect(html).toContain('trusted-export-table-shell');
     expect(html).toContain('trusted-export-table');
     expect(html).toContain('可信快照控制台');
     expect(html).toContain('当前任务已生成的活跃快照总数');
     expect(html).toContain('配置字段');
-    expect(html).toContain('源字段');
-    expect(html).toContain('导出列名');
-    expect(html).toContain('任务 ID');
-    expect(html).toContain('任务在系统中的唯一标识');
-    expect(html).toContain('系统溯源字段');
-    expect(html).toContain('业务内容字段');
+    expect(html).toContain('训练格式');
+    expect(html).toContain('训练格式详情');
+    expect(html).toContain('字段绑定');
+    expect(html).toContain('每行结构');
+    expect(html).toContain('表格快照使用下方高级字段映射生成 CSV 与 Excel');
+    expect(html).toContain('高级字段映射');
+    expect(html).toContain('已启用');
+    expect(html).toContain('9');
+    expect(html).toContain('系统字段');
+    expect(html).toContain('7');
+    expect(html).toContain('业务字段');
+    expect(html).toContain('2');
+    expect(html).toContain('展开编辑');
     expect(html).toContain('可复现');
-    expect(html).toContain('业务表字段映射');
     expect(html).toContain('CSV');
     expect(html).toContain('Excel');
+    expect(html).toContain('OpenAI 对话');
     expect(html).toContain('Manifest');
+    expect(html).not.toContain('trusted-export-mapping-row');
   });
 });
 
@@ -179,6 +193,7 @@ function makeSnapshot(): ExportSnapshot {
     fileManifest: [
       { lines: 12, name: 'training-results.csv', sha256: 'csv-sha', sizeBytes: 1024 },
       { lines: 12, name: 'training-results.xlsx', sha256: 'xlsx-sha', sizeBytes: 2048 },
+      { lines: 12, name: 'openai-chat-sft.jsonl', sha256: 'openai-jsonl-sha', sizeBytes: 1536 },
       { lines: 1, name: 'manifest.json', sha256: 'manifest-sha', sizeBytes: 512 },
     ],
     generatedAt: '2026-05-30T09:00:00Z',

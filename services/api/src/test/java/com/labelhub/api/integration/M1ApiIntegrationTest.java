@@ -276,7 +276,7 @@ class M1ApiIntegrationTest {
     }
 
     @Test
-    void publishing_task_with_zero_quota_returns_400_with_quota_total_field_error() throws Exception {
+    void publishing_task_without_schema_returns_400_with_schema_field_error() throws Exception {
         String token = login("owner_demo", "demo1234");
         long taskId = createDraftTask(token, 0, "2030-01-01T00:00:00Z");
 
@@ -285,11 +285,11 @@ class M1ApiIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"toStatus":"published","reason":"try publish"}
-                    """))
+            """))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("PUBLISH_GUARD_FAILED"))
-            .andExpect(jsonPath("$.fieldErrors[0].field").value("quotaTotal"))
-            .andExpect(jsonPath("$.fieldErrors[0].message").value("Task quota must be greater than zero"));
+            .andExpect(jsonPath("$.fieldErrors[0].field").value("currentSchemaVersionId"))
+            .andExpect(jsonPath("$.fieldErrors[0].message").value("Task must have a current schema version before publishing"));
     }
 
     @Test

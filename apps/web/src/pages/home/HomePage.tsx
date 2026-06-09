@@ -230,12 +230,12 @@ export function HomePage() {
   const ownerTaskRows = (ownerTasks.data?.items ?? []).map((task) => ({
     href: `/owner/tasks/${task.id}`,
     title: task.title,
-    meta: `${task.status} · 已领 ${task.quotaClaimed}/${task.quotaTotal}`,
+    meta: `${task.status} · 已领取 ${task.quotaClaimed} / 题量 ${task.quotaTotal}`,
   }));
   const labelerTaskRows = (marketplace.data?.items ?? []).map((task) => ({
     href: `/labeler/marketplace`,
     title: task.title,
-    meta: `可领 ${task.availableItemCount} · 已领 ${task.quotaClaimed}/${task.quotaTotal}`,
+    meta: `可领 ${task.availableItemCount} · 已领取 ${task.quotaClaimed} / 题量 ${task.quotaTotal}`,
   }));
   const sessionRows = (mySessions.data?.items ?? []).map((session) => ({
     href: `/labeler/sessions/${session.id}`,

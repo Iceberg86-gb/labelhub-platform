@@ -123,14 +123,14 @@ class SessionServiceTest {
     }
 
     @Test
-    void claimBatch_caps_requested_size_to_remaining_quota_and_creates_sessions() {
+    void claimBatch_uses_available_items_instead_of_remaining_quota() {
         TaskEntity task = publishedTask();
         task.setQuotaTotal(5);
-        task.setQuotaClaimed(3);
+        task.setQuotaClaimed(5);
         DatasetItemEntity first = item(701L, 1);
         DatasetItemEntity second = item(702L, 2);
         when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
-        when(datasetItemMapper.selectAvailableForUpdate(500L, 10L, 2)).thenReturn(List.of(first, second));
+        when(datasetItemMapper.selectAvailableForUpdate(500L, 10L, 10)).thenReturn(List.of(first, second));
         when(datasetItemMapper.updateStatus(701L, "claimed")).thenReturn(1);
         when(datasetItemMapper.updateStatus(702L, "claimed")).thenReturn(1);
         when(taskMapper.incrementQuotaClaimedBy(10L, 2)).thenReturn(1);
@@ -146,7 +146,7 @@ class SessionServiceTest {
         assertThat(result.claimedCount()).isEqualTo(2);
         assertThat(result.sessions()).extracting(SessionEntity::getDatasetItemId).containsExactly(701L, 702L);
         assertThat(result.sessions()).extracting(SessionEntity::getLabelerId).containsExactly(1002L, 1002L);
-        verify(datasetItemMapper).selectAvailableForUpdate(500L, 10L, 2);
+        verify(datasetItemMapper).selectAvailableForUpdate(500L, 10L, 10);
         verify(taskMapper).incrementQuotaClaimedBy(10L, 2);
     }
 
@@ -214,7 +214,7 @@ class SessionServiceTest {
     }
 
     @Test
-    void claim_locks_quota_before_selecting_dataset_item() {
+    void claim_updates_claim_counter_before_selecting_dataset_item() {
         when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(1);
         when(taskMapper.selectById(10L)).thenReturn(publishedTask());
         when(datasetItemMapper.selectNextAvailableForUpdate(500L, 10L)).thenReturn(item(700L));

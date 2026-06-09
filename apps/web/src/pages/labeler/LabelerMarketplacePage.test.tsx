@@ -161,8 +161,8 @@ describe('LabelerMarketplacePage task detail drawer', () => {
     expect(detailHtml).toContain('客服回复质检');
     expect(detailHtml).toContain('按质检标准阅读任务说明后再领取。');
     expect(detailHtml).toContain('每条通过审核后计入奖励。');
-    expect(detailHtml).toContain('剩余配额');
-    expect(detailHtml).toContain('16');
+    expect(detailHtml).toContain('可领取题目');
+    expect(detailHtml).toContain('本次领取上限');
     expect(detailHtml).toContain('8 个');
     expect(detailHtml).not.toContain('answer_payload');
     expect(detailHtml).not.toContain('schemaJson');

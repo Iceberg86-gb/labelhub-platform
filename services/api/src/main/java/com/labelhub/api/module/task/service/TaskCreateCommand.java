@@ -10,8 +10,7 @@ public record TaskCreateCommand(
     String instructionRichText,
     List<String> tags,
     Map<String, Object> rewardRule,
-    LocalDateTime deadlineAt,
-    Integer quotaTotal
+    LocalDateTime deadlineAt
 ) {
 
     public static Builder builder() {
@@ -25,7 +24,6 @@ public record TaskCreateCommand(
         private List<String> tags;
         private Map<String, Object> rewardRule;
         private LocalDateTime deadlineAt;
-        private Integer quotaTotal;
 
         public Builder title(String title) { this.title = title; return this; }
         public Builder description(String description) { this.description = description; return this; }
@@ -33,9 +31,8 @@ public record TaskCreateCommand(
         public Builder tags(List<String> tags) { this.tags = tags; return this; }
         public Builder rewardRule(Map<String, Object> rewardRule) { this.rewardRule = rewardRule; return this; }
         public Builder deadlineAt(LocalDateTime deadlineAt) { this.deadlineAt = deadlineAt; return this; }
-        public Builder quotaTotal(Integer quotaTotal) { this.quotaTotal = quotaTotal; return this; }
         public TaskCreateCommand build() {
-            return new TaskCreateCommand(title, description, instructionRichText, tags, rewardRule, deadlineAt, quotaTotal);
+            return new TaskCreateCommand(title, description, instructionRichText, tags, rewardRule, deadlineAt);
         }
     }
 }

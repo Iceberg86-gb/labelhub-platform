@@ -10,8 +10,7 @@ public record TaskUpdateCommand(
     String instructionRichText,
     List<String> tags,
     Map<String, Object> rewardRule,
-    LocalDateTime deadlineAt,
-    Integer quotaTotal
+    LocalDateTime deadlineAt
 ) {
 
     public static Builder builder() {
@@ -25,7 +24,6 @@ public record TaskUpdateCommand(
         private List<String> tags;
         private Map<String, Object> rewardRule;
         private LocalDateTime deadlineAt;
-        private Integer quotaTotal;
 
         private Builder() {
         }
@@ -36,10 +34,9 @@ public record TaskUpdateCommand(
         public Builder tags(List<String> tags) { this.tags = tags; return this; }
         public Builder rewardRule(Map<String, Object> rewardRule) { this.rewardRule = rewardRule; return this; }
         public Builder deadlineAt(LocalDateTime deadlineAt) { this.deadlineAt = deadlineAt; return this; }
-        public Builder quotaTotal(Integer quotaTotal) { this.quotaTotal = quotaTotal; return this; }
 
         public TaskUpdateCommand build() {
-            return new TaskUpdateCommand(title, description, instructionRichText, tags, rewardRule, deadlineAt, quotaTotal);
+            return new TaskUpdateCommand(title, description, instructionRichText, tags, rewardRule, deadlineAt);
         }
     }
 }

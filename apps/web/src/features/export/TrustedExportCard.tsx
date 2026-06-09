@@ -1,7 +1,10 @@
 import { Button, Card, Checkbox, Empty, Input, Pagination, Popconfirm, Select, Space, Spin, Table, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import {
   IconArchive,
+  IconChevronDown,
+  IconChevronUp,
   IconConfigStroked,
+  IconDelete,
   IconDownload,
   IconInfoCircle,
   IconList,
@@ -13,7 +16,7 @@ import {
 } from '@douyinfe/semi-icons';
 import { Fragment, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { ExportFieldMapping, ExportSnapshot } from '../../entities/export/exportTypes';
+import type { ExportFieldMapping, ExportSnapshot, TrainingExportFormat, TrainingExportProfile } from '../../entities/export/exportTypes';
 import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { CreateExportFailure, useCreateExportMutation } from './useCreateExportMutation';
 import { ExportSnapshotDiffModal } from './ExportSnapshotDiffModal';
@@ -39,6 +42,62 @@ const DEFAULT_FIELD_MAPPING_ROWS: FieldMappingDraftRow[] = [
   { id: 'answer-source', source: 'answer.title', columnName: 'answer_title', included: true },
 ];
 
+const DEFAULT_TRAINING_PROFILE: TrainingProfileDraft = {
+  promptSource: 'item.prompt',
+  completionSource: 'answer.label',
+  preferenceSource: 'answer.preferred',
+  choiceASource: 'item.model_a',
+  choiceBSource: 'item.model_b',
+};
+
+const TRAINING_FORMAT_OPTIONS: Array<{ value: TrainingExportFormat; label: string }> = [
+  { value: 'flat_table', label: '表格快照' },
+  { value: 'openai_chat_sft_jsonl', label: 'OpenAI 对话微调' },
+  { value: 'trl_sft_jsonl', label: 'TRL 指令微调' },
+  { value: 'trl_dpo_jsonl', label: 'TRL 偏好训练' },
+];
+
+const TRAINING_FORMAT_COPY: Record<TrainingExportFormat, string> = {
+  flat_table: '生成可信表格快照,用于复核、审计和离线分析。',
+  openai_chat_sft_jsonl: '生成对话微调数据,一条记录对应一轮用户提示与助手回答。',
+  trl_sft_jsonl: '生成指令微调数据,一条记录对应提示与答案。',
+  trl_dpo_jsonl: '生成偏好训练数据,一条记录对应提示、优选答案和拒绝答案。',
+};
+
+const TRAINING_FORMAT_DETAIL: Record<
+  TrainingExportFormat,
+  { title: string; fileName: string; audience: string; structure: string; requiredFields: string[] }
+> = {
+  flat_table: {
+    title: '表格快照',
+    fileName: '可信表格快照',
+    audience: '适合人工复核、审计交付和离线分析。',
+    structure: '系统溯源字段 + 业务内容字段',
+    requiredFields: ['无需额外绑定'],
+  },
+  openai_chat_sft_jsonl: {
+    title: 'OpenAI 对话微调',
+    fileName: '对话微调数据',
+    audience: '适合对话式监督微调数据准备。',
+    structure: '用户提示 → 助手回答',
+    requiredFields: ['用户提示', '助手回答'],
+  },
+  trl_sft_jsonl: {
+    title: 'TRL 指令微调',
+    fileName: '指令微调数据',
+    audience: '适合提示与答案形式的监督微调。',
+    structure: '用户提示 → 标准答案',
+    requiredFields: ['用户提示', '标准答案'],
+  },
+  trl_dpo_jsonl: {
+    title: 'TRL 偏好训练',
+    fileName: '偏好训练数据',
+    audience: '适合偏好对比训练,生成优选答案与拒绝答案。',
+    structure: '用户提示 → 优选答案 / 拒绝答案',
+    requiredFields: ['用户提示', '偏好字段', '回答 A', '回答 B'],
+  },
+};
+
 const SYSTEM_FIELD_META: Record<string, { label: string; description: string }> = {
   task_id: { label: '任务 ID', description: '任务在系统中的唯一标识' },
   dataset_item_id: { label: '数据项 ID', description: '该条数据在数据集中的唯一标识' },
@@ -63,6 +122,14 @@ type FieldMappingDraftRow = {
   included: boolean;
 };
 
+type TrainingProfileDraft = {
+  promptSource: string;
+  completionSource: string;
+  preferenceSource: string;
+  choiceASource: string;
+  choiceBSource: string;
+};
+
 const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
   month: '2-digit',
   day: '2-digit',
@@ -73,6 +140,9 @@ const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
 export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [mappingRows, setMappingRows] = useState<FieldMappingDraftRow[]>(DEFAULT_FIELD_MAPPING_ROWS);
+  const [trainingFormat, setTrainingFormat] = useState<TrainingExportFormat>('flat_table');
+  const [trainingProfile, setTrainingProfile] = useState<TrainingProfileDraft>(DEFAULT_TRAINING_PROFILE);
+  const [mappingExpanded, setMappingExpanded] = useState(false);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
   const [archivingSnapshotId, setArchivingSnapshotId] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -95,6 +165,12 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const baseSnapshotId = canDiff ? selectedIds[0] ?? null : null;
   const compareSnapshotId = canDiff ? selectedIds[1] ?? null : null;
   const groupedMappingRows = groupMappingRows(mappingRows);
+  const mappingSummary = summarizeMappingRows(mappingRows);
+  const trainingFormatDetail = TRAINING_FORMAT_DETAIL[trainingFormat];
+  const trainingBindingNote =
+    trainingFormat === 'flat_table'
+      ? '表格快照使用下方高级字段映射生成 CSV 与 Excel。'
+      : '缺少必填字段的记录会自动跳过,不写入训练数据。';
 
   const columns = useMemo(
     () => [
@@ -188,7 +264,12 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 
   async function handleCreateExport() {
     try {
-      await createExport.mutateAsync({ taskId, fieldMapping: buildFieldMapping(mappingRows) });
+      await createExport.mutateAsync({
+        taskId,
+        fieldMapping: buildFieldMapping(mappingRows),
+        trainingFormat,
+        trainingProfile: buildTrainingProfile(trainingFormat, trainingProfile),
+      });
       Toast.success('导出任务已提交');
     } catch (error) {
       const failure = error instanceof CreateExportFailure ? error : null;
@@ -198,6 +279,10 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 
   function updateMappingRow(rowId: string, patch: Partial<FieldMappingDraftRow>) {
     setMappingRows((current) => current.map((row) => (row.id === rowId ? { ...row, ...patch } : row)));
+  }
+
+  function updateTrainingProfile(patch: Partial<TrainingProfileDraft>) {
+    setTrainingProfile((current) => ({ ...current, ...patch }));
   }
 
   function addMappingRow() {
@@ -288,7 +373,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
       </div>
 
       <div className="trusted-export-toolbar trusted-export-command-strip">
-        <Typography.Text type="tertiary">
+        <Typography.Text className="trusted-export-snapshot-count" type="tertiary">
           共 {exportsQuery.data?.total ?? 0} 个{showArchived ? '已归档' : '活跃'}快照
           {selectedIds.length > 0 ? `,已选 ${selectedIds.length}/2` : ''}
         </Typography.Text>
@@ -322,51 +407,131 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
 
       <div className="trusted-export-console-grid">
         <div className="trusted-export-field-mapping trusted-export-builder">
-          <div className="trusted-export-field-mapping-header trusted-export-builder__header">
-            <Typography.Text strong>业务表字段映射</Typography.Text>
-            <Button size="small" onClick={addMappingRow}>
-              添加列
-            </Button>
-          </div>
-          <div className="trusted-export-builder__table">
-            <div className="trusted-export-builder__table-head">
-              <span className="trusted-export-builder__table-head-spacer" />
-              <div className="trusted-export-builder__table-head-grid">
-                <span />
-                <span className="trusted-export-builder__heading">
-                  源字段
-                </span>
-                <span className="trusted-export-builder__heading trusted-export-builder__heading--column">
-                  导出列名
-                </span>
-                <span />
+          <div className="trusted-export-training-detail">
+            <div className="trusted-export-training-detail__header">
+              <div>
+                <Typography.Text strong>训练格式详情</Typography.Text>
+                <Typography.Text type="tertiary">{TRAINING_FORMAT_COPY[trainingFormat]}</Typography.Text>
+              </div>
+              <Select
+                className="trusted-export-training-profile__select"
+                size="small"
+                value={trainingFormat}
+                onChange={(value) => setTrainingFormat(value as TrainingExportFormat)}
+                optionList={TRAINING_FORMAT_OPTIONS}
+              />
+            </div>
+              <div className="trusted-export-training-detail__body">
+                <div className="trusted-export-training-detail__summary">
+                <Typography.Text strong>{trainingFormatDetail.fileName}</Typography.Text>
+                <Typography.Text type="tertiary">{trainingFormatDetail.audience}</Typography.Text>
+              </div>
+              <div className="trusted-export-training-schema-preview">
+                <span>每行结构</span>
+                <code>{trainingFormatDetail.structure}</code>
               </div>
             </div>
-            <div className="trusted-export-field-mapping-list trusted-export-builder__list">
-              {groupedMappingRows.map((group) => (
-                <div className="trusted-export-builder__group" key={group.kind}>
-                  <div className="trusted-export-builder__group-label">{group.label}</div>
-                  <div className="trusted-export-builder__group-rows">
-                    {group.rows.map((row) => (
-                      <div className="trusted-export-mapping-row" key={row.id}>
-                        <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
-                        <SourceFieldCell row={row} onChange={(patch) => updateMappingRow(row.id, patch)} />
-                        <Input
-                          className="trusted-export-mapping-row__column-input"
-                          size="small"
-                          value={row.columnName}
-                          placeholder="导出列名"
-                          onChange={(value) => updateMappingRow(row.id, { columnName: value })}
-                        />
-                        <Button size="small" type="danger" theme="borderless" onClick={() => removeMappingRow(row.id)}>
-                          删除
-                        </Button>
-                      </div>
-                    ))}
+            <div className="trusted-export-training-bindings">
+              <div className="trusted-export-training-bindings__title">
+                <Typography.Text strong>字段绑定</Typography.Text>
+                <Typography.Text type="tertiary">{trainingBindingNote}</Typography.Text>
+              </div>
+              <div className="trusted-export-training-bindings__required">
+                {trainingFormatDetail.requiredFields.map((field) => (
+                  <Tag key={field}>{field}</Tag>
+                ))}
+              </div>
+              {trainingFormat !== 'flat_table' ? (
+                <div className="trusted-export-training-profile__fields">
+                  <TrainingSourceInput
+                    label="用户提示"
+                    value={trainingProfile.promptSource}
+                    onChange={(promptSource) => updateTrainingProfile({ promptSource })}
+                  />
+                  {trainingFormat === 'trl_dpo_jsonl' ? (
+                    <>
+                      <TrainingSourceInput
+                        label="偏好字段"
+                        value={trainingProfile.preferenceSource}
+                        onChange={(preferenceSource) => updateTrainingProfile({ preferenceSource })}
+                      />
+                      <TrainingSourceInput
+                        label="回答 A"
+                        value={trainingProfile.choiceASource}
+                        onChange={(choiceASource) => updateTrainingProfile({ choiceASource })}
+                      />
+                      <TrainingSourceInput
+                        label="回答 B"
+                        value={trainingProfile.choiceBSource}
+                        onChange={(choiceBSource) => updateTrainingProfile({ choiceBSource })}
+                      />
+                    </>
+                  ) : (
+                    <TrainingSourceInput
+                      label="助手回答"
+                      value={trainingProfile.completionSource}
+                      onChange={(completionSource) => updateTrainingProfile({ completionSource })}
+                    />
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="trusted-export-mapping-panel">
+            <div className="trusted-export-mapping-summary">
+              <div className="trusted-export-mapping-summary__copy">
+                <Typography.Text strong>高级字段映射</Typography.Text>
+                <Typography.Text type="tertiary">
+                  已启用 {mappingSummary.enabled} 列 · 系统字段 {mappingSummary.system} · 业务字段 {mappingSummary.content}
+                </Typography.Text>
+              </div>
+              <Space>
+                <Button size="small" onClick={() => setMappingExpanded((expanded) => !expanded)} icon={mappingExpanded ? <IconChevronUp /> : <IconChevronDown />}>
+                  {mappingExpanded ? '收起编辑' : '展开编辑'}
+                </Button>
+                {mappingExpanded ? (
+                  <Button size="small" onClick={addMappingRow}>
+                    添加列
+                  </Button>
+                ) : null}
+              </Space>
+            </div>
+            {mappingExpanded ? (
+              <div className="trusted-export-builder__table">
+                <div className="trusted-export-builder__table-head">
+                  <div className="trusted-export-builder__table-head-grid">
+                    <span />
+                    <span className="trusted-export-builder__heading">源字段</span>
+                    <span className="trusted-export-builder__heading trusted-export-builder__heading--column">导出列名</span>
+                    <span />
                   </div>
                 </div>
-              ))}
-            </div>
+                <div className="trusted-export-field-mapping-list trusted-export-builder__list">
+                  {groupedMappingRows.map((group) => (
+                    <div className="trusted-export-builder__group" key={group.kind}>
+                      <div className="trusted-export-builder__group-label">{group.label}</div>
+                      <div className="trusted-export-builder__group-rows">
+                        {group.rows.map((row) => (
+                          <div className="trusted-export-mapping-row" key={row.id}>
+                            <Checkbox checked={row.included} onChange={(event) => updateMappingRow(row.id, { included: Boolean(event.target.checked) })} />
+                            <SourceFieldCell row={row} onChange={(patch) => updateMappingRow(row.id, patch)} />
+                            <Input
+                              className="trusted-export-mapping-row__column-input"
+                              size="small"
+                              value={row.columnName}
+                              placeholder="导出列名"
+                              onChange={(value) => updateMappingRow(row.id, { columnName: value })}
+                            />
+                            <Button icon={<IconDelete />} size="small" type="danger" theme="borderless" onClick={() => removeMappingRow(row.id)} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -439,6 +604,21 @@ function SourceFieldCell({ row, onChange }: { row: FieldMappingDraftRow; onChang
   );
 }
 
+function TrainingSourceInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="trusted-export-training-source">
+      <span>{label}</span>
+      <Input
+        className="trusted-export-training-source__input"
+        size="small"
+        value={value}
+        placeholder="item.prompt / answer.label"
+        onChange={onChange}
+      />
+    </label>
+  );
+}
+
 function groupMappingRows(rows: FieldMappingDraftRow[]) {
   const systemRows = rows.filter((row) => Boolean(SYSTEM_FIELD_META[row.source]));
   const contentRows = rows.filter((row) => !SYSTEM_FIELD_META[row.source]);
@@ -446,6 +626,15 @@ function groupMappingRows(rows: FieldMappingDraftRow[]) {
     { kind: 'system', label: '系统溯源字段', rows: systemRows },
     { kind: 'content', label: '业务内容字段', rows: contentRows },
   ].filter((group) => group.rows.length > 0);
+}
+
+function summarizeMappingRows(rows: FieldMappingDraftRow[]) {
+  const enabledRows = rows.filter((row) => row.included);
+  return {
+    enabled: enabledRows.length,
+    system: enabledRows.filter((row) => Boolean(SYSTEM_FIELD_META[row.source])).length,
+    content: enabledRows.filter((row) => !SYSTEM_FIELD_META[row.source]).length,
+  };
 }
 
 function buildFieldMapping(rows: FieldMappingDraftRow[]): ExportFieldMapping {
@@ -460,6 +649,26 @@ function buildFieldMapping(rows: FieldMappingDraftRow[]): ExportFieldMapping {
   };
 }
 
+function buildTrainingProfile(format: TrainingExportFormat, draft: TrainingProfileDraft): TrainingExportProfile | undefined {
+  if (format === 'flat_table') {
+    return undefined;
+  }
+  if (format === 'trl_dpo_jsonl') {
+    return {
+      promptSource: draft.promptSource.trim(),
+      preferenceSource: draft.preferenceSource.trim(),
+      choiceSources: {
+        A: draft.choiceASource.trim(),
+        B: draft.choiceBSource.trim(),
+      },
+    };
+  }
+  return {
+    promptSource: draft.promptSource.trim(),
+    completionSource: draft.completionSource.trim(),
+  };
+}
+
 function parsePositiveInt(value: string | null) {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -471,12 +680,22 @@ function formatDateTime(value?: string) {
 
 function downloadableFiles(snapshot: ExportSnapshot) {
   const names = snapshot.fileManifest.map((file) => file.name).filter(Boolean);
-  const preferred = ['training-results.csv', 'training-results.xlsx', 'manifest.json'];
+  const preferred = [
+    'training-results.csv',
+    'training-results.xlsx',
+    'openai-chat-sft.jsonl',
+    'trl-sft.jsonl',
+    'trl-dpo.jsonl',
+    'manifest.json',
+  ];
   return preferred.filter((name) => names.includes(name));
 }
 
 function downloadLabel(fileName: string) {
   if (fileName.endsWith('.csv')) return 'CSV';
   if (fileName.endsWith('.xlsx')) return 'Excel';
+  if (fileName === 'openai-chat-sft.jsonl') return 'OpenAI 对话';
+  if (fileName === 'trl-sft.jsonl') return 'TRL 指令';
+  if (fileName === 'trl-dpo.jsonl') return 'TRL 偏好';
   return 'Manifest';
 }

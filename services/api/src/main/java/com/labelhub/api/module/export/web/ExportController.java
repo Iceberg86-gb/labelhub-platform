@@ -13,6 +13,7 @@ import com.labelhub.api.module.export.service.ExportDataScope;
 import com.labelhub.api.module.export.service.ExportDownloadFile;
 import com.labelhub.api.module.export.service.ExportService;
 import com.labelhub.api.module.export.service.ExportSnapshotDiffView;
+import com.labelhub.api.module.export.service.TrainingExportProfile;
 import com.labelhub.api.module.task.service.PagedResult;
 import com.labelhub.api.security.JwtPrincipal;
 import jakarta.validation.Valid;
@@ -20,6 +21,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Map;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -52,7 +54,7 @@ public class ExportController implements ExportsApi {
             body == null || body.getMode() == null ? null : body.getMode().getValue()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(dtoMapper.toExportJob(
-            exportService.requestExport(taskId, currentUserId(), dataScope, toFieldMapping(body))
+            exportService.requestExport(taskId, currentUserId(), dataScope, toFieldMapping(body), toTrainingProfile(body))
         ));
     }
 
@@ -146,5 +148,25 @@ public class ExportController implements ExportsApi {
             ))
             .toList();
         return new ExportFieldMapping(columns);
+    }
+
+    private TrainingExportProfile toTrainingProfile(CreateTaskExportRequest body) {
+        if (body == null || body.getTrainingFormat() == null) {
+            return TrainingExportProfile.flatTable();
+        }
+        TrainingExportProfile.Format format = TrainingExportProfile.Format.fromValue(body.getTrainingFormat().getValue());
+        com.labelhub.api.generated.model.TrainingExportProfile profile = body.getTrainingProfile();
+        String promptSource = profile == null ? null : profile.getPromptSource();
+        String completionSource = profile == null ? null : profile.getCompletionSource();
+        String preferenceSource = profile == null ? null : profile.getPreferenceSource();
+        Map<String, String> choiceSources = profile == null || profile.getChoiceSources() == null
+            ? Map.of()
+            : profile.getChoiceSources();
+        return switch (format) {
+            case OPENAI_CHAT_SFT_JSONL -> TrainingExportProfile.openAiChatSft(promptSource, completionSource);
+            case TRL_SFT_JSONL -> TrainingExportProfile.trlSft(promptSource, completionSource);
+            case TRL_DPO_JSONL -> TrainingExportProfile.trlDpo(promptSource, preferenceSource, choiceSources);
+            case FLAT_TABLE -> TrainingExportProfile.flatTable();
+        };
     }
 }

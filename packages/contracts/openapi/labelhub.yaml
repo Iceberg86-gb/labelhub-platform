@@ -2912,7 +2912,7 @@ components:
           format: date-time
     CreateTaskRequest:
       type: object
-      required: [title, quotaTotal, deadlineAt]
+      required: [title, deadlineAt]
       properties:
         title:
           type: string
@@ -2931,10 +2931,11 @@ components:
           type: string
           format: date-time
         quotaTotal:
+          description: Deprecated input. Server derives task item count from the bound dataset.
           type: integer
     UpdateTaskRequest:
       type: object
-      required: [title, quotaTotal, deadlineAt]
+      required: [title, deadlineAt]
       properties:
         title:
           type: string
@@ -2953,18 +2954,22 @@ components:
           type: string
           format: date-time
         quotaTotal:
+          description: Deprecated input. Server keeps task item count derived from the bound dataset.
           type: integer
     Task:
       allOf:
         - $ref: '#/components/schemas/CreateTaskRequest'
         - type: object
-          required: [id, status, quotaClaimed]
+          required: [id, status, quotaTotal, quotaClaimed]
           properties:
             id:
               type: integer
               format: int64
             status:
               $ref: '#/components/schemas/TaskStatus'
+            quotaTotal:
+              description: Current dataset item count snapshot.
+              type: integer
             quotaClaimed:
               type: integer
             currentSchemaVersionId:
@@ -3695,7 +3700,7 @@ components:
           type: integer
           minimum: 1
           maximum: 1000
-          description: Desired number of dataset items to claim. The server caps this to remaining quota and available items.
+          description: Desired number of dataset items to claim. The server caps this to available dataset items.
     ClaimTaskItemsResult:
       type: object
       required: [requestedSize, claimedCount, sessions]
@@ -4698,6 +4703,37 @@ components:
           default: approved_only
         fieldMapping:
           $ref: '#/components/schemas/ExportFieldMapping'
+        trainingFormat:
+          $ref: '#/components/schemas/TrainingExportFormat'
+        trainingProfile:
+          $ref: '#/components/schemas/TrainingExportProfile'
+    TrainingExportFormat:
+      type: string
+      description: Optional LLM training-ready artifact format written alongside the canonical bundle.
+      enum: [flat_table, openai_chat_sft_jsonl, trl_sft_jsonl, trl_dpo_jsonl]
+      default: flat_table
+    TrainingExportProfile:
+      type: object
+      additionalProperties: false
+      description: Source column mapping used to derive a training-ready JSONL artifact from training-results rows.
+      properties:
+        promptSource:
+          type: string
+          nullable: true
+          description: Source column used as the model prompt.
+        completionSource:
+          type: string
+          nullable: true
+          description: Source column used as the assistant completion for SFT formats.
+        preferenceSource:
+          type: string
+          nullable: true
+          description: Source column whose value selects the preferred choice for DPO exports.
+        choiceSources:
+          type: object
+          additionalProperties:
+            type: string
+          description: Preference choice value to source column map, for example A -> item.model_a.
     ExportFieldMapping:
       type: object
       additionalProperties: false

@@ -108,7 +108,6 @@ public class TasksController implements TasksApi {
             .tags(request.getTags())
             .rewardRule(request.getRewardRule())
             .deadlineAt(request.getDeadlineAt().toLocalDateTime())
-            .quotaTotal(request.getQuotaTotal())
             .build(), currentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(created));
     }
@@ -148,7 +147,6 @@ public class TasksController implements TasksApi {
             .tags(request.getTags())
             .rewardRule(request.getRewardRule())
             .deadlineAt(request.getDeadlineAt().toLocalDateTime())
-            .quotaTotal(request.getQuotaTotal())
             .build());
         return ResponseEntity.ok(toDto(updated));
     }

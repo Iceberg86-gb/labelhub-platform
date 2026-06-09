@@ -48,8 +48,22 @@ public class ExportArtifactBuilder {
         return build(bundle, bundle, fieldMapping);
     }
 
+    public ExportArtifact build(ExportFactBundle bundle, ExportFieldMapping fieldMapping, TrainingExportProfile trainingProfile) {
+        return build(bundle, bundle, fieldMapping, trainingProfile);
+    }
+
     public ExportArtifact build(ExportFactBundle bundle, ExportFactBundle businessBundle, ExportFieldMapping fieldMapping) {
+        return build(bundle, businessBundle, fieldMapping, TrainingExportProfile.flatTable());
+    }
+
+    public ExportArtifact build(
+        ExportFactBundle bundle,
+        ExportFactBundle businessBundle,
+        ExportFieldMapping fieldMapping,
+        TrainingExportProfile trainingProfile
+    ) {
         ExportFieldMapping effectiveMapping = fieldMapping == null ? ExportFieldMapping.empty() : fieldMapping;
+        TrainingExportProfile effectiveTrainingProfile = trainingProfile == null ? TrainingExportProfile.flatTable() : trainingProfile;
         Map<String, Object> sourceState = buildSourceStateRef(bundle);
         List<ArtifactFile> files = new ArrayList<>();
         files.add(buildJsonFile("task.json", taskToCanonical(bundle.task())));
@@ -76,14 +90,23 @@ public class ExportArtifactBuilder {
         Map<String, Object> fieldMappingSnapshot = effectiveMapping.snapshot(trainingHeaders);
         files.add(buildCsvFile("training-results.csv", trainingColumns, trainingRows));
         files.add(buildXlsxFile("training-results.xlsx", trainingColumns, trainingRows));
+        List<Map<String, Object>> trainingJsonlRows = List.of();
+        if (effectiveTrainingProfile.enabled()) {
+            trainingJsonlRows = trainingJsonlRows(trainingRows, effectiveTrainingProfile);
+            files.add(buildJsonlFile(effectiveTrainingProfile.format().fileName(), trainingJsonlRows));
+        }
 
         Map<String, Integer> recordCounts = buildRecordCounts(bundle);
         recordCounts.put("trainingResults", trainingRows.size());
+        if (effectiveTrainingProfile.enabled()) {
+            recordCounts.put(effectiveTrainingProfile.format().recordCountKey(), trainingJsonlRows.size());
+        }
         Map<String, Object> manifestContent = new LinkedHashMap<>();
         manifestContent.put("taskId", bundle.task().getId());
         manifestContent.put("canonicalizationVersion", CANONICALIZATION_VERSION);
         manifestContent.put("dataScope", bundle.dataScope().toSnapshotDataScope());
         manifestContent.put("fieldMappingSnapshot", fieldMappingSnapshot);
+        manifestContent.put("trainingProfileSnapshot", effectiveTrainingProfile.snapshot());
         manifestContent.put("exportedAtSourceState", sourceState);
         manifestContent.put("files", files.stream().map(ArtifactFile::toManifestEntry).toList());
         manifestContent.put("recordCounts", recordCounts);
@@ -100,6 +123,85 @@ public class ExportArtifactBuilder {
             fileHash,
             CANONICALIZATION_VERSION
         );
+    }
+
+    private List<Map<String, Object>> trainingJsonlRows(List<Map<String, String>> rows, TrainingExportProfile profile) {
+        return switch (profile.format()) {
+            case OPENAI_CHAT_SFT_JSONL -> openAiChatSftRows(rows, profile);
+            case TRL_SFT_JSONL -> trlSftRows(rows, profile);
+            case TRL_DPO_JSONL -> trlDpoRows(rows, profile);
+            case FLAT_TABLE -> List.of();
+        };
+    }
+
+    private List<Map<String, Object>> openAiChatSftRows(List<Map<String, String>> rows, TrainingExportProfile profile) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, String> row : rows) {
+            String prompt = sourceValue(row, profile.promptSource());
+            String completion = sourceValue(row, profile.completionSource());
+            if (!hasText(prompt) || !hasText(completion)) {
+                continue;
+            }
+            result.add(map("messages", List.of(
+                map("role", "user", "content", prompt),
+                map("role", "assistant", "content", completion)
+            )));
+        }
+        return result;
+    }
+
+    private List<Map<String, Object>> trlSftRows(List<Map<String, String>> rows, TrainingExportProfile profile) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, String> row : rows) {
+            String prompt = sourceValue(row, profile.promptSource());
+            String completion = sourceValue(row, profile.completionSource());
+            if (!hasText(prompt) || !hasText(completion)) {
+                continue;
+            }
+            result.add(map("prompt", prompt, "completion", completion));
+        }
+        return result;
+    }
+
+    private List<Map<String, Object>> trlDpoRows(List<Map<String, String>> rows, TrainingExportProfile profile) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, String> row : rows) {
+            String prompt = sourceValue(row, profile.promptSource());
+            String preferred = sourceValue(row, profile.preferenceSource());
+            if (!hasText(prompt) || !hasText(preferred)) {
+                continue;
+            }
+            String chosen = sourceValue(row, profile.choiceSources().get(preferred));
+            String rejected = firstRejectedChoice(row, profile, preferred);
+            if (!hasText(chosen) || !hasText(rejected)) {
+                continue;
+            }
+            result.add(map("prompt", prompt, "chosen", chosen, "rejected", rejected));
+        }
+        return result;
+    }
+
+    private String firstRejectedChoice(Map<String, String> row, TrainingExportProfile profile, String preferred) {
+        for (Map.Entry<String, String> choice : profile.orderedChoices()) {
+            if (!choice.getKey().equals(preferred)) {
+                String value = sourceValue(row, choice.getValue());
+                if (hasText(value)) {
+                    return value;
+                }
+            }
+        }
+        return "";
+    }
+
+    private String sourceValue(Map<String, String> row, String source) {
+        if (source == null || source.isBlank()) {
+            return "";
+        }
+        return row.getOrDefault(source, "");
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private ArtifactFile buildJsonFile(String name, Map<String, Object> value) {
