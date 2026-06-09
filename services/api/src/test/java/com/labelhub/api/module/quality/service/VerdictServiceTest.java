@@ -1,7 +1,9 @@
 package com.labelhub.api.module.quality.service;
 
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
+import com.labelhub.api.module.quality.entity.SeniorReviewCaseEntity;
 import com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper;
+import com.labelhub.api.module.quality.mapper.SeniorReviewCaseMapper;
 import com.labelhub.api.module.quality.service.view.VerdictView;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
@@ -38,12 +40,13 @@ class VerdictServiceTest {
     private final SubmissionMapper submissionMapper = mock(SubmissionMapper.class);
     private final TaskMapper taskMapper = mock(TaskMapper.class);
     private final QualityLedgerEntryMapper qualityLedgerEntryMapper = mock(QualityLedgerEntryMapper.class);
+    private final SeniorReviewCaseMapper seniorReviewCaseMapper = mock(SeniorReviewCaseMapper.class);
     private VerdictService verdictService;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(Instant.parse("2026-05-25T09:30:00Z"), ZoneOffset.UTC);
-        verdictService = new VerdictService(submissionMapper, taskMapper, qualityLedgerEntryMapper, clock);
+        verdictService = new VerdictService(submissionMapper, taskMapper, qualityLedgerEntryMapper, seniorReviewCaseMapper, clock);
     }
 
     @Test
@@ -60,15 +63,46 @@ class VerdictServiceTest {
     }
 
     @Test
-    void deriveCurrentVerdict_keeps_pending_from_initial_reviewer_approve_entry() {
+    void deriveCurrentVerdict_derives_approved_from_reviewer_approve_when_no_senior_case_is_open() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
         when(taskMapper.selectById(TASK_ID)).thenReturn(task());
         when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID))
             .thenReturn(entry(101L, "approve", "reviewer"));
+        when(seniorReviewCaseMapper.selectOpenCountBySubmissionId(SUBMISSION_ID)).thenReturn(0L);
+
+        VerdictView verdict = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
+
+        assertThat(verdict.status()).isEqualTo("approved");
+        assertThat(verdict.derivedFromEntryId()).isEqualTo(101L);
+    }
+
+    @Test
+    void deriveCurrentVerdict_keeps_pending_from_reviewer_approve_when_senior_case_is_open() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task());
+        when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID))
+            .thenReturn(entry(101L, "approve", "reviewer"));
+        when(seniorReviewCaseMapper.selectOpenCountBySubmissionId(SUBMISSION_ID)).thenReturn(1L);
 
         VerdictView verdict = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
 
         assertThat(verdict.status()).isEqualTo("pending");
+        assertThat(verdict.derivedFromEntryId()).isEqualTo(101L);
+    }
+
+    @Test
+    void deriveCurrentVerdict_uses_latest_resolved_senior_case_to_override_reviewer_approve() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task());
+        when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID))
+            .thenReturn(entry(101L, "approve", "reviewer"));
+        when(seniorReviewCaseMapper.selectOpenCountBySubmissionId(SUBMISSION_ID)).thenReturn(0L);
+        when(seniorReviewCaseMapper.selectLatestResolvedBySubmissionId(SUBMISSION_ID))
+            .thenReturn(seniorCase(700L, "overturn_to_reject"));
+
+        VerdictView verdict = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
+
+        assertThat(verdict.status()).isEqualTo("rejected");
         assertThat(verdict.derivedFromEntryId()).isEqualTo(101L);
     }
 
@@ -106,13 +140,14 @@ class VerdictServiceTest {
             .thenReturn(entry(101L, "approve", "reviewer"))
             .thenReturn(entry(103L, "approve", "senior_reviewer"))
             .thenReturn(entry(102L, "reject", "senior_reviewer"));
+        when(seniorReviewCaseMapper.selectOpenCountBySubmissionId(SUBMISSION_ID)).thenReturn(0L);
 
         VerdictView v0 = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
         assertThat(v0.status()).isEqualTo("pending");
         assertThat(v0.derivedFromEntryId()).isNull();
 
         VerdictView v1 = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
-        assertThat(v1.status()).isEqualTo("pending");
+        assertThat(v1.status()).isEqualTo("approved");
         assertThat(v1.derivedFromEntryId()).isEqualTo(101L);
 
         VerdictView v2 = verdictService.deriveCurrentVerdict(SUBMISSION_ID, OWNER_ID, Set.of());
@@ -191,5 +226,18 @@ class VerdictServiceTest {
         entry.setPayload(Map.of("verdict", verdict, "reviewLevel", reviewLevel));
         entry.setCreatedAt(NOW);
         return entry;
+    }
+
+    private static SeniorReviewCaseEntity seniorCase(Long id, String resolution) {
+        SeniorReviewCaseEntity entity = new SeniorReviewCaseEntity();
+        entity.setId(id);
+        entity.setSubmissionId(SUBMISSION_ID);
+        entity.setTaskId(TASK_ID);
+        entity.setStatus("resolved");
+        entity.setResolution(resolution);
+        entity.setCreatedAt(NOW);
+        entity.setUpdatedAt(NOW);
+        entity.setResolvedAt(NOW);
+        return entity;
     }
 }

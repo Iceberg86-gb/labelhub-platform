@@ -8,6 +8,9 @@ const renderSchemaQueryMock = vi.hoisted(() => vi.fn());
 const verdictQueryMock = vi.hoisted(() => vi.fn());
 const ledgerEntriesQueryMock = vi.hoisted(() => vi.fn());
 const createLedgerEntryMutationMock = vi.hoisted(() => vi.fn());
+const seniorReviewCasesQueryMock = vi.hoisted(() => vi.fn());
+const markReviewDifficultyMutationMock = vi.hoisted(() => vi.fn());
+const resolveSeniorReviewCaseMutationMock = vi.hoisted(() => vi.fn());
 const userMock = vi.hoisted(() => vi.fn());
 const routeState = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -151,6 +154,18 @@ vi.mock('../../features/quality/useCreateLedgerEntryMutation', () => ({
   useCreateLedgerEntryMutation: createLedgerEntryMutationMock,
 }));
 
+vi.mock('../../features/quality/useSeniorReviewCasesQuery', () => ({
+  useSeniorReviewCasesQuery: seniorReviewCasesQueryMock,
+}));
+
+vi.mock('../../features/quality/useMarkReviewDifficultyMutation', () => ({
+  useMarkReviewDifficultyMutation: markReviewDifficultyMutationMock,
+}));
+
+vi.mock('../../features/quality/useResolveSeniorReviewCaseMutation', () => ({
+  useResolveSeniorReviewCaseMutation: resolveSeniorReviewCaseMutationMock,
+}));
+
 vi.mock('../../features/labeling/formily/SchemaFormilyRenderer', () => ({
   SchemaFormilyRenderer: ({ itemPayload }: { itemPayload?: { prompt?: string } }) => (
     <section>
@@ -217,6 +232,25 @@ const renderSchema = {
   },
 };
 
+const seniorCase = {
+  accountability: null,
+  caseType: 'arbitration',
+  createdAt: '2026-06-08T17:00:00Z',
+  id: 9001,
+  priority: 'high',
+  reason: null,
+  resolution: null,
+  schemaName: '偏好对比标注',
+  schemaVersionNumber: 1,
+  seniorReviewerId: null,
+  sourceSignal: 'reviewer_difficulty',
+  sourceSummary: 'Reviewer 标记疑难',
+  status: 'open',
+  submissionId: 501,
+  taskId: 22,
+  taskTitle: '客服回复质检',
+};
+
 afterEach(() => {
   reviewerQueueQueryMock.mockReset();
   batchReviewMutationMock.mockReset();
@@ -224,6 +258,9 @@ afterEach(() => {
   verdictQueryMock.mockReset();
   ledgerEntriesQueryMock.mockReset();
   createLedgerEntryMutationMock.mockReset();
+  seniorReviewCasesQueryMock.mockReset();
+  markReviewDifficultyMutationMock.mockReset();
+  resolveSeniorReviewCaseMutationMock.mockReset();
   userMock.mockReset();
   routeState.navigate.mockReset();
   routeState.setSearchParams.mockReset();
@@ -242,6 +279,14 @@ describe('Reviewer pages design shell', () => {
       isLoading: false,
       refetch: vi.fn(),
     });
+    seniorReviewCasesQueryMock.mockReturnValue({
+      data: { items: [], total: 0 },
+      error: null,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
     batchReviewMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
 
     const html = renderToString(<ReviewerQueuePage />);
@@ -254,7 +299,7 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('reviewer-level-tag reviewer-level-tag--senior');
     expect(html).toContain('data-column-aligns="center|center|center|center|center|center|center|center"');
     expect(html).toContain('REVIEWER');
-    expect(html).toContain('SENIOR REVIEWER');
+    expect(html).not.toContain('SENIOR REVIEWER');
     expect(html).toContain('提交 501');
     expect(html).toContain('客服回复质检');
     expect(html).toContain('偏好对比标注 v1');
@@ -282,11 +327,55 @@ describe('Reviewer pages design shell', () => {
       isLoading: false,
       refetch: vi.fn(),
     });
+    seniorReviewCasesQueryMock.mockReturnValue({
+      data: { items: [], total: 0 },
+      error: null,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
     batchReviewMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
 
     const html = renderToString(<ReviewerQueuePage />);
 
     expect(html).toContain('Schema 版本 77');
+  });
+
+  it('renders senior reviewer queue as case arbitration workbench', () => {
+    userMock.mockReturnValue({ id: 1004, roles: ['REVIEWER', 'SENIOR_REVIEWER'] });
+    routeState.searchParams = new URLSearchParams('reviewLevel=senior_reviewer');
+    reviewerQueueQueryMock.mockReturnValue({
+      data: { items: [], total: 0 },
+      error: null,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    seniorReviewCasesQueryMock.mockReturnValue({
+      data: { items: [seniorCase], total: 1 },
+      error: null,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    batchReviewMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+
+    const html = renderToString(<ReviewerQueuePage />);
+
+    expect(html).toContain('高级仲裁队列');
+    expect(html).toContain('SENIOR REVIEWER');
+    expect(html).not.toMatch(/>\s*REVIEWER\s*</);
+    expect(html).toContain('共 1 个待处理 case');
+    expect(html).toContain('客服回复质检');
+    expect(html).toContain('偏好对比标注 v1');
+    expect(html).toContain('疑难仲裁');
+    expect(html).toContain('处理仲裁');
+    expect(html).toContain('data-column-aligns="center|center|center|center|center|center"');
+    expect(html).not.toContain('批量通过');
+    expect(html).not.toContain('全部 Verdict');
   });
 
   it('renders submission detail as a three-zone reviewer workbench', () => {
@@ -300,6 +389,14 @@ describe('Reviewer pages design shell', () => {
         ],
         total: 2,
       },
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    seniorReviewCasesQueryMock.mockReturnValue({
+      data: { items: [], total: 0 },
+      error: null,
       isError: false,
       isFetching: false,
       isLoading: false,
@@ -319,6 +416,8 @@ describe('Reviewer pages design shell', () => {
       isLoading: false,
     });
     createLedgerEntryMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    markReviewDifficultyMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    resolveSeniorReviewCaseMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
 
     const html = renderToString(<ReviewerSubmissionPage />);
 
@@ -355,6 +454,14 @@ describe('Reviewer pages design shell', () => {
     routeState.searchParams = new URLSearchParams('reviewLevel=reviewer');
     reviewerQueueQueryMock.mockReturnValue({
       data: { items: [{ ...queueSubmission, id: 501, reviewLevel: 'reviewer' }], total: 1 },
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    seniorReviewCasesQueryMock.mockReturnValue({
+      data: { items: [], total: 0 },
+      error: null,
       isError: false,
       isFetching: false,
       isLoading: false,
@@ -430,6 +537,8 @@ describe('Reviewer pages design shell', () => {
       isLoading: false,
     });
     createLedgerEntryMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    markReviewDifficultyMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    resolveSeniorReviewCaseMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
 
     const html = renderToString(<ReviewerSubmissionPage />);
 

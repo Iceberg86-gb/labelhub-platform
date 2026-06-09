@@ -250,8 +250,8 @@ export function OwnerLlmSettingsPage() {
     () => (config.apiKey.trim() ? maskApiKey(config.apiKey) : savedSecretLabel(selectedProvider ?? currentProvider)),
     [config.apiKey, currentProvider, selectedProvider],
   );
-  const currentProviderName = currentProvider?.providerName ?? config.providerName;
-  const currentModelName = currentProvider?.modelName ?? config.modelName;
+  const currentProviderName = currentProvider?.providerName ?? '';
+  const currentModelName = currentProvider?.modelName ?? '';
   const currentIconId = iconIdForProvider(currentProviderName);
 
   useEffect(() => {
@@ -701,8 +701,8 @@ export function OwnerLlmSettingsPage() {
         <div className="llm-status-card llm-status-card--primary">
           <span className="llm-status-card__icon"><LlmProviderIcon provider={currentIconId} /></span>
           <span>当前 Provider</span>
-          <strong>{currentProviderName || '未配置'}</strong>
-          <small>平台级 · {currentModelName || '未选择模型'}</small>
+          <strong>{currentProviderName || '未接入'}</strong>
+          <small>{currentModelName ? `平台级 · ${currentModelName}` : '暂无启用 Provider'}</small>
         </div>
         <div className="llm-status-card">
           <span className="llm-status-card__icon"><IconTickCircle /></span>

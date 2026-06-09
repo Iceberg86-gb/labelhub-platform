@@ -39,7 +39,7 @@ const roleSectionMeta = {
   },
   SENIOR_REVIEWER: {
     title: '高级审核',
-    hint: '复核',
+    hint: '仲裁',
   },
 } as const;
 
@@ -56,7 +56,7 @@ const navItemHints: Record<string, string> = {
   '/labeler/marketplace': '领取可作答任务',
   '/labeler/my': '继续未完成数据',
   '/reviewer/submissions': '人工初审队列',
-  '/reviewer/submissions?reviewLevel=senior_reviewer': '高级复核队列',
+  '/reviewer/submissions?reviewLevel=senior_reviewer': '高级仲裁队列',
 };
 
 function menuIconFor(path: string) {

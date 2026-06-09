@@ -5,6 +5,7 @@ import com.labelhub.api.generated.model.AiOverallRecommendationPayload;
 import com.labelhub.api.generated.model.DimensionScore;
 import com.labelhub.api.generated.model.PagedQualityLedgerEntries;
 import com.labelhub.api.generated.model.PagedReviewerSubmissions;
+import com.labelhub.api.generated.model.PagedSeniorReviewCases;
 import com.labelhub.api.generated.model.PrereviewSignals;
 import com.labelhub.api.generated.model.PrereviewStatus;
 import com.labelhub.api.generated.model.QualityLedgerEntry;
@@ -13,10 +14,16 @@ import com.labelhub.api.generated.model.QualityLedgerEntryType;
 import com.labelhub.api.generated.model.ReviewLevel;
 import com.labelhub.api.generated.model.ReviewerOverallVerdictPayload;
 import com.labelhub.api.generated.model.ReviewerSubmissionSummary;
+import com.labelhub.api.generated.model.SeniorReviewCase;
+import com.labelhub.api.generated.model.SeniorReviewCaseResolution;
+import com.labelhub.api.generated.model.SeniorReviewCaseSourceSignal;
+import com.labelhub.api.generated.model.SeniorReviewCaseStatus;
+import com.labelhub.api.generated.model.SeniorReviewCaseType;
 import com.labelhub.api.generated.model.Verdict;
 import com.labelhub.api.module.ai.prereview.AiPrereviewSignalsView;
 import com.labelhub.api.module.ai.prereview.AiPrereviewStatusService;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
+import com.labelhub.api.module.quality.entity.SeniorReviewCaseEntity;
 import com.labelhub.api.module.quality.mapper.ReviewerSubmissionQueueRow;
 import com.labelhub.api.module.quality.service.view.VerdictView;
 import java.math.BigDecimal;
@@ -226,6 +233,44 @@ public class QualityDtoMapper {
         return dto;
     }
 
+    public PagedSeniorReviewCases toPagedSeniorReviewCases(PagedResult<SeniorReviewCaseEntity> result) {
+        PagedSeniorReviewCases dto = new PagedSeniorReviewCases();
+        dto.setItems(result.items().stream().map(this::toSeniorReviewCase).toList());
+        dto.setTotal(result.total());
+        dto.setPage(Math.toIntExact(result.page()));
+        dto.setSize(Math.toIntExact(result.size()));
+        return dto;
+    }
+
+    public SeniorReviewCase toSeniorReviewCase(SeniorReviewCaseEntity entity) {
+        SeniorReviewCase dto = new SeniorReviewCase();
+        dto.setId(entity.getId());
+        dto.setSubmissionId(entity.getSubmissionId());
+        dto.setTaskId(entity.getTaskId());
+        dto.setTaskTitle(entity.getTaskTitle());
+        dto.setSchemaName(entity.getSchemaName());
+        dto.setSchemaVersionNumber(entity.getSchemaVersionNumber());
+        dto.setCaseType(SeniorReviewCaseType.fromValue(entity.getCaseType()));
+        dto.setSourceSignal(SeniorReviewCaseSourceSignal.fromValue(entity.getSourceSignal()));
+        dto.setSourceSummary(sourceSummary(entity));
+        dto.setStatus(SeniorReviewCaseStatus.fromValue(entity.getStatus()));
+        dto.setPriority(SeniorReviewCase.PriorityEnum.fromValue(entity.getPriority()));
+        dto.setReviewerVerdictEntryId(entity.getReviewerVerdictEntryId());
+        dto.setAiOverallEntryId(entity.getAiOverallEntryId());
+        dto.setReviewerId(entity.getReviewerId());
+        dto.setSeniorReviewerId(entity.getSeniorReviewerId());
+        if (entity.getResolution() != null) {
+            dto.setResolution(SeniorReviewCaseResolution.fromValue(entity.getResolution()));
+        }
+        dto.setReason(entity.getReason());
+        dto.setPayload(entity.getPayload());
+        dto.setAccountability(entity.getAccountability());
+        dto.setCreatedAt(offset(entity.getCreatedAt()));
+        dto.setUpdatedAt(offset(entity.getUpdatedAt()));
+        dto.setResolvedAt(offset(entity.getResolvedAt()));
+        return dto;
+    }
+
     public ReviewerSubmissionSummary toReviewerSubmissionSummary(
         ReviewerSubmissionQueueRow row,
         Map<Long, AiPrereviewSignalsView> prereviewBySubmissionId
@@ -283,6 +328,16 @@ public class QualityDtoMapper {
 
     private String reviewLevelOrDefault(String reviewLevel) {
         return reviewLevel == null || reviewLevel.isBlank() ? "reviewer" : reviewLevel;
+    }
+
+    private String sourceSummary(SeniorReviewCaseEntity entity) {
+        return switch (entity.getSourceSignal()) {
+            case "ai_manual_review" -> "AI 建议人工复核";
+            case "ai_error_conflict" -> "AI 高置信错误与初审通过冲突";
+            case "reviewer_difficulty" -> "初审主动标记疑难";
+            case "sampling" -> "平静条目抽检";
+            default -> entity.getSourceSignal();
+        };
     }
 
     private OffsetDateTime offset(LocalDateTime value) {

@@ -1019,6 +1019,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/senior-review/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listSeniorReviewCases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/senior-review/cases/{caseId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["resolveSeniorReviewCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reviews/batch": {
         parameters: {
             query?: never;
@@ -1045,6 +1077,22 @@ export interface paths {
         get: operations["listSubmissionLedger"];
         put?: never;
         post: operations["createLedgerEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/submissions/{submissionId}/review-difficulty": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["markSubmissionReviewDifficulty"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2319,6 +2367,70 @@ export interface components {
             page: number;
             size: number;
         };
+        /** @enum {string} */
+        SeniorReviewCaseType: "arbitration" | "sampling";
+        /** @enum {string} */
+        SeniorReviewCaseSourceSignal: "ai_manual_review" | "ai_error_conflict" | "reviewer_difficulty" | "sampling";
+        /** @enum {string} */
+        SeniorReviewCaseStatus: "pending_reviewer" | "open" | "resolved" | "canceled";
+        /** @enum {string} */
+        SeniorReviewCaseResolution: "uphold_reviewer" | "overturn_to_reject" | "boundary_approved" | "boundary_rejected";
+        SeniorReviewCase: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            submissionId: number;
+            /** Format: int64 */
+            taskId: number;
+            taskTitle?: string | null;
+            schemaName?: string | null;
+            schemaVersionNumber?: number | null;
+            caseType: components["schemas"]["SeniorReviewCaseType"];
+            sourceSignal: components["schemas"]["SeniorReviewCaseSourceSignal"];
+            sourceSummary?: string | null;
+            status: components["schemas"]["SeniorReviewCaseStatus"];
+            /** @enum {string} */
+            priority: "normal" | "high";
+            /** Format: int64 */
+            reviewerVerdictEntryId?: number | null;
+            /** Format: int64 */
+            aiOverallEntryId?: number | null;
+            /** Format: int64 */
+            reviewerId?: number | null;
+            /** Format: int64 */
+            seniorReviewerId?: number | null;
+            resolution?: components["schemas"]["SeniorReviewCaseResolution"] | null;
+            reason?: string | null;
+            payload?: {
+                [key: string]: unknown;
+            } | null;
+            accountability?: {
+                [key: string]: unknown;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            resolvedAt?: string | null;
+        };
+        PagedSeniorReviewCases: {
+            items: components["schemas"]["SeniorReviewCase"][];
+            /** Format: int64 */
+            total: number;
+            page: number;
+            size: number;
+        };
+        MarkReviewDifficultyRequest: {
+            reason: string;
+        };
+        ResolveSeniorReviewCaseRequest: {
+            resolution: components["schemas"]["SeniorReviewCaseResolution"];
+            reason?: string | null;
+            accountability?: {
+                [key: string]: unknown;
+            } | null;
+        };
         BatchReviewRequest: {
             submissionIds: number[];
             /** @enum {string} */
@@ -2573,6 +2685,7 @@ export interface components {
         SchemaVersionId: number;
         SessionId: number;
         SubmissionId: number;
+        SeniorReviewCaseId: number;
         RuleId: number;
         SnapshotId: number;
         ProviderConfigId: number;
@@ -4575,6 +4688,61 @@ export interface operations {
             403: components["responses"]["ErrorForbidden"];
         };
     };
+    listSeniorReviewCases: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Senior reviewer arbitration and sampling case queue. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PagedSeniorReviewCases"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+        };
+    };
+    resolveSeniorReviewCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                caseId: components["parameters"]["SeniorReviewCaseId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveSeniorReviewCaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Senior review case resolved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeniorReviewCase"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
     batchReviewSubmissions: {
         parameters: {
             query?: never;
@@ -4658,6 +4826,36 @@ export interface operations {
             403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
             409: components["responses"]["ErrorStateConflict"];
+        };
+    };
+    markSubmissionReviewDifficulty: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submissionId: components["parameters"]["SubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkReviewDifficultyRequest"];
+            };
+        };
+        responses: {
+            /** @description Submission escalated into the senior reviewer arbitration queue. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeniorReviewCase"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
         };
     };
     getSubmissionVerdict: {

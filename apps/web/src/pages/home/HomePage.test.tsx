@@ -95,6 +95,15 @@ vi.mock('../../features/quality/useReviewerQueueQuery', () => ({
   }),
 }));
 
+vi.mock('../../features/quality/useSeniorReviewCasesQuery', () => ({
+  useSeniorReviewCasesQuery: () => ({
+    data: { total: 0, page: 1, size: 5, items: [] },
+    fetchStatus: 'idle',
+    isError: false,
+    isLoading: false,
+  }),
+}));
+
 import { HomePage } from './HomePage';
 
 describe('HomePage', () => {
@@ -120,6 +129,6 @@ describe('HomePage', () => {
     expect(html).toContain('标注工作台');
     expect(html).toContain('任务广场');
     expect(html).not.toContain('审核队列');
-    expect(html).not.toContain('复核队列');
+    expect(html).not.toContain('仲裁队列');
   });
 });

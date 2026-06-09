@@ -2,7 +2,9 @@ import { IconUserCircle } from '@douyinfe/semi-icons';
 import { Spin, Typography } from '@douyinfe/semi-ui';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { SENIOR_CASE_SOURCE_LABELS } from '../../entities/quality/qualityTypes';
 import { useReviewerQueueQuery } from '../../features/quality/useReviewerQueueQuery';
+import { useSeniorReviewCasesQuery } from '../../features/quality/useSeniorReviewCasesQuery';
 import { useMarketplaceQuery } from '../../features/labeling/useMarketplaceQuery';
 import { useMySessionsQuery } from '../../features/labeling/useMySessionsQuery';
 import { useSchemasQuery } from '../../features/schema-design/useSchemasQuery';
@@ -94,8 +96,8 @@ const entryMeta = {
     tone: 'warning',
   },
   '/reviewer/submissions?reviewLevel=senior_reviewer': {
-    title: '复核队列',
-    description: '高级审核终态裁决',
+    title: '仲裁队列',
+    description: '处理疑难、AI 冲突与抽检 case',
     icon: IconStatusFlow,
     tone: 'warning',
   },
@@ -190,10 +192,9 @@ export function HomePage() {
   const inProgressSessions = useMySessionsQuery({ page: 1, size: 1, workStatus: 'in_progress', enabled: hasLabeler });
   const returnedSessions = useMySessionsQuery({ page: 1, size: 1, workStatus: 'returned_for_revision', enabled: hasLabeler });
   const reviewerQueue = useReviewerQueueQuery({ page: 1, size: 5, reviewLevel: 'reviewer', enabled: hasReviewer });
-  const seniorReviewerQueue = useReviewerQueueQuery({
+  const seniorReviewCases = useSeniorReviewCasesQuery({
     page: 1,
     size: 5,
-    reviewLevel: 'senior_reviewer',
     enabled: hasSeniorReviewer,
   });
 
@@ -207,7 +208,7 @@ export function HomePage() {
     inProgressSessions,
     returnedSessions,
     reviewerQueue,
-    seniorReviewerQueue,
+    seniorReviewCases,
   ].filter((query) => query.fetchStatus !== 'idle' || query.data);
   const isDashboardLoading = activeQueries.some((query) => query.isLoading);
   const hasDashboardError = activeQueries.some((query) => query.isError);
@@ -241,15 +242,17 @@ export function HomePage() {
     title: `Session #${session.id}`,
     meta: `任务 #${session.taskId} · ${session.workStatus}`,
   }));
-  const reviewerSourceItems = [
-    ...(hasReviewer ? reviewerQueue.data?.items ?? [] : []),
-    ...(hasSeniorReviewer ? seniorReviewerQueue.data?.items ?? [] : []),
-  ];
-  const reviewerRows = (reviewerSourceItems ?? []).map((submission) => ({
+  const reviewerRows = (hasReviewer ? reviewerQueue.data?.items ?? [] : []).map((submission) => ({
     href: `/reviewer/submissions/${submission.id}`,
     title: submission.taskTitle,
-    meta: `${submission.reviewLevel} · AI ${submission.aiRecommendation ?? 'manual'}`,
+    meta: `初审 · AI ${submission.aiRecommendation ?? 'manual'}`,
   }));
+  const seniorCaseRows = (hasSeniorReviewer ? seniorReviewCases.data?.items ?? [] : []).map((seniorCase) => ({
+    href: `/reviewer/submissions/${seniorCase.submissionId}?reviewLevel=senior_reviewer&caseId=${seniorCase.id}`,
+    title: seniorCase.taskTitle ?? `任务 ${seniorCase.taskId}`,
+    meta: `仲裁 · ${SENIOR_CASE_SOURCE_LABELS[seniorCase.sourceSignal]}`,
+  }));
+  const reviewRows = [...reviewerRows, ...seniorCaseRows];
 
   return (
     <section className="home-page" aria-label="LabelHub workspace home">
@@ -325,11 +328,11 @@ export function HomePage() {
                   <DashboardMetric label="初审待处理" value={reviewerQueue.data?.total} caption="Reviewer 队列" tone="warning" />
                 ) : null}
                 {hasSeniorReviewer ? (
-                  <DashboardMetric label="复核待处理" value={seniorReviewerQueue.data?.total} caption="Senior 队列" tone="accent" />
+                  <DashboardMetric label="仲裁待处理" value={seniorReviewCases.data?.total} caption="Senior case" tone="accent" />
                 ) : null}
-                <DashboardMetric label="AI 辅助" value={reviewerRows.length} caption="当前页证据项" tone="neutral" />
+                <DashboardMetric label="AI 辅助" value={reviewRows.length} caption="当前页证据项" tone="neutral" />
               </div>
-              <DashboardList title="待审样本" items={reviewerRows} emptyText="暂无待审样本。" />
+              <DashboardList title="待处理记录" items={reviewRows} emptyText="暂无待处理记录。" />
             </DashboardPanel>
           ) : null}
         </div>

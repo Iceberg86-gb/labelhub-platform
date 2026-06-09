@@ -206,6 +206,19 @@ describe('OwnerLlmSettingsPage', () => {
     document.body.innerHTML = '';
   });
 
+  it('does not show the new-provider preset as current provider when no provider is saved', () => {
+    providerMocks.providersQuery.data = [];
+
+    const html = renderToString(<OwnerLlmSettingsPage />);
+
+    expect(html).toContain('当前 Provider');
+    expect(html).toContain('未接入');
+    expect(html).toContain('暂无启用 Provider');
+    expect(html).toContain('还没有 Provider');
+    expect(html).not.toContain('平台级 · gpt-5.5');
+    expect(html).not.toContain('<strong>openai</strong>');
+  });
+
   it('renders provider cards with current badge, brand icons, and guarded actions', () => {
     providerMocks.providersQuery.data = [
       providerFixture({ id: 2, providerName: 'deepseek', enabled: true, hasSecret: true }),

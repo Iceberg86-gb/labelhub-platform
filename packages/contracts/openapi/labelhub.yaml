@@ -1931,6 +1931,62 @@ paths:
           $ref: '#/components/responses/ErrorUnauthorized'
         '403':
           $ref: '#/components/responses/ErrorForbidden'
+  /senior-review/cases:
+    get:
+      tags: [Reviews]
+      operationId: listSeniorReviewCases
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Senior reviewer arbitration and sampling case queue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedSeniorReviewCases'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+  /senior-review/cases/{caseId}/resolve:
+    post:
+      tags: [Reviews]
+      operationId: resolveSeniorReviewCase
+      parameters:
+        - $ref: '#/components/parameters/SeniorReviewCaseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveSeniorReviewCaseRequest'
+      responses:
+        '200':
+          description: Senior review case resolved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeniorReviewCase'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /reviews/batch:
     post:
       tags: [Reviews]
@@ -2010,6 +2066,33 @@ paths:
                 $ref: '#/components/schemas/PagedQualityLedgerEntries'
         '401':
           $ref: '#/components/responses/ErrorUnauthorized'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /submissions/{submissionId}/review-difficulty:
+    post:
+      tags: [Reviews]
+      operationId: markSubmissionReviewDifficulty
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkReviewDifficultyRequest'
+      responses:
+        '201':
+          description: Submission escalated into the senior reviewer arbitration queue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeniorReviewCase'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
   /submissions/{submissionId}/verdict:
@@ -2201,6 +2284,13 @@ components:
         format: int64
     SubmissionId:
       name: submissionId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    SeniorReviewCaseId:
+      name: caseId
       in: path
       required: true
       schema:
@@ -4429,6 +4519,130 @@ components:
           type: integer
         size:
           type: integer
+    SeniorReviewCaseType:
+      type: string
+      enum: [arbitration, sampling]
+    SeniorReviewCaseSourceSignal:
+      type: string
+      enum: [ai_manual_review, ai_error_conflict, reviewer_difficulty, sampling]
+    SeniorReviewCaseStatus:
+      type: string
+      enum: [pending_reviewer, open, resolved, canceled]
+    SeniorReviewCaseResolution:
+      type: string
+      enum: [uphold_reviewer, overturn_to_reject, boundary_approved, boundary_rejected]
+    SeniorReviewCase:
+      type: object
+      required: [id, submissionId, taskId, caseType, sourceSignal, status, priority, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        submissionId:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        taskTitle:
+          type: string
+          nullable: true
+        schemaName:
+          type: string
+          nullable: true
+        schemaVersionNumber:
+          type: integer
+          nullable: true
+        caseType:
+          $ref: '#/components/schemas/SeniorReviewCaseType'
+        sourceSignal:
+          $ref: '#/components/schemas/SeniorReviewCaseSourceSignal'
+        sourceSummary:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/SeniorReviewCaseStatus'
+        priority:
+          type: string
+          enum: [normal, high]
+        reviewerVerdictEntryId:
+          type: integer
+          format: int64
+          nullable: true
+        aiOverallEntryId:
+          type: integer
+          format: int64
+          nullable: true
+        reviewerId:
+          type: integer
+          format: int64
+          nullable: true
+        seniorReviewerId:
+          type: integer
+          format: int64
+          nullable: true
+        resolution:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/SeniorReviewCaseResolution'
+        reason:
+          type: string
+          nullable: true
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+        accountability:
+          type: object
+          nullable: true
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+    PagedSeniorReviewCases:
+      type: object
+      required: [items, total, page, size]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeniorReviewCase'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+    MarkReviewDifficultyRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+    ResolveSeniorReviewCaseRequest:
+      type: object
+      required: [resolution]
+      properties:
+        resolution:
+          $ref: '#/components/schemas/SeniorReviewCaseResolution'
+        reason:
+          type: string
+          nullable: true
+          maxLength: 2000
+        accountability:
+          type: object
+          nullable: true
+          additionalProperties: true
     BatchReviewRequest:
       type: object
       required: [submissionIds, verdict, reviewLevel]
