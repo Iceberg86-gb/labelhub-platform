@@ -44,10 +44,10 @@ const DEFAULT_FIELD_MAPPING_ROWS: FieldMappingDraftRow[] = [
 
 const DEFAULT_TRAINING_PROFILE: TrainingProfileDraft = {
   promptSource: 'item.prompt',
-  completionSource: 'answer.label',
+  completionSource: 'answer.summary',
   preferenceSource: 'answer.preferred',
-  choiceASource: 'item.model_a',
-  choiceBSource: 'item.model_b',
+  choiceASource: 'item.response_a',
+  choiceBSource: 'item.response_b',
 };
 
 const TRAINING_FORMAT_OPTIONS: Array<{ value: TrainingExportFormat; label: string }> = [
@@ -679,7 +679,10 @@ function formatDateTime(value?: string) {
 }
 
 function downloadableFiles(snapshot: ExportSnapshot) {
-  const names = snapshot.fileManifest.map((file) => file.name).filter(Boolean);
+  const names = snapshot.fileManifest
+    .filter((file) => (file.lines ?? 0) > 0 || !isTrainingJsonlFile(file.name))
+    .map((file) => file.name)
+    .filter(Boolean);
   const preferred = [
     'training-results.csv',
     'training-results.xlsx',
@@ -689,6 +692,12 @@ function downloadableFiles(snapshot: ExportSnapshot) {
     'manifest.json',
   ];
   return preferred.filter((name) => names.includes(name));
+}
+
+function isTrainingJsonlFile(fileName?: string | null) {
+  return fileName === 'openai-chat-sft.jsonl'
+    || fileName === 'trl-sft.jsonl'
+    || fileName === 'trl-dpo.jsonl';
 }
 
 function downloadLabel(fileName: string) {

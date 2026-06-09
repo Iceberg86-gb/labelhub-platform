@@ -271,7 +271,7 @@ describe('Owner task pages design shell', () => {
     expect(html).toContain('全过程进度');
     expect(html).toContain('AI prereview panel');
     expect(html).toContain('待领取');
-    expect(html).toContain('待复审');
+    expect(html).toContain('待仲裁');
     expect(html).toContain('任务状态日志');
     expect(html).toContain('仅记录发布、暂停、恢复或结束等任务状态变化。');
     expect(html).toContain('状态操作');

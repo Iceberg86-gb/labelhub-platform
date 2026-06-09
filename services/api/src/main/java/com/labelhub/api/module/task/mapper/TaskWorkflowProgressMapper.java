@@ -52,17 +52,21 @@ public interface TaskWorkflowProgressMapper {
               ELSE 0
             END) AS pending_review_count,
             SUM(CASE
-              WHEN s.status = 'submitted'
-                AND JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict')) = 'approve'
-                AND latest_senior.id IS NULL THEN 1
+              WHEN COALESCE(actionable_senior_cases.open_count, 0) > 0 THEN 1
               ELSE 0
             END) AS pending_senior_review_count,
             SUM(CASE
-              WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict')) = 'approve' THEN 1
+              WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_overall.payload, '$.verdict')) = 'approve'
+                AND COALESCE(blocking_senior_cases.open_count, 0) = 0
+                AND (
+                  latest_resolved_senior_case.id IS NULL
+                  OR latest_resolved_senior_case.resolution NOT IN ('overturn_to_reject', 'boundary_rejected')
+                ) THEN 1
               ELSE 0
             END) AS approved_count,
             SUM(CASE
-              WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_overall.payload, '$.verdict')) = 'reject' THEN 1
+              WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_overall.payload, '$.verdict')) = 'reject'
+                OR latest_resolved_senior_case.resolution IN ('overturn_to_reject', 'boundary_rejected') THEN 1
               ELSE 0
             END) AS rejected_count
           FROM submissions s
@@ -80,20 +84,6 @@ public interface TaskWorkflowProgressMapper {
             ) ranked_reviewer
             WHERE ranked_reviewer.rn = 1
           ) latest_reviewer ON latest_reviewer.submission_id = s.id
-          LEFT JOIN (
-            SELECT ranked_senior.*
-            FROM (
-              SELECT qle.*,
-                     ROW_NUMBER() OVER (
-                       PARTITION BY qle.submission_id
-                       ORDER BY qle.created_at DESC, qle.id DESC
-                     ) AS rn
-              FROM quality_ledger_entries qle
-              WHERE qle.evidence_type = 'reviewer_overall_verdict'
-                AND JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')) = 'senior_reviewer'
-            ) ranked_senior
-            WHERE ranked_senior.rn = 1
-          ) latest_senior ON latest_senior.submission_id = s.id
           LEFT JOIN (
             SELECT ranked_overall.*
             FROM (
@@ -130,6 +120,31 @@ public interface TaskWorkflowProgressMapper {
               GROUP BY submission_id
             ) latest_ac ON latest_ac.id = ac.id
           ) latest_ai_call ON latest_ai_call.submission_id = s.id
+          LEFT JOIN (
+            SELECT submission_id, COUNT(*) AS open_count
+            FROM senior_review_cases
+            WHERE status = 'open'
+            GROUP BY submission_id
+          ) actionable_senior_cases ON actionable_senior_cases.submission_id = s.id
+          LEFT JOIN (
+            SELECT submission_id, COUNT(*) AS open_count
+            FROM senior_review_cases
+            WHERE status IN ('pending_reviewer', 'open')
+            GROUP BY submission_id
+          ) blocking_senior_cases ON blocking_senior_cases.submission_id = s.id
+          LEFT JOIN (
+            SELECT ranked_senior_case.*
+            FROM (
+              SELECT src.*,
+                     ROW_NUMBER() OVER (
+                       PARTITION BY src.submission_id
+                       ORDER BY src.resolved_at DESC, src.id DESC
+                     ) AS rn
+              FROM senior_review_cases src
+              WHERE src.status = 'resolved'
+            ) ranked_senior_case
+            WHERE ranked_senior_case.rn = 1
+          ) latest_resolved_senior_case ON latest_resolved_senior_case.submission_id = s.id
           WHERE s.superseded_by_id IS NULL
           GROUP BY s.task_id
         ) work ON work.task_id = t.id

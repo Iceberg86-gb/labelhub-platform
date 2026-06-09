@@ -177,7 +177,7 @@ describe('TrustedExportCard design shell', () => {
     expect(html).toContain('可复现');
     expect(html).toContain('CSV');
     expect(html).toContain('Excel');
-    expect(html).toContain('OpenAI 对话');
+    expect(html).not.toContain('OpenAI 对话');
     expect(html).toContain('Manifest');
     expect(html).not.toContain('trusted-export-mapping-row');
   });
@@ -193,7 +193,7 @@ function makeSnapshot(): ExportSnapshot {
     fileManifest: [
       { lines: 12, name: 'training-results.csv', sha256: 'csv-sha', sizeBytes: 1024 },
       { lines: 12, name: 'training-results.xlsx', sha256: 'xlsx-sha', sizeBytes: 2048 },
-      { lines: 12, name: 'openai-chat-sft.jsonl', sha256: 'openai-jsonl-sha', sizeBytes: 1536 },
+      { lines: 0, name: 'openai-chat-sft.jsonl', sha256: 'openai-jsonl-sha', sizeBytes: 0 },
       { lines: 1, name: 'manifest.json', sha256: 'manifest-sha', sizeBytes: 512 },
     ],
     generatedAt: '2026-05-30T09:00:00Z',
