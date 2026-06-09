@@ -2,6 +2,7 @@ package com.labelhub.api.module.quality.mapper;
 
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
+import java.math.BigDecimal;
 import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -86,6 +87,21 @@ public interface QualityLedgerEntryMapper {
     );
 
     @Select("""
+        SELECT id, submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at
+        FROM quality_ledger_entries
+        WHERE submission_id = #{submissionId}
+          AND evidence_type = 'ai_field_finding'
+          AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.severity')) = 'error'
+          AND CAST(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.confidence')) AS DECIMAL(8,4)) >= #{threshold}
+        ORDER BY created_at DESC, id DESC
+        """)
+    @ResultMap("qualityLedgerEntryResultMap")
+    List<QualityLedgerEntryEntity> selectHighConfidenceErrorFieldFindings(
+        @Param("submissionId") Long submissionId,
+        @Param("threshold") BigDecimal threshold
+    );
+
+    @Select("""
         SELECT qle.id, qle.submission_id, qle.task_id, qle.evidence_type, qle.actor_type,
                qle.actor_id, qle.ai_call_id, qle.payload, qle.created_at
         FROM quality_ledger_entries qle
@@ -164,6 +180,16 @@ public interface QualityLedgerEntryMapper {
               )
           )
           AND (
+              #{reviewLevel} <> 'reviewer'
+              OR NOT EXISTS (
+                  SELECT 1
+                  FROM senior_review_cases src
+                  WHERE src.submission_id = s.id
+                    AND src.status = 'open'
+                    AND src.source_signal = 'reviewer_difficulty'
+              )
+          )
+          AND (
               #{verdict} IS NULL
               OR (#{verdict} = 'pending' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer' THEN latest_senior.id ELSE latest_reviewer.id END) IS NULL)
               OR (#{verdict} = 'approved' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer'
@@ -235,6 +261,16 @@ public interface QualityLedgerEntryMapper {
               OR (
                   #{reviewLevel} = 'senior_reviewer'
                   AND JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict')) = 'approve'
+              )
+          )
+          AND (
+              #{reviewLevel} <> 'reviewer'
+              OR NOT EXISTS (
+                  SELECT 1
+                  FROM senior_review_cases src
+                  WHERE src.submission_id = s.id
+                    AND src.status = 'open'
+                    AND src.source_signal = 'reviewer_difficulty'
               )
           )
           AND (

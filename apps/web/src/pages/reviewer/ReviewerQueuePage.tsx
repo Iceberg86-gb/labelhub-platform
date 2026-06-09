@@ -5,11 +5,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   VERDICT_STATUS_LABELS,
   REVIEW_LEVEL_LABELS,
+  SENIOR_CASE_SOURCE_LABELS,
   type ReviewLevel,
+  type SeniorReviewCase,
   type ReviewerSubmissionSummary,
   type VerdictStatus,
 } from '../../entities/quality/qualityTypes';
 import { useReviewerQueueQuery } from '../../features/quality/useReviewerQueueQuery';
+import { useSeniorReviewCasesQuery } from '../../features/quality/useSeniorReviewCasesQuery';
 import { useBatchReviewMutation } from '../../features/quality/useBatchReviewMutation';
 import { getUser } from '../../shared/api/auth-storage';
 import { RoleBadge } from '../../shared/ui/RoleBadge';
@@ -36,14 +39,24 @@ export function ReviewerQueuePage() {
   const currentUser = getUser();
   const canSeniorReview = currentUser?.roles.includes('SENIOR_REVIEWER') ?? false;
   const reviewLevel = canSeniorReview ? parseReviewLevel(searchParams.get('reviewLevel')) ?? 'reviewer' : 'reviewer';
-  const queueQuery = useReviewerQueueQuery({ page, size, verdict, reviewLevel });
+  const isSeniorQueue = reviewLevel === 'senior_reviewer';
+  const queueQuery = useReviewerQueueQuery({ page, size, verdict, reviewLevel, enabled: !isSeniorQueue });
+  const seniorCasesQuery = useSeniorReviewCasesQuery({ page, size, enabled: isSeniorQueue });
   const batchReviewMutation = useBatchReviewMutation();
   const items = queueQuery.data?.items ?? [];
+  const seniorCases = seniorCasesQuery.data?.items ?? [];
   const [selectedSubmissionIds, setSelectedSubmissionIds] = useState<number[]>([]);
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const activeLoading = isSeniorQueue ? seniorCasesQuery.isLoading : queueQuery.isLoading;
+  const activeError = isSeniorQueue ? seniorCasesQuery.isError : queueQuery.isError;
+  const activeErrorMessage = isSeniorQueue ? seniorCasesQuery.error : queueQuery.error;
+  const activeFetching = isSeniorQueue ? seniorCasesQuery.isFetching : queueQuery.isFetching;
+  const activeTotal = isSeniorQueue ? seniorCasesQuery.data?.total ?? 0 : queueQuery.data?.total ?? 0;
+  const activeEmpty = isSeniorQueue ? seniorCases.length === 0 : items.length === 0;
+  const activeRefetch = isSeniorQueue ? seniorCasesQuery.refetch : queueQuery.refetch;
 
-  const columns = useMemo(
+  const reviewerColumns = useMemo(
     () => [
       {
         title: 'Submission',
@@ -97,6 +110,68 @@ export function ReviewerQueuePage() {
     [navigate],
   );
 
+  const seniorColumns = useMemo(
+    () => [
+      {
+        title: 'Submission',
+        align: 'center' as const,
+        render: (_: unknown, record: SeniorReviewCase) => (
+          <div className="reviewer-submission-cell">
+            <Typography.Text strong>{formatSubmissionLabel(record.submissionId)}</Typography.Text>
+          </div>
+        ),
+      },
+      {
+        title: '任务',
+        align: 'center' as const,
+        render: (_: unknown, record: SeniorReviewCase) => (
+          <div className="task-title-cell">
+            <Typography.Text strong>{record.taskTitle ?? `任务 ${record.taskId}`}</Typography.Text>
+          </div>
+        ),
+      },
+      {
+        title: 'Schema',
+        width: 180,
+        align: 'center' as const,
+        render: (_: unknown, record: SeniorReviewCase) => formatSeniorCaseSchemaLabel(record),
+      },
+      {
+        title: '来源',
+        width: 180,
+        align: 'center' as const,
+        render: (_: unknown, record: SeniorReviewCase) => (
+          <Tooltip content={record.sourceSummary ?? SENIOR_CASE_SOURCE_LABELS[record.sourceSignal]}>
+            <Tag className={`semantic-tag semantic-tag--${record.priority === 'high' ? 'danger' : 'warning'}`}>
+              {SENIOR_CASE_SOURCE_LABELS[record.sourceSignal]}
+            </Tag>
+          </Tooltip>
+        ),
+      },
+      {
+        title: '创建时间',
+        width: 150,
+        align: 'center' as const,
+        render: (_: unknown, record: SeniorReviewCase) => formatDateTime(record.createdAt),
+      },
+      {
+        title: '操作',
+        width: 130,
+        align: 'center' as const,
+        render: (_: unknown, record: SeniorReviewCase) => (
+          <Button
+            size="small"
+            icon={<IconPlay />}
+            onClick={() => navigate(`/reviewer/submissions/${record.submissionId}?reviewLevel=senior_reviewer&caseId=${record.id}`)}
+          >
+            处理仲裁
+          </Button>
+        ),
+      },
+    ],
+    [navigate],
+  );
+
   function updateParams(next: { page?: number; size?: number; verdict?: VerdictStatus | null; reviewLevel?: ReviewLevel }) {
     const params = new URLSearchParams(searchParams);
     params.set('page', String(next.page ?? page));
@@ -139,15 +214,14 @@ export function ReviewerQueuePage() {
       <header className="reviewer-workbench-hero">
         <div className="reviewer-workbench-hero__copy">
           <div className="reviewer-role-stack" aria-label="当前审核角色">
-            <RoleBadge role="REVIEWER" />
-            {canSeniorReview ? <RoleBadge role="SENIOR_REVIEWER" /> : null}
+            <RoleBadge role={isSeniorQueue ? 'SENIOR_REVIEWER' : 'REVIEWER'} />
           </div>
           <Typography.Title heading={3} className="page-title">
-            审核队列
+            {isSeniorQueue ? '高级仲裁队列' : '审核队列'}
           </Typography.Title>
           <div className="reviewer-ledger-subtitle">
-            <Typography.Text>从 append-only Quality Ledger 派生当前 Verdict。</Typography.Text>
-            <Tooltip content="Verdict 由最新 ledger entry 派生,不会直接依赖 submission.status。">
+            <Typography.Text>{isSeniorQueue ? '处理 AI 升级、疑难标记与抽检 case。' : '对单条标注对错进行全量初审。'}</Typography.Text>
+            <Tooltip content="Reviewer 写入初审结论；Senior 处理独立 case resolution。">
               <IconInfoCircle aria-label="Quality Ledger verdict derivation" />
             </Tooltip>
           </div>
@@ -167,19 +241,21 @@ export function ReviewerQueuePage() {
               ))}
             </Select>
           ) : null}
-          <Select
-            className="reviewer-filter-select"
-            size="small"
-            value={verdict ?? 'all'}
-            onChange={(value) => updateParams({ page: 1, verdict: value === 'all' ? null : (value as VerdictStatus) })}
-          >
-            <Select.Option value="all">全部 Verdict</Select.Option>
-            {VERDICT_FILTERS.map((item) => (
-              <Select.Option key={item} value={item}>
-              {VERDICT_STATUS_LABELS[item]}
-            </Select.Option>
-          ))}
-          </Select>
+          {!isSeniorQueue ? (
+            <Select
+              className="reviewer-filter-select"
+              size="small"
+              value={verdict ?? 'all'}
+              onChange={(value) => updateParams({ page: 1, verdict: value === 'all' ? null : (value as VerdictStatus) })}
+            >
+              <Select.Option value="all">全部 Verdict</Select.Option>
+              {VERDICT_FILTERS.map((item) => (
+                <Select.Option key={item} value={item}>
+                {VERDICT_STATUS_LABELS[item]}
+              </Select.Option>
+            ))}
+            </Select>
+          ) : null}
         </div>
       </header>
 
@@ -194,50 +270,56 @@ export function ReviewerQueuePage() {
       </div>
 
       <div className="task-toolbar reviewer-queue-toolbar">
-        <Typography.Text type="tertiary">共 {queueQuery.data?.total ?? 0} 条 submitted submission</Typography.Text>
+        <Typography.Text type="tertiary">
+          {isSeniorQueue ? `共 ${activeTotal} 个待处理 case` : `共 ${activeTotal} 条 submitted submission`}
+        </Typography.Text>
         <Space>
-          <Button
-            size="small"
-            disabled={selectedSubmissionIds.length === 0}
-            loading={batchReviewMutation.isPending}
-            onClick={() => void runBatchReview('approve')}
-          >
-            批量通过
-          </Button>
-          <Button
-            size="small"
-            disabled={selectedSubmissionIds.length === 0}
-            loading={batchReviewMutation.isPending}
-            onClick={() => setRejectModalVisible(true)}
-          >
-            批量打回
-          </Button>
-          <Button icon={<IconRefresh />} size="small" onClick={() => queueQuery.refetch()} loading={queueQuery.isFetching}>
+          {!isSeniorQueue ? (
+            <>
+              <Button
+                size="small"
+                disabled={selectedSubmissionIds.length === 0}
+                loading={batchReviewMutation.isPending}
+                onClick={() => void runBatchReview('approve')}
+              >
+                批量通过
+              </Button>
+              <Button
+                size="small"
+                disabled={selectedSubmissionIds.length === 0}
+                loading={batchReviewMutation.isPending}
+                onClick={() => setRejectModalVisible(true)}
+              >
+                批量打回
+              </Button>
+            </>
+          ) : null}
+          <Button icon={<IconRefresh />} size="small" onClick={() => activeRefetch()} loading={activeFetching}>
             刷新
           </Button>
         </Space>
       </div>
 
       <div className="task-table-surface task-table-surface--reviewer">
-        {queueQuery.isLoading ? (
+        {activeLoading ? (
           <div className="task-state-panel">
             <Spin size="large" />
           </div>
         ) : null}
-        {queueQuery.isError ? (
+        {activeError ? (
           <div className="task-state-panel">
-            <Empty title="审核队列加载失败" description={queueQuery.error instanceof Error ? queueQuery.error.message : '请稍后重试。'} />
+            <Empty title={isSeniorQueue ? '高级仲裁队列加载失败' : '审核队列加载失败'} description={activeErrorMessage instanceof Error ? activeErrorMessage.message : '请稍后重试。'} />
           </div>
         ) : null}
-        {!queueQuery.isLoading && !queueQuery.isError && items.length === 0 ? (
+        {!activeLoading && !activeError && activeEmpty ? (
           <div className="task-state-panel">
-            <Empty title="暂无可审核 submission" description="当前筛选条件下没有 submitted submission。" />
+            <Empty title={isSeniorQueue ? '暂无待处理 case' : '暂无可审核 submission'} description={isSeniorQueue ? '当前没有需要高级仲裁或抽检的记录。' : '当前筛选条件下没有 submitted submission。'} />
           </div>
         ) : null}
-        {items.length > 0 ? (
+        {!isSeniorQueue && items.length > 0 ? (
           <>
             <Table
-              columns={columns}
+              columns={reviewerColumns}
               dataSource={items}
               rowKey="id"
               pagination={false}
@@ -249,6 +331,26 @@ export function ReviewerQueuePage() {
             <div className="task-pagination">
               <Pagination
                 total={queueQuery.data?.total ?? 0}
+                currentPage={page}
+                pageSize={size}
+                showSizeChanger
+                onPageChange={(nextPage) => updateParams({ page: nextPage })}
+                onPageSizeChange={(nextSize) => updateParams({ page: 1, size: nextSize })}
+              />
+            </div>
+          </>
+        ) : null}
+        {isSeniorQueue && seniorCases.length > 0 ? (
+          <>
+            <Table
+              columns={seniorColumns}
+              dataSource={seniorCases}
+              rowKey="id"
+              pagination={false}
+            />
+            <div className="task-pagination">
+              <Pagination
+                total={seniorCasesQuery.data?.total ?? 0}
                 currentPage={page}
                 pageSize={size}
                 showSizeChanger
@@ -319,6 +421,12 @@ function formatSchemaLabel(record: ReviewerSubmissionSummary) {
   const versionLabel = record.schemaVersionNumber ? `v${record.schemaVersionNumber}` : '';
   const readableLabel = [schemaName, versionLabel].filter(Boolean).join(' ');
   return readableLabel || `Schema 版本 ${record.schemaVersionId}`;
+}
+
+function formatSeniorCaseSchemaLabel(record: SeniorReviewCase) {
+  const schemaName = record.schemaName?.trim();
+  const versionLabel = record.schemaVersionNumber ? `v${record.schemaVersionNumber}` : '';
+  return [schemaName, versionLabel].filter(Boolean).join(' ') || '-';
 }
 
 function formatDateTime(value?: string) {

@@ -4,19 +4,25 @@ import com.labelhub.api.generated.model.BatchReviewItemResult;
 import com.labelhub.api.generated.model.BatchReviewRequest;
 import com.labelhub.api.generated.model.BatchReviewResult;
 import com.labelhub.api.generated.model.CreateLedgerEntryRequest;
+import com.labelhub.api.generated.model.MarkReviewDifficultyRequest;
 import com.labelhub.api.generated.model.PagedQualityLedgerEntries;
 import com.labelhub.api.generated.model.PagedReviewerSubmissions;
+import com.labelhub.api.generated.model.PagedSeniorReviewCases;
 import com.labelhub.api.generated.model.QualityLedgerEntry;
 import com.labelhub.api.generated.model.RecomputeJob;
 import com.labelhub.api.generated.model.RecomputeRuleRequest;
 import com.labelhub.api.generated.model.ReviewLevel;
+import com.labelhub.api.generated.model.ResolveSeniorReviewCaseRequest;
+import com.labelhub.api.generated.model.SeniorReviewCase;
 import com.labelhub.api.generated.model.Verdict;
 import com.labelhub.api.generated.web.ReviewsApi;
 import com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity;
+import com.labelhub.api.module.quality.entity.SeniorReviewCaseEntity;
 import com.labelhub.api.module.quality.mapper.ReviewerSubmissionQueueRow;
 import com.labelhub.api.module.quality.service.LedgerService;
 import com.labelhub.api.module.quality.service.ReviewerBatchService;
 import com.labelhub.api.module.quality.service.ReviewerQueueService;
+import com.labelhub.api.module.quality.service.SeniorReviewCaseService;
 import com.labelhub.api.module.quality.service.VerdictService;
 import com.labelhub.api.module.quality.service.view.VerdictView;
 import com.labelhub.api.module.task.service.PagedResult;
@@ -42,6 +48,7 @@ public class ReviewerController implements ReviewsApi {
     private final VerdictService verdictService;
     private final ReviewerQueueService reviewerQueueService;
     private final ReviewerBatchService reviewerBatchService;
+    private final SeniorReviewCaseService seniorReviewCaseService;
     private final QualityDtoMapper qualityDtoMapper;
 
     public ReviewerController(
@@ -49,12 +56,14 @@ public class ReviewerController implements ReviewsApi {
         VerdictService verdictService,
         ReviewerQueueService reviewerQueueService,
         ReviewerBatchService reviewerBatchService,
+        SeniorReviewCaseService seniorReviewCaseService,
         QualityDtoMapper qualityDtoMapper
     ) {
         this.ledgerService = ledgerService;
         this.verdictService = verdictService;
         this.reviewerQueueService = reviewerQueueService;
         this.reviewerBatchService = reviewerBatchService;
+        this.seniorReviewCaseService = seniorReviewCaseService;
         this.qualityDtoMapper = qualityDtoMapper;
     }
 
@@ -77,6 +86,33 @@ public class ReviewerController implements ReviewsApi {
     }
 
     @Override
+    public ResponseEntity<PagedSeniorReviewCases> listSeniorReviewCases(
+        @Min(1) @Valid @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
+        @Min(1) @Max(100) @Valid @RequestParam(value = "size", required = false, defaultValue = "20") Integer size
+    ) {
+        PagedResult<SeniorReviewCaseEntity> result = seniorReviewCaseService.listOpenCases(
+            clampMin(page, 1),
+            clampSize(size, 20, 100)
+        );
+        return ResponseEntity.ok(qualityDtoMapper.toPagedSeniorReviewCases(result));
+    }
+
+    @Override
+    public ResponseEntity<SeniorReviewCase> resolveSeniorReviewCase(
+        @PathVariable("caseId") Long caseId,
+        @Valid @RequestBody ResolveSeniorReviewCaseRequest resolveSeniorReviewCaseRequest
+    ) {
+        SeniorReviewCaseEntity entity = seniorReviewCaseService.resolveCase(
+            caseId,
+            currentUserId(),
+            resolveSeniorReviewCaseRequest.getResolution().getValue(),
+            resolveSeniorReviewCaseRequest.getReason(),
+            resolveSeniorReviewCaseRequest.getAccountability()
+        );
+        return ResponseEntity.ok(qualityDtoMapper.toSeniorReviewCase(entity));
+    }
+
+    @Override
     public ResponseEntity<QualityLedgerEntry> createLedgerEntry(
         @PathVariable("submissionId") Long submissionId,
         @Valid @RequestBody CreateLedgerEntryRequest createLedgerEntryRequest
@@ -89,6 +125,19 @@ public class ReviewerController implements ReviewsApi {
             currentUserRoles()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(qualityDtoMapper.toQualityLedgerEntry(entity));
+    }
+
+    @Override
+    public ResponseEntity<SeniorReviewCase> markSubmissionReviewDifficulty(
+        @PathVariable("submissionId") Long submissionId,
+        @Valid @RequestBody MarkReviewDifficultyRequest markReviewDifficultyRequest
+    ) {
+        SeniorReviewCaseEntity entity = seniorReviewCaseService.markReviewerDifficulty(
+            submissionId,
+            currentUserId(),
+            markReviewDifficultyRequest.getReason()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(qualityDtoMapper.toSeniorReviewCase(entity));
     }
 
     @Override

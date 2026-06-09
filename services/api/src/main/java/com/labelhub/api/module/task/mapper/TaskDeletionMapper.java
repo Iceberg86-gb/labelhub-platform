@@ -27,6 +27,8 @@ public interface TaskDeletionMapper {
     int deleteCurrentVerdicts(@Param("taskId") Long taskId);
     @Delete("DELETE FROM review_actions WHERE task_id = #{taskId}")
     int deleteReviewActions(@Param("taskId") Long taskId);
+    @Delete("DELETE FROM senior_review_cases WHERE task_id = #{taskId}")
+    int deleteSeniorReviewCases(@Param("taskId") Long taskId);
     @Delete("DELETE FROM export_snapshots WHERE task_id = #{taskId}")
     int deleteExportSnapshots(@Param("taskId") Long taskId);
     @Delete("DELETE FROM quality_ledger_entries WHERE task_id = #{taskId}")

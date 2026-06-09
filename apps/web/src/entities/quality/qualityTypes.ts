@@ -10,6 +10,10 @@ export type Verdict = components['schemas']['Verdict'];
 export type ReviewerSubmissionSummary = components['schemas']['ReviewerSubmissionSummary'];
 export type PagedReviewerSubmissions = components['schemas']['PagedReviewerSubmissions'];
 export type ReviewLevel = components['schemas']['ReviewLevel'];
+export type SeniorReviewCase = components['schemas']['SeniorReviewCase'];
+export type PagedSeniorReviewCases = components['schemas']['PagedSeniorReviewCases'];
+export type SeniorReviewCaseResolution = components['schemas']['SeniorReviewCaseResolution'];
+export type SeniorReviewCaseSourceSignal = components['schemas']['SeniorReviewCaseSourceSignal'];
 
 export type VerdictStatus = Verdict['status'];
 export type ReviewerVerdict = ReviewerOverallVerdictPayload['verdict'];
@@ -33,5 +37,12 @@ export const REVIEWER_VERDICT_LABELS: Record<ReviewerVerdict, string> = {
 
 export const REVIEW_LEVEL_LABELS: Record<ReviewLevel, string> = {
   reviewer: '初审',
-  senior_reviewer: '复核',
+  senior_reviewer: '高级仲裁',
+};
+
+export const SENIOR_CASE_SOURCE_LABELS: Record<SeniorReviewCaseSourceSignal, string> = {
+  ai_manual_review: 'AI 人工复核',
+  ai_error_conflict: 'AI 冲突',
+  reviewer_difficulty: '疑难仲裁',
+  sampling: '抽检',
 };

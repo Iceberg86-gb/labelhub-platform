@@ -12,6 +12,8 @@ import {
   type QualityLedgerEntry,
   type ReviewLevel,
   type ReviewerVerdict,
+  type SeniorReviewCase,
+  type SeniorReviewCaseResolution,
   type Verdict,
   type VerdictStatus,
 } from '../../entities/quality/qualityTypes';
@@ -19,7 +21,10 @@ import { AiProvenanceCard } from '../../features/ai/AiProvenanceCard';
 import { useSubmissionRenderSchemaQuery } from '../../features/labeling/useSubmissionRenderSchemaQuery';
 import { CreateLedgerEntryFailure, useCreateLedgerEntryMutation } from '../../features/quality/useCreateLedgerEntryMutation';
 import { useLedgerEntriesQuery } from '../../features/quality/useLedgerEntriesQuery';
+import { useMarkReviewDifficultyMutation } from '../../features/quality/useMarkReviewDifficultyMutation';
 import { useReviewerQueueQuery } from '../../features/quality/useReviewerQueueQuery';
+import { useResolveSeniorReviewCaseMutation } from '../../features/quality/useResolveSeniorReviewCaseMutation';
+import { useSeniorReviewCasesQuery } from '../../features/quality/useSeniorReviewCasesQuery';
 import { useSubmissionVerdictQuery } from '../../features/quality/useSubmissionVerdictQuery';
 import { getUser } from '../../shared/api/auth-storage';
 import { ReviewerAnswerSummary } from './ReviewerAnswerSummary';
@@ -43,6 +48,8 @@ export function ReviewerSubmissionPage() {
   const currentUser = getUser();
   const reviewLevel = parseReviewLevel(searchParams.get('reviewLevel'))
     ?? (currentUser?.roles.includes('SENIOR_REVIEWER') ? 'senior_reviewer' : 'reviewer');
+  const isSeniorReview = reviewLevel === 'senior_reviewer';
+  const seniorCaseId = parsePositiveInt(searchParams.get('caseId'));
   const queuePage = parsePositiveInt(searchParams.get('queuePage')) ?? 1;
   const queueSize = parsePositiveInt(searchParams.get('queueSize')) ?? REVIEWER_DETAIL_QUEUE_SIZE;
   const [reason, setReason] = useState('');
@@ -54,9 +61,16 @@ export function ReviewerSubmissionPage() {
     size: Math.min(queueSize, REVIEWER_DETAIL_QUEUE_SIZE),
     verdict: 'pending',
     reviewLevel,
-    enabled: Boolean(submissionId),
+    enabled: Boolean(submissionId) && !isSeniorReview,
+  });
+  const seniorCasesQuery = useSeniorReviewCasesQuery({
+    page: 1,
+    size: REVIEWER_DETAIL_QUEUE_SIZE,
+    enabled: Boolean(submissionId) && isSeniorReview,
   });
   const createLedgerEntry = useCreateLedgerEntryMutation();
+  const markReviewDifficulty = useMarkReviewDifficultyMutation();
+  const resolveSeniorCase = useResolveSeniorReviewCaseMutation();
 
   const renderSchema = renderSchemaQuery.data;
   const schemaVersion = renderSchema?.schemaVersion;
@@ -65,12 +79,21 @@ export function ReviewerSubmissionPage() {
   const aiOverallEntry = latestEntry(ledgerEntries, isAiOverallRecommendationEntry);
   const aiFindingEntries = ledgerEntries.filter(isAiFieldFindingEntry);
   const reviewerVerdictEntries = ledgerEntries.filter(isReviewerVerdictEntry);
+  const seniorCases = seniorCasesQuery.data?.items ?? [];
+  const seniorCase = seniorCases.find((item) => item.id === seniorCaseId);
   const queueNavigation = useMemo(
     () => buildReviewerQueueNavigation({
       currentSubmissionId: submissionId,
       submissions: queueQuery.data?.items ?? [],
     }),
     [queueQuery.data?.items, submissionId],
+  );
+  const seniorCaseNavigation = useMemo(
+    () => buildSeniorCaseNavigation({
+      currentCaseId: seniorCaseId,
+      cases: seniorCases,
+    }),
+    [seniorCaseId, seniorCases],
   );
   const queueListPath = reviewerQueuePath(reviewLevel);
 
@@ -97,6 +120,10 @@ export function ReviewerSubmissionPage() {
 
   async function createVerdict(verdict: ReviewerVerdict) {
     if (!submissionId) return;
+    if (isSeniorReview) {
+      await resolveSeniorVerdict(verdict);
+      return;
+    }
     if (verdict === 'reject' && !reason.trim()) {
       Toast.warning('打回必须填写理由');
       return;
@@ -122,6 +149,57 @@ export function ReviewerSubmissionPage() {
     }
   }
 
+  async function resolveSeniorVerdict(verdict: ReviewerVerdict) {
+    if (!submissionId || !seniorCaseId) {
+      Toast.warning('请从高级仲裁队列进入 case');
+      return;
+    }
+    if (verdict === 'reject' && !reason.trim()) {
+      Toast.warning('仲裁打回必须填写理由');
+      return;
+    }
+    try {
+      await resolveSeniorCase.mutateAsync({
+        caseId: seniorCaseId,
+        submissionId,
+        resolution: seniorResolutionFor(verdict, seniorCase),
+        reason: reason.trim() || undefined,
+      });
+      setReason('');
+      if (seniorCaseNavigation.nextCase) {
+        Toast.success('仲裁已提交,进入下一条');
+        navigate(seniorCaseDetailPath(seniorCaseNavigation.nextCase));
+        return;
+      }
+      Toast.success('仲裁已提交,当前队列已处理完');
+      navigate(queueListPath);
+    } catch (error) {
+      Toast.error(error instanceof Error ? error.message : '提交仲裁结论失败');
+    }
+  }
+
+  async function markDifficulty() {
+    if (!submissionId) return;
+    if (!reason.trim()) {
+      Toast.warning('标记疑难需要填写说明');
+      return;
+    }
+    try {
+      await markReviewDifficulty.mutateAsync({ submissionId, reason: reason.trim() });
+      setReason('');
+      const nextSubmissionId = queueNavigation.nextSubmissionId;
+      if (nextSubmissionId) {
+        Toast.success('已标记疑难,进入下一条');
+        navigate(reviewerCompletionPath({ nextSubmissionId, reviewLevel }));
+        return;
+      }
+      Toast.success('已标记疑难,当前待审队列已处理完');
+      navigate(reviewerCompletionPath({ nextSubmissionId, reviewLevel }));
+    } catch (error) {
+      Toast.error(error instanceof Error ? error.message : '标记疑难失败');
+    }
+  }
+
   const reviewerSchemaFields = schemaFields(schemaVersion.schemaJson);
 
   return (
@@ -143,19 +221,37 @@ export function ReviewerSubmissionPage() {
             <Button
               icon={<IconChevronLeft />}
               size="small"
-              disabled={!queueNavigation.previousSubmissionId}
-              onClick={() => queueNavigation.previousSubmissionId ? navigate(reviewerSubmissionPath(queueNavigation.previousSubmissionId, reviewLevel)) : undefined}
+              disabled={isSeniorReview ? !seniorCaseNavigation.previousCase : !queueNavigation.previousSubmissionId}
+              onClick={() => {
+                if (isSeniorReview && seniorCaseNavigation.previousCase) {
+                  navigate(seniorCaseDetailPath(seniorCaseNavigation.previousCase));
+                  return;
+                }
+                if (queueNavigation.previousSubmissionId) {
+                  navigate(reviewerSubmissionPath(queueNavigation.previousSubmissionId, reviewLevel));
+                }
+              }}
             >
               上一条
             </Button>
             <Typography.Text type="tertiary">
-              待审队列 {queueNavigation.position > 0 ? `${queueNavigation.position}/${queueNavigation.total}` : `未定位/${queueNavigation.total}`}
+              {isSeniorReview
+                ? `仲裁队列 ${seniorCaseNavigation.position > 0 ? `${seniorCaseNavigation.position}/${seniorCaseNavigation.total}` : `未定位/${seniorCaseNavigation.total}`}`
+                : `待审队列 ${queueNavigation.position > 0 ? `${queueNavigation.position}/${queueNavigation.total}` : `未定位/${queueNavigation.total}`}`}
             </Typography.Text>
             <Button
               icon={<IconChevronRight />}
               size="small"
-              disabled={!queueNavigation.nextSubmissionId}
-              onClick={() => queueNavigation.nextSubmissionId ? navigate(reviewerSubmissionPath(queueNavigation.nextSubmissionId, reviewLevel)) : undefined}
+              disabled={isSeniorReview ? !seniorCaseNavigation.nextCase : !queueNavigation.nextSubmissionId}
+              onClick={() => {
+                if (isSeniorReview && seniorCaseNavigation.nextCase) {
+                  navigate(seniorCaseDetailPath(seniorCaseNavigation.nextCase));
+                  return;
+                }
+                if (queueNavigation.nextSubmissionId) {
+                  navigate(reviewerSubmissionPath(queueNavigation.nextSubmissionId, reviewLevel));
+                }
+              }}
             >
               下一条
             </Button>
@@ -190,10 +286,11 @@ export function ReviewerSubmissionPage() {
             <div className="reviewer-decision-rail">
               <ReviewActionCard
                 reason={reason}
-                loading={createLedgerEntry.isPending}
+                loading={createLedgerEntry.isPending || markReviewDifficulty.isPending || resolveSeniorCase.isPending}
                 onReasonChange={setReason}
                 onApprove={() => createVerdict('approve')}
                 onReject={() => createVerdict('reject')}
+                onDifficulty={isSeniorReview ? undefined : markDifficulty}
                 reviewLevel={reviewLevel}
               />
               <HumanFinalVerdictCard verdict={verdictQuery.data ?? null} entries={reviewerVerdictEntries} />
@@ -352,6 +449,7 @@ function ReviewActionCard({
   onReasonChange,
   onApprove,
   onReject,
+  onDifficulty,
   reviewLevel,
 }: {
   reason: string;
@@ -359,26 +457,33 @@ function ReviewActionCard({
   onReasonChange: (value: string) => void;
   onApprove: () => void;
   onReject: () => void;
+  onDifficulty?: () => void;
   reviewLevel: ReviewLevel;
 }) {
+  const isSeniorReview = reviewLevel === 'senior_reviewer';
   return (
-    <Card className="review-actions-card review-actions-card--primary" title={`人工最终裁决 · ${REVIEW_LEVEL_LABELS[reviewLevel]}操作`} bordered={false}>
+    <Card className="review-actions-card review-actions-card--primary" title={isSeniorReview ? '高级仲裁结论' : '人工初审结论'} bordered={false}>
       <label className="review-reason-field review-reason-field--required">
         <Typography.Text strong>审核说明</Typography.Text>
         <textarea
           value={reason}
           onChange={(event) => onReasonChange(event.target.value)}
-          placeholder="通过可选说明;打回必须填写理由"
+          placeholder={isSeniorReview ? '记录仲裁依据;打回必须填写理由' : '通过可选说明;打回或疑难必须填写理由'}
           rows={4}
         />
       </label>
       <div className="review-actions">
         <Button className="review-approve-button" icon={<IconTickCircle />} type="tertiary" theme="solid" loading={loading} onClick={onApprove}>
-          {reviewLevel === 'senior_reviewer' ? '复核通过' : '初审通过'}
+          {isSeniorReview ? '仲裁通过' : '初审通过'}
         </Button>
         <Button icon={<IconClose />} type="danger" theme="solid" loading={loading} onClick={onReject}>
-          打回
+          {isSeniorReview ? '仲裁打回' : '打回'}
         </Button>
+        {onDifficulty ? (
+          <Button loading={loading} onClick={onDifficulty}>
+            标记疑难
+          </Button>
+        ) : null}
       </div>
     </Card>
   );
@@ -565,9 +670,37 @@ function parseReviewLevel(value: string | null): ReviewLevel | undefined {
   return value === 'reviewer' || value === 'senior_reviewer' ? value : undefined;
 }
 
+function buildSeniorCaseNavigation({
+  currentCaseId,
+  cases,
+}: {
+  currentCaseId: number | null;
+  cases: SeniorReviewCase[];
+}) {
+  const index = cases.findIndex((item) => item.id === currentCaseId);
+  return {
+    previousCase: index > 0 ? cases[index - 1] : null,
+    nextCase: index >= 0 ? cases[index + 1] ?? null : cases[0] ?? null,
+    position: index >= 0 ? index + 1 : 0,
+    total: cases.length,
+  };
+}
+
+function seniorCaseDetailPath(seniorCase: SeniorReviewCase) {
+  return `${reviewerSubmissionPath(seniorCase.submissionId, 'senior_reviewer')}&caseId=${seniorCase.id}`;
+}
+
+function seniorResolutionFor(verdict: ReviewerVerdict, seniorCase?: SeniorReviewCase): SeniorReviewCaseResolution {
+  const isBoundaryCase = seniorCase?.sourceSignal === 'reviewer_difficulty';
+  if (verdict === 'approve') {
+    return isBoundaryCase ? 'boundary_approved' : 'uphold_reviewer';
+  }
+  return isBoundaryCase ? 'boundary_rejected' : 'overturn_to_reject';
+}
+
 function successMessage(verdict: ReviewerVerdict, reviewLevel: ReviewLevel) {
   if (verdict === 'reject') return '已打回';
-  return reviewLevel === 'senior_reviewer' ? '复核已通过' : '初审已通过,已进入复核队列';
+  return reviewLevel === 'senior_reviewer' ? '仲裁已通过' : '初审已通过';
 }
 
 function formatDateTime(value?: string) {

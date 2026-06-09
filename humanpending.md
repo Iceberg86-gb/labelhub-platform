@@ -735,3 +735,7 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 ## 257. 全流程验证修复:进度、批量作业、AI 预审与 Schema 模板库(2026-06-08)
 
 交付:本轮全流程验证修复批完成 owner 全过程进度卡替换首屏审计记录位置并下沉弱化旧迁移记录;AI 预审模块显性化,任务级一键预审走统一 agent/outbox 链路并补等待 Agent 状态;labeler 支持自定义数量批量领取与本批次草稿批量提交,避免最后一题单独提交丢失前序题;reviewer/senior reviewer 支持队列连续审核;Schema 管理新增模板导入、导出、删除与创建任务选择模板并联动 Designer;reviewer 队列去除 Task#/Labeler#/Schema# 技术编号,改为 `提交 N / 任务名 / Schema 名 vN` 单行可读展示并保证列头列内容居中。生产同步使用 web+api 双脚本闭环执行。
+
+## 258. Senior Reviewer 正交化:仲裁 case 工作台与单标签修正(2026-06-08)
+
+交付:本轮 senior reviewer 职责正交化采用独立 `senior_review_cases` 承载模型,将高级审核从二次全量 approve/reject 调整为 AI 升级、reviewer 疑难标记与抽检/仲裁 case 工作台;reviewer 保持单条标注对错全量初审。新增 senior case 队列、case resolution、reviewer 标记疑难入口、OpenAPI 契约与后端派生逻辑,并补任务删除级联与 Verdict 派生测试。前端锚点为 `/reviewer/submissions?reviewLevel=senior_reviewer`,页头只显示 `SENIOR REVIEWER`,不再同时显示 `REVIEWER`;LLM 接入页无 Provider 时不再展示伪默认 `openai / gpt-5.5`。验证:前端 reviewer 页面测试、Owner LLM 设置测试、web typecheck 与后端质量/任务删除聚焦测试通过。本批按 owner 要求提交后同步生产,并清理本地业务数据仅保留账号信息。

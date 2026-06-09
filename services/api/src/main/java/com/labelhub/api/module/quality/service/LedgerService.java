@@ -49,6 +49,7 @@ public class LedgerService {
     private final SessionMapper sessionMapper;
     private final Clock clock;
     private final AuditLogService auditLogService;
+    private final SeniorReviewCaseService seniorReviewCaseService;
 
     @Autowired
     public LedgerService(
@@ -59,7 +60,8 @@ public class LedgerService {
         ReviewActionMapper reviewActionMapper,
         Clock clock,
         AuditLogService auditLogService,
-        SessionMapper sessionMapper
+        SessionMapper sessionMapper,
+        SeniorReviewCaseService seniorReviewCaseService
     ) {
         this.submissionMapper = submissionMapper;
         this.submissionMutationMapper = submissionMutationMapper;
@@ -69,6 +71,30 @@ public class LedgerService {
         this.sessionMapper = sessionMapper;
         this.clock = clock;
         this.auditLogService = auditLogService;
+        this.seniorReviewCaseService = seniorReviewCaseService;
+    }
+
+    public LedgerService(
+        SubmissionMapper submissionMapper,
+        SubmissionMutationMapper submissionMutationMapper,
+        TaskMapper taskMapper,
+        QualityLedgerEntryMapper qualityLedgerEntryMapper,
+        ReviewActionMapper reviewActionMapper,
+        Clock clock,
+        AuditLogService auditLogService,
+        SessionMapper sessionMapper
+    ) {
+        this(
+            submissionMapper,
+            submissionMutationMapper,
+            taskMapper,
+            qualityLedgerEntryMapper,
+            reviewActionMapper,
+            clock,
+            auditLogService,
+            sessionMapper,
+            null
+        );
     }
 
     public LedgerService(
@@ -79,7 +105,7 @@ public class LedgerService {
         Clock clock,
         AuditLogService auditLogService
     ) {
-        this(submissionMapper, submissionMutationMapper, taskMapper, qualityLedgerEntryMapper, null, clock, auditLogService, null);
+        this(submissionMapper, submissionMutationMapper, taskMapper, qualityLedgerEntryMapper, null, clock, auditLogService, null, null);
     }
 
     public LedgerService(
@@ -88,7 +114,7 @@ public class LedgerService {
         QualityLedgerEntryMapper qualityLedgerEntryMapper,
         Clock clock
     ) {
-        this(submissionMapper, null, taskMapper, qualityLedgerEntryMapper, null, clock, AuditLogService.noop(), null);
+        this(submissionMapper, null, taskMapper, qualityLedgerEntryMapper, null, clock, AuditLogService.noop(), null, null);
     }
 
     @Transactional
@@ -138,8 +164,10 @@ public class LedgerService {
         String verdict = String.valueOf(payload.get("verdict"));
         if ("approve".equals(verdict)) {
             recordReviewAction(submission, entity, reviewerUserId, verdict);
+            activateSeniorCasesAfterReviewerApprove(submission, entity);
             auditLogService.record(reviewAuditEvent(AuditActions.REVIEW_APPROVE, submission, entity, reviewerUserId, verdict));
         } else {
+            cancelSeniorCasesAfterReviewerReject(submission, entity);
             markReturnedForRevision(submission);
             recordReviewAction(submission, entity, reviewerUserId, verdict);
             auditLogService.record(reviewAuditEvent(AuditActions.REVIEW_REJECT, submission, entity, reviewerUserId, verdict));
@@ -269,7 +297,24 @@ public class LedgerService {
         entity.setPayload(payload);
         entity.setCreatedAt(LocalDateTime.now(clock));
         requireOneRow(qualityLedgerEntryMapper.insert(entity), "insert ai overall recommendation ledger entry");
+        if (seniorReviewCaseService != null) {
+            seniorReviewCaseService.recordAiOverallRecommendation(submissionId, taskId, entity);
+        }
         return entity;
+    }
+
+    private void activateSeniorCasesAfterReviewerApprove(SubmissionEntity submission, QualityLedgerEntryEntity entity) {
+        if (seniorReviewCaseService == null || !ReviewLevels.REVIEWER.equals(stringPayload(entity.getPayload(), "reviewLevel", ReviewLevels.REVIEWER))) {
+            return;
+        }
+        seniorReviewCaseService.activateCasesAfterReviewerApprove(submission, entity);
+    }
+
+    private void cancelSeniorCasesAfterReviewerReject(SubmissionEntity submission, QualityLedgerEntryEntity entity) {
+        if (seniorReviewCaseService == null || !ReviewLevels.REVIEWER.equals(stringPayload(entity.getPayload(), "reviewLevel", ReviewLevels.REVIEWER))) {
+            return;
+        }
+        seniorReviewCaseService.cancelPendingCasesAfterReviewerReject(submission, entity);
     }
 
     private SubmissionEntity requireReadableSubmission(Long submissionId, Long requesterUserId, Set<String> requesterRoles) {

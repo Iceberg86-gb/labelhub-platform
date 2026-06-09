@@ -200,33 +200,35 @@ public class TaskService {
         taskDeletionMapper.deleteCurrentVerdicts(taskId);
         // Step 7: blocks fk_review_actions_submission/task before submissions or tasks delete.
         taskDeletionMapper.deleteReviewActions(taskId);
-        // Step 8: blocks fk_export_snapshots_job/task/rule before export_jobs, tasks, or rules delete.
+        // Step 8: blocks fk_senior_cases_* before submissions, tasks, users, or ledger delete.
+        taskDeletionMapper.deleteSeniorReviewCases(taskId);
+        // Step 9: blocks fk_export_snapshots_job/task/rule before export_jobs, tasks, or rules delete.
         taskDeletionMapper.deleteExportSnapshots(taskId);
-        // Step 9: blocks fk_quality_ledger_submission/task/ai_call before submissions, tasks, or ai_calls delete.
+        // Step 10: blocks fk_quality_ledger_submission/task/ai_call before submissions, tasks, or ai_calls delete.
         taskDeletionMapper.deleteQualityLedgerEntries(taskId);
-        // Step 10: blocks fk_ai_calls_submission before submissions delete.
+        // Step 11: blocks fk_ai_calls_submission before submissions delete.
         taskDeletionMapper.deleteAiCalls(taskId);
-        // Step 11: blocks fk_drafts_session before sessions delete.
+        // Step 12: blocks fk_drafts_session before sessions delete.
         taskDeletionMapper.deleteDrafts(taskId);
-        // Step 12: blocks fk_submissions_session/task/item/schema_version before parent deletes.
+        // Step 13: blocks fk_submissions_session/task/item/schema_version before parent deletes.
         taskDeletionMapper.deleteSubmissions(taskId);
-        // Step 13: blocks fk_sessions_task/dataset_item/schema_version before parent deletes.
+        // Step 14: blocks fk_sessions_task/dataset_item/schema_version before parent deletes.
         taskDeletionMapper.deleteSessions(taskId);
-        // Step 14: blocks fk_dataset_items_dataset/task before datasets or tasks delete.
+        // Step 15: blocks fk_dataset_items_dataset/task before datasets or tasks delete.
         taskDeletionMapper.deleteDatasetItems(taskId);
-        // Step 15: blocks fk_export_jobs_task before tasks delete.
+        // Step 16: blocks fk_export_jobs_task before tasks delete.
         taskDeletionMapper.deleteExportJobs(taskId);
-        // Step 16: blocks fk_adjudication_rules_task before tasks delete.
+        // Step 17: blocks fk_adjudication_rules_task before tasks delete.
         taskDeletionMapper.deleteAdjudicationRules(taskId);
-        // Step 17: blocks fk_datasets_task before tasks delete.
+        // Step 18: blocks fk_datasets_task before tasks delete.
         taskDeletionMapper.deleteDatasets(taskId);
-        // Step 18: blocks fk_schema_versions_schema before label_schemas delete.
+        // Step 19: blocks fk_schema_versions_schema before label_schemas delete.
         taskDeletionMapper.deleteSchemaVersions(taskId);
-        // Step 19: blocks fk_label_schemas_task before tasks delete.
+        // Step 20: blocks fk_label_schemas_task before tasks delete.
         taskDeletionMapper.deleteLabelSchemas(taskId);
-        // Step 20: blocks fk_task_transitions_task before tasks delete.
+        // Step 21: blocks fk_task_transitions_task before tasks delete.
         taskDeletionMapper.deleteTaskTransitions(taskId);
-        // Step 21: all dependents cleared.
+        // Step 22: all dependents cleared.
         requireOneRow(taskDeletionMapper.deleteTask(taskId), "delete task");
 
         registerAfterCommitCleanup(objectKeys);
