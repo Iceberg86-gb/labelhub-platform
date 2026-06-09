@@ -2,6 +2,7 @@ package com.labelhub.api.module.schema.mapper;
 
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
+import org.apache.ibatis.annotations.Select;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,5 +27,16 @@ class SubmissionMapperContractTest {
                     .as("Method " + name + " must be insert/select only")
                     .isTrue();
         }
+    }
+
+    @Test
+    void approved_export_selection_follows_current_reviewer_verdict_contract() throws NoSuchMethodException {
+        Method method = SubmissionMapper.class.getDeclaredMethod("selectApprovedByTaskOrderedById", Long.class);
+        String sql = String.join(" ", method.getAnnotation(Select.class).value());
+
+        assertThat(sql).contains("reviewer_overall_verdict");
+        assertThat(sql).contains("senior_review_cases");
+        assertThat(sql).contains("status IN ('pending_reviewer', 'open')");
+        assertThat(sql).doesNotContain("reviewLevel')) = 'senior_reviewer'");
     }
 }

@@ -96,7 +96,7 @@ const workflowProgressSteps: Array<{
   { key: 'submittedCount', label: '已提交', tone: 'accent' },
   { key: 'aiPrereviewCompletedCount', label: 'AI 预审完成', tone: 'success' },
   { key: 'pendingReviewCount', label: '待初审', tone: 'warning' },
-  { key: 'pendingSeniorReviewCount', label: '待复审', tone: 'warning' },
+  { key: 'pendingSeniorReviewCount', label: '待仲裁', tone: 'warning' },
   { key: 'approvedCount', label: '已通过', tone: 'success' },
   { key: 'rejectedCount', label: '已打回', tone: 'danger' },
 ];

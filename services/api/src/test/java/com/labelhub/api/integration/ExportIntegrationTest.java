@@ -216,6 +216,16 @@ class ExportIntegrationTest {
         assertThat(objectCountUnder(snap.get("objectKey").asText())).isEqualTo(11);
     }
 
+    @Test
+    void approved_only_export_includes_reviewer_approve_when_no_senior_case_is_open() throws Exception {
+        Fixture fixture = exportFixture("export-reviewer-approved", 1001L, 1002L);
+
+        JsonNode snap = createExport(fixture.taskId());
+
+        assertThat(snap.at("/recordCounts/submissions").asInt()).isEqualTo(1);
+        assertThat(snap.at("/recordCounts/trainingResults").asInt()).isEqualTo(1);
+    }
+
     private JsonNode createExport(Long taskId) throws Exception {
         MvcResult result = mockMvc.perform(post("/tasks/{taskId}/exports", taskId)
                 .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
@@ -269,7 +279,7 @@ class ExportIntegrationTest {
     private void insertLedgerEntry(Long submissionId, Long taskId, Long reviewerId, String verdict) {
         jdbcTemplate.update("""
             INSERT INTO quality_ledger_entries(submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at)
-            VALUES (?, ?, 'reviewer_overall_verdict', 'reviewer', ?, NULL, JSON_OBJECT('verdict', ?), NOW(3))
+            VALUES (?, ?, 'reviewer_overall_verdict', 'reviewer', ?, NULL, JSON_OBJECT('verdict', ?, 'reviewLevel', 'reviewer'), NOW(3))
             """, submissionId, taskId, reviewerId, verdict);
     }
 

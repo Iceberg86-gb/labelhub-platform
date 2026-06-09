@@ -99,13 +99,36 @@ public interface SubmissionMapper {
                        ) AS rn
                 FROM quality_ledger_entries qle
                 WHERE qle.evidence_type = 'reviewer_overall_verdict'
-                  AND JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')) = 'senior_reviewer'
             ) ranked
             WHERE ranked.rn = 1
         ) latest ON latest.submission_id = s.id
+        LEFT JOIN (
+            SELECT submission_id, COUNT(*) AS open_count
+            FROM senior_review_cases
+            WHERE status IN ('pending_reviewer', 'open')
+            GROUP BY submission_id
+        ) open_cases ON open_cases.submission_id = s.id
+        LEFT JOIN (
+            SELECT ranked.*
+            FROM (
+                SELECT src.*,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY src.submission_id
+                           ORDER BY src.resolved_at DESC, src.id DESC
+                       ) AS rn
+                FROM senior_review_cases src
+                WHERE src.status = 'resolved'
+            ) ranked
+            WHERE ranked.rn = 1
+        ) latest_resolved ON latest_resolved.submission_id = s.id
         WHERE s.task_id = #{taskId}
           AND s.status = 'submitted'
           AND JSON_UNQUOTE(JSON_EXTRACT(latest.payload, '$.verdict')) = 'approve'
+          AND COALESCE(open_cases.open_count, 0) = 0
+          AND (
+              latest_resolved.id IS NULL
+              OR latest_resolved.resolution NOT IN ('overturn_to_reject', 'boundary_rejected')
+          )
         ORDER BY s.id ASC
         """)
     @ResultMap("submissionResultMap")

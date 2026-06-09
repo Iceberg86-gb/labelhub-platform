@@ -93,7 +93,9 @@ public class ExportArtifactBuilder {
         List<Map<String, Object>> trainingJsonlRows = List.of();
         if (effectiveTrainingProfile.enabled()) {
             trainingJsonlRows = trainingJsonlRows(trainingRows, effectiveTrainingProfile);
-            files.add(buildJsonlFile(effectiveTrainingProfile.format().fileName(), trainingJsonlRows));
+            if (!trainingJsonlRows.isEmpty()) {
+                files.add(buildJsonlFile(effectiveTrainingProfile.format().fileName(), trainingJsonlRows));
+            }
         }
 
         Map<String, Integer> recordCounts = buildRecordCounts(bundle);

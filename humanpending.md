@@ -745,3 +745,9 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 交付:本轮分支 `codex/task-quota-dataset-items-20260609` 完成任务配额语义收敛、可信导出多训练格式与 UI 打磨。任务创建/编辑不再要求 owner 手填配额,任务绑定数据集后由数据集题目数派生 quota_total,labeler 领取按实际可用 dataset item 控制,避免配额字段与真实题量脱节;创建/编辑任务弹窗压缩多行输入框并放大任务标题输入。可信导出新增训练格式选择与后端生成链路,支持表格快照、OpenAI 对话微调、TRL 指令微调、TRL 偏好训练,保留高级字段映射但默认折叠,导出配置区与快照区做多轮对齐/文案收敛。登录页质量链路模块改为更高级的 timeline 视觉,Owner 任务详情/Home/Labeler 相关配额展示同步去技术化。
 
 验证:前端 `pnpm --filter @labelhub/web test` 69 文件 / 338 条通过,`pnpm --filter @labelhub/web typecheck` 通过;后端用默认 Maven 跑 `ExportArtifactBuilderBusinessFormatTest,ExportServiceTest,SessionServiceTest,TaskServiceTest` 共 113 条通过。完整 `make verify` 未跑通,原因是本机 Docker/Colima 当前不可达,在 dev-up 阶段退出。生产同步按 owner 要求执行 web + api 双脚本闭环。
+
+## 260. 可信导出标注结果包与仲裁进度语义修复(2026-06-09)
+
+交付:本轮继续收口可信导出与 owner 进度语义。可信导出候选改为 reviewer 已通过且无未处理 senior case 的标注结果,已仲裁打回的 submission 不再进入标注结果包;owner 全过程进度中的"待仲裁"改为读取 open senior case,仲裁完成后归零,避免复审语义误导。导出构建器不再写入 0 行训练 JSONL,前端也隐藏历史快照里的 0 行训练文件下载项;偏好对比默认训练字段改为 `item.response_a/item.response_b/answer.preferred`,减少导出空训练文件的概率。
+
+验证:后端 `mvn -pl services/api -Dtest=SubmissionMapperContractTest,TaskWorkflowProgressMapperContractTest,ExportArtifactBuilderBusinessFormatTest,ExportFactCollectorTest,VerdictServiceTest test` 共 23 条通过;前端 `pnpm --filter @labelhub/web test -- OwnerTaskPages.test.tsx TrustedExportCard.design.test.tsx` 共 3 条通过;`git diff --check` 通过。

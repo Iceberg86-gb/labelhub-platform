@@ -94,6 +94,20 @@ class ExportArtifactBuilderBusinessFormatTest {
     }
 
     @Test
+    void build_omits_empty_training_jsonl_file_when_profile_fields_do_not_match() {
+        ExportArtifact artifact = builder.build(
+            preferenceBundle(),
+            ExportFieldMapping.empty(),
+            TrainingExportProfile.openAiChatSft("item.prompt", "answer.label")
+        );
+
+        assertThat(artifact.files()).noneMatch(file -> "openai-chat-sft.jsonl".equals(file.name()));
+        assertThat(artifact.recordCounts()).containsEntry("openaiChatSft", 0);
+        assertThat(artifact.files()).anyMatch(file -> "training-results.csv".equals(file.name()));
+        assertThat(artifact.files()).anyMatch(file -> "training-results.xlsx".equals(file.name()));
+    }
+
+    @Test
     void build_includes_trl_sft_jsonl_when_profile_is_configured() throws Exception {
         ExportArtifact artifact = builder.build(
             bundle(),
