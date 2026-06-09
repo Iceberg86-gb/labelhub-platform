@@ -76,6 +76,13 @@
 
   /* Typography */
   --font-family-sans: Inter, "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  /*
+   * Canonical type scale — use these tokens, never raw px.
+   * display 28 · page-title 22 · section-title 18 · card-title 15
+   * body 14 · body-strong 14/600 · small 13 · caption 12 · table-header 12/600 · micro-label 11/600
+   */
 
   --font-size-display: 28px;
   --line-height-display: 36px;

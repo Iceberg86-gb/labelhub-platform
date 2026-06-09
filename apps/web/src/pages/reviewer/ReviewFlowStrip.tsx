@@ -1,4 +1,5 @@
 import type { QualityLedgerEntry, VerdictStatus } from '../../entities/quality/qualityTypes';
+import { FlowStrip } from '../../shared/ui';
 
 type ReviewFlowStripProps = {
   aiOverallEntry?: QualityLedgerEntry;
@@ -31,17 +32,17 @@ export function ReviewFlowStrip({ aiOverallEntry, reviewerVerdictEntries, verdic
   });
 
   return (
-    <div className="review-flow-strip review-flow-strip--detail" aria-label="Reviewer 状态流">
-      {nodes.map((node, index) => (
-        <span className="review-flow-segment" key={node.key}>
-          {index > 0 ? <span className="review-flow-connector review-flow-connector--dynamic" /> : null}
-          <span className={nodeClassName(node)}>
-            <span>{node.label}</span>
-            {node.note ? <small>{node.note}</small> : null}
-          </span>
-        </span>
-      ))}
-    </div>
+    <FlowStrip
+      ariaLabel="Reviewer 状态流"
+      className="review-flow-strip--detail"
+      steps={nodes.map((node) => ({
+        key: node.key,
+        label: node.label,
+        state: node.state,
+        tone: node.tone,
+        note: node.note,
+      }))}
+    />
   );
 }
 
@@ -91,12 +92,4 @@ function isReviewerLevelEntry(entry: QualityLedgerEntry, reviewLevel: 'reviewer'
   return entry.entryType === 'reviewer_overall_verdict'
     && 'reviewLevel' in entry.payload
     && entry.payload.reviewLevel === reviewLevel;
-}
-
-function nodeClassName(node: ReviewFlowNode) {
-  return [
-    'review-flow-node',
-    `review-flow-node--${node.state}`,
-    node.tone ? `review-flow-node--${node.tone}` : '',
-  ].filter(Boolean).join(' ');
 }
