@@ -759,3 +759,11 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 边界声明:本批只在 export 模块新增包级下载与字段目录读链路,零改数据库/migration、零改标注/审核/AI 预审业务语义、零触碰 labeling 目录与质量 mutation hooks,保留历史单文件下载接口。
 
 验证:后端 `mvn -pl services/api -Dtest=ExportFieldCatalogServiceTest,ExportPackageBuilderTest,ExportServiceTest,ExportArtifactBuilderBusinessFormatTest,ExportFactCollectorTest test` 共 53 条通过;前端 `pnpm --filter @labelhub/web test` 70 文件 / 344 条通过、`typecheck` 通过、`git diff --check` 通过。owner 人工验收 DPO 训练包 chosen/rejected 为真实回答内容。本批合并 main 后按 owner 要求执行 web + api 双脚本生产同步。
+
+## 262. Design System 抽象:统一 token / 组件库 / review skill(2026-06-09)
+
+交付:本轮把分散的前端 UI 沉淀为统一 Design System(分支 `codex/design-system-abstraction-20260609`,纯前端,零后端/migration)。①**Token 统一**:`docs/design-assets/tokens/tokens.css` 新增 `--font-family-mono` 与规范化字号注释;`styles.css` 把全部硬编码 `font-size`(11–26px)收敛到 8 个字号 token、3 套 mono 字体栈合并为 1 个 token;清理"低级 AI 配色"——蓝色光晕 radial-gradient、空状态伪文档装饰、硬编码语义 hex(#15803d/#b91c1c 等)与 ad-hoc 蓝色 tint 全部改用 `--color-*`/`*-soft`/`shadow` token,空状态扁平化。②**组件库**:`shared/ui/` 抽离基础/复合组件 `StatusBadge`、`EmptyState`、`StatTile`、`SectionCard`、`FlowStrip`(配套 `ds-*` 扁平 token 化 CSS),新增 TS token 常量 `tokens.ts`,建立 barrel 导出入口 `index.ts`(轻量,app-shell 布局不进 barrel)与使用规范 `README.md`。③**页面替换**:`TaskStatusBadge`/`PrereviewStatusTag` 改用 `StatusBadge`;`ReviewFlowStrip` 与可信导出流程条改用 `FlowStrip`(保留 `deriveFlowNodes` 域逻辑);导出空状态改用 `EmptyState`;`FieldTypePicker`/`VersionHistoryDrawer` 状态徽标改用 `StatusBadge`(渲染等价,旧测试不破)。④**治理**:新增项目 skill `.claude/skills/design-system-review`(`/design-system-review`),自动审计裸 px 字号、硬编码/炫彩配色、内联样式、绕过组件库的手写徽标/流程条/空状态,并校验新组件是否进 barrel。
+
+边界声明:零改后端/数据库/migration、零改标注/审核/AI 业务语义;`semantic-tag`/`<Empty>` 仍有约 10 处遗留站点,由 review skill 列为可"逐步移除"的待办,基础层(字号/字体/配色)已 100% token 化。
+
+验证:`pnpm --filter @labelhub/web test` 71 文件 / 349 条通过(新增 DesignSystem 组件测试 5 条)、`typecheck` 通过、`pnpm --filter @labelhub/web build` 通过、`git diff --check` 通过;`/design-system-review` 自审:裸 px 字号 0、非 token mono 0。

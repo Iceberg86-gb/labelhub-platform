@@ -1,4 +1,4 @@
-import { Button, Card, Checkbox, Empty, Input, Pagination, Popconfirm, Select, Space, Spin, Table, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Checkbox, Input, Pagination, Popconfirm, Select, Space, Spin, Table, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import {
   IconArchive,
   IconChevronDown,
@@ -14,7 +14,7 @@ import {
   IconUpload,
   IconUser,
 } from '@douyinfe/semi-icons';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type {
   ExportFieldCatalog,
@@ -23,7 +23,7 @@ import type {
   TrainingExportFormat,
   TrainingExportProfile,
 } from '../../entities/export/exportTypes';
-import { TruncatedHash } from '../../shared/ui/TruncatedHash';
+import { EmptyState, FlowStrip, TruncatedHash } from '../../shared/ui';
 import { CreateExportFailure, useCreateExportMutation } from './useCreateExportMutation';
 import { ExportSnapshotDiffModal } from './ExportSnapshotDiffModal';
 import { useTaskExportsQuery } from './useTaskExportsQuery';
@@ -455,17 +455,11 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         </div>
       </div>
 
-      <div className="trusted-export-flow-strip" aria-label="Export workflow">
-        {EXPORT_FLOW_STEPS.map((step, index) => (
-          <Fragment key={step.label}>
-            <span className="trusted-export-flow-step">
-              <span className="trusted-export-flow-step__icon">{step.icon}</span>
-              <span>{step.label}</span>
-            </span>
-            {index < EXPORT_FLOW_STEPS.length - 1 ? <span className="trusted-export-flow-connector" aria-hidden="true" /> : null}
-          </Fragment>
-        ))}
-      </div>
+      <FlowStrip
+        ariaLabel="Export workflow"
+        className="trusted-export-flow-strip"
+        steps={EXPORT_FLOW_STEPS.map((step) => ({ key: step.label, label: step.label, icon: step.icon }))}
+      />
 
       <div className="trusted-export-toolbar trusted-export-command-strip">
         <Typography.Text className="trusted-export-snapshot-count" type="tertiary">
@@ -685,17 +679,16 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         <div className="trusted-export-snapshot-panel">
           {exportsQuery.isLoading ? <Spin /> : null}
           {exportsQuery.isError ? (
-            <div className="trusted-export-empty-state">
-              <Empty title="导出列表加载失败" description={exportsQuery.error instanceof Error ? exportsQuery.error.message : '请稍后重试。'} />
-            </div>
+            <EmptyState
+              title="导出列表加载失败"
+              description={exportsQuery.error instanceof Error ? exportsQuery.error.message : '请稍后重试。'}
+            />
           ) : null}
           {!exportsQuery.isLoading && !exportsQuery.isError && items.length === 0 ? (
-            <div className="trusted-export-empty-state trusted-export-empty-state--snapshot">
-              <Empty
-                title={showArchived ? '暂无已归档快照' : '尚未导出'}
-                description={showArchived ? '归档后的快照会保留在这里,仍可下载审计。' : '点击"导出"按钮创建可信训练数据集快照。'}
-              />
-            </div>
+            <EmptyState
+              title={showArchived ? '暂无已归档快照' : '尚未导出'}
+              description={showArchived ? '归档后的快照会保留在这里,仍可下载审计。' : '点击"导出"按钮创建可信训练数据集快照。'}
+            />
           ) : null}
           {items.length > 0 ? (
             <div className="trusted-export-table-shell">

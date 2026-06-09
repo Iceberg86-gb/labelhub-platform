@@ -1,9 +1,9 @@
-import { Tag } from '@douyinfe/semi-ui';
 import type { components } from '../../shared/api/generated/schema';
+import { StatusBadge, type BadgeTone } from '../../shared/ui';
 
 type TaskStatus = components['schemas']['TaskStatus'];
 
-const statusMeta: Record<TaskStatus, { label: string; tone: string }> = {
+const statusMeta: Record<TaskStatus, { label: string; tone: BadgeTone }> = {
   draft: { label: '草稿', tone: 'neutral' },
   published: { label: '发布中', tone: 'success' },
   paused: { label: '已暂停', tone: 'warning' },
@@ -18,8 +18,8 @@ export function TaskStatusBadge({ status }: TaskStatusBadgeProps) {
   const meta = statusMeta[status];
 
   return (
-    <Tag className={`task-status-badge semantic-tag semantic-tag--${meta.tone}`}>
+    <StatusBadge tone={meta.tone} className="task-status-badge">
       {meta.label}
-    </Tag>
+    </StatusBadge>
   );
 }

@@ -1,6 +1,7 @@
-import { Button, Tag } from '@douyinfe/semi-ui';
+import { Button } from '@douyinfe/semi-ui';
 import type { SchemaFieldType } from '../../entities/schema/schemaTypes';
 import { SCHEMA_FIELD_TYPES, SCHEMA_FIELD_TYPE_LABELS } from '../../entities/schema/schemaTypes';
+import { StatusBadge } from '../../shared/ui';
 
 type FieldTypePickerProps = {
   onPick: (type: SchemaFieldType) => void;
@@ -14,9 +15,9 @@ export function FieldTypePicker({ onPick, excludeTypes = [] }: FieldTypePickerPr
     <div className="field-type-picker">
       {types.map((type) => (
         <Button key={type} className="field-type-button" onClick={() => onPick(type)}>
-          <Tag className="semantic-tag semantic-tag--accent" size="small">
+          <StatusBadge tone="accent" size="small">
             {SCHEMA_FIELD_TYPE_LABELS[type]}
-          </Tag>
+          </StatusBadge>
         </Button>
       ))}
     </div>

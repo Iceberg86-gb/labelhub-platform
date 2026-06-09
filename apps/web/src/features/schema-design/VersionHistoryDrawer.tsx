@@ -1,5 +1,6 @@
-import { Button, Card, Empty, SideSheet, Spin, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Empty, SideSheet, Spin, Typography } from '@douyinfe/semi-ui';
 import { IconCalendarClock, IconHash, IconListView } from '@douyinfe/semi-icons';
+import { StatusBadge } from '../../shared/ui';
 import { useMemo, useState } from 'react';
 import { previewJson } from '../../entities/schema/schemaPreview';
 import { summarizeSchema } from '../../entities/schema/schemaSummary';
@@ -89,7 +90,7 @@ function VersionCard({ version, expanded, current, onToggle }: VersionCardProps)
           <Typography.Title heading={5}>v{version.versionNumber}</Typography.Title>
           <Typography.Text type="tertiary">{formatDateTime(version.publishedAt)}</Typography.Text>
         </div>
-        {current ? <Tag className="semantic-tag semantic-tag--accent">当前版本</Tag> : null}
+        {current ? <StatusBadge tone="accent">当前版本</StatusBadge> : null}
       </div>
 
       <div className="version-history-meta">
