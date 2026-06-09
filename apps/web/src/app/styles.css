@@ -6331,16 +6331,23 @@ a {
 
 .trusted-export-training-bindings {
   display: grid;
-  grid-template-columns: minmax(190px, 0.34fr) minmax(0, 1fr);
-  gap: var(--space-12);
-  align-items: start;
+  gap: var(--space-10);
   padding-top: var(--space-12);
   border-top: 1px solid var(--color-border-subtle);
+}
+
+.trusted-export-training-bindings__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-12);
+  flex-wrap: wrap;
 }
 
 .trusted-export-training-bindings__title {
   display: grid;
   gap: 3px;
+  min-width: 0;
 }
 
 .trusted-export-training-bindings__required {
@@ -6354,18 +6361,27 @@ a {
 .trusted-export-training-profile__fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-8);
+  gap: var(--space-10) var(--space-16);
 }
 
 .trusted-export-training-source {
   display: grid;
-  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+  grid-template-columns: 60px minmax(0, 1fr);
   min-width: 0;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-10);
   color: var(--color-text-secondary);
   font-size: var(--font-size-caption);
   font-weight: var(--font-weight-table-header);
+}
+
+.trusted-export-training-source > span {
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+
+.trusted-export-training-source__input {
+  min-width: 0;
 }
 
 .trusted-export-training-source__input .semi-input {
@@ -6374,6 +6390,116 @@ a {
   font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
   font-size: 12px;
   letter-spacing: 0.1px;
+}
+
+.trusted-export-training-source__select,
+.trusted-export-mapping-row__source-select {
+  min-width: 0;
+  width: 100%;
+}
+
+.trusted-export-recommendation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  padding: 8px 12px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: var(--radius-card);
+  background: rgba(37, 99, 235, 0.06);
+}
+
+.trusted-export-recommendation__tag {
+  flex: none;
+}
+
+.trusted-export-recommendation__reason {
+  flex: 1 1 200px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.trusted-export-binding-preview {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-main-surface);
+}
+
+.trusted-export-binding-preview--empty {
+  color: var(--color-text-tertiary);
+  font-size: 12px;
+}
+
+.trusted-export-binding-preview__caption {
+  font-size: 11px;
+  color: var(--color-text-tertiary);
+}
+
+.trusted-export-binding-preview__rows {
+  display: grid;
+  gap: 6px;
+}
+
+.trusted-export-binding-preview__row {
+  display: grid;
+  grid-template-columns: minmax(56px, auto) minmax(96px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.trusted-export-binding-preview__slot {
+  justify-self: start;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: var(--font-weight-table-header);
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--color-text-secondary);
+}
+
+.trusted-export-binding-preview__slot--chosen {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+}
+
+.trusted-export-binding-preview__slot--rejected {
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.trusted-export-binding-preview__source {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trusted-export-binding-preview__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+}
+
+.trusted-export-binding-preview__verdict {
+  font-size: 12px;
+  font-weight: var(--font-weight-table-header);
+}
+
+.trusted-export-binding-preview__verdict.is-ok {
+  color: #15803d;
+}
+
+.trusted-export-binding-preview__verdict.is-bad {
+  color: #b91c1c;
 }
 
 .trusted-export-mapping-panel {
@@ -6582,7 +6708,9 @@ a {
 }
 
 .trusted-export-table-shell {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   overflow: hidden;
   border-radius: var(--radius-card);
   background: var(--color-main-surface);
@@ -6688,7 +6816,10 @@ a {
 .export-pagination {
   display: flex;
   justify-content: flex-end;
-  margin-top: 14px;
+  align-items: center;
+  margin-top: auto;
+  padding: 12px 14px 4px;
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .export-diff-modal,

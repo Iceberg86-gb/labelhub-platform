@@ -751,3 +751,11 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 交付:本轮继续收口可信导出与 owner 进度语义。可信导出候选改为 reviewer 已通过且无未处理 senior case 的标注结果,已仲裁打回的 submission 不再进入标注结果包;owner 全过程进度中的"待仲裁"改为读取 open senior case,仲裁完成后归零,避免复审语义误导。导出构建器不再写入 0 行训练 JSONL,前端也隐藏历史快照里的 0 行训练文件下载项;偏好对比默认训练字段改为 `item.response_a/item.response_b/answer.preferred`,减少导出空训练文件的概率。
 
 验证:后端 `mvn -pl services/api -Dtest=SubmissionMapperContractTest,TaskWorkflowProgressMapperContractTest,ExportArtifactBuilderBusinessFormatTest,ExportFactCollectorTest,VerdictServiceTest test` 共 23 条通过;前端 `pnpm --filter @labelhub/web test -- OwnerTaskPages.test.tsx TrustedExportCard.design.test.tsx` 共 3 条通过;`git diff --check` 通过。
+
+## 261. 可信导出包级下载与数据驱动训练数据构建器(2026-06-09)
+
+交付:本轮把可信导出从"逐文件下载 + 盲配训练字段"升级为"包级导出 + 数据驱动引导式构建器"。①新增包级下载接口 `GET /exports/snapshots/{id}/packages/{packageType}`(annotation_results / training_data),下载时从已有 snapshot 文件与元数据现场组装 zip:标注结果包含 csv/xlsx/manifest/schema/field-mapping,训练数据包按格式重命名训练 JSONL(trl-dpo→preference-dpo 等)并合成 schema/field-mapping/training-profile;过滤 0 行训练文件,缺有效训练数据返回 409。②新增只读"导出字段目录"接口 `GET /tasks/{taskId}/export-fields`,复用 ExportFactCollector 输出可绑定字段(系统/item.*/answer.* + 样例值 + 覆盖率 + 低基数取值)、前 5 行样本、推荐格式与推荐绑定;左侧面板重构为三步引导:格式推荐徽标+理由、字段下拉(中文标题来自 schema、样例·覆盖率)、槽位真实值预览 + 有效行估算 + 0 行门控。③推荐启发式收紧并符合数据语义:跳过数组/对象等结构化字段与低基数分类字段;成对候选按"字段名语义(response/answer 加分、model/name/id 减分)+ 文本长度"打分,避免把模型名 model_a/model_b 误当候选回答,优先绑定 response_a/response_b 真实回答。④面向 ToB 简化措辞:格式名去品牌英文(对话微调/指令微调/偏好对比训练)、预览槽位中文化(优选回答/拒绝回答)、字段显示 schema 中文标题、推荐理由全中文且提示核对绑定。⑤UI 打磨:训练数据包导出按钮在格式未选或样本 0 行时置灰并 Tooltip 说明;绑定字段改 2×2 网格+统一标签宽度对齐胶囊;快照面板分页器下沉为底部页脚条。修复 OpenAPI 枚举路径参数需注册 Spring Converter(否则 400)。
+
+边界声明:本批只在 export 模块新增包级下载与字段目录读链路,零改数据库/migration、零改标注/审核/AI 预审业务语义、零触碰 labeling 目录与质量 mutation hooks,保留历史单文件下载接口。
+
+验证:后端 `mvn -pl services/api -Dtest=ExportFieldCatalogServiceTest,ExportPackageBuilderTest,ExportServiceTest,ExportArtifactBuilderBusinessFormatTest,ExportFactCollectorTest test` 共 53 条通过;前端 `pnpm --filter @labelhub/web test` 70 文件 / 344 条通过、`typecheck` 通过、`git diff --check` 通过。owner 人工验收 DPO 训练包 chosen/rejected 为真实回答内容。本批合并 main 后按 owner 要求执行 web + api 双脚本生产同步。

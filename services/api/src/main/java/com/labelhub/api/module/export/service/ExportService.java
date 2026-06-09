@@ -44,6 +44,7 @@ public class ExportService {
     private final ExportSnapshotMapper exportSnapshotMapper;
     private final ExportFactCollector factCollector;
     private final ExportArtifactBuilder artifactBuilder;
+    private final ExportPackageBuilder packageBuilder;
     private final ObjectStorageWriter storageWriter;
     private final ObjectMapper objectMapper;
     private final Clock clock;
@@ -53,12 +54,20 @@ public class ExportService {
     @Autowired
     public ExportService(TaskMapper taskMapper, ExportJobMapper exportJobMapper, ExportSnapshotMapper exportSnapshotMapper,
                          ExportFactCollector factCollector, ExportArtifactBuilder artifactBuilder,
+                         ExportPackageBuilder packageBuilder, ObjectStorageWriter storageWriter, ObjectMapper objectMapper,
+                         Clock clock, AuditLogService auditLogService, OutboxEventService outboxEventService) {
+        this.taskMapper = taskMapper; this.exportJobMapper = exportJobMapper; this.exportSnapshotMapper = exportSnapshotMapper;
+        this.factCollector = factCollector; this.artifactBuilder = artifactBuilder; this.packageBuilder = packageBuilder;
+        this.storageWriter = storageWriter; this.objectMapper = objectMapper; this.clock = clock;
+        this.auditLogService = auditLogService; this.outboxEventService = outboxEventService;
+    }
+
+    public ExportService(TaskMapper taskMapper, ExportJobMapper exportJobMapper, ExportSnapshotMapper exportSnapshotMapper,
+                         ExportFactCollector factCollector, ExportArtifactBuilder artifactBuilder,
                          ObjectStorageWriter storageWriter, ObjectMapper objectMapper, Clock clock,
                          AuditLogService auditLogService, OutboxEventService outboxEventService) {
-        this.taskMapper = taskMapper; this.exportJobMapper = exportJobMapper; this.exportSnapshotMapper = exportSnapshotMapper;
-        this.factCollector = factCollector; this.artifactBuilder = artifactBuilder; this.storageWriter = storageWriter;
-        this.objectMapper = objectMapper; this.clock = clock; this.auditLogService = auditLogService;
-        this.outboxEventService = outboxEventService;
+        this(taskMapper, exportJobMapper, exportSnapshotMapper, factCollector, artifactBuilder, new ExportPackageBuilder(objectMapper),
+            storageWriter, objectMapper, clock, auditLogService, outboxEventService);
     }
 
     public ExportService(TaskMapper taskMapper, ExportJobMapper exportJobMapper, ExportSnapshotMapper exportSnapshotMapper,
@@ -355,6 +364,27 @@ public class ExportService {
         byte[] content = storageWriter.getObject(objectKey);
         requireOneRow(exportJobMapper.incrementDownloadCount(snapshot.getExportJobId()), "increment export download count");
         return new ExportDownloadFile(resolvedFileName, storageWriter.contentTypeFor(resolvedFileName), content);
+    }
+
+    @Transactional
+    public ExportDownloadPackage downloadSnapshotPackage(
+        Long snapshotId,
+        ExportSnapshotPackageType packageType,
+        Long ownerUserId
+    ) {
+        ExportSnapshotEntity snapshot = getSnapshotForOwner(snapshotId, ownerUserId);
+        ExportDownloadPackage download = switch (packageType) {
+            case ANNOTATION_RESULTS -> packageBuilder.buildAnnotationResultsPackage(
+                snapshot,
+                fileName -> storageWriter.getObject(snapshot.getObjectKey() + fileName)
+            );
+            case TRAINING_DATA -> packageBuilder.buildTrainingDataPackage(
+                snapshot,
+                fileName -> storageWriter.getObject(snapshot.getObjectKey() + fileName)
+            );
+        };
+        requireOneRow(exportJobMapper.incrementDownloadCount(snapshot.getExportJobId()), "increment export download count");
+        return download;
     }
 
     public ExportSnapshotDiffView diffSnapshotsForOwner(

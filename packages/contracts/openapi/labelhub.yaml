@@ -851,6 +851,26 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/export-fields:
+    get:
+      tags: [Exports]
+      operationId: getTaskExportFields
+      description: Data-driven catalog of bindable export source fields with sample values, coverage, and a format recommendation.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Export field catalog for the task's approved data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportFieldCatalog'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /tasks/{taskId}/transitions:
     get:
       tags: [Tasks]
@@ -2194,6 +2214,33 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /exports/snapshots/{snapshotId}/packages/{packageType}:
+    get:
+      tags: [Exports]
+      operationId: downloadExportSnapshotPackage
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: packageType
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/ExportSnapshotPackageType'
+      responses:
+        '200':
+          description: Download a packaged export snapshot bundle.
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+        '409':
+          $ref: '#/components/responses/ErrorStateConflict'
   /exports/snapshots/{snapshotId}/diff:
     get:
       tags: [Exports]
@@ -4712,6 +4759,85 @@ components:
       description: Optional LLM training-ready artifact format written alongside the canonical bundle.
       enum: [flat_table, openai_chat_sft_jsonl, trl_sft_jsonl, trl_dpo_jsonl]
       default: flat_table
+    ExportSnapshotPackageType:
+      type: string
+      description: Package-level export bundle to download from an export snapshot.
+      enum: [annotation_results, training_data]
+    ExportFieldCatalog:
+      type: object
+      additionalProperties: false
+      description: Data-driven catalog of bindable export source fields, sample rows, and a format recommendation.
+      required: [submissionCount, fields, sampleRows]
+      properties:
+        submissionCount:
+          type: integer
+          description: Number of approved submissions the catalog is derived from.
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExportFieldDescriptor'
+        sampleRows:
+          type: array
+          description: Up to 5 sample business rows (source key to stringified value) for live binding preview.
+          items:
+            type: object
+            additionalProperties:
+              type: string
+        recommendedFormat:
+          $ref: '#/components/schemas/TrainingExportFormat'
+        recommendationReason:
+          type: string
+          nullable: true
+        recommendedBindings:
+          $ref: '#/components/schemas/ExportRecommendedBindings'
+    ExportFieldDescriptor:
+      type: object
+      additionalProperties: false
+      description: A single bindable export source field with coverage and sample values.
+      required: [source, group, nonEmptyRatio, sampleValues]
+      properties:
+        source:
+          type: string
+          description: Source key, for example task_id, item.prompt, or answer.preferred.
+        label:
+          type: string
+          nullable: true
+        group:
+          type: string
+          enum: [system, item, answer]
+        nonEmptyRatio:
+          type: number
+          format: double
+          description: Fraction of rows where this field has a non-empty value (0 to 1).
+        sampleValues:
+          type: array
+          items:
+            type: string
+        distinctValues:
+          type: array
+          nullable: true
+          description: Present only for low-cardinality fields; the full set of distinct non-empty values.
+          items:
+            type: string
+    ExportRecommendedBindings:
+      type: object
+      additionalProperties: false
+      description: Suggested training-profile bindings derived from the task's data shape.
+      properties:
+        promptSource:
+          type: string
+          nullable: true
+        completionSource:
+          type: string
+          nullable: true
+        preferenceSource:
+          type: string
+          nullable: true
+        choiceSources:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
     TrainingExportProfile:
       type: object
       additionalProperties: false

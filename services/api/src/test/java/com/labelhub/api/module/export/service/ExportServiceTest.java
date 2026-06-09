@@ -468,6 +468,43 @@ class ExportServiceTest {
     }
 
     @Test
+    void downloadSnapshotPackage_increments_download_count() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        snapshot.setFileManifest(Map.of("files", List.of(
+            Map.of("name", "training-results.csv", "sha256", "csv", "lines", 13, "sizeBytes", 10),
+            Map.of("name", "schema-versions.jsonl", "sha256", "sv", "lines", 1, "sizeBytes", 10)
+        )));
+        when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);
+        when(exportJobMapper.incrementDownloadCount(snapshot.getExportJobId())).thenReturn(1);
+        when(s3Client.getObjectAsBytes(any(GetObjectRequest.class)))
+            .thenReturn(ResponseBytes.fromByteArray(GetObjectResponse.builder().build(), "{}".getBytes()));
+
+        ExportDownloadPackage download = exportService.downloadSnapshotPackage(
+            100L, ExportSnapshotPackageType.ANNOTATION_RESULTS, OWNER_ID);
+
+        assertThat(download.contentType()).isEqualTo("application/zip");
+        assertThat(download.fileName()).isEqualTo("labelhub-task-100-snapshot-100-annotation-results.zip");
+        verify(exportJobMapper).incrementDownloadCount(snapshot.getExportJobId());
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+        verify(factCollector, never()).collectForTask(any(), any());
+    }
+
+    @Test
+    void downloadSnapshotPackage_requires_snapshot_owner() {
+        ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
+        when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task(OTHER_OWNER_ID));
+
+        assertThatThrownBy(() -> exportService.downloadSnapshotPackage(
+            100L, ExportSnapshotPackageType.ANNOTATION_RESULTS, OWNER_ID))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessageContaining("Export snapshot not found");
+
+        verify(s3Client, never()).getObjectAsBytes(any(GetObjectRequest.class));
+        verify(exportJobMapper, never()).incrementDownloadCount(any());
+    }
+
+    @Test
     void downloadSnapshotFile_rejects_names_not_in_manifest() {
         ExportSnapshotEntity snapshot = snapshot(100L, TASK_ID, "aaa");
         when(exportSnapshotMapper.selectById(100L)).thenReturn(snapshot);

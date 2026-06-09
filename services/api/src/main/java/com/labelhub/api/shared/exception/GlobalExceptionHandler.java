@@ -16,6 +16,7 @@ import com.labelhub.api.module.dataset.exception.InvalidDatasetFileException;
 import com.labelhub.api.module.dataset.exception.InvalidDatasetForTaskException;
 import com.labelhub.api.module.dataset.exception.TaskPublishedLockException;
 import com.labelhub.api.module.export.exception.ExportFailureException;
+import com.labelhub.api.module.export.exception.ExportPackageUnavailableException;
 import com.labelhub.api.module.export.exception.ExportSnapshotNotFoundException;
 import com.labelhub.api.module.quality.exception.LedgerEntryPayloadInvalidException;
 import com.labelhub.api.module.quality.exception.LedgerEntryTypeNotSupportedException;
@@ -264,6 +265,12 @@ public class GlobalExceptionHandler {
     ResponseEntity<ApiError> exportSnapshotNotFound(ExportSnapshotNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(error("EXPORT_SNAPSHOT_NOT_FOUND", exception.getMessage()));
+    }
+
+    @ExceptionHandler(ExportPackageUnavailableException.class)
+    ResponseEntity<ApiError> exportPackageUnavailable(ExportPackageUnavailableException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(error("EXPORT_PACKAGE_UNAVAILABLE", exception.getMessage()));
     }
 
     @ExceptionHandler(ExportFailureException.class)

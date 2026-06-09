@@ -9,3 +9,6 @@ export type TrainingExportProfile = components['schemas']['TrainingExportProfile
 export type ExportFileEntry = components['schemas']['ExportFileEntry'];
 export type ExportSnapshotDiff = components['schemas']['ExportSnapshotDiff'];
 export type PagedExportSnapshots = components['schemas']['PagedExportSnapshots'];
+export type ExportFieldCatalog = components['schemas']['ExportFieldCatalog'];
+export type ExportFieldDescriptor = components['schemas']['ExportFieldDescriptor'];
+export type ExportRecommendedBindings = components['schemas']['ExportRecommendedBindings'];

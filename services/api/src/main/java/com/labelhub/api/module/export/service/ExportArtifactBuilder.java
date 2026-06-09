@@ -318,6 +318,14 @@ public class ExportArtifactBuilder {
         return counts;
     }
 
+    /**
+     * Business-table rows (system facts + item.* + answer.* columns) for the approved bundle.
+     * Exposed so the export field catalog reflects exactly the columns an export would produce.
+     */
+    public List<Map<String, String>> businessRows(ExportFactBundle bundle) {
+        return trainingResultRows(bundle);
+    }
+
     private List<Map<String, String>> trainingResultRows(ExportFactBundle bundle) {
         Map<Long, DatasetItemEntity> itemsById = new HashMap<>();
         for (DatasetItemEntity item : bundle.datasetItems()) {
