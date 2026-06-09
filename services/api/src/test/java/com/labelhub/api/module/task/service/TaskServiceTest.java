@@ -64,13 +64,13 @@ class TaskServiceTest {
         TaskEntity created = taskService.create(TaskCreateCommand.builder()
             .title("Image quality check")
             .description("Review prompt")
-            .quotaTotal(10)
             .deadlineAt(LocalDateTime.parse("2026-05-24T00:00:00"))
             .build(), 1001L);
 
         assertThat(created.getId()).isEqualTo(42L);
         assertThat(created.getStatus()).isEqualTo(TaskStatus.DRAFT);
         assertThat(created.getOwnerId()).isEqualTo(1001L);
+        assertThat(created.getQuotaTotal()).isZero();
         assertThat(created.getQuotaClaimed()).isZero();
     }
 
@@ -153,16 +153,17 @@ class TaskServiceTest {
     }
 
     @Test
-    void transition_from_paused_to_published_rejects_when_quota_zero() {
+    void transition_from_paused_to_published_allows_zero_quota_snapshot() {
         TaskEntity task = publishableTask(1L, TaskStatus.PAUSED);
         task.setQuotaTotal(0);
         when(taskMapper.selectById(1L)).thenReturn(task);
+        when(taskTransitionMapper.insert(any())).thenReturn(1);
+        when(auditLogMapper.insert(any())).thenReturn(1);
+        when(taskMapper.updateById(any(TaskEntity.class))).thenReturn(1);
 
-        assertThatThrownBy(() -> taskService.transition(1L, TaskStatus.PUBLISHED, "resume", 1001L))
-            .isInstanceOf(TaskPublishGuardException.class)
-            .hasMessageContaining("quota_total")
-            .isInstanceOfSatisfying(TaskPublishGuardException.class, exception ->
-                assertThat(exception.getGuardName()).isEqualTo("quota_total"));
+        TaskEntity transitioned = taskService.transition(1L, TaskStatus.PUBLISHED, "resume", 1001L);
+
+        assertThat(transitioned.getStatus()).isEqualTo(TaskStatus.PUBLISHED);
     }
 
     @Test
@@ -239,16 +240,17 @@ class TaskServiceTest {
     }
 
     @Test
-    void publish_guard_rejects_when_quota_zero() {
+    void publish_guard_does_not_require_manual_quota() {
         TaskEntity task = publishableTask(1L, TaskStatus.DRAFT);
         task.setQuotaTotal(0);
         when(taskMapper.selectById(1L)).thenReturn(task);
+        when(taskTransitionMapper.insert(any())).thenReturn(1);
+        when(auditLogMapper.insert(any())).thenReturn(1);
+        when(taskMapper.updateById(any(TaskEntity.class))).thenReturn(1);
 
-        assertThatThrownBy(() -> taskService.transition(1L, TaskStatus.PUBLISHED, "ready", 1001L))
-            .isInstanceOf(TaskPublishGuardException.class)
-            .hasMessageContaining("quota_total")
-            .isInstanceOfSatisfying(TaskPublishGuardException.class, exception ->
-                assertThat(exception.getGuardName()).isEqualTo("quota_total"));
+        TaskEntity transitioned = taskService.transition(1L, TaskStatus.PUBLISHED, "ready", 1001L);
+
+        assertThat(transitioned.getStatus()).isEqualTo(TaskStatus.PUBLISHED);
     }
 
     @Test
@@ -300,6 +302,7 @@ class TaskServiceTest {
         TaskEntity updated = taskService.updateCurrentDataset(1L, 77L, 1001L);
 
         assertThat(updated.getCurrentDatasetId()).isEqualTo(77L);
+        assertThat(updated.getQuotaTotal()).isEqualTo(12);
         assertThat(updated.getUpdatedAt()).isEqualTo(LocalDateTime.parse("2026-05-23T12:00:00"));
         verify(taskMapper).updateById(any(TaskEntity.class));
     }
@@ -339,7 +342,6 @@ class TaskServiceTest {
             .tags(List.of("quality", "image"))
             .rewardRule(Map.of("type", "fixed", "amount", 12))
             .deadlineAt(LocalDateTime.parse("2026-05-24T00:00:00"))
-            .quotaTotal(25)
             .build());
 
         assertThat(updated.getTitle()).isEqualTo("Updated title");
@@ -348,7 +350,7 @@ class TaskServiceTest {
         assertThat(updated.getTags()).containsExactly("quality", "image");
         assertThat(updated.getRewardRule()).containsEntry("type", "fixed").containsEntry("amount", 12);
         assertThat(updated.getDeadlineAt()).isEqualTo(LocalDateTime.parse("2026-05-24T00:00:00"));
-        assertThat(updated.getQuotaTotal()).isEqualTo(25);
+        assertThat(updated.getQuotaTotal()).isEqualTo(10);
         assertThat(updated.getUpdatedAt()).isEqualTo(LocalDateTime.parse("2026-05-23T12:00:00"));
         verify(taskMapper).updateById(task);
     }
@@ -359,7 +361,6 @@ class TaskServiceTest {
 
         assertThatThrownBy(() -> taskService.updateTask(1L, 1001L, TaskUpdateCommand.builder()
             .title("Updated title")
-            .quotaTotal(25)
             .build()))
             .isInstanceOf(TaskEditingLockedException.class)
             .hasMessageContaining("published");
@@ -407,6 +408,7 @@ class TaskServiceTest {
         DatasetEntity dataset = new DatasetEntity();
         dataset.setId(id);
         dataset.setTaskId(taskId);
+        dataset.setItemCount(12);
         return dataset;
     }
 }

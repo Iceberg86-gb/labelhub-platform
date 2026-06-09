@@ -50,8 +50,6 @@ export function LabelerTaskDetailDrawer({
     return null;
   }
 
-  const remainingQuota = task ? Math.max(task.quotaTotal - task.quotaClaimed, 0) : 0;
-
   return (
     <div className="labeler-task-detail-drawer" role="presentation">
       <button
@@ -96,15 +94,15 @@ export function LabelerTaskDetailDrawer({
 
           <section className="labeler-task-detail-drawer__stats" aria-label="任务领取信息">
             <div>
-              <span>剩余配额</span>
-              <strong>{remainingQuota}</strong>
+              <span>可领取题目</span>
+              <strong>{task.availableItemCount}</strong>
               <small>
-                已领 {task.quotaClaimed} / 总量 {task.quotaTotal}
+                已领取 {task.quotaClaimed} / 题量 {task.quotaTotal}
               </small>
             </div>
             <div>
-              <span>可领取数据量</span>
-              <strong>{task.availableItemCount} 个</strong>
+              <span>本次领取上限</span>
+              <strong>{claimLimit} 个</strong>
               <small>领取后进入作答页</small>
             </div>
             <div>

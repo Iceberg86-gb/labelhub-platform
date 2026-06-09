@@ -240,13 +240,7 @@ public class SessionService {
             throw new TaskNotAvailableException(taskId);
         }
 
-        int quotaRemaining = Math.max(0, nullToZero(task.getQuotaTotal()) - nullToZero(task.getQuotaClaimed()));
-        int claimLimit = Math.min(cappedRequest, quotaRemaining);
-        if (claimLimit < 1) {
-            throw new TaskNotAvailableException(taskId);
-        }
-
-        List<DatasetItemEntity> items = datasetItemMapper.selectAvailableForUpdate(task.getCurrentDatasetId(), taskId, claimLimit);
+        List<DatasetItemEntity> items = datasetItemMapper.selectAvailableForUpdate(task.getCurrentDatasetId(), taskId, cappedRequest);
         if (items.isEmpty()) {
             throw new NoAvailableDatasetItemException(taskId, task.getCurrentDatasetId());
         }
@@ -552,12 +546,7 @@ public class SessionService {
             && task.getCurrentDatasetId() != null
             && task.getCurrentSchemaVersionId() != null
             && task.getDeadlineAt() != null
-            && task.getDeadlineAt().isAfter(LocalDateTime.now(clock))
-            && nullToZero(task.getQuotaClaimed()) < nullToZero(task.getQuotaTotal());
-    }
-
-    private int nullToZero(Integer value) {
-        return value == null ? 0 : value;
+            && task.getDeadlineAt().isAfter(LocalDateTime.now(clock));
     }
 
     private boolean hasRole(Set<String> roles, String role) {

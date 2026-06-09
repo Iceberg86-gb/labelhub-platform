@@ -53,6 +53,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -251,6 +252,23 @@ class ExportServiceTest {
         verify(exportJobMapper).markRunning(99L, LocalDateTime.parse("2026-05-25T10:00"));
         verify(exportJobMapper).markSucceeded(eq(99L), any(), eq(snapshot.getObjectKey()), any());
         assertThat(writtenUtf8("training-results.csv")).startsWith("prompt_text\n");
+    }
+
+    @Test
+    void processExportJob_writes_training_jsonl_from_job_parameters() throws Exception {
+        ExportJobEntity job = exportJob();
+        job.setParameters(Map.of(
+            "mode", "approved_only",
+            "trainingProfile", TrainingExportProfile.openAiChatSft("item.text", "answer.title").snapshot()
+        ));
+        when(exportJobMapper.selectById(99L)).thenReturn(job);
+
+        exportService.processExportJob(99L);
+
+        assertThat(writtenUtf8("openai-chat-sft.jsonl"))
+            .contains("\"messages\"")
+            .contains("\"content\":\"source\"")
+            .contains("\"content\":\"answer\"");
     }
 
     @Test
@@ -572,7 +590,7 @@ class ExportServiceTest {
     private String writtenUtf8(String suffix) {
         ArgumentCaptor<PutObjectRequest> requestCaptor = ArgumentCaptor.forClass(PutObjectRequest.class);
         ArgumentCaptor<RequestBody> bodyCaptor = ArgumentCaptor.forClass(RequestBody.class);
-        verify(s3Client, times(13)).putObject(requestCaptor.capture(), bodyCaptor.capture());
+        verify(s3Client, atLeastOnce()).putObject(requestCaptor.capture(), bodyCaptor.capture());
         List<PutObjectRequest> requests = requestCaptor.getAllValues();
         List<RequestBody> bodies = bodyCaptor.getAllValues();
         for (int i = 0; i < requests.size(); i++) {

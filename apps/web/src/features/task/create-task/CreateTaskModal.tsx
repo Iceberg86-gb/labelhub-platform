@@ -10,7 +10,6 @@ type CreateTaskFormValues = {
   description?: string;
   instructionRichText?: string;
   rewardRuleJson?: string;
-  quotaTotal?: number;
   deadlineAt?: Date | string;
   tags?: string[];
 };
@@ -89,7 +88,6 @@ export function CreateTaskModal({ visible, onClose }: CreateTaskModalProps) {
         description: values.description,
         instructionRichText: values.instructionRichText,
         rewardRule,
-        quotaTotal: Number(values.quotaTotal),
         deadlineAt,
         tags: values.tags?.filter(Boolean),
       });
@@ -146,17 +144,15 @@ export function CreateTaskModal({ visible, onClose }: CreateTaskModalProps) {
         }}
         onSubmit={handleSubmit}
       >
-        <Form.Input field="title" label="任务标题" rules={[{ required: true, message: '请输入任务标题' }]} />
-        <Form.TextArea field="description" label="任务描述" autosize placeholder="给标注员的简短任务背景。" />
-        <Form.TextArea field="instructionRichText" label="富文本说明" autosize placeholder="支持 Markdown/富文本序列化内容,会在作答页展示。" />
-        <Form.TextArea field="rewardRuleJson" label="奖励规则 JSON" autosize placeholder='例如 {"type":"fixed","amount":10}' />
-        <Form.InputNumber
-          field="quotaTotal"
-          label="配额"
-          min={1}
-          rules={[{ required: true, message: '请输入配额' }]}
-          validator={(value) => (Number(value) > 0 ? '' : '配额必须大于 0')}
+        <Form.Input
+          className="task-form-title-input"
+          field="title"
+          label="任务标题"
+          rules={[{ required: true, message: '请输入任务标题' }]}
         />
+        <Form.TextArea field="description" label="任务描述" autosize={{ minRows: 2, maxRows: 5 }} placeholder="给标注员的简短任务背景。" />
+        <Form.TextArea field="instructionRichText" label="富文本说明" autosize={{ minRows: 2, maxRows: 5 }} placeholder="支持 Markdown/富文本序列化内容,会在作答页展示。" />
+        <Form.TextArea field="rewardRuleJson" label="奖励规则 JSON" autosize={{ minRows: 2, maxRows: 5 }} placeholder='例如 {"type":"fixed","amount":10}' />
         <Form.DatePicker
           field="deadlineAt"
           label="截止时间"

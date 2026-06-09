@@ -739,3 +739,9 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 ## 258. Senior Reviewer 正交化:仲裁 case 工作台与单标签修正(2026-06-08)
 
 交付:本轮 senior reviewer 职责正交化采用独立 `senior_review_cases` 承载模型,将高级审核从二次全量 approve/reject 调整为 AI 升级、reviewer 疑难标记与抽检/仲裁 case 工作台;reviewer 保持单条标注对错全量初审。新增 senior case 队列、case resolution、reviewer 标记疑难入口、OpenAPI 契约与后端派生逻辑,并补任务删除级联与 Verdict 派生测试。前端锚点为 `/reviewer/submissions?reviewLevel=senior_reviewer`,页头只显示 `SENIOR REVIEWER`,不再同时显示 `REVIEWER`;LLM 接入页无 Provider 时不再展示伪默认 `openai / gpt-5.5`。验证:前端 reviewer 页面测试、Owner LLM 设置测试、web typecheck 与后端质量/任务删除聚焦测试通过。本批按 owner 要求提交后同步生产,并清理本地业务数据仅保留账号信息。
+
+## 259. 任务配额语义与可信导出训练格式打磨(2026-06-09)
+
+交付:本轮分支 `codex/task-quota-dataset-items-20260609` 完成任务配额语义收敛、可信导出多训练格式与 UI 打磨。任务创建/编辑不再要求 owner 手填配额,任务绑定数据集后由数据集题目数派生 quota_total,labeler 领取按实际可用 dataset item 控制,避免配额字段与真实题量脱节;创建/编辑任务弹窗压缩多行输入框并放大任务标题输入。可信导出新增训练格式选择与后端生成链路,支持表格快照、OpenAI 对话微调、TRL 指令微调、TRL 偏好训练,保留高级字段映射但默认折叠,导出配置区与快照区做多轮对齐/文案收敛。登录页质量链路模块改为更高级的 timeline 视觉,Owner 任务详情/Home/Labeler 相关配额展示同步去技术化。
+
+验证:前端 `pnpm --filter @labelhub/web test` 69 文件 / 338 条通过,`pnpm --filter @labelhub/web typecheck` 通过;后端用默认 Maven 跑 `ExportArtifactBuilderBusinessFormatTest,ExportServiceTest,SessionServiceTest,TaskServiceTest` 共 113 条通过。完整 `make verify` 未跑通,原因是本机 Docker/Colima 当前不可达,在 dev-up 阶段退出。生产同步按 owner 要求执行 web + api 双脚本闭环。

@@ -117,7 +117,7 @@ public class TaskService {
         task.setTags(command.tags());
         task.setRewardRule(command.rewardRule());
         task.setDeadlineAt(command.deadlineAt());
-        task.setQuotaTotal(command.quotaTotal());
+        task.setQuotaTotal(0);
         task.setQuotaClaimed(0);
         task.setStatus(TaskStatus.DRAFT);
         task.setOwnerId(ownerId);
@@ -151,7 +151,6 @@ public class TaskService {
         task.setTags(command.tags());
         task.setRewardRule(command.rewardRule());
         task.setDeadlineAt(command.deadlineAt());
-        task.setQuotaTotal(command.quotaTotal());
         task.setUpdatedAt(LocalDateTime.now(clock));
         requireOneRow(taskMapper.updateById(task), "update task basic fields");
         return task;
@@ -288,6 +287,7 @@ public class TaskService {
         }
 
         task.setCurrentDatasetId(datasetId);
+        task.setQuotaTotal(dataset.getItemCount() == null ? 0 : dataset.getItemCount());
         task.setUpdatedAt(LocalDateTime.now(clock));
         requireOneRow(taskMapper.updateById(task), "update task current dataset");
         return task;
@@ -303,9 +303,6 @@ public class TaskService {
 
     private void canPublish(TaskEntity task) {
         // State legality is guarded by TaskStateTransitions; publish guards only check business prerequisites.
-        if (task.getQuotaTotal() == null || task.getQuotaTotal() <= 0) {
-            throw new TaskPublishGuardException("quota_total");
-        }
         if (task.getDeadlineAt() == null || !task.getDeadlineAt().isAfter(LocalDateTime.now(clock))) {
             throw new TaskPublishGuardException("deadline_at");
         }

@@ -93,7 +93,7 @@ export function OwnerTasksListPage() {
         render: (_: unknown, record: Task) => <TaskStatusBadge status={record.status} />,
       },
       {
-        title: '配额',
+        title: '领取/题量',
         dataIndex: 'quotaTotal',
         width: 130,
         render: (_: unknown, record: Task) => `${record.quotaClaimed}/${record.quotaTotal}`,
@@ -153,8 +153,8 @@ export function OwnerTasksListPage() {
     },
     { draft: 0, ended: 0, paused: 0, published: 0 },
   );
-  const quotaClaimed = items.reduce((sum, task) => sum + task.quotaClaimed, 0);
-  const quotaTotal = items.reduce((sum, task) => sum + task.quotaTotal, 0);
+  const claimedItemCount = items.reduce((sum, task) => sum + task.quotaClaimed, 0);
+  const totalItemCount = items.reduce((sum, task) => sum + task.quotaTotal, 0);
 
   return (
     <section className="tasks-page owner-task-page" aria-label="Owner task list">
@@ -168,7 +168,7 @@ export function OwnerTasksListPage() {
             任务管理
           </Typography.Title>
           <Typography.Text type="tertiary">
-            管理标注任务的生命周期、题量配额与后续 Designer / 数据集配置入口。
+            管理标注任务的生命周期、题量发布与后续 Designer / 数据集配置入口。
           </Typography.Text>
         </div>
         <Button icon={<IconPlus />} theme="solid" type="primary" onClick={() => setCreateVisible(true)}>
@@ -194,8 +194,8 @@ export function OwnerTasksListPage() {
         </div>
         <div className="owner-task-stat">
           <span className="owner-task-stat__icon"><IconDataset /></span>
-          <span>本页配额</span>
-          <strong>{quotaClaimed}/{quotaTotal}</strong>
+          <span>本页领取</span>
+          <strong>{claimedItemCount}/{totalItemCount}</strong>
         </div>
       </section>
 

@@ -18,7 +18,7 @@ type TransitionTaskModalProps = {
 function errorMessage(error: TransitionTaskFailure) {
   const guard = error.fieldErrors?.[0];
   if (guard?.field === 'quota_total' || guard?.field === 'quotaTotal') {
-    return '无法发布：配额必须大于 0。';
+    return '无法发布：请先绑定有题目的数据集。';
   }
   if (guard?.field === 'deadline_at' || guard?.field === 'deadlineAt') {
     return '无法发布：截止时间必须晚于当前时间。';

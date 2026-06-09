@@ -1514,7 +1514,8 @@ export interface components {
             };
             /** Format: date-time */
             deadlineAt: string;
-            quotaTotal: number;
+            /** @description Deprecated input. Server derives task item count from the bound dataset. */
+            quotaTotal?: number;
         };
         UpdateTaskRequest: {
             title: string;
@@ -1526,12 +1527,15 @@ export interface components {
             };
             /** Format: date-time */
             deadlineAt: string;
-            quotaTotal: number;
+            /** @description Deprecated input. Server keeps task item count derived from the bound dataset. */
+            quotaTotal?: number;
         };
         Task: components["schemas"]["CreateTaskRequest"] & {
             /** Format: int64 */
             id: number;
             status: components["schemas"]["TaskStatus"];
+            /** @description Current dataset item count snapshot. */
+            quotaTotal: number;
             quotaClaimed: number;
             /** Format: int64 */
             currentSchemaVersionId?: number | null;
@@ -1921,7 +1925,7 @@ export interface components {
             submittedAt?: string;
         };
         ClaimTaskItemsRequest: {
-            /** @description Desired number of dataset items to claim. The server caps this to remaining quota and available items. */
+            /** @description Desired number of dataset items to claim. The server caps this to available dataset items. */
             size: number;
         };
         ClaimTaskItemsResult: {
@@ -2458,6 +2462,27 @@ export interface components {
              */
             mode: "approved_only" | "full";
             fieldMapping?: components["schemas"]["ExportFieldMapping"];
+            trainingFormat?: components["schemas"]["TrainingExportFormat"];
+            trainingProfile?: components["schemas"]["TrainingExportProfile"];
+        };
+        /**
+         * @description Optional LLM training-ready artifact format written alongside the canonical bundle.
+         * @default flat_table
+         * @enum {string}
+         */
+        TrainingExportFormat: "flat_table" | "openai_chat_sft_jsonl" | "trl_sft_jsonl" | "trl_dpo_jsonl";
+        /** @description Source column mapping used to derive a training-ready JSONL artifact from training-results rows. */
+        TrainingExportProfile: {
+            /** @description Source column used as the model prompt. */
+            promptSource?: string | null;
+            /** @description Source column used as the assistant completion for SFT formats. */
+            completionSource?: string | null;
+            /** @description Source column whose value selects the preferred choice for DPO exports. */
+            preferenceSource?: string | null;
+            /** @description Preference choice value to source column map, for example A -> item.model_a. */
+            choiceSources?: {
+                [key: string]: string;
+            };
         };
         /** @description Export business-table column selection and renaming. The resolved mapping is snapshotted into the export manifest. */
         ExportFieldMapping: {

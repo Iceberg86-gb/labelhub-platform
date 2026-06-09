@@ -35,7 +35,7 @@ function marketplaceDeadline(value: string | null): 'day' | 'week' | undefined {
 }
 
 function claimLimitForTask(task: MarketplaceTask) {
-  return Math.max(0, Math.min(task.availableItemCount, task.quotaTotal - task.quotaClaimed));
+  return Math.max(0, task.availableItemCount);
 }
 
 function normalizeClaimSize(value: unknown, max: number) {
@@ -147,7 +147,7 @@ export function LabelerMarketplacePage() {
         Toast.warning('暂无可领取的数据项');
         return;
       }
-      Toast.success(result.claimedCount < result.requestedSize ? `已领取 ${result.claimedCount} 条,已按剩余数量截断` : `已领取 ${result.claimedCount} 条,开始作答`);
+      Toast.success(result.claimedCount < result.requestedSize ? `已领取 ${result.claimedCount} 条,已按可用题目截断` : `已领取 ${result.claimedCount} 条,开始作答`);
       setSelectedTask(null);
       navigate(`/labeler/sessions/${firstSession.id}`);
     } catch (error) {
@@ -273,7 +273,7 @@ export function LabelerMarketplacePage() {
                   ) : null}
                 </div>
                 <div className="marketplace-task-card__meta">
-                  <span>配额 {record.quotaClaimed}/{record.quotaTotal}</span>
+                  <span>已领取 {record.quotaClaimed} / 题量 {record.quotaTotal}</span>
                   <span>截止 {formatDateTime(record.deadlineAt)}</span>
                 </div>
                 <div className="marketplace-task-card__actions">

@@ -9,7 +9,6 @@ type EditTaskFormValues = {
   description?: string;
   instructionRichText?: string;
   rewardRuleJson?: string;
-  quotaTotal?: number;
   deadlineAt?: Date | string;
   tags?: string[];
 };
@@ -55,7 +54,6 @@ export function EditTaskModal({ task, visible, onClose }: EditTaskModalProps) {
       description: task.description,
       instructionRichText: task.instructionRichText,
       rewardRuleJson: formatRewardRule(task.rewardRule),
-      quotaTotal: task.quotaTotal,
       deadlineAt: task.deadlineAt,
       tags: task.tags,
     });
@@ -88,7 +86,6 @@ export function EditTaskModal({ task, visible, onClose }: EditTaskModalProps) {
           description: values.description,
           instructionRichText: values.instructionRichText,
           rewardRule,
-          quotaTotal: Number(values.quotaTotal),
           deadlineAt,
           tags: values.tags?.filter(Boolean),
         },
@@ -124,7 +121,6 @@ export function EditTaskModal({ task, visible, onClose }: EditTaskModalProps) {
           description: task.description,
           instructionRichText: task.instructionRichText,
           rewardRuleJson: formatRewardRule(task.rewardRule),
-          quotaTotal: task.quotaTotal,
           deadlineAt: task.deadlineAt,
           tags: task.tags,
         }}
@@ -133,11 +129,15 @@ export function EditTaskModal({ task, visible, onClose }: EditTaskModalProps) {
         }}
         onSubmit={handleSubmit}
       >
-        <Form.Input field="title" label="任务标题" rules={[{ required: true, message: '请输入任务标题' }]} />
-        <Form.TextArea field="description" label="任务描述" autosize />
-        <Form.TextArea field="instructionRichText" label="富文本说明" autosize />
-        <Form.TextArea field="rewardRuleJson" label="奖励规则 JSON" autosize placeholder='例如 {"type":"fixed","amount":10}' />
-        <Form.InputNumber field="quotaTotal" label="配额" min={1} rules={[{ required: true, message: '请输入配额' }]} />
+        <Form.Input
+          className="task-form-title-input"
+          field="title"
+          label="任务标题"
+          rules={[{ required: true, message: '请输入任务标题' }]}
+        />
+        <Form.TextArea field="description" label="任务描述" autosize={{ minRows: 2, maxRows: 5 }} />
+        <Form.TextArea field="instructionRichText" label="富文本说明" autosize={{ minRows: 2, maxRows: 5 }} />
+        <Form.TextArea field="rewardRuleJson" label="奖励规则 JSON" autosize={{ minRows: 2, maxRows: 5 }} placeholder='例如 {"type":"fixed","amount":10}' />
         <Form.DatePicker field="deadlineAt" label="截止时间" type="dateTime" rules={[{ required: true, message: '请选择截止时间' }]} />
         <Form.TagInput field="tags" label="标签" placeholder="输入标签后回车" />
 

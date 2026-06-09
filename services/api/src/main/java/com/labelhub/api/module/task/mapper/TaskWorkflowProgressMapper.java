@@ -12,9 +12,9 @@ public interface TaskWorkflowProgressMapper {
     @Select("""
         SELECT
           t.id AS task_id,
-          t.quota_total,
-          t.quota_claimed,
-          GREATEST(COALESCE(t.quota_total, 0) - COALESCE(t.quota_claimed, 0), 0) AS unclaimed_count,
+          COALESCE(item_stats.total_count, t.quota_total, 0) AS quota_total,
+          COALESCE(item_stats.claimed_count, t.quota_claimed, 0) AS quota_claimed,
+          COALESCE(item_stats.available_count, 0) AS unclaimed_count,
           COALESCE(labeling.labeling_count, 0) AS labeling_count,
           COALESCE(work.submitted_count, 0) AS submitted_count,
           COALESCE(work.ai_prereview_completed_count, 0) AS ai_prereview_completed_count,
@@ -23,6 +23,16 @@ public interface TaskWorkflowProgressMapper {
           COALESCE(work.approved_count, 0) AS approved_count,
           COALESCE(work.rejected_count, 0) AS rejected_count
         FROM tasks t
+        LEFT JOIN (
+          SELECT
+            task_id,
+            dataset_id,
+            COUNT(*) AS total_count,
+            SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS available_count,
+            SUM(CASE WHEN status <> 'available' THEN 1 ELSE 0 END) AS claimed_count
+          FROM dataset_items
+          GROUP BY task_id, dataset_id
+        ) item_stats ON item_stats.task_id = t.id AND item_stats.dataset_id = t.current_dataset_id
         LEFT JOIN (
           SELECT task_id, COUNT(*) AS labeling_count
           FROM sessions
