@@ -1,5 +1,6 @@
-import { Button, Popconfirm, Tag, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Button, Popconfirm, Tooltip, Typography } from '@douyinfe/semi-ui';
 import { IconCopy, IconDelete, IconHandle } from '@douyinfe/semi-icons';
+import { StatusBadge } from '../../shared/ui';
 import {
   useSortable,
 } from '@dnd-kit/sortable';
@@ -116,9 +117,9 @@ function PlainFieldListItem({
         <Typography.Text strong ellipsis={{ showTooltip: true }}>
           {field.label || '未命名字段'}
         </Typography.Text>
-        <Tag className={`semantic-tag semantic-tag--${hasError ? 'danger' : 'accent'}`} size="small">
+        <StatusBadge tone={hasError ? 'danger' : 'accent'} size="small">
           {SCHEMA_FIELD_TYPE_LABELS[field.type]}
-        </Tag>
+        </StatusBadge>
       </div>
       <FieldActions
         visible={showDeleteAction}
@@ -184,9 +185,9 @@ export function SortableFieldItem({ field, selected, hasError, onSelect, onDelet
         <Typography.Text strong ellipsis={{ showTooltip: true }}>
           {field.label || '未命名字段'}
         </Typography.Text>
-        <Tag className={`semantic-tag semantic-tag--${hasError ? 'danger' : 'accent'}`} size="small">
+        <StatusBadge tone={hasError ? 'danger' : 'accent'} size="small">
           {SCHEMA_FIELD_TYPE_LABELS[field.type]}
-        </Tag>
+        </StatusBadge>
       </div>
       <FieldActions
         visible={showDeleteAction}

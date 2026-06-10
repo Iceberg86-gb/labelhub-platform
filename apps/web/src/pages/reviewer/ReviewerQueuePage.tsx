@@ -1,5 +1,6 @@
-import { Button, Empty, Modal, Pagination, Select, Space, Spin, Table, Tag, TextArea, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Button, Modal, Pagination, Select, Space, Spin, Table, Tag, TextArea, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import { IconInfoCircle, IconPlay, IconRefresh } from '@douyinfe/semi-icons';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -142,9 +143,9 @@ export function ReviewerQueuePage() {
         align: 'center' as const,
         render: (_: unknown, record: SeniorReviewCase) => (
           <Tooltip content={record.sourceSummary ?? SENIOR_CASE_SOURCE_LABELS[record.sourceSignal]}>
-            <Tag className={`semantic-tag semantic-tag--${record.priority === 'high' ? 'danger' : 'warning'}`}>
+            <StatusBadge tone={record.priority === 'high' ? 'danger' : 'warning'}>
               {SENIOR_CASE_SOURCE_LABELS[record.sourceSignal]}
-            </Tag>
+            </StatusBadge>
           </Tooltip>
         ),
       },
@@ -307,14 +308,10 @@ export function ReviewerQueuePage() {
           </div>
         ) : null}
         {activeError ? (
-          <div className="task-state-panel">
-            <Empty title={isSeniorQueue ? '高级仲裁队列加载失败' : '审核队列加载失败'} description={activeErrorMessage instanceof Error ? activeErrorMessage.message : '请稍后重试。'} />
-          </div>
+          <EmptyState title={isSeniorQueue ? '高级仲裁队列加载失败' : '审核队列加载失败'} description={activeErrorMessage instanceof Error ? activeErrorMessage.message : '请稍后重试。'} />
         ) : null}
         {!activeLoading && !activeError && activeEmpty ? (
-          <div className="task-state-panel">
-            <Empty title={isSeniorQueue ? '暂无待处理 case' : '暂无可审核 submission'} description={isSeniorQueue ? '当前没有需要高级仲裁或抽检的记录。' : '当前筛选条件下没有 submitted submission。'} />
-          </div>
+          <EmptyState title={isSeniorQueue ? '暂无待处理 case' : '暂无可审核 submission'} description={isSeniorQueue ? '当前没有需要高级仲裁或抽检的记录。' : '当前筛选条件下没有 submitted submission。'} />
         ) : null}
         {!isSeniorQueue && items.length > 0 ? (
           <>
@@ -382,7 +379,7 @@ export function ReviewerQueuePage() {
 }
 
 function VerdictTag({ status }: { status: VerdictStatus }) {
-  return <Tag className={`semantic-tag semantic-tag--${verdictTone(status)}`}>{VERDICT_STATUS_LABELS[status]}</Tag>;
+  return <StatusBadge tone={verdictTone(status)}>{VERDICT_STATUS_LABELS[status]}</StatusBadge>;
 }
 
 function verdictTone(status: VerdictStatus) {

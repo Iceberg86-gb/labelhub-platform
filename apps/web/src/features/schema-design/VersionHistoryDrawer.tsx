@@ -1,6 +1,6 @@
-import { Button, Card, Empty, SideSheet, Spin, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, SideSheet, Spin, Typography } from '@douyinfe/semi-ui';
 import { IconCalendarClock, IconHash, IconListView } from '@douyinfe/semi-icons';
-import { StatusBadge } from '../../shared/ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { useMemo, useState } from 'react';
 import { previewJson } from '../../entities/schema/schemaPreview';
 import { summarizeSchema } from '../../entities/schema/schemaSummary';
@@ -48,12 +48,13 @@ export function VersionHistoryDrawer({ visible, schemaId, currentVersionId, onCl
           <Spin />
         </div>
       ) : versionsQuery.isError ? (
-        <Empty
+        <EmptyState
+          variant="inline"
           title="版本历史加载失败"
           description={versionsQuery.error instanceof Error ? versionsQuery.error.message : '请稍后重试。'}
         />
       ) : versions.length === 0 ? (
-        <Empty title="暂无版本" description="发布第一个版本后会出现在这里。" />
+        <EmptyState variant="inline" title="暂无版本" description="发布第一个版本后会出现在这里。" />
       ) : (
         <div className="version-history-list">
           {versions.map((version) => (

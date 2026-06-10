@@ -1,5 +1,6 @@
-import { Button, Card, Empty, Spin, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Spin, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconBolt, IconRefresh } from '@douyinfe/semi-icons';
+import { EmptyState } from '../../shared/ui';
 import { EnqueueTaskAiPrereviewsFailure, useEnqueueTaskAiPrereviewsMutation } from './useEnqueueTaskAiPrereviewsMutation';
 import { useTaskAiPrereviewSummaryQuery, type TaskAiPrereviewSummary } from './useTaskAiPrereviewSummaryQuery';
 
@@ -84,7 +85,7 @@ export function TaskAiPrereviewPanel({ taskId }: TaskAiPrereviewPanelProps) {
       ) : null}
 
       {summaryQuery.isError ? (
-        <Empty title="AI 预审进度加载失败" description="刷新后重试。" />
+        <EmptyState variant="inline" title="AI 预审进度加载失败" description="刷新后重试。" />
       ) : null}
 
       {!summaryQuery.isLoading && !summaryQuery.isError && summary ? (

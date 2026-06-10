@@ -1,5 +1,6 @@
-import { Button, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Typography } from '@douyinfe/semi-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { StatusBadge } from '../../../shared/ui';
 import type { CSSProperties } from 'react';
 import type {
   LinkageAtomicCondition,
@@ -308,7 +309,7 @@ export function LinkageConditionBuilder({ field, availableFields, onChange, onDi
             </label>
           )}
           <div className="field-linkage-builder-actions" style={actionsStyle}>
-            {isDirty ? <Tag className="semantic-tag semantic-tag--warning">有未应用的修改</Tag> : null}
+            {isDirty ? <StatusBadge tone="warning">有未应用的修改</StatusBadge> : null}
             <Button disabled={!canApply} onClick={applyCurrentDraft}>应用条件</Button>
             <Button theme="borderless" onClick={() => handleAddGroupRow()}>添加条件</Button>
             <Button theme="borderless" onClick={handleClear}>清空条件</Button>
@@ -382,7 +383,7 @@ export function LinkageConditionBuilder({ field, availableFields, onChange, onDi
           ))}
           <div className="field-linkage-builder-actions" style={actionsStyle}>
             <Button theme="borderless" onClick={handleAddGroupRow}>添加条件</Button>
-            {isDirty ? <Tag className="semantic-tag semantic-tag--warning">有未应用的修改</Tag> : null}
+            {isDirty ? <StatusBadge tone="warning">有未应用的修改</StatusBadge> : null}
             <Button disabled={!canApplyGroup} onClick={applyCurrentDraft}>应用条件</Button>
             <Button theme="borderless" onClick={handleClear}>清空条件</Button>
           </div>

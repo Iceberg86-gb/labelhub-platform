@@ -1,5 +1,6 @@
-import { Button, Card, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Typography } from '@douyinfe/semi-ui';
 import { Link } from 'react-router-dom';
+import { StatusBadge } from '../../shared/ui';
 
 const m4Features = [
   ['审核队列', '按任务、状态与审核层级查看待处理提交。'],
@@ -13,7 +14,7 @@ export function ReviewerPlaceholderPage() {
   return (
     <section className="placeholder-page" aria-label="Reviewer placeholder">
       <div className="placeholder-hero">
-        <Tag className="semantic-tag semantic-tag--warning">REVIEWER</Tag>
+        <StatusBadge tone="warning">REVIEWER</StatusBadge>
         <Typography.Title heading={3} className="page-title">
           审核工作台正在开发中
         </Typography.Title>
