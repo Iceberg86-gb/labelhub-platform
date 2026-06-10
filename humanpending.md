@@ -767,3 +767,11 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 边界声明:零改后端/数据库/migration、零改标注/审核/AI 业务语义;`semantic-tag`/`<Empty>` 仍有约 10 处遗留站点,由 review skill 列为可"逐步移除"的待办,基础层(字号/字体/配色)已 100% token 化。
 
 验证:`pnpm --filter @labelhub/web test` 71 文件 / 349 条通过(新增 DesignSystem 组件测试 5 条)、`typecheck` 通过、`pnpm --filter @labelhub/web build` 通过、`git diff --check` 通过;`/design-system-review` 自审:裸 px 字号 0、非 token mono 0。
+
+## 263. labeler 工作状态修复 + Design System 全量收敛(2026-06-09)
+
+交付:①**修复**:senior reviewer 正交化后,普通提交的权威终审来自 reviewer 层,但 `SessionMapper` 的 labeler 工作状态 SQL 只 JOIN `senior_reviewer` 层 verdict,导致 reviewer 已通过的提交对 labeler 永远显示"审核中"。改为取最新 `reviewer_overall_verdict`(任意层级,与 canonical `selectLatestReviewerOverallVerdict` 一致,senior 仲裁因更晚仍优先),列表与计数两个查询同步修正;在本地真实数据上验证(12 条 submitted 全部有 reviewer approve、0 条 senior,修复后全部正确显示"通过"),新增 2 条 `SessionApiIntegrationTest` 集成回归(reviewer 通过→approved、senior 打回覆盖)。②**全量收敛**:把 #262 遗留的全部手写 `semantic-tag`/`<Empty>` 站点迁移到 `shared/ui` 的 `StatusBadge`/`EmptyState`,覆盖 ai/schema-design/dataset/reviewer 四区 + labeling 共享组件 + labeler/owner/platform/admin 页 + task/submission/export/ai-review-rule/forbidden;全应用业务代码 `semantic-tag`=0、`<Empty>`=0(`/design-system-review` 自审全绿)。`OwnerSchemaDesignerPage` 测试补 `Tag` mock。
+
+边界声明:修复仅动 `SessionMapper` 的 labeler 工作状态派生 SQL,零改后端业务语义、零 migration;收敛为纯前端组件替换,`StatusBadge` 渲染等价、旧测试零破。
+
+验证:前端 `pnpm --filter @labelhub/web test` 71 文件 / 349 条通过、`typecheck` 通过、`build` 通过、`git diff --check` 通过;后端 `SessionServiceTest` 54 条通过、`SessionApiIntegrationTest` 因本机 Colima/Docker 对 Testcontainers 不可达而跳过(CI 执行)。owner 人工验收"审核中→通过"修复。本批合并 main 后按 owner 要求执行 web + api 双脚本生产同步。
