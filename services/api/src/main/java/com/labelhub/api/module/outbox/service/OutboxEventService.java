@@ -7,7 +7,9 @@ import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -38,8 +40,7 @@ public class OutboxEventService {
         event.setRetryCount(0);
         event.setNextRetryAt(now);
         event.setCreatedAt(now);
-        requireOneRow(outboxEventMapper.insert(event), "insert outbox event");
-        return event;
+        return insertIdempotent(event, "insert outbox event");
     }
 
     public OutboxEventEntity enqueueExportRequested(ExportJobEntity job) {
@@ -53,8 +54,27 @@ public class OutboxEventService {
         event.setRetryCount(0);
         event.setNextRetryAt(now);
         event.setCreatedAt(now);
-        requireOneRow(outboxEventMapper.insert(event), "insert export outbox event");
-        return event;
+        return insertIdempotent(event, "insert export outbox event");
+    }
+
+    /**
+     * Insert an outbox event idempotently. The unique key (aggregate_type, aggregate_id,
+     * event_type) makes a second enqueue for the same aggregate a no-op: instead of creating a
+     * duplicate event we return the one already queued. This keeps the multiple enqueue paths
+     * (submit, task-level prereview, …) from producing duplicate downstream work.
+     */
+    private OutboxEventEntity insertIdempotent(OutboxEventEntity event, String operation) {
+        try {
+            requireOneRow(outboxEventMapper.insert(event), operation);
+            return event;
+        } catch (DuplicateKeyException duplicate) {
+            List<OutboxEventEntity> existing = outboxEventMapper.selectByAggregateAndEvent(
+                event.getAggregateType(), event.getAggregateId(), event.getEventType());
+            if (existing.isEmpty()) {
+                throw duplicate;
+            }
+            return existing.get(0);
+        }
     }
 
     private Map<String, Object> aiReviewPayload(SubmissionEntity submission, Long aiReviewRuleId) {
