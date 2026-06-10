@@ -9,11 +9,20 @@ let refreshPromise: Promise<boolean> | null = null;
 
 export const apiClient = createClient<paths>({
   baseUrl,
-  fetch: authFetch,
+  fetch: authorizedFetch,
 });
 
-async function authFetch(input: Request): Promise<Response> {
-  const request = withCredentials(withAccessToken(input));
+/**
+ * fetch wrapper that attaches the bearer token + credentials and runs the 401 → silent refresh →
+ * retry → redirect pipeline. apiClient uses it for typed calls; binary upload/download sites that
+ * need raw Request/Blob handling (and therefore can't use openapi-fetch) call it directly so they
+ * share the same session-refresh behaviour instead of failing hard on an expired token.
+ */
+export async function authorizedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  // Resolve relative string endpoints (e.g. '/api/...') against the origin so the Request is
+  // absolute (apiClient already passes an absolute Request, which falls through unchanged).
+  const resolved = typeof input === 'string' ? new URL(input, window.location.origin) : input;
+  const request = withCredentials(withAccessToken(new Request(resolved, init)));
   const retryBase = request.clone();
   const response = await fetch(request);
 

@@ -42,9 +42,9 @@ describe('LabelHubFileUploadField image preview', () => {
     const img = view.container.querySelector('.labelhub-file-upload-thumbnail') as HTMLImageElement | null;
     expect(img?.src).toBe('blob:downloaded-image');
     expect(img?.alt).toBe('photo.png');
-    expect(fetchMock).toHaveBeenCalledWith(`/api/sessions/55/attachments/${attachmentRef(imageObjectKey)}`, {
-      headers: { Authorization: 'Bearer token-123' },
-    });
+    const downloadRequest = fetchMock.mock.calls[0][0] as Request;
+    expect(downloadRequest.url).toContain(`/api/sessions/55/attachments/${attachmentRef(imageObjectKey)}`);
+    expect(downloadRequest.headers.get('Authorization')).toBe('Bearer token-123');
     expect(createObjectURL).toHaveBeenCalledOnce();
 
     view.unmount();
@@ -292,9 +292,9 @@ describe('LabelHubFileUploadField image preview', () => {
     expect(view.container.querySelector('.labelhub-file-upload-thumbnail')).not.toBeNull();
     expect(view.text()).toContain('photo.png');
     expect(view.container.querySelector('button')).toBeNull();
-    expect(fetchMock).toHaveBeenCalledWith(`/api/sessions/55/attachments/${attachmentRef(imageObjectKey)}`, {
-      headers: undefined,
-    });
+    const downloadRequest = fetchMock.mock.calls[0][0] as Request;
+    expect(downloadRequest.url).toContain(`/api/sessions/55/attachments/${attachmentRef(imageObjectKey)}`);
+    expect(downloadRequest.headers.get('Authorization')).toBeNull();
     view.unmount();
   });
 });
@@ -331,7 +331,8 @@ function imageValue(objectKey: string) {
 }
 
 function mockImageDownload() {
-  const fetchMock = vi.fn(async () => new Response(new Blob(['image'], { type: 'image/png' }), { status: 200 }));
+  const fetchMock = vi.fn(async (_input?: RequestInfo | URL) =>
+    new Response(new Blob(['image'], { type: 'image/png' }), { status: 200 }));
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }

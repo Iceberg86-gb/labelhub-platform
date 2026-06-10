@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { Toast } from '@douyinfe/semi-ui';
-import { getAccessToken } from '../../shared/api/auth-storage';
+import { authorizedFetch } from '../../shared/api/client';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
@@ -27,10 +27,7 @@ export function useDownloadExportFileMutation() {
   return useMutation<void, Error, DownloadExportFileVariables>({
     mutationFn: async ({ snapshotId, fileName }) => {
       const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/exports/snapshots/${snapshotId}/files/${encodeURIComponent(fileName)}`;
-      const token = getAccessToken();
-      const response = await fetch(endpoint, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      const response = await authorizedFetch(endpoint);
       if (!response.ok) {
         throw new Error(response.status === 404 ? '导出文件不存在或无权访问' : '下载失败,请稍后重试');
       }

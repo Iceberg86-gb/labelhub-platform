@@ -3,8 +3,7 @@ import { Field as FormilyField } from '@formily/core';
 import { useField } from '@formily/react';
 import { useEffect, useRef, useState } from 'react';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
-import { apiClient } from '../../../../shared/api/client';
-import { getAccessToken } from '../../../../shared/api/auth-storage';
+import { apiClient, authorizedFetch } from '../../../../shared/api/client';
 import type { components } from '../../../../shared/api/generated/schema';
 import { ReadOnlyValue } from './FieldFrame';
 
@@ -231,10 +230,7 @@ function sessionIdFromObjectKey(objectKey?: string): number | undefined {
 
 async function downloadAttachmentBlob(sessionId: number, objectKey: string): Promise<Blob> {
   const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/sessions/${sessionId}/attachments/${attachmentRef(objectKey)}`;
-  const token = getAccessToken();
-  const response = await fetch(endpoint, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-  });
+  const response = await authorizedFetch(endpoint);
   if (!response.ok) {
     throw new Error('download failed');
   }
