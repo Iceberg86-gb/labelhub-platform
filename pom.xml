@@ -22,6 +22,14 @@
         <jjwt.version>0.12.6</jjwt.version>
         <swagger.annotations.version>2.2.22</swagger.annotations.version>
         <testcontainers.version>1.20.4</testcontainers.version>
+        <!--
+          Align commons-lang3 with what commons-compress 1.26.2 (pulled by poi-ooxml) requires.
+          Spring Boot 3.2.12's BOM manages commons-lang3 down to 3.13.0, which lacks
+          org.apache.commons.lang3.ArrayFill (added in 3.14.0) that commons-compress's tar
+          writer calls — causing NoClassDefFoundError when Testcontainers copies files into a
+          container. Pin to the version commons-compress declares; fully backward compatible.
+        -->
+        <commons.lang3.version>3.14.0</commons.lang3.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -40,6 +48,12 @@
                 <version>${testcontainers.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <!-- Direct entry overrides the Spring Boot BOM's managed 3.13.0 (see property note above). -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons.lang3.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
