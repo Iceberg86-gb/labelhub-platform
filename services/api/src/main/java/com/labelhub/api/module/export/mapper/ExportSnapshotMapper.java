@@ -65,6 +65,17 @@ public interface ExportSnapshotMapper {
                file_manifest, record_counts, schema_version_ids, verdict_rule_version_id,
                data_scope, field_mapping_snapshot, canonicalization_version, generated_at, archived_at
         FROM export_snapshots
+        WHERE export_job_id = #{exportJobId}
+        ORDER BY id ASC
+        """)
+    @ResultMap("exportSnapshotResultMap")
+    List<ExportSnapshotEntity> selectByExportJobId(@Param("exportJobId") Long exportJobId);
+
+    @Select("""
+        SELECT id, export_job_id, task_id, file_hash, manifest_hash, source_state_hash, object_key,
+               file_manifest, record_counts, schema_version_ids, verdict_rule_version_id,
+               data_scope, field_mapping_snapshot, canonicalization_version, generated_at, archived_at
+        FROM export_snapshots
         WHERE task_id = #{taskId}
           AND ((#{archived} = TRUE AND archived_at IS NOT NULL)
             OR (#{archived} = FALSE AND archived_at IS NULL))
