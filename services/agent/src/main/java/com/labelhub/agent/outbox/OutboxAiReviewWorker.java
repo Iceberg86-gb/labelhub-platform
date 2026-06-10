@@ -97,6 +97,12 @@ public class OutboxAiReviewWorker {
     }
 
     private void handleFailure(OutboxEvent event, Exception exception) {
+        if (OutboxNonRetryable.isNonRetryable(exception)) {
+            // Deterministic failure (malformed payload / non-retryable provider error / deterministic
+            // 4xx) — retrying cannot succeed, so dead-letter immediately instead of wasting attempts.
+            outboxRepository.markDeadLetter(event.id(), workerId, maxAttempts, lastErrorBuilder.buildLastError(exception));
+            return;
+        }
         int nextRetryCount = event.retryCount() + 1;
         if (nextRetryCount >= maxAttempts) {
             outboxRepository.markDeadLetter(event.id(), workerId, nextRetryCount, lastErrorBuilder.buildLastError(exception));

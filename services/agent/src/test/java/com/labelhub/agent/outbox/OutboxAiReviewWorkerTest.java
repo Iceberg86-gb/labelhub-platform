@@ -123,6 +123,45 @@ class OutboxAiReviewWorkerTest {
         assertThat(lastError.getValue()).doesNotContain(payloadField);
     }
 
+    @Test
+    void processDueEvents_dead_letters_non_retryable_provider_error_without_retrying() {
+        OutboxEvent event = event(5L, 0, "{\"submissionId\":304}");
+        RuntimeProviderCallException providerError = new RuntimeProviderCallException(
+            "provider config invalid", false, "config_error", 400);
+        when(repository.findDueAiReviewEvents(10, 60)).thenReturn(List.of(event));
+        when(repository.claim(5L, "worker-1", 60)).thenReturn(true);
+        when(apiClient.getContext(304L)).thenThrow(providerError);
+
+        worker.processDueEvents();
+
+        verify(repository).markDeadLetter(
+            org.mockito.ArgumentMatchers.eq(5L),
+            org.mockito.ArgumentMatchers.eq("worker-1"),
+            org.mockito.ArgumentMatchers.eq(3),
+            org.mockito.ArgumentMatchers.any());
+        verify(repository, never()).scheduleRetry(
+            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void processDueEvents_dead_letters_malformed_payload_without_retrying() {
+        OutboxEvent event = event(6L, 0, "{not-json");
+        when(repository.findDueAiReviewEvents(10, 60)).thenReturn(List.of(event));
+        when(repository.claim(6L, "worker-1", 60)).thenReturn(true);
+
+        worker.processDueEvents();
+
+        verify(repository).markDeadLetter(
+            org.mockito.ArgumentMatchers.eq(6L),
+            org.mockito.ArgumentMatchers.eq("worker-1"),
+            org.mockito.ArgumentMatchers.eq(3),
+            org.mockito.ArgumentMatchers.any());
+        verify(repository, never()).scheduleRetry(
+            org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.any());
+    }
+
     private static OutboxEvent event(Long id, int retryCount, String payload) {
         return new OutboxEvent(
             id,
