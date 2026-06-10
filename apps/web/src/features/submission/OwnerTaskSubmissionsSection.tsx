@@ -1,5 +1,6 @@
-import { Button, Empty, Pagination, Spin, Table, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Pagination, Spin, Table, Typography } from '@douyinfe/semi-ui';
 import { IconRefresh } from '@douyinfe/semi-icons';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { OwnerSubmissionSummary } from '../../entities/submission/ownerTypes';
@@ -44,7 +45,7 @@ export function OwnerTaskSubmissionsSection({ taskId }: OwnerTaskSubmissionsSect
       },
       { title: 'Labeler', dataIndex: 'labelerId', width: 110, render: (value: number) => `#${value}` },
       { title: 'Schema', dataIndex: 'schemaVersionId', width: 110, render: (value: number) => `#${value}` },
-      { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <Tag className="semantic-tag semantic-tag--success">{statusLabel(value)}</Tag> },
+      { title: '状态', dataIndex: 'status', width: 110, render: (value: string) => <StatusBadge tone="success">{statusLabel(value)}</StatusBadge> },
       { title: 'AI 预审', width: 120, render: (_: unknown, record: OwnerSubmissionSummary) => <PrereviewStatusTag status={record.prereviewStatus} signals={record.prereviewSignals} /> },
       { title: '提交时间', dataIndex: 'createdAt', width: 150, render: (value: string) => formatDateTime(value) },
       {
@@ -78,10 +79,10 @@ export function OwnerTaskSubmissionsSection({ taskId }: OwnerTaskSubmissionsSect
 
       {submissionsQuery.isLoading ? <Spin /> : null}
       {submissionsQuery.isError ? (
-        <Empty title="提交记录加载失败" description={submissionsQuery.error instanceof Error ? submissionsQuery.error.message : '请稍后重试。'} />
+        <EmptyState variant="inline" title="提交记录加载失败" description={submissionsQuery.error instanceof Error ? submissionsQuery.error.message : '请稍后重试。'} />
       ) : null}
       {!submissionsQuery.isLoading && !submissionsQuery.isError && items.length === 0 ? (
-        <Empty title="暂无提交记录" description="Labeler 提交后,Owner 可在这里进入 AI 预审。" />
+        <EmptyState variant="inline" title="暂无提交记录" description="Labeler 提交后,Owner 可在这里进入 AI 预审。" />
       ) : null}
       {items.length > 0 ? (
         <>

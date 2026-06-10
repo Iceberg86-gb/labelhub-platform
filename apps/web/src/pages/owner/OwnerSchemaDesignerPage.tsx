@@ -1,4 +1,5 @@
-import { Banner, Button, Card, Empty, Modal, Spin, Toast, Typography } from '@douyinfe/semi-ui';
+import { Banner, Button, Card, Modal, Spin, Toast, Typography } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { IconArrowLeft, IconRefresh } from '@douyinfe/semi-icons';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -219,7 +220,7 @@ export function OwnerSchemaDesignerPage() {
   if (!schemaId) {
     return (
       <section className="schema-designer-page">
-        <Empty title="模板（Schema）ID 无效" description="请从模板（Schema）列表重新进入 Designer。" />
+        <EmptyState variant="inline" title="模板（Schema）ID 无效" description="请从模板（Schema）列表重新进入 Designer。" />
       </section>
     );
   }
@@ -238,7 +239,7 @@ export function OwnerSchemaDesignerPage() {
     return (
       <section className="schema-designer-page">
         <div className="task-state-panel">
-          <Empty
+          <EmptyState variant="inline"
             title="模板（Schema）Designer 加载失败"
             description={currentVersionQuery.error instanceof Error ? currentVersionQuery.error.message : '请稍后重试。'}
           />
@@ -274,7 +275,7 @@ export function OwnerSchemaDesignerPage() {
           </div>
           <div className="schema-designer-actions">
             <div className="schema-version-pill">
-              <span className={`semantic-tag semantic-tag--${draftState.tone}`}>{draftState.label}</span>
+              <StatusBadge tone={draftState.tone}>{draftState.label}</StatusBadge>
             </div>
             <Button onClick={() => setVersionDrawerVisible(true)}>版本历史</Button>
             <Button theme="solid" type="primary" onClick={handlePublishClick}>

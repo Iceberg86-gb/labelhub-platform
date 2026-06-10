@@ -1,4 +1,5 @@
-import { Button, Empty, Pagination, Popconfirm, Space, Spin, Table, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Button, Pagination, Popconfirm, Space, Spin, Table, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { EmptyState } from '../../shared/ui';
 import { IconDelete, IconRefresh } from '@douyinfe/semi-icons';
 import { useState } from 'react';
 import { useUsersQuery, type UserAccountSummary } from '../../features/user-roles/useUsersQuery';
@@ -160,7 +161,7 @@ export function UserManagementPage() {
 
           {usersQuery.isError ? (
             <div className="task-state-panel">
-              <Empty
+              <EmptyState variant="inline"
                 title="账号列表加载失败"
                 description={usersQuery.error instanceof Error ? usersQuery.error.message : '请稍后重试。'}
               />
@@ -170,7 +171,7 @@ export function UserManagementPage() {
 
           {!usersQuery.isLoading && !usersQuery.isError && users.length === 0 ? (
             <div className="task-state-panel">
-              <Empty title="暂无 active 账号" description="新用户注册后会出现在这里。" />
+              <EmptyState variant="inline" title="暂无 active 账号" description="新用户注册后会出现在这里。" />
             </div>
           ) : null}
 

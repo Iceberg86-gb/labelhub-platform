@@ -1,4 +1,5 @@
-import { Button, DatePicker, Empty, Input, Modal, Pagination, Select, Space, Spin, Table, Tag, Typography, Tooltip } from '@douyinfe/semi-ui';
+import { Button, DatePicker, Input, Modal, Pagination, Select, Space, Spin, Table, Typography, Tooltip } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { IconDownload, IconRefresh, IconSearch } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -106,7 +107,7 @@ export function OwnerAuditLogsPage() {
         render: (_: unknown, log: AuditLog) => (
           <span className="audit-action-cell">
             <Tooltip content={<code>{log.action}</code>}>
-              <Tag className="semantic-tag semantic-tag--accent">{ACTION_LABELS.get(log.action) ?? log.action}</Tag>
+              <StatusBadge tone="accent">{ACTION_LABELS.get(log.action) ?? log.action}</StatusBadge>
             </Tooltip>
           </span>
         ),
@@ -171,8 +172,8 @@ export function OwnerAuditLogsPage() {
 
       <div className="task-table-surface">
         {logs.isLoading ? <div className="task-state-panel"><Spin size="large" /></div> : null}
-        {logs.isError ? <div className="task-state-panel"><Empty title="审计日志加载失败" description={errorText} /><Button onClick={() => logs.refetch()}>重新加载</Button></div> : null}
-        {!logs.isLoading && !logs.isError && items.length === 0 ? <div className="task-state-panel"><Empty title="未匹配任何审计记录" description="调整筛选条件后重新查询。" /><Button onClick={resetFilters}>重置筛选</Button></div> : null}
+        {logs.isError ? <div className="task-state-panel"><EmptyState variant="inline" title="审计日志加载失败" description={errorText} /><Button onClick={() => logs.refetch()}>重新加载</Button></div> : null}
+        {!logs.isLoading && !logs.isError && items.length === 0 ? <div className="task-state-panel"><EmptyState variant="inline" title="未匹配任何审计记录" description="调整筛选条件后重新查询。" /><Button onClick={resetFilters}>重置筛选</Button></div> : null}
         {!logs.isLoading && !logs.isError && items.length > 0 ? (
           <>
             <Table className="audit-logs-table" columns={columns} dataSource={items} rowKey="id" pagination={false} />

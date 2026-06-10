@@ -1,4 +1,5 @@
-import { Button, Empty, Select, Space, Spin, Table, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Select, Space, Spin, Table, Typography } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { IconChevronLeft, IconChevronRight, IconPlay } from '@douyinfe/semi-icons';
 import { useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -75,13 +76,13 @@ export function LabelerMySessionsPage() {
       {
         title: 'Schema',
         width: 130,
-        render: (_: unknown, record: Session) => <Tag className="semantic-tag semantic-tag--accent">Schema #{record.schemaVersionId}</Tag>,
+        render: (_: unknown, record: Session) => <StatusBadge tone="accent">Schema #{record.schemaVersionId}</StatusBadge>,
       },
       {
         title: '状态',
         width: 110,
         render: (_: unknown, record: Session) => (
-          <Tag className={`semantic-tag semantic-tag--${statusTone(record.workStatus)}`}>{LABELER_WORK_STATUS_LABELS[record.workStatus]}</Tag>
+          <StatusBadge tone={statusTone(record.workStatus)}>{LABELER_WORK_STATUS_LABELS[record.workStatus]}</StatusBadge>
         ),
       },
       {
@@ -182,12 +183,12 @@ export function LabelerMySessionsPage() {
         ) : null}
         {sessionsQuery.isError ? (
           <div className="task-state-panel">
-            <Empty title="我的数据加载失败" description="请稍后重试。" />
+            <EmptyState variant="inline" title="我的数据加载失败" description="请稍后重试。" />
           </div>
         ) : null}
         {!sessionsQuery.isLoading && !sessionsQuery.isError && items.length === 0 ? (
           <div className="task-state-panel">
-            <Empty title="暂无作答会话" description="去任务广场领取一个任务开始作答。" />
+            <EmptyState variant="inline" title="暂无作答会话" description="去任务广场领取一个任务开始作答。" />
           </div>
         ) : null}
         {items.length > 0 ? <Table columns={columns} dataSource={items} rowKey="id" pagination={false} /> : null}

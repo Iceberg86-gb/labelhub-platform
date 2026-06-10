@@ -1,4 +1,5 @@
-import { Button, Empty, Input, InputNumber, Select, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Input, InputNumber, Select, Space, Spin, Toast, Typography } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { IconChevronLeft, IconChevronRight, IconPlay, IconRefresh, IconSearch } from '@douyinfe/semi-icons';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -241,13 +242,13 @@ export function LabelerMarketplacePage() {
         ) : null}
         {marketplaceQuery.isError ? (
           <div className="task-state-panel">
-            <Empty title="任务广场加载失败" description="请稍后重试。" />
+            <EmptyState variant="inline" title="任务广场加载失败" description="请稍后重试。" />
             <Button onClick={() => marketplaceQuery.refetch()}>重新加载</Button>
           </div>
         ) : null}
         {!marketplaceQuery.isLoading && !marketplaceQuery.isError && items.length === 0 ? (
           <div className="task-state-panel">
-            <Empty title="暂无可领取任务" description="稍后再回来看看。" />
+            <EmptyState variant="inline" title="暂无可领取任务" description="稍后再回来看看。" />
           </div>
         ) : null}
         {items.length > 0 ? (
@@ -257,7 +258,7 @@ export function LabelerMarketplacePage() {
                 <div className="marketplace-task-card__main">
                   <div className="marketplace-task-card__heading">
                     <Typography.Title heading={5}>{record.title}</Typography.Title>
-                    <Tag className="semantic-tag semantic-tag--success">{record.availableItemCount} 可领取</Tag>
+                    <StatusBadge tone="success">{record.availableItemCount} 可领取</StatusBadge>
                   </div>
                   <Typography.Paragraph ellipsis={{ rows: 2 }} type="tertiary">
                     {record.description || '暂无描述'}
@@ -265,9 +266,9 @@ export function LabelerMarketplacePage() {
                   {record.tags && record.tags.length > 0 ? (
                     <Space wrap spacing={4}>
                       {record.tags.slice(0, 4).map((item) => (
-                        <Tag key={item} className="semantic-tag semantic-tag--accent">
+                        <StatusBadge key={item} tone="accent">
                           {item}
-                        </Tag>
+                        </StatusBadge>
                       ))}
                     </Space>
                   ) : null}

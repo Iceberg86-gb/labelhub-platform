@@ -1,5 +1,6 @@
-import { Button, Empty, Space, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Space, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconTickCircle } from '@douyinfe/semi-icons';
+import { EmptyState } from '../../shared/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import type { AiReviewRule } from './aiReviewRuleTypes';
 import { type PublishAiReviewRuleVariables, usePublishAiReviewRuleMutation } from './usePublishAiReviewRuleMutation';
@@ -67,7 +68,7 @@ export function AiReviewRuleHistoryPanel({ taskId }: AiReviewRuleHistoryPanelPro
       {rulesQuery.isLoading ? <Typography.Text type="tertiary">正在加载规则版本...</Typography.Text> : null}
       {rulesQuery.isError ? <Typography.Text className="ai-review-rule-error">{rulesQuery.error.userMessage}</Typography.Text> : null}
       {!rulesQuery.isLoading && !rulesQuery.isError && !rulesQuery.data?.length ? (
-        <Empty title="暂无规则版本" description="保存草稿后,规则版本会出现在这里。" />
+        <EmptyState variant="inline" title="暂无规则版本" description="保存草稿后,规则版本会出现在这里。" />
       ) : null}
 
       <div className="ai-review-rule-history__list">

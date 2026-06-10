@@ -39,6 +39,9 @@ vi.mock('@douyinfe/semi-ui', () => ({
   Empty: ({ title, description }: { title?: ReactNode; description?: ReactNode }) => (
     <div>{title}{description}</div>
   ),
+  Tag: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <span className={className}>{children}</span>
+  ),
   Modal: ({ children, visible }: { children?: ReactNode; visible?: boolean }) => (
     visible ? <div role="dialog">{children}</div> : null
   ),
