@@ -240,12 +240,25 @@ public class SessionService {
             throw new TaskNotAvailableException(taskId);
         }
 
-        List<DatasetItemEntity> items = datasetItemMapper.selectAvailableForUpdate(task.getCurrentDatasetId(), taskId, cappedRequest);
+        // Cap the batch to the task's remaining quota. The task row is locked FOR UPDATE above, so
+        // quota_claimed cannot change under us; without this cap claimBatch would overshoot
+        // quota_total whenever more dataset items are available than the quota allows (ADR-007).
+        int remainingQuota = remainingQuota(task);
+        if (remainingQuota <= 0) {
+            throw new TaskNotAvailableException(taskId);
+        }
+        int effectiveRequest = Math.min(cappedRequest, remainingQuota);
+
+        List<DatasetItemEntity> items = datasetItemMapper.selectAvailableForUpdate(task.getCurrentDatasetId(), taskId, effectiveRequest);
         if (items.isEmpty()) {
             throw new NoAvailableDatasetItemException(taskId, task.getCurrentDatasetId());
         }
 
-        requireOneRow(taskMapper.incrementQuotaClaimedBy(taskId, items.size()), "increment task claimed quota");
+        if (taskMapper.incrementQuotaClaimedBy(taskId, items.size()) != 1) {
+            // Guard SQL refused the increment (would exceed quota_total) — surface a clean
+            // business error instead of a partial/invalid claim.
+            throw new TaskNotAvailableException(taskId);
+        }
         List<SessionEntity> sessions = new ArrayList<>(items.size());
         for (DatasetItemEntity item : items) {
             requireOneRow(datasetItemMapper.updateStatus(item.getId(), ITEM_CLAIMED), "update dataset item status");
@@ -547,6 +560,12 @@ public class SessionService {
             && task.getCurrentSchemaVersionId() != null
             && task.getDeadlineAt() != null
             && task.getDeadlineAt().isAfter(LocalDateTime.now(clock));
+    }
+
+    private static int remainingQuota(TaskEntity task) {
+        int total = task.getQuotaTotal() == null ? 0 : task.getQuotaTotal();
+        int claimed = task.getQuotaClaimed() == null ? 0 : task.getQuotaClaimed();
+        return Math.max(0, total - claimed);
     }
 
     private boolean hasRole(Set<String> roles, String role) {

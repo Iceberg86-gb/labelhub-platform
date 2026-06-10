@@ -94,6 +94,7 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
           AND deadline_at > NOW(3)
           AND current_schema_version_id IS NOT NULL
           AND current_dataset_id IS NOT NULL
+          AND quota_claimed < quota_total
         """)
     int incrementQuotaClaimedIfAvailable(@Param("taskId") Long taskId);
 
@@ -102,6 +103,7 @@ public interface TaskMapper extends BaseMapper<TaskEntity> {
         SET quota_claimed = quota_claimed + #{amount},
             updated_at = NOW(3)
         WHERE id = #{taskId}
+          AND quota_claimed + #{amount} <= quota_total
         """)
     int incrementQuotaClaimedBy(@Param("taskId") Long taskId, @Param("amount") Integer amount);
 
