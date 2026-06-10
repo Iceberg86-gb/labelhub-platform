@@ -1,4 +1,5 @@
-import { Button, Card, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Typography } from '@douyinfe/semi-ui';
+import { StatusBadge } from '../../shared/ui';
 import { Link } from 'react-router-dom';
 
 const m2Features = [
@@ -13,7 +14,7 @@ export function LabelerPlaceholderPage() {
   return (
     <section className="placeholder-page" aria-label="Labeler placeholder">
       <div className="placeholder-hero">
-        <Tag className="semantic-tag semantic-tag--success">LABELER</Tag>
+        <StatusBadge tone="success">LABELER</StatusBadge>
         <Typography.Title heading={3} className="page-title">
           标注员工作台正在开发中
         </Typography.Title>

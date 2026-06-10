@@ -1,4 +1,5 @@
-import { Button, Empty, Spin, Typography } from '@douyinfe/semi-ui';
+import { Button, Spin, Typography } from '@douyinfe/semi-ui';
+import { EmptyState } from '../../shared/ui';
 import { IconRefresh } from '@douyinfe/semi-icons';
 import { usePlatformEfficiencyMetricsQuery, type PlatformEfficiencyMetrics } from '../../features/platform-metrics/usePlatformEfficiencyMetricsQuery';
 
@@ -72,7 +73,7 @@ export function PlatformEfficiencyMetricsPage() {
 
       {metrics.isError ? (
         <div className="task-state-panel">
-          <Empty title="Token 复用计量加载失败" description={metrics.error instanceof Error ? metrics.error.message : '请稍后重试。'} />
+          <EmptyState variant="inline" title="Token 复用计量加载失败" description={metrics.error instanceof Error ? metrics.error.message : '请稍后重试。'} />
           <Button onClick={() => metrics.refetch()}>重新加载</Button>
         </div>
       ) : null}
@@ -81,7 +82,7 @@ export function PlatformEfficiencyMetricsPage() {
         <>
           {data?.empty ? (
             <div className="task-state-panel platform-metrics-empty">
-              <Empty title="暂无记录" description="当前没有 ai_calls 事实数据。这里不会把无记录渲染成统计值为 0。" />
+              <EmptyState variant="inline" title="暂无记录" description="当前没有 ai_calls 事实数据。这里不会把无记录渲染成统计值为 0。" />
             </div>
           ) : null}
 

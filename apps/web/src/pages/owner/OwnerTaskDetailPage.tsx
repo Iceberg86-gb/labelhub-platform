@@ -1,4 +1,5 @@
-import { Button, Card, Empty, Spin, Timeline, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Spin, Timeline, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { EmptyState } from '../../shared/ui';
 import { IconArrowLeft, IconEdit, IconRefresh } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -52,7 +53,7 @@ function transitionDot(status: TaskStatus) {
 
 function TransitionTimeline({ transitions }: { transitions: TaskTransition[] }) {
   if (transitions.length === 0) {
-    return <Empty title="暂无状态迁移" description="发布、暂停、恢复或结束任务后，迁移记录会出现在这里。" />;
+    return <EmptyState variant="inline" title="暂无状态迁移" description="发布、暂停、恢复或结束任务后，迁移记录会出现在这里。" />;
   }
 
   return (
@@ -142,7 +143,7 @@ function WorkflowProgressCard({
         </div>
       ) : isError ? (
         <div className="owner-workflow-progress-card__loading">
-          <Empty title="全过程进度加载失败" />
+          <EmptyState variant="inline" title="全过程进度加载失败" />
           <Button onClick={onRetry}>重新加载</Button>
         </div>
       ) : progress ? (
@@ -160,7 +161,7 @@ function WorkflowProgressCard({
           </div>
         </>
       ) : (
-        <Empty title="暂无全过程进度" description="任务发布并产生领取、提交或审核记录后会显示在这里。" />
+        <EmptyState variant="inline" title="暂无全过程进度" description="任务发布并产生领取、提交或审核记录后会显示在这里。" />
       )}
     </Card>
   );
@@ -220,7 +221,7 @@ export function OwnerTaskDetailPage() {
   if (!taskId) {
     return (
       <section className="task-detail-page">
-        <Empty title="任务 ID 无效" description="请从任务列表重新进入详情页。" />
+        <EmptyState variant="inline" title="任务 ID 无效" description="请从任务列表重新进入详情页。" />
       </section>
     );
   }
@@ -239,7 +240,7 @@ export function OwnerTaskDetailPage() {
     return (
       <section className="task-detail-page">
         <div className="task-state-panel">
-          <Empty title="任务详情加载失败" description={taskQuery.error instanceof Error ? taskQuery.error.message : '请稍后重试。'} />
+          <EmptyState variant="inline" title="任务详情加载失败" description={taskQuery.error instanceof Error ? taskQuery.error.message : '请稍后重试。'} />
           <Button onClick={() => taskQuery.refetch()}>重新加载</Button>
         </div>
       </section>

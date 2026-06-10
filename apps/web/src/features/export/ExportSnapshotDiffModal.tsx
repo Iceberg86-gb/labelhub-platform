@@ -1,5 +1,6 @@
-import { Banner, Empty, Modal, Spin, Table, Tag, Typography } from '@douyinfe/semi-ui';
+import { Banner, Modal, Spin, Table, Tag, Typography } from '@douyinfe/semi-ui';
 import type { ExportSnapshotDiff } from '../../entities/export/exportTypes';
+import { EmptyState } from '../../shared/ui';
 import { TruncatedHash } from '../../shared/ui/TruncatedHash';
 import { useExportSnapshotDiffQuery } from './useExportSnapshotDiffQuery';
 
@@ -27,7 +28,7 @@ export function ExportSnapshotDiffModal({ baseSnapshotId, compareSnapshotId, onC
     >
       <div className="export-diff-modal">
         {diffQuery.isLoading ? <Spin /> : null}
-        {diffQuery.isError ? <Empty title="对比加载失败" description="请稍后重试。" /> : null}
+        {diffQuery.isError ? <EmptyState variant="inline" title="对比加载失败" description="请稍后重试。" /> : null}
         {diff ? (
           <>
             <Banner

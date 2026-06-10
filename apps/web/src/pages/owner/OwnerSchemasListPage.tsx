@@ -1,4 +1,5 @@
-import { Button, Empty, Input, Popconfirm, Space, Spin, Table, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Button, Input, Popconfirm, Space, Spin, Table, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { IconDelete, IconDownload, IconEdit, IconRefresh, IconSearch, IconUpload } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -34,14 +35,14 @@ function CurrentVersionCell({ schema }: { schema: LabelSchema }) {
   const versionQuery = useSchemaVersionQuery(schema.id, schema.currentVersionId ?? null);
 
   if (!schema.currentVersionId) {
-    return <Tag className="semantic-tag semantic-tag--neutral">未发布</Tag>;
+    return <StatusBadge tone="neutral">未发布</StatusBadge>;
   }
 
   if (versionQuery.isLoading) {
     return <Typography.Text type="tertiary">加载中</Typography.Text>;
   }
 
-  return <Tag className="semantic-tag semantic-tag--accent">v{versionQuery.data?.versionNumber ?? schema.currentVersionId}</Tag>;
+  return <StatusBadge tone="accent">v{versionQuery.data?.versionNumber ?? schema.currentVersionId}</StatusBadge>;
 }
 
 export function OwnerSchemasListPage() {
@@ -108,8 +109,8 @@ export function OwnerSchemasListPage() {
         align: 'center' as const,
         render: (_: unknown, record: LabelSchema) => (
           record.taskId == null
-            ? <Tag className="semantic-tag semantic-tag--success">模板库</Tag>
-            : <Tag className="semantic-tag semantic-tag--neutral">任务绑定</Tag>
+            ? <StatusBadge tone="success">模板库</StatusBadge>
+            : <StatusBadge tone="neutral">任务绑定</StatusBadge>
         ),
       },
       {
@@ -227,7 +228,7 @@ export function OwnerSchemasListPage() {
 
         {schemasQuery.isError ? (
           <div className="task-state-panel">
-            <Empty
+            <EmptyState variant="inline"
               title="模板（Schema）列表加载失败"
               description={schemasQuery.error instanceof Error ? schemasQuery.error.message : '请稍后重试。'}
             />
@@ -237,7 +238,7 @@ export function OwnerSchemasListPage() {
 
         {isEmpty ? (
           <div className="task-state-panel">
-            <Empty title="暂无模板（Schema）" description="可以从 JSON 导入模板，或在任务详情页进入 Designer 创建任务绑定 Schema。" />
+            <EmptyState variant="inline" title="暂无模板（Schema）" description="可以从 JSON 导入模板，或在任务详情页进入 Designer 创建任务绑定 Schema。" />
           </div>
         ) : null}
 

@@ -1,4 +1,5 @@
-import { Button, Card, Empty, Select, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Select, Space, Spin, Toast, Typography } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { IconChevronLeft, IconChevronRight, IconSend } from '@douyinfe/semi-icons';
 import type { Form } from '@formily/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -315,7 +316,7 @@ export function LabelerSessionPage() {
   };
 
   if (!sessionId) {
-    return <Empty title="Session 地址无效" description="请从任务广场或我的数据进入作答页。" />;
+    return <EmptyState variant="inline" title="Session 地址无效" description="请从任务广场或我的数据进入作答页。" />;
   }
 
   if (detailQuery.isLoading || (detailQuery.isSuccess && !hasInitialized)) {
@@ -327,7 +328,7 @@ export function LabelerSessionPage() {
   }
 
   if (detailQuery.isError || !detail || !answerPayload) {
-    return <Empty title="session 不存在或无权访问" description="请确认当前账号是否拥有这个作答会话。" />;
+    return <EmptyState variant="inline" title="session 不存在或无权访问" description="请确认当前账号是否拥有这个作答会话。" />;
   }
 
   return (
@@ -338,8 +339,8 @@ export function LabelerSessionPage() {
             {detail.task.title}
           </Typography.Title>
           <Space>
-            <Tag className="semantic-tag semantic-tag--accent">Schema {schemaVersionLabel(detail.schemaVersion)}</Tag>
-            <Tag className={`semantic-tag semantic-tag--${isEditable ? 'success' : 'neutral'}`}>Session #{detail.session.id}</Tag>
+            <StatusBadge tone="accent">Schema {schemaVersionLabel(detail.schemaVersion)}</StatusBadge>
+            <StatusBadge tone={isEditable ? 'success' : 'neutral'}>Session #{detail.session.id}</StatusBadge>
             <Typography.Text type="tertiary">{detail.task.description || '暂无描述'}</Typography.Text>
           </Space>
         </div>
@@ -416,7 +417,7 @@ export function LabelerSessionPage() {
           {detail.previousReviewFeedback ? (
             <Card className="labeler-session-review-feedback" bodyStyle={{ padding: 16 }}>
               <Space vertical align="start">
-                <Tag className="semantic-tag semantic-tag--danger">上一轮打回意见</Tag>
+                <StatusBadge tone="danger">上一轮打回意见</StatusBadge>
                 <Typography.Text>{detail.previousReviewFeedback.reason}</Typography.Text>
               </Space>
             </Card>

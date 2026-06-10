@@ -1,5 +1,6 @@
-import { Card, Space, Tag, Typography } from '@douyinfe/semi-ui';
+import { Card, Space, Typography } from '@douyinfe/semi-ui';
 import type { ReactNode } from 'react';
+import { StatusBadge } from '../../shared/ui';
 
 type DatasetItemContextCardProps = {
   itemPayload: unknown;
@@ -59,9 +60,9 @@ export function DatasetItemContextCard({ itemPayload, sourceLabel = 'none' }: Da
           <Typography.Text type="tertiary">请根据领取时冻结的样本内容完成下方评分。</Typography.Text>
         </div>
         {sourceLabel !== 'none' ? (
-          <Tag className={`semantic-tag semantic-tag--${sourceLabel === 'claimSnapshot' ? 'accent' : 'warning'}`}>
+          <StatusBadge tone={sourceLabel === 'claimSnapshot' ? 'accent' : 'warning'}>
             {sourceLabel === 'claimSnapshot' ? '领取快照' : '实时数据 fallback'}
-          </Tag>
+          </StatusBadge>
         ) : null}
       </div>
 
@@ -101,9 +102,9 @@ function renderKnownSections(payload: Record<string, unknown>) {
       <Space key="tags" spacing={4} wrap>
         <Typography.Text type="tertiary">标签</Typography.Text>
         {tags.map((tag) => (
-          <Tag key={tag} className="semantic-tag semantic-tag--success">
+          <StatusBadge key={tag} tone="success">
             {tag}
-          </Tag>
+          </StatusBadge>
         ))}
       </Space>,
     );

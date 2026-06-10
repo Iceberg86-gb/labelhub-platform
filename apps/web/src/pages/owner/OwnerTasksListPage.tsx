@@ -1,4 +1,5 @@
-import { Button, Empty, Pagination, Popconfirm, Select, Space, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Pagination, Popconfirm, Select, Space, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
+import { EmptyState } from '../../shared/ui';
 import { IconDelete, IconExternalOpen, IconPlus, IconRefresh } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -226,7 +227,7 @@ export function OwnerTasksListPage() {
 
         {tasksQuery.isError ? (
           <div className="task-state-panel">
-            <Empty
+            <EmptyState variant="inline"
               title="任务列表加载失败"
               description={tasksQuery.error instanceof Error ? tasksQuery.error.message : '请稍后重试。'}
             />
@@ -236,7 +237,7 @@ export function OwnerTasksListPage() {
 
         {isEmpty ? (
           <div className="task-state-panel">
-            <Empty title="暂无任务" description="创建第一个任务，开始 Owner 管理链路演示。" />
+            <EmptyState variant="inline" title="暂无任务" description="创建第一个任务，开始 Owner 管理链路演示。" />
             <Button icon={<IconPlus />} theme="solid" type="primary" onClick={() => setCreateVisible(true)}>
               创建第一个任务
             </Button>

@@ -1,5 +1,6 @@
 import { Button, Tag, Typography } from '@douyinfe/semi-ui';
 import { IconLockStroked } from '@douyinfe/semi-icons';
+import { StatusBadge } from '../../../shared/ui';
 import type { Task } from '../list-tasks/useTasksQuery';
 
 type SetupStep = {
@@ -23,14 +24,14 @@ type TaskNextStepGuidanceProps = {
 
 function statusTag(status: SetupStep['status']) {
   if (status === 'done') {
-    return <Tag className="semantic-tag semantic-tag--success">已完成</Tag>;
+    return <StatusBadge tone="success">已完成</StatusBadge>;
   }
 
   if (status === 'blocked') {
     return <Tag className="task-setup-step__blocked-tag" prefixIcon={<IconLockStroked />}>待前置</Tag>;
   }
 
-  return <Tag className="semantic-tag semantic-tag--accent">待处理</Tag>;
+  return <StatusBadge tone="accent">待处理</StatusBadge>;
 }
 
 export function TaskNextStepGuidance({
@@ -80,7 +81,7 @@ export function TaskNextStepGuidance({
           <Typography.Title heading={5}>任务设置进度</Typography.Title>
           <Typography.Text type="tertiary">完成 Schema、数据集、发布三步后,labeler 才能开始领取。</Typography.Text>
         </div>
-        <Tag className="semantic-tag semantic-tag--accent">3 步</Tag>
+        <StatusBadge tone="accent">3 步</StatusBadge>
       </div>
 
       <div className="task-setup-guidance__steps">

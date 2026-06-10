@@ -1,4 +1,5 @@
-import { Button, InputNumber, Space, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, InputNumber, Space, Typography } from '@douyinfe/semi-ui';
+import { StatusBadge } from '../../shared/ui';
 import { IconPlay } from '@douyinfe/semi-icons';
 
 export type LabelerTaskDetailDrawerTask = {
@@ -77,9 +78,9 @@ export function LabelerTaskDetailDrawer({
             {task.tags && task.tags.length > 0 ? (
               <Space wrap spacing={4}>
                 {task.tags.map((item) => (
-                  <Tag key={item} className="semantic-tag semantic-tag--accent">
+                  <StatusBadge key={item} tone="accent">
                     {item}
-                  </Tag>
+                  </StatusBadge>
                 ))}
               </Space>
             ) : null}

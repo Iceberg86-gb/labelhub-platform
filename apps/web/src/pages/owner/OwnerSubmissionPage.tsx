@@ -1,4 +1,5 @@
-import { Button, Card, Empty, Space, Spin, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Space, Spin, Toast, Typography } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { IconArrowLeft, IconBolt } from '@douyinfe/semi-icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { schemaFields } from '../../entities/schema/runtimeSchema';
@@ -30,7 +31,7 @@ export function OwnerSubmissionPage() {
   const answerPayload = coerceAnswerPayload(renderSchema?.answerPayload ?? EMPTY_ANSWER_PAYLOAD);
 
   if (!taskId || !submissionId) {
-    return <Empty title="Submission 地址无效" description="请从任务详情的提交记录入口进入。" />;
+    return <EmptyState variant="inline" title="Submission 地址无效" description="请从任务详情的提交记录入口进入。" />;
   }
 
   if (renderSchemaQuery.isLoading) {
@@ -44,7 +45,7 @@ export function OwnerSubmissionPage() {
   if (renderSchemaQuery.isError || !schemaVersion) {
     return (
       <div className="task-state-panel">
-        <Empty title="Submission 不存在或无权访问" description="请确认当前 Owner 是否拥有该任务。" />
+        <EmptyState variant="inline" title="Submission 不存在或无权访问" description="请确认当前 Owner 是否拥有该任务。" />
         <Button onClick={() => navigate(`/owner/tasks/${taskId}`)}>返回任务详情</Button>
       </div>
     );
@@ -74,8 +75,8 @@ export function OwnerSubmissionPage() {
             Submission #{submissionId}
           </Typography.Title>
           <Space wrap>
-            <Tag className="semantic-tag semantic-tag--info">模板（Schema）版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
-            <Tag className="semantic-tag semantic-tag--accent">Task #{taskId}</Tag>
+            <StatusBadge tone="info">模板（Schema）版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</StatusBadge>
+            <StatusBadge tone="accent">Task #{taskId}</StatusBadge>
           </Space>
         </div>
         <Button

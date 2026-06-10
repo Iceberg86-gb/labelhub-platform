@@ -1,4 +1,5 @@
-import { Button, Space, Tag, Tooltip } from '@douyinfe/semi-ui';
+import { Button, Space, Tooltip } from '@douyinfe/semi-ui';
+import { StatusBadge } from '../../shared/ui';
 import type { OfflineDraftBufferStatus } from './useOfflineDraftBuffer';
 import type { OfflineDraftSyncStatus } from './useOfflineDraftSync';
 import type { UseAutosaveResult } from './useAutosave';
@@ -23,9 +24,9 @@ export function AutosaveStatusTag({
   if (offlineSync?.kind === 'syncing') {
     return (
       <Tooltip content="正在把本地草稿同步到服务器">
-        <Tag className="autosave-status-tag semantic-tag semantic-tag--accent">
+        <StatusBadge tone="accent" className="autosave-status-tag">
           本地草稿同步中
-        </Tag>
+        </StatusBadge>
       </Tooltip>
     );
   }
@@ -34,9 +35,9 @@ export function AutosaveStatusTag({
     return (
       <Tooltip content="服务器暂时不可用,本地草稿稍后会自动重试同步。">
         <Space spacing={4}>
-          <Tag className="autosave-status-tag semantic-tag semantic-tag--warning">
+          <StatusBadge tone="warning" className="autosave-status-tag">
             本地草稿待同步
-          </Tag>
+          </StatusBadge>
           {onRetryOfflineDraftSync ? (
             <Button size="small" theme="borderless" onClick={onRetryOfflineDraftSync}>
               重试
@@ -51,9 +52,9 @@ export function AutosaveStatusTag({
     return (
       <Tooltip content={offlineSync.reason === 'auth' ? '权限或登录状态已失效,本地草稿已保留。' : '本地草稿暂时无法同步。'}>
         <Space spacing={4}>
-          <Tag className="autosave-status-tag semantic-tag semantic-tag--danger">
+          <StatusBadge tone="danger" className="autosave-status-tag">
             本地草稿无法同步
-          </Tag>
+          </StatusBadge>
           {onRetryOfflineDraftSync ? (
             <Button size="small" theme="borderless" onClick={onRetryOfflineDraftSync}>
               重试
@@ -67,9 +68,9 @@ export function AutosaveStatusTag({
   if (offlineSync?.kind === 'terminal-cleared') {
     return (
       <Tooltip content="此会话已在别处提交/释放,本地草稿已弃。">
-        <Tag className="autosave-status-tag semantic-tag semantic-tag--danger">
+        <StatusBadge tone="danger" className="autosave-status-tag">
           本地草稿已弃
-        </Tag>
+        </StatusBadge>
       </Tooltip>
     );
   }
@@ -77,9 +78,9 @@ export function AutosaveStatusTag({
   if (offlineDraft?.kind === 'local-buffered') {
     return (
       <Tooltip content="服务器草稿保存失败,当前答案已暂存在本机,恢复网络后会同步。">
-        <Tag className="autosave-status-tag semantic-tag semantic-tag--warning">
+        <StatusBadge tone="warning" className="autosave-status-tag">
           本地已暂存
-        </Tag>
+        </StatusBadge>
       </Tooltip>
     );
   }
@@ -87,9 +88,9 @@ export function AutosaveStatusTag({
   if (offlineDraft?.kind === 'local-restored') {
     return (
       <Tooltip content="已恢复本机未同步草稿,下一次自动保存会尝试同步到服务器。">
-        <Tag className="autosave-status-tag semantic-tag semantic-tag--warning">
+        <StatusBadge tone="warning" className="autosave-status-tag">
           已恢复本地草稿
-        </Tag>
+        </StatusBadge>
       </Tooltip>
     );
   }
@@ -97,9 +98,9 @@ export function AutosaveStatusTag({
   if (offlineDraft?.kind === 'blocked') {
     return (
       <Tooltip content="本地草稿与当前会话的 Schema 版本不匹配,未自动恢复。">
-        <Tag className="autosave-status-tag semantic-tag semantic-tag--danger">
+        <StatusBadge tone="danger" className="autosave-status-tag">
           本地草稿未恢复
-        </Tag>
+        </StatusBadge>
       </Tooltip>
     );
   }
@@ -107,9 +108,9 @@ export function AutosaveStatusTag({
   if (autosave.status === 'saving') {
     return (
       <Tooltip content="正在保存当前答案">
-        <Tag className="autosave-status-tag semantic-tag semantic-tag--accent">
+        <StatusBadge tone="accent" className="autosave-status-tag">
           保存中
-        </Tag>
+        </StatusBadge>
       </Tooltip>
     );
   }
@@ -117,9 +118,9 @@ export function AutosaveStatusTag({
   if (autosave.status === 'error') {
     return (
       <Tooltip content={autosave.lastError?.message ?? '保存失败,请检查网络后重试'}>
-        <Tag className="autosave-status-tag semantic-tag semantic-tag--danger">
+        <StatusBadge tone="danger" className="autosave-status-tag">
           保存失败
-        </Tag>
+        </StatusBadge>
       </Tooltip>
     );
   }
@@ -127,18 +128,18 @@ export function AutosaveStatusTag({
   if (autosave.status === 'saved' && autosave.lastSavedAt) {
     return (
       <Tooltip content={`已保存于 ${timeFormatter.format(new Date(autosave.lastSavedAt))}`}>
-        <Tag className="autosave-status-tag semantic-tag semantic-tag--success">
+        <StatusBadge tone="success" className="autosave-status-tag">
           已保存
-        </Tag>
+        </StatusBadge>
       </Tooltip>
     );
   }
 
   return (
     <Tooltip content="本次会话尚未保存">
-      <Tag className="autosave-status-tag semantic-tag semantic-tag--neutral">
+      <StatusBadge tone="neutral" className="autosave-status-tag">
         未保存
-      </Tag>
+      </StatusBadge>
     </Tooltip>
   );
 }

@@ -1,5 +1,6 @@
-import { Select, Tag, Typography } from '@douyinfe/semi-ui';
+import { Select, Typography } from '@douyinfe/semi-ui';
 import { Field as FormilyField } from '@formily/core';
+import { StatusBadge } from '../../../../shared/ui';
 import { useField } from '@formily/react';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
 import { ReadOnlyValue } from './FieldFrame';
@@ -63,9 +64,9 @@ function renderReadOnlyValue({
     return (
       <div className="labeling-select-tags">
         {values.map((item) => (
-          <Tag key={item} className="semantic-tag semantic-tag--accent">
+          <StatusBadge key={item} tone="accent">
             {options.find((option) => option.value === item)?.label ?? item}
-          </Tag>
+          </StatusBadge>
         ))}
       </div>
     );

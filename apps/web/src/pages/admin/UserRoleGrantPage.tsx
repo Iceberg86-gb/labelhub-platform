@@ -1,4 +1,5 @@
-import { Button, Empty, Pagination, Select, Space, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Pagination, Select, Space, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
+import { EmptyState } from '../../shared/ui';
 import { IconDelete, IconRefresh, IconSave } from '@douyinfe/semi-icons';
 import { useState } from 'react';
 import { useGrantUserRoleMutation } from '../../features/user-roles/useGrantUserRoleMutation';
@@ -173,7 +174,7 @@ export function UserRoleGrantPage() {
 
           {usersQuery.isError ? (
             <div className="task-state-panel">
-              <Empty
+              <EmptyState variant="inline"
                 title="注册账号加载失败"
                 description={usersQuery.error instanceof Error ? usersQuery.error.message : '请稍后重试。'}
               />
@@ -183,7 +184,7 @@ export function UserRoleGrantPage() {
 
           {!usersQuery.isLoading && !usersQuery.isError && users.length === 0 ? (
             <div className="task-state-panel">
-              <Empty title="暂无注册账号" description="新用户注册后会出现在这里。" />
+              <EmptyState variant="inline" title="暂无注册账号" description="新用户注册后会出现在这里。" />
             </div>
           ) : null}
 

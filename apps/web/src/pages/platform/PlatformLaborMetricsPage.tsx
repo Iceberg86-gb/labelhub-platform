@@ -1,4 +1,5 @@
-import { Button, Empty, Spin, Table, Typography } from '@douyinfe/semi-ui';
+import { Button, Spin, Table, Typography } from '@douyinfe/semi-ui';
+import { EmptyState } from '../../shared/ui';
 import { IconRefresh } from '@douyinfe/semi-icons';
 import { usePlatformLaborMetricsQuery, type PlatformLaborMetrics } from '../../features/platform-metrics/usePlatformLaborMetricsQuery';
 
@@ -90,7 +91,7 @@ export function PlatformLaborMetricsPage() {
 
       {metrics.isError ? (
         <div className="task-state-panel">
-          <Empty title="人力计量数据加载失败" description={metrics.error instanceof Error ? metrics.error.message : '请稍后重试。'} />
+          <EmptyState variant="inline" title="人力计量数据加载失败" description={metrics.error instanceof Error ? metrics.error.message : '请稍后重试。'} />
           <Button onClick={() => metrics.refetch()}>重新加载</Button>
         </div>
       ) : null}
@@ -99,7 +100,7 @@ export function PlatformLaborMetricsPage() {
         <>
           {data?.empty ? (
             <div className="task-state-panel platform-metrics-empty">
-              <Empty title="暂无记录" description="当前没有可展示的提交、审核或返工计量。这里不会把无记录渲染成统计值为 0。" />
+              <EmptyState variant="inline" title="暂无记录" description="当前没有可展示的提交、审核或返工计量。这里不会把无记录渲染成统计值为 0。" />
             </div>
           ) : null}
 

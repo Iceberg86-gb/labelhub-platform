@@ -1,4 +1,5 @@
-import { Banner, Button, Card, Empty, Space, Spin, Tag, Typography } from '@douyinfe/semi-ui';
+import { Banner, Button, Card, Space, Spin, Typography } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { useParams } from 'react-router-dom';
 import { schemaFields } from '../../entities/schema/runtimeSchema';
 import { schemaVersionLabel } from '../../entities/schema/schemaTypes';
@@ -37,7 +38,7 @@ export function LabelerSubmissionPage() {
   const answerPayload = coerceAnswerPayload(submission?.answerPayload ?? renderSchema?.answerPayload ?? EMPTY_ANSWER_PAYLOAD);
 
   if (!submissionId) {
-    return <Empty title="Submission 地址无效" description="请从作答完成后的跳转入口进入详情页。" />;
+    return <EmptyState variant="inline" title="Submission 地址无效" description="请从作答完成后的跳转入口进入详情页。" />;
   }
 
   if (submissionQuery.isLoading || renderSchemaQuery.isLoading) {
@@ -51,17 +52,17 @@ export function LabelerSubmissionPage() {
   if (submissionQuery.isError || !submission) {
     const isNotFound = submissionQuery.error instanceof SubmissionDetailFailure && submissionQuery.error.status === 404;
     return (
-      <Empty
+      <EmptyState
+        variant="inline"
         title={isNotFound ? 'Submission 不存在或无权访问' : '提交详情加载失败'}
         description={isNotFound ? '请确认当前账号是否拥有这个提交记录。' : '请稍后重试。'}
-      >
-        {!isNotFound ? <Button onClick={() => submissionQuery.refetch()}>重试</Button> : null}
-      </Empty>
+        action={!isNotFound ? <Button onClick={() => submissionQuery.refetch()}>重试</Button> : null}
+      />
     );
   }
 
   if (renderSchemaQuery.isError || !schemaVersion) {
-    return <Empty title="历史 Schema 加载失败" description="请稍后重试。" />;
+    return <EmptyState variant="inline" title="历史 Schema 加载失败" description="请稍后重试。" />;
   }
 
   return (
@@ -72,10 +73,10 @@ export function LabelerSubmissionPage() {
             Submission #{submission.id}
           </Typography.Title>
           <Space wrap>
-            <Tag className="semantic-tag semantic-tag--success">已提交</Tag>
+            <StatusBadge tone="success">已提交</StatusBadge>
             <PrereviewStatusTag status={submission.prereviewStatus} signals={submission.prereviewSignals} />
-            <Tag className="semantic-tag semantic-tag--accent">Session #{submission.sessionId}</Tag>
-            <Tag className="semantic-tag semantic-tag--info">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</Tag>
+            <StatusBadge tone="accent">Session #{submission.sessionId}</StatusBadge>
+            <StatusBadge tone="info">Schema 版本: {schemaVersionLabel(schemaVersion)} · 提交时绑定版本</StatusBadge>
           </Space>
         </div>
         <Typography.Text type="tertiary">提交时间: {formatDateTime(submission.createdAt)}</Typography.Text>
