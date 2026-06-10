@@ -4,6 +4,7 @@ import { Field as FormilyField } from '@formily/core';
 import { useField } from '@formily/react';
 import { useCallback, useRef, type MouseEvent, type ReactNode } from 'react';
 import type { SchemaField } from '../../../../entities/schema/schemaTypes';
+import { sanitizeRichTextHtml } from '../../../../shared/security/sanitizeRichText';
 
 type RichTextCommand = 'bold' | 'italic' | 'insertUnorderedList' | 'insertOrderedList' | 'createLink';
 
@@ -33,7 +34,7 @@ export function LabelHubRichTextField({ field }: { field?: SchemaField }) {
   }, [executeCommand]);
 
   if (formilyField.readPretty) {
-    return <div className="labelhub-rich-text-readonly" dangerouslySetInnerHTML={{ __html: value }} />;
+    return <div className="labelhub-rich-text-readonly" dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(value) }} />;
   }
 
   return (
@@ -73,7 +74,7 @@ export function LabelHubRichTextField({ field }: { field?: SchemaField }) {
         role="textbox"
         aria-label={field?.label}
         data-placeholder={field?.placeholder ?? '请输入富文本'}
-        dangerouslySetInnerHTML={{ __html: value }}
+        dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(value) }}
         onInput={(event) => formilyField.setValue(event.currentTarget.innerHTML)}
       />
     </div>
