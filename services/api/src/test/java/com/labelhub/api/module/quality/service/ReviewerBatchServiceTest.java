@@ -21,11 +21,11 @@ class ReviewerBatchServiceTest {
     @Test
     void reviewSubmissions_continues_per_item_when_one_submission_cannot_be_reviewed() {
         QualityLedgerEntryEntity created = entry(900L, 300L);
-        when(ledgerService.createEntry(300L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER")))
+        when(ledgerService.createEntryInNewTransaction(300L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER")))
             .thenReturn(created);
-        when(ledgerService.createEntry(301L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER")))
+        when(ledgerService.createEntryInNewTransaction(301L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER")))
             .thenThrow(new SelfReviewNotAllowedException(301L));
-        when(ledgerService.createEntry(302L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER")))
+        when(ledgerService.createEntryInNewTransaction(302L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER")))
             .thenThrow(new SubmissionNotFoundException(302L));
 
         ReviewerBatchResult result = service.reviewSubmissions(
@@ -42,15 +42,15 @@ class ReviewerBatchServiceTest {
         assertThat(result.items()).extracting(ReviewerBatchItemResult::status)
             .containsExactly("created", "self_review_not_allowed", "not_found");
         assertThat(result.items().get(0).ledgerEntryId()).isEqualTo(900L);
-        verify(ledgerService).createEntry(300L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER"));
-        verify(ledgerService).createEntry(301L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER"));
-        verify(ledgerService).createEntry(302L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER"));
+        verify(ledgerService).createEntryInNewTransaction(300L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER"));
+        verify(ledgerService).createEntryInNewTransaction(301L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER"));
+        verify(ledgerService).createEntryInNewTransaction(302L, 1001L, "reviewer_overall_verdict", Map.of("verdict", "approve", "reviewLevel", "reviewer"), Set.of("REVIEWER"));
     }
 
     @Test
     void reviewSubmissions_attaches_reason_to_batch_reject_payload() {
         QualityLedgerEntryEntity created = entry(901L, 300L);
-        when(ledgerService.createEntry(
+        when(ledgerService.createEntryInNewTransaction(
             300L,
             1001L,
             "reviewer_overall_verdict",
@@ -70,7 +70,7 @@ class ReviewerBatchServiceTest {
         assertThat(result.items()).singleElement()
             .extracting(ReviewerBatchItemResult::status)
             .isEqualTo("created");
-        verify(ledgerService).createEntry(
+        verify(ledgerService).createEntryInNewTransaction(
             300L,
             1001L,
             "reviewer_overall_verdict",

@@ -46,7 +46,7 @@ public class ReviewerBatchService {
         Set<String> reviewerRoles
     ) {
         try {
-            QualityLedgerEntryEntity entity = ledgerService.createEntry(
+            QualityLedgerEntryEntity entity = ledgerService.createEntryInNewTransaction(
                 submissionId,
                 reviewerUserId,
                 "reviewer_overall_verdict",
