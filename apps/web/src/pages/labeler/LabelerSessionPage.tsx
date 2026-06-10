@@ -51,6 +51,7 @@ export function LabelerSessionPage() {
   const submitTaskDraftsMutation = useSubmitTaskDraftsMutation();
 
   const [answerPayload, setAnswerPayload] = useState<AnswerPayload | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
   const [serverErrors, setServerErrors] = useState<Map<string, string[]> | null>(null);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [submitModalOpen, setSubmitModalOpen] = useState(false);
@@ -95,6 +96,7 @@ export function LabelerSessionPage() {
     lastSessionIdRef.current = sessionId;
     formRef.current = null;
     setAnswerPayload(null);
+    setIsDirty(false);
     setServerErrors(null);
     setHasInitialized(false);
     setSubmitModalOpen(false);
@@ -152,6 +154,26 @@ export function LabelerSessionPage() {
     },
   });
 
+  // Clear the unsaved-changes flag once autosave reports a confirmed server save.
+  useEffect(() => {
+    if (autosave.status === 'saved') {
+      setIsDirty(false);
+    }
+  }, [autosave.status, autosave.lastSavedAt]);
+
+  // Warn before the browser unloads (close/refresh/back) while there are edits not yet saved to the
+  // server — the autosave debounce window is the gap in-app navigation (which awaits flush) cannot
+  // cover. Mirrors OwnerSchemaDesignerPage's guard; beforeunload cannot await async flush.
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!isEditable || !isDirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isEditable, isDirty]);
+
   const validationErrors = useMemo(
     () => (detail && answerPayload ? validatePayload(fields, answerPayload) : []),
     [answerPayload, detail, fields],
@@ -193,6 +215,7 @@ export function LabelerSessionPage() {
   const handleAnswerPayloadChange = useCallback((next: AnswerPayload) => {
     setServerErrors(null);
     setAnswerPayload(next);
+    setIsDirty(true);
   }, []);
 
   const handleFormReady = useCallback((form: Form<Record<string, unknown>>) => {

@@ -208,7 +208,14 @@ vi.mock('../../features/labeling/DatasetItemContextCard', () => ({
 }));
 
 vi.mock('../../features/labeling/formily/SchemaFormilyRenderer', () => ({
-  SchemaFormilyRenderer: () => <section>作答表单</section>,
+  SchemaFormilyRenderer: ({ onChange }: { onChange?: (value: Record<string, unknown>) => void }) => (
+    <section>
+      作答表单
+      <button type="button" data-testid="answer-edit" onClick={() => onChange?.({ answer: '已修改' })}>
+        edit
+      </button>
+    </section>
+  ),
 }));
 
 vi.mock('../../features/labeling/SubmitConfirmModal', () => ({
@@ -379,6 +386,45 @@ describe('Labeler pages design shell', () => {
     const rendered = await renderClient(<LabelerSessionPage />);
 
     expect(rendered.html()).toContain('提交本批次');
+
+    rendered.unmount();
+  });
+
+  it('warns before unloading only after the answer has unsaved edits', async () => {
+    sessionDetailQueryMock.mockReturnValue({
+      data: sessionDetail,
+      isError: false,
+      isLoading: false,
+      isSuccess: true,
+    });
+    latestDraftQueryMock.mockReturnValue({
+      data: { payload: { answer: '合规' } },
+      isLoading: false,
+    });
+    mySessionsQueryMock.mockImplementation(({ status }: { status?: string }) => ({
+      data: { items: status === 'claimed' ? [session] : [], total: status === 'claimed' ? 1 : 0 },
+      isError: false,
+      isLoading: false,
+    }));
+
+    const rendered = await renderClient(<LabelerSessionPage />);
+
+    const cleanEvent = new Event('beforeunload', { cancelable: true });
+    await act(async () => {
+      window.dispatchEvent(cleanEvent);
+    });
+    expect(cleanEvent.defaultPrevented).toBe(false);
+
+    const editButton = document.querySelector('[data-testid="answer-edit"]') as HTMLButtonElement | null;
+    await act(async () => {
+      editButton?.click();
+    });
+
+    const dirtyEvent = new Event('beforeunload', { cancelable: true });
+    await act(async () => {
+      window.dispatchEvent(dirtyEvent);
+    });
+    expect(dirtyEvent.defaultPrevented).toBe(true);
 
     rendered.unmount();
   });
