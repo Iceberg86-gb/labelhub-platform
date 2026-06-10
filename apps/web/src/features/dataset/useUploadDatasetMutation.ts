@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Dataset, DatasetImportFormat } from '../../entities/dataset/datasetTypes';
-import { getAccessToken } from '../../shared/api/auth-storage';
+import { authorizedFetch } from '../../shared/api/client';
 import { datasetsQueryKey } from './useDatasetsQuery';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
@@ -27,18 +27,13 @@ export function useUploadDatasetMutation() {
 
   return useMutation<Dataset, UploadDatasetFailure, UploadDatasetVariables>({
     mutationFn: async ({ taskId, file, sourceName, format }) => {
-      const token = getAccessToken();
-      if (!token) {
-        throw new UploadDatasetFailure(401, 'UNAUTHORIZED', '登录已过期,请重新登录');
-      }
-
       const formData = new FormData();
       formData.append('file', file);
       formData.append('taskId', String(taskId));
       if (sourceName) formData.append('sourceName', sourceName);
       if (format) formData.append('format', format);
 
-      const response = await fetch(`${API_BASE}/datasets`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData });
+      const response = await authorizedFetch(`${API_BASE}/datasets`, { method: 'POST', body: formData });
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({} as { code?: string; message?: string }));

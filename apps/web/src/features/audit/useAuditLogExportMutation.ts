@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { Toast } from '@douyinfe/semi-ui';
-import { getAccessToken } from '../../shared/api/auth-storage';
+import { authorizedFetch } from '../../shared/api/client';
 import type { AuditLogsFilters } from './useAuditLogsQuery';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api';
@@ -35,10 +35,10 @@ export function useAuditLogExportMutation() {
     mutationFn: async (filters) => {
       const query = csvParams(filters);
       const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/audit-logs/export.csv${query ? `?${query}` : ''}`;
-      const token = getAccessToken();
 
-      // CSV download needs raw Response/Blob handling, so this hook intentionally uses fetch instead of openapi-fetch.
-      const response = await fetch(endpoint, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+      // CSV download needs raw Response/Blob handling, so it calls authorizedFetch (shared 401-refresh
+      // pipeline) directly instead of openapi-fetch.
+      const response = await authorizedFetch(endpoint);
       if (response.status === 413) throw new Error('导出超过 50000 行,请缩小筛选条件后重试');
       if (!response.ok) throw new Error(response.status === 403 ? '权限不足' : '审计日志导出失败,请稍后重试');
 

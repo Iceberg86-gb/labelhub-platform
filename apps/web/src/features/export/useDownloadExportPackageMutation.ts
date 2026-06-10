@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { Toast } from '@douyinfe/semi-ui';
-import { getAccessToken } from '../../shared/api/auth-storage';
+import { authorizedFetch } from '../../shared/api/client';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
@@ -40,10 +40,7 @@ export function useDownloadExportPackageMutation() {
   return useMutation<void, Error, DownloadExportPackageVariables>({
     mutationFn: async ({ snapshotId, packageType }) => {
       const endpoint = `${apiBaseUrl.replace(/\/$/, '')}/exports/snapshots/${snapshotId}/packages/${packageType}`;
-      const token = getAccessToken();
-      const response = await fetch(endpoint, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      const response = await authorizedFetch(endpoint);
       if (!response.ok) {
         throw new Error(errorMessage(response.status));
       }
