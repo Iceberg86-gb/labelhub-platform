@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Install with: (crontab -l; echo "0 4 * * * /opt/labelhub/infra/deploy/backup.sh >> /var/log/labelhub-backup.log 2>&1") | crontab -
 set -euo pipefail
+# Backups contain plaintext data (mysql dump + minio objects); keep them owner-only.
+umask 077
 
 ENV_FILE="${ENV_FILE:-/opt/labelhub/infra/.env.prod}"
 BACKUP_ROOT="${BACKUP_ROOT:-/opt/labelhub/backups}"
@@ -27,6 +29,9 @@ MYSQL_DATABASE="${MYSQL_DATABASE:-labelhub}"
 : "${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}"
 
 mkdir -p "$BACKUP_DIR"
+# Restrict directory access so the plaintext dump/objects inside are not readable by other local
+# users (container-written files may not inherit the host umask, but a 700 dir gates access).
+chmod 700 "$BACKUP_ROOT" "$BACKUP_DIR"
 
 log "dump mysql database ${MYSQL_DATABASE}"
 docker run --rm --network "$NETWORK" \
