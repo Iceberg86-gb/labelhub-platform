@@ -1,5 +1,6 @@
-import { Button, Card, Empty, Space, Spin, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Space, Spin, Tag, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconChevronLeft, IconChevronRight, IconClose, IconInfoCircle, IconTickCircle } from '@douyinfe/semi-icons';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { schemaFields } from '../../entities/schema/runtimeSchema';
@@ -98,7 +99,7 @@ export function ReviewerSubmissionPage() {
   const queueListPath = reviewerQueuePath(reviewLevel);
 
   if (!submissionId) {
-    return <Empty title="Submission 地址无效" description="请从审核队列进入 submission 详情。" />;
+    return <EmptyState title="Submission 地址无效" description="请从审核队列进入 submission 详情。" />;
   }
 
   if (renderSchemaQuery.isLoading) {
@@ -112,7 +113,7 @@ export function ReviewerSubmissionPage() {
   if (renderSchemaQuery.isError || !schemaVersion) {
     return (
       <div className="task-state-panel">
-        <Empty title="Submission 不存在或无权访问" description="请确认当前 Reviewer 是否拥有审核权限。" />
+        <EmptyState variant="inline" title="Submission 不存在或无权访问" description="请确认当前 Reviewer 是否拥有审核权限。" />
         <Button onClick={() => navigate('/reviewer/submissions')}>返回审核队列</Button>
       </div>
     );
@@ -357,9 +358,9 @@ function AiRecommendationCard({
     <Card className="ai-recommendation-card reviewer-ai-overview-card reviewer-ai-summary-band" title="AI 综合判定（建议）" bordered={false}>
       <div className="reviewer-ai-summary-band__metrics reviewer-ai-recommendation-line">
         <Typography.Text type="tertiary">AI 建议 · 非最终裁决</Typography.Text>
-        <Tag className={`semantic-tag semantic-tag--${aiRecommendationTone(payload.recommendation)}`}>
+        <StatusBadge tone={aiRecommendationTone(payload.recommendation)}>
           {AI_RECOMMENDATION_LABELS[payload.recommendation]}
-        </Tag>
+        </StatusBadge>
         <strong className="reviewer-ai-score">{formatDecimal(payload.finalScore)}</strong>
         <span>
           （通过阈值 {formatOptionalDecimal(payload.passThreshold ?? payload.threshold)}，拒绝阈值{' '}
@@ -399,7 +400,7 @@ function AiFieldFindingList({ entries }: { entries: QualityLedgerEntry[] }) {
         const finding = entry.payload as AiFieldFindingLedgerPayload;
         return (
           <div className="ai-field-finding-pill" key={entry.id}>
-            <Tag className={`semantic-tag semantic-tag--${severityTone(finding.severity)}`} size="small">{severityLabel(finding.severity)}</Tag>
+            <StatusBadge tone={severityTone(finding.severity)} size="small">{severityLabel(finding.severity)}</StatusBadge>
             <Typography.Text className="mono-value">{formatFieldPathLabel(finding.fieldPath)}</Typography.Text>
             <Typography.Text>{finding.finding}</Typography.Text>
           </div>
@@ -434,9 +435,9 @@ function ReviewerLedgerSummary({ entry }: { entry: QualityLedgerEntry }) {
   const payload = entry.payload as ReviewerVerdictLedgerPayload;
   return (
     <div className="human-final-verdict-card__summary">
-      <Tag className={`semantic-tag semantic-tag--${payload.verdict === 'approve' ? 'success' : 'danger'}`}>
+      <StatusBadge tone={payload.verdict === 'approve' ? 'success' : 'danger'}>
         {REVIEWER_VERDICT_LABELS[payload.verdict]}
-      </Tag>
+      </StatusBadge>
       <Typography.Text>{REVIEW_LEVEL_LABELS[payload.reviewLevel]} · {entry.actorType} #{entry.actorUserId ?? '-'}</Typography.Text>
       {payload.reason ? <Typography.Text type="tertiary">{payload.reason}</Typography.Text> : null}
     </div>
@@ -494,8 +495,8 @@ function LedgerEntriesCard({ entries, loading, error }: { entries: QualityLedger
     <details className="reviewer-ai-layer reviewer-ai-layer--history ledger-entries-card">
       <summary>审核历史</summary>
       {loading ? <Spin /> : null}
-      {error ? <Empty title="审核历史加载失败" description="请稍后重试。" /> : null}
-      {!loading && !error && entries.length === 0 ? <Empty title="暂无审核记录" description="Reviewer 写入后会追加到 Quality Ledger。" /> : null}
+      {error ? <EmptyState variant="inline" title="审核历史加载失败" description="请稍后重试。" /> : null}
+      {!loading && !error && entries.length === 0 ? <EmptyState variant="inline" title="暂无审核记录" description="Reviewer 写入后会追加到 Quality Ledger。" /> : null}
       {entries.length > 0 ? (
         <div className="ledger-entry-list">
           {entries.map((entry) => (
@@ -515,7 +516,7 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
         <time>{formatDateTime(entry.createdAt)}</time>
         <Typography.Text className="mono-value">{formatFieldPathLabel(payload.fieldPath)}</Typography.Text>
         <span>
-          <Tag className={`semantic-tag semantic-tag--${severityTone(payload.severity)}`} size="small">{severityLabel(payload.severity)}</Tag>
+          <StatusBadge tone={severityTone(payload.severity)} size="small">{severityLabel(payload.severity)}</StatusBadge>
           {payload.finding}
         </span>
         <Typography.Text type="tertiary">置信度 {payload.confidence ?? '-'}</Typography.Text>
@@ -530,9 +531,9 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
         <time>{formatDateTime(entry.createdAt)}</time>
         <Typography.Text className="mono-value">AI 综合</Typography.Text>
         <span>
-          <Tag className={`semantic-tag semantic-tag--${aiRecommendationTone(payload.recommendation)}`} size="small">
+          <StatusBadge tone={aiRecommendationTone(payload.recommendation)} size="small">
             {AI_RECOMMENDATION_LABELS[payload.recommendation]}
-          </Tag>
+          </StatusBadge>
           {payload.summary ?? '综合建议'}
         </span>
         <Typography.Text type="tertiary">置信度 {formatDecimal(payload.finalScore)}</Typography.Text>
@@ -547,7 +548,7 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
       <time>{formatDateTime(entry.createdAt)}</time>
       <Typography.Text className="mono-value">{REVIEW_LEVEL_LABELS[payload.reviewLevel]}</Typography.Text>
       <span>
-        <Tag className={`semantic-tag semantic-tag--${verdict === 'approve' ? 'success' : 'danger'}`}>{REVIEWER_VERDICT_LABELS[verdict]}</Tag>
+        <StatusBadge tone={verdict === 'approve' ? 'success' : 'danger'}>{REVIEWER_VERDICT_LABELS[verdict]}</StatusBadge>
         {payload.reason ?? '无说明'}
       </span>
       <Typography.Text type="tertiary">{entry.actorType} #{entry.actorUserId}</Typography.Text>
@@ -639,7 +640,7 @@ function severityLabel(severity: AiFieldFindingLedgerPayload['severity']) {
 }
 
 function VerdictTag({ status }: { status: VerdictStatus }) {
-  return <Tag className={`semantic-tag semantic-tag--${verdictStatusTone(status)}`}>{VERDICT_STATUS_LABELS[status]}</Tag>;
+  return <StatusBadge tone={verdictStatusTone(status)}>{VERDICT_STATUS_LABELS[status]}</StatusBadge>;
 }
 
 function verdictStatusTone(status: VerdictStatus) {

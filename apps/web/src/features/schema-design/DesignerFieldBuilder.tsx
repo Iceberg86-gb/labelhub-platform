@@ -1,4 +1,5 @@
-import { Card, Tag, Typography } from '@douyinfe/semi-ui';
+import { Card, Typography } from '@douyinfe/semi-ui';
+import { StatusBadge } from '../../shared/ui';
 import {
   IconAIWandLevel1,
   IconArticle,
@@ -249,9 +250,9 @@ function PaletteItem({ type }: { type: SchemaFieldType }) {
       <span className="field-type-palette__icon" aria-hidden>
         {FIELD_TYPE_PALETTE_ICONS[type]}
       </span>
-      <Tag className="semantic-tag semantic-tag--accent" size="small">
+      <StatusBadge tone="accent" size="small">
         {SCHEMA_FIELD_TYPE_LABELS[type]}
-      </Tag>
+      </StatusBadge>
     </div>
   );
 }
@@ -373,7 +374,7 @@ function CanvasFieldChildren({
 function PaletteDragPreview({ type }: { type: SchemaFieldType }) {
   return (
     <div className="field-drag-preview">
-      <Tag className="semantic-tag semantic-tag--accent">{SCHEMA_FIELD_TYPE_LABELS[type]}</Tag>
+      <StatusBadge tone="accent">{SCHEMA_FIELD_TYPE_LABELS[type]}</StatusBadge>
     </div>
   );
 }
@@ -382,7 +383,7 @@ function FieldDragPreview({ field, hasError }: { field: SchemaField; hasError: b
   return (
     <div className={['field-drag-preview', hasError ? 'field-drag-preview--error' : ''].join(' ')}>
       <strong>{field.label || '未命名字段'}</strong>
-      <Tag className={`semantic-tag semantic-tag--${hasError ? 'danger' : 'accent'}`}>{SCHEMA_FIELD_TYPE_LABELS[field.type]}</Tag>
+      <StatusBadge tone={hasError ? 'danger' : 'accent'}>{SCHEMA_FIELD_TYPE_LABELS[field.type]}</StatusBadge>
     </div>
   );
 }

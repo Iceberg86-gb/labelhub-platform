@@ -1,11 +1,11 @@
-import { Banner, Empty, SideSheet, Spin, Tag, Typography } from '@douyinfe/semi-ui';
+import { Banner, SideSheet, Spin, Typography } from '@douyinfe/semi-ui';
 import type { ReactNode } from 'react';
 import type { AiReviewResult, FieldFinding } from '../../entities/ai/aiTypes';
 import {
   OVERALL_SUGGESTION_LABELS,
   SEVERITY_LABELS,
 } from '../../entities/ai/aiTypes';
-import { TruncatedHash } from '../../shared/ui/TruncatedHash';
+import { EmptyState, StatusBadge, TruncatedHash } from '../../shared/ui';
 
 type AiReviewDrawerProps = {
   open: boolean;
@@ -33,7 +33,7 @@ export function AiReviewDrawer({ open, onClose, result, loading }: AiReviewDrawe
         ) : null}
 
         {!loading && !result ? (
-          <Empty title="暂无本次检查结果" description="触发 AI 检查后,结果会显示在这里。" />
+          <EmptyState variant="inline" title="暂无本次检查结果" description="触发 AI 检查后,结果会显示在这里。" />
         ) : null}
 
         {!loading && result ? <AiReviewResultPanel result={result} /> : null}
@@ -74,9 +74,9 @@ function AiReviewResultPanel({ result }: { result: AiReviewResult }) {
         <MetaItem
           label="AI 建议"
           value={
-            <Tag className={`semantic-tag semantic-tag--${suggestionTone(result.overallSuggestion)}`}>
+            <StatusBadge tone={suggestionTone(result.overallSuggestion)}>
               {OVERALL_SUGGESTION_LABELS[result.overallSuggestion]}
-            </Tag>
+            </StatusBadge>
           }
         />
         <MetaItem label="Provider" value={`${aiCall.providerName} / ${aiCall.modelName}`} />
@@ -105,7 +105,7 @@ function AiReviewResultPanel({ result }: { result: AiReviewResult }) {
       <section className="ai-finding-list" aria-label="AI field findings">
         <Typography.Text strong>字段反馈</Typography.Text>
         {result.fieldFindings.length === 0 ? (
-          <Empty title="无字段反馈" description="AI 未对任何字段提供反馈。" />
+          <EmptyState variant="inline" title="无字段反馈" description="AI 未对任何字段提供反馈。" />
         ) : (
           result.fieldFindings.map((finding) => <FindingItem key={`${finding.fieldPath}-${finding.finding}`} finding={finding} />)
         )}
@@ -139,7 +139,7 @@ function FindingItem({ finding }: { finding: FieldFinding }) {
     <div className="ai-finding-item">
       <div className="ai-finding-item__head">
         <Typography.Text className="mono-value" strong>{finding.fieldPath}</Typography.Text>
-        <Tag className={`semantic-tag semantic-tag--${severityTone(finding.severity)}`}>{SEVERITY_LABELS[finding.severity]}</Tag>
+        <StatusBadge tone={severityTone(finding.severity)}>{SEVERITY_LABELS[finding.severity]}</StatusBadge>
       </div>
       {finding.label ? <Typography.Text type="tertiary">{finding.label}</Typography.Text> : null}
       <Typography.Paragraph>{finding.finding}</Typography.Paragraph>

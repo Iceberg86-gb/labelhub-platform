@@ -1,8 +1,8 @@
-import { Button, Card, Empty, Tag, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Typography } from '@douyinfe/semi-ui';
 import { IconChevronDown, IconChevronUp, IconRefresh } from '@douyinfe/semi-icons';
 import { type ReactNode, useState } from 'react';
 import type { AiCall } from '../../entities/ai/aiTypes';
-import { TruncatedHash } from '../../shared/ui/TruncatedHash';
+import { EmptyState, StatusBadge, TruncatedHash } from '../../shared/ui';
 import { useSubmissionAiProvenanceQuery } from './useSubmissionAiProvenanceQuery';
 
 interface AiProvenanceCardProps {
@@ -45,9 +45,9 @@ export function AiProvenanceCard({ className, submissionId }: AiProvenanceCardPr
         </Button>
       </div>
 
-      {provenanceQuery.isError ? <Empty title="AI 预审记录加载失败" description="请稍后重试。" /> : null}
+      {provenanceQuery.isError ? <EmptyState variant="inline" title="AI 预审记录加载失败" description="请稍后重试。" /> : null}
       {!provenanceQuery.isError && aiCalls.length === 0 ? (
-        <Empty title="尚未发起 AI 预审" description="该 submission 暂无 AI 调用记录。" />
+        <EmptyState variant="inline" title="尚未发起 AI 预审" description="该 submission 暂无 AI 调用记录。" />
       ) : null}
       {aiCalls.length > 0 ? (
         <div className="ai-call-list">
@@ -68,7 +68,7 @@ function AiCallItem({ call }: { call: AiCall }) {
           <Typography.Text strong>AI 调用 #{call.id}</Typography.Text>
           <Typography.Text type="tertiary">{call.providerName} / {call.modelName}</Typography.Text>
         </div>
-        <Tag className={`semantic-tag semantic-tag--${AI_CALL_STATUS_TONES[call.status]}`}>{AI_CALL_STATUS_LABELS[call.status]}</Tag>
+        <StatusBadge tone={AI_CALL_STATUS_TONES[call.status]}>{AI_CALL_STATUS_LABELS[call.status]}</StatusBadge>
       </div>
       <div className="ai-call-summary-grid">
         <div>

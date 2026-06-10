@@ -1,4 +1,5 @@
-import { Button, Empty, Modal, RadioGroup, Space, Spin, Table, Tag, TextArea, Toast, Tooltip, Typography, Upload } from '@douyinfe/semi-ui';
+import { Button, Modal, RadioGroup, Space, Spin, Table, TextArea, Toast, Tooltip, Typography, Upload } from '@douyinfe/semi-ui';
+import { EmptyState, StatusBadge } from '../../shared/ui';
 import type { BeforeUploadProps, customRequestArgs } from '@douyinfe/semi-ui/lib/es/upload';
 import { IconRefresh, IconUpload } from '@douyinfe/semi-icons';
 import { useMemo, useState } from 'react';
@@ -59,16 +60,16 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
         dataIndex: 'importStatus',
         width: 110,
         render: (value: string) => (
-          <Tag className={`semantic-tag semantic-tag--${value === 'completed' ? 'success' : value === 'failed' ? 'danger' : 'accent'}`}>
+          <StatusBadge tone={value === 'completed' ? 'success' : value === 'failed' ? 'danger' : 'accent'}>
             {DATASET_IMPORT_STATUS_LABELS[value] ?? value}
-          </Tag>
+          </StatusBadge>
         ),
       },
       {
         title: '当前',
         width: 110,
         render: (_: unknown, record: Dataset) =>
-          record.id === task.currentDatasetId ? <Tag className="semantic-tag semantic-tag--success">当前数据集</Tag> : <Typography.Text type="tertiary">-</Typography.Text>,
+          record.id === task.currentDatasetId ? <StatusBadge tone="success">当前数据集</StatusBadge> : <Typography.Text type="tertiary">-</Typography.Text>,
       },
       {
         title: '操作',
@@ -93,7 +94,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
         title: '状态',
         dataIndex: 'status',
         width: 100,
-        render: (value: string) => <Tag className={`semantic-tag semantic-tag--${value === 'available' ? 'success' : 'neutral'}`}>{value}</Tag>,
+        render: (value: string) => <StatusBadge tone={value === 'available' ? 'success' : 'neutral'}>{value}</StatusBadge>,
       },
       {
         title: '题目预览',
@@ -140,7 +141,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
 
   function renderAction(record: Dataset) {
     if (record.id === task.currentDatasetId) {
-      return <Tag className="semantic-tag semantic-tag--success">已为当前</Tag>;
+      return <StatusBadge tone="success">已为当前</StatusBadge>;
     }
     const button = (
       <Button
@@ -225,9 +226,9 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
           <Typography.Title heading={5}>数据集</Typography.Title>
           <Typography.Text type="tertiary">上传 JSON / JSONL / Excel 文件后,显式选择当前数据集。</Typography.Text>
         </div>
-        <Tag className={`semantic-tag semantic-tag--${task.currentDatasetId ? 'success' : 'neutral'}`}>
+        <StatusBadge tone={task.currentDatasetId ? 'success' : 'neutral'}>
           {task.currentDatasetId ? `当前: Dataset #${currentDataset?.id ?? task.currentDatasetId}` : '当前: 未设置'}
-        </Tag>
+        </StatusBadge>
       </div>
 
       <div className="dataset-upload-area">
@@ -261,10 +262,10 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
 
       {datasetsQuery.isLoading ? <Spin /> : null}
       {datasetsQuery.isError ? (
-        <Empty title="数据集列表加载失败" description={datasetsQuery.error instanceof Error ? datasetsQuery.error.message : '请稍后重试。'} />
+        <EmptyState variant="inline" title="数据集列表加载失败" description={datasetsQuery.error instanceof Error ? datasetsQuery.error.message : '请稍后重试。'} />
       ) : null}
       {!datasetsQuery.isLoading && !datasetsQuery.isError && datasets.length === 0 ? (
-        <Empty title="暂无数据集" description="上传第一个 JSON、JSONL 或 Excel 文件后,可将它设为当前数据集。" />
+        <EmptyState variant="inline" title="暂无数据集" description="上传第一个 JSON、JSONL 或 Excel 文件后,可将它设为当前数据集。" />
       ) : null}
       {datasets.length > 0 ? <Table columns={columns} dataSource={datasets} rowKey="id" pagination={false} /> : null}
       <Modal
@@ -277,7 +278,7 @@ export function DatasetUploadSection({ task }: DatasetUploadSectionProps) {
         <Space vertical align="start" spacing={16} className="dataset-items-modal-body">
           {datasetItemsQuery.isLoading ? <Spin /> : null}
           {datasetItemsQuery.isError ? (
-            <Empty title="题目列表加载失败" description={datasetItemsQuery.error instanceof Error ? datasetItemsQuery.error.message : '请稍后重试。'} />
+            <EmptyState variant="inline" title="题目列表加载失败" description={datasetItemsQuery.error instanceof Error ? datasetItemsQuery.error.message : '请稍后重试。'} />
           ) : null}
           {!datasetItemsQuery.isLoading && !datasetItemsQuery.isError ? (
             <Table columns={itemColumns} dataSource={datasetItems} rowKey="id" pagination={false} />
