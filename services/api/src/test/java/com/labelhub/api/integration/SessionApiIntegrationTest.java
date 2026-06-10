@@ -252,6 +252,60 @@ class SessionApiIntegrationTest {
     }
 
     @Test
+    void my_sessions_reflects_reviewer_level_verdict_without_senior_review() throws Exception {
+        String labelerToken = login("labeler_demo", "demo1234");
+        Fixture fixture = publishedTaskFixture("my-sessions-reviewer-verdict", 1, 1);
+        long sessionId = claimSession(labelerToken, fixture);
+
+        String submitBody = mockMvc.perform(post("/sessions/{sessionId}/submit", sessionId)
+                .header("Authorization", bearer(labelerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"answerPayload\":{\"field_0\":\"answer\"}}"))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        long submissionId = objectMapper.readTree(submitBody).get("id").asLong();
+
+        // A reviewer-level (NOT senior) overall verdict is the authoritative outcome post senior-orthogonalization;
+        // the labeler's session must surface it as approved instead of staying "submitted" (审核中).
+        jdbcTemplate.update("""
+            INSERT INTO quality_ledger_entries(submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at)
+            VALUES (?, ?, 'reviewer_overall_verdict', 'reviewer', 1003, NULL, JSON_OBJECT('verdict', 'approve', 'reviewLevel', 'reviewer'), NOW(3))
+            """, submissionId, fixture.taskId());
+
+        assertThat(workStatusForSession(labelerToken, sessionId)).isEqualTo("approved");
+    }
+
+    @Test
+    void my_sessions_lets_senior_arbitration_override_reviewer_verdict() throws Exception {
+        String labelerToken = login("labeler_demo", "demo1234");
+        Fixture fixture = publishedTaskFixture("my-sessions-senior-override", 1, 1);
+        long sessionId = claimSession(labelerToken, fixture);
+
+        String submitBody = mockMvc.perform(post("/sessions/{sessionId}/submit", sessionId)
+                .header("Authorization", bearer(labelerToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"answerPayload\":{\"field_0\":\"answer\"}}"))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        long submissionId = objectMapper.readTree(submitBody).get("id").asLong();
+
+        jdbcTemplate.update("""
+            INSERT INTO quality_ledger_entries(submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at)
+            VALUES (?, ?, 'reviewer_overall_verdict', 'reviewer', 1003, NULL, JSON_OBJECT('verdict', 'approve', 'reviewLevel', 'reviewer'), NOW(3))
+            """, submissionId, fixture.taskId());
+        jdbcTemplate.update("""
+            INSERT INTO quality_ledger_entries(submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at)
+            VALUES (?, ?, 'reviewer_overall_verdict', 'reviewer', 1004, NULL, JSON_OBJECT('verdict', 'reject', 'reviewLevel', 'senior_reviewer'), NOW(3))
+            """, submissionId, fixture.taskId());
+
+        assertThat(workStatusForSession(labelerToken, sessionId)).isEqualTo("rejected");
+    }
+
+    @Test
     void historical_render_schema_returns_submission_schema_version_after_task_publishes_v2() throws Exception {
         String labelerToken = login("labeler_demo", "demo1234");
         Fixture fixture = publishedTaskFixture("submit-history", 1, 1);
@@ -347,6 +401,21 @@ class SessionApiIntegrationTest {
             .getContentAsString();
         JsonNode json = objectMapper.readTree(body);
         return json.get("accessToken").asText();
+    }
+
+    private String workStatusForSession(String labelerToken, long sessionId) throws Exception {
+        String body = mockMvc.perform(get("/my/sessions?page=1&size=50")
+                .header("Authorization", bearer(labelerToken)))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        for (JsonNode item : objectMapper.readTree(body).get("items")) {
+            if (item.get("id").asLong() == sessionId) {
+                return item.get("workStatus").asText();
+            }
+        }
+        throw new AssertionError("session " + sessionId + " not found in /my/sessions");
     }
 
     private long claimSession(String labelerToken, Fixture fixture) throws Exception {
