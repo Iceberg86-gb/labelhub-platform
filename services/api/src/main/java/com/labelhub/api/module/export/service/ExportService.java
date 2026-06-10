@@ -185,6 +185,20 @@ public class ExportService {
                 new IllegalArgumentException("export job not found")
             );
         }
+        if ("succeeded".equals(job.getStatus())) {
+            // Idempotent no-op on at-least-once redelivery (lease expiry / crash before markProcessed):
+            // the job already produced its (immutable) snapshot in a committed run, so return that
+            // instead of re-running. markRunning excludes 'succeeded', so re-running here would 0-row
+            // and dead-letter a job that actually finished.
+            List<ExportSnapshotEntity> existing = exportSnapshotMapper.selectByExportJobId(job.getId());
+            if (!existing.isEmpty()) {
+                return existing.get(0);
+            }
+            throw new ExportFailureException(
+                "Export job " + exportJobId + " is marked succeeded but has no snapshot",
+                new IllegalStateException("missing snapshot for succeeded export job")
+            );
+        }
         LocalDateTime startedAt = LocalDateTime.now(clock);
         requireOneRow(exportJobMapper.markRunning(job.getId(), startedAt), "mark export job running");
         job.setStartedAt(startedAt);

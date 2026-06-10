@@ -255,6 +255,36 @@ class ExportServiceTest {
     }
 
     @Test
+    void processExportJob_returns_existing_snapshot_when_job_already_succeeded() {
+        ExportJobEntity job = exportJob();
+        job.setStatus("succeeded");
+        ExportSnapshotEntity existing = new ExportSnapshotEntity();
+        existing.setId(4242L);
+        existing.setExportJobId(99L);
+        when(exportJobMapper.selectById(99L)).thenReturn(job);
+        when(exportSnapshotMapper.selectByExportJobId(99L)).thenReturn(List.of(existing));
+
+        ExportSnapshotEntity result = exportService.processExportJob(99L);
+
+        assertThat(result).isSameAs(existing);
+        verify(exportJobMapper, never()).markRunning(any(), any());
+        verify(exportJobMapper, never()).markSucceeded(any(), any(), any(), any());
+        verify(factCollector, never()).collectForTask(any(), any());
+    }
+
+    @Test
+    void processExportJob_fails_when_succeeded_job_has_no_snapshot() {
+        ExportJobEntity job = exportJob();
+        job.setStatus("succeeded");
+        when(exportJobMapper.selectById(99L)).thenReturn(job);
+        when(exportSnapshotMapper.selectByExportJobId(99L)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> exportService.processExportJob(99L))
+            .isInstanceOf(ExportFailureException.class);
+        verify(exportJobMapper, never()).markRunning(any(), any());
+    }
+
+    @Test
     void processExportJob_writes_training_jsonl_from_job_parameters() throws Exception {
         ExportJobEntity job = exportJob();
         job.setParameters(Map.of(
