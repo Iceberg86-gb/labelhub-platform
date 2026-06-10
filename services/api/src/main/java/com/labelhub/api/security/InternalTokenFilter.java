@@ -6,6 +6,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -26,7 +28,11 @@ public class InternalTokenFilter extends OncePerRequestFilter {
             return;
         }
         String actual = request.getHeader("X-Internal-Token");
-        if (properties.getInternalToken() == null || !properties.getInternalToken().equals(actual)) {
+        String configured = properties.getInternalToken();
+        if (configured == null || configured.isBlank() || actual == null
+            || !MessageDigest.isEqual(
+                   configured.getBytes(StandardCharsets.UTF_8),
+                   actual.getBytes(StandardCharsets.UTF_8))) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
