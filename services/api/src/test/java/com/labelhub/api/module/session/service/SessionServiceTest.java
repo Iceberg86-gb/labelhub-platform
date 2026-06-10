@@ -123,17 +123,31 @@ class SessionServiceTest {
     }
 
     @Test
-    void claimBatch_uses_available_items_instead_of_remaining_quota() {
+    void claimBatch_rejects_when_quota_is_exhausted() {
         TaskEntity task = publishedTask();
         task.setQuotaTotal(5);
         task.setQuotaClaimed(5);
-        DatasetItemEntity first = item(701L, 1);
-        DatasetItemEntity second = item(702L, 2);
         when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
-        when(datasetItemMapper.selectAvailableForUpdate(500L, 10L, 10)).thenReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> sessionService.claimBatch(10L, 1002L, 10))
+            .isInstanceOf(TaskNotAvailableException.class);
+
+        verify(datasetItemMapper, never()).selectAvailableForUpdate(any(), any(), any());
+        verify(taskMapper, never()).incrementQuotaClaimedBy(any(), any());
+        verify(sessionMapper, never()).insert(any(SessionEntity.class));
+    }
+
+    @Test
+    void claimBatch_caps_request_to_remaining_quota() {
+        TaskEntity task = publishedTask();
+        task.setQuotaTotal(3);
+        task.setQuotaClaimed(2);
+        DatasetItemEntity only = item(701L, 1);
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
+        // remaining quota = 1, so the request of 10 must be capped to 1 item.
+        when(datasetItemMapper.selectAvailableForUpdate(500L, 10L, 1)).thenReturn(List.of(only));
         when(datasetItemMapper.updateStatus(701L, "claimed")).thenReturn(1);
-        when(datasetItemMapper.updateStatus(702L, "claimed")).thenReturn(1);
-        when(taskMapper.incrementQuotaClaimedBy(10L, 2)).thenReturn(1);
+        when(taskMapper.incrementQuotaClaimedBy(10L, 1)).thenReturn(1);
         when(sessionMapper.insert(any(SessionEntity.class))).thenAnswer(invocation -> {
             SessionEntity entity = invocation.getArgument(0);
             entity.setId(900L + entity.getDatasetItemId());
@@ -143,11 +157,10 @@ class SessionServiceTest {
         ClaimBatchResultView result = sessionService.claimBatch(10L, 1002L, 10);
 
         assertThat(result.requestedSize()).isEqualTo(10);
-        assertThat(result.claimedCount()).isEqualTo(2);
-        assertThat(result.sessions()).extracting(SessionEntity::getDatasetItemId).containsExactly(701L, 702L);
-        assertThat(result.sessions()).extracting(SessionEntity::getLabelerId).containsExactly(1002L, 1002L);
-        verify(datasetItemMapper).selectAvailableForUpdate(500L, 10L, 10);
-        verify(taskMapper).incrementQuotaClaimedBy(10L, 2);
+        assertThat(result.claimedCount()).isEqualTo(1);
+        assertThat(result.sessions()).extracting(SessionEntity::getDatasetItemId).containsExactly(701L);
+        verify(datasetItemMapper).selectAvailableForUpdate(500L, 10L, 1);
+        verify(taskMapper).incrementQuotaClaimedBy(10L, 1);
     }
 
     @Test
