@@ -56,6 +56,7 @@ public class LlmProviderConfigService {
         validateRequired(command.providerType(), "providerType");
         validateRequired(command.providerName(), "providerName");
         validateRequired(command.modelName(), "modelName");
+        LlmProviderBaseUrlValidator.validate(command.baseUrl());
         LocalDateTime now = now();
         LlmProviderConfigEntity entity = new LlmProviderConfigEntity();
         entity.setOwnerId(ownerId);
@@ -80,6 +81,7 @@ public class LlmProviderConfigService {
         validateRequired(command.providerType(), "providerType");
         validateRequired(command.providerName(), "providerName");
         validateRequired(command.modelName(), "modelName");
+        LlmProviderBaseUrlValidator.validate(command.baseUrl());
         LocalDateTime now = now();
         existing.setProviderType(command.providerType());
         existing.setProviderName(command.providerName());
@@ -127,6 +129,7 @@ public class LlmProviderConfigService {
     ) {
         LlmProviderConfigEntity existing = get(ownerId, id);
         String secret = hasText(request.secret()) ? request.secret() : decryptStoredSecret(existing);
+        LlmProviderBaseUrlValidator.validate(valueOrDefault(request.baseUrl(), existing.getBaseUrl()));
         LlmProviderConnectionTestResult result = connectionTester.test(new LlmProviderConnectionTestCommand(
             valueOrDefault(request.providerType(), existing.getProviderType()),
             valueOrDefault(request.providerName(), existing.getProviderName()),
@@ -144,6 +147,7 @@ public class LlmProviderConfigService {
         validateRequired(command.providerType(), "providerType");
         validateRequired(command.providerName(), "providerName");
         validateRequired(command.modelName(), "modelName");
+        LlmProviderBaseUrlValidator.validate(command.baseUrl());
         LlmProviderConnectionTestResult result = connectionTester.test(command);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("providerType", command.providerType());
