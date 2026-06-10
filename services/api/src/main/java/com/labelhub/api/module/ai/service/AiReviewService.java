@@ -204,7 +204,7 @@ public class AiReviewService {
         String providerAdapterVersion = PROVIDER_ADAPTER_VERSION;
         Map<String, Object> input = buildInput(submission, schemaVersion, datasetItem, task);
         String inputHash = hash(input);
-        String idempotencyKey = idempotencyKey(submissionId, promptVersion.getId(), providerAdapterVersion, aiReviewRuleId);
+        String idempotencyKey = aiReviewIdempotencyKey(submissionId, promptVersion.getId(), aiReviewRuleId);
 
         AiCallEntity existing = aiCallMapper.selectByIdempotencyKey(idempotencyKey);
         if (existing != null) {
@@ -386,7 +386,7 @@ public class AiReviewService {
         ScoredAiReview contextScore = score(emptyResult(input), activeRule);
         return new InternalAiReviewContextView(
             submissionId,
-            internalIdempotencyKey(submissionId, promptVersion.getId(), aiReviewRuleId),
+            aiReviewIdempotencyKey(submissionId, promptVersion.getId(), aiReviewRuleId),
             promptVersionLabel(promptVersion),
             promptVersion.getId(),
             aiReviewRuleId,
@@ -761,25 +761,6 @@ public class AiReviewService {
         return findings;
     }
 
-    private String idempotencyKey(Long submissionId, Long promptVersionId, String providerAdapterVersion, Long aiReviewRuleId) {
-        String key = "submission:%d:provider:%s:model:%s:promptVersionId:%d:adapter:%s".formatted(
-            submissionId,
-            aiProvider.providerName(),
-            aiProvider.modelName(),
-            promptVersionId,
-            providerAdapterVersion
-        );
-        if (aiReviewRuleId != null) {
-            key = key + ":ruleVersionId:" + aiReviewRuleId;
-        }
-        if (key.length() > IDEMPOTENCY_KEY_MAX_LENGTH) {
-            throw new IllegalArgumentException(
-                "ai_calls.idempotency_key would exceed " + IDEMPOTENCY_KEY_MAX_LENGTH + " characters"
-            );
-        }
-        return key;
-    }
-
     private AiReviewRuleEntity activeReviewRule(TaskEntity task) {
         Long ruleId = task.getCurrentAiReviewRuleId();
         if (ruleId == null) {
@@ -833,7 +814,11 @@ public class AiReviewService {
         return rule.getRejectThreshold();
     }
 
-    private String internalIdempotencyKey(Long submissionId, Long promptVersionId, Long aiReviewRuleId) {
+    // Single idempotency-key generator shared by the owner (synchronous) and agent (async outbox)
+    // review paths. It is intentionally provider/model-agnostic: the agent resolves its provider at
+    // runtime, so the key it can compute at enqueue time cannot depend on the provider. Keying both
+    // paths the same way ensures one submission+prompt(+rule) yields a single ai_call/ledger entry.
+    private String aiReviewIdempotencyKey(Long submissionId, Long promptVersionId, Long aiReviewRuleId) {
         String key = "submission:%d:ai_review:promptVersionId:%d:adapter:%s".formatted(
             submissionId,
             promptVersionId,

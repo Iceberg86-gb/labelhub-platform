@@ -162,7 +162,7 @@ class AiReviewServiceTest {
         assertThat(inserted.getAiReviewRuleId()).isNull();
         assertThat(inserted.getProviderAdapterVersion()).isEqualTo("agent-default-v1");
         assertThat(inserted.getIdempotencyKey()).isEqualTo(
-            "submission:300:provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
+            "submission:300:ai_review:promptVersionId:1:adapter:agent-default-v1"
         );
         assertThat(inserted.getIdempotencyKey().length()).isLessThanOrEqualTo(160);
         assertThat(inserted.getRequestPayload()).doesNotContainKey("labelerId");
@@ -217,7 +217,7 @@ class AiReviewServiceTest {
         assertThat(row.getPromptVersionId()).isEqualTo(7L);
         assertThat(row.getAiReviewRuleId()).isEqualTo(19L);
         assertThat(row.getIdempotencyKey()).isEqualTo(
-            "submission:300:provider:mock:model:mock-v1:promptVersionId:7:adapter:agent-default-v1:ruleVersionId:19"
+            "submission:300:ai_review:promptVersionId:7:adapter:agent-default-v1:ruleVersionId:19"
         );
         assertThat(row.getIdempotencyKey().length()).isLessThanOrEqualTo(160);
     }
@@ -870,7 +870,7 @@ class AiReviewServiceTest {
     }
 
     private String canonicalKey() {
-        return "submission:300:provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1";
+        return "submission:300:ai_review:promptVersionId:1:adapter:agent-default-v1";
     }
 
     private PromptVersionEntity defaultPromptVersion() {

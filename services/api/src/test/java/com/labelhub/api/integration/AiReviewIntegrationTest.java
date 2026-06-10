@@ -93,7 +93,7 @@ class AiReviewIntegrationTest {
             .andExpect(jsonPath("$.aiCall.promptVersionId").value(1))
             .andExpect(jsonPath("$.aiCall.aiReviewRuleId").doesNotExist())
             .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
-                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
+                "submission:" + submissionId + ":ai_review:promptVersionId:1:adapter:agent-default-v1"
             ))
             .andExpect(jsonPath("$.aiCall.outputHash", hasLength(64)))
             .andExpect(jsonPath("$.fieldFindings", hasSize(1)));
@@ -200,7 +200,7 @@ class AiReviewIntegrationTest {
             .andExpect(jsonPath("$.aiCall.promptVersionId").value(1))
             .andExpect(jsonPath("$.aiCall.providerAdapterVersion").value("agent-default-v1"))
             .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
-                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
+                "submission:" + submissionId + ":ai_review:promptVersionId:1:adapter:agent-default-v1"
             ));
 
         assertThat(mockAiProvider.getCallCount()).isEqualTo(1);
@@ -241,7 +241,7 @@ class AiReviewIntegrationTest {
             .andExpect(jsonPath("$.aiCall.promptVersionId").value(rulePromptVersionId))
             .andExpect(jsonPath("$.aiCall.aiReviewRuleId").value(ruleId))
             .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
-                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:"
+                "submission:" + submissionId + ":ai_review:promptVersionId:"
                     + rulePromptVersionId + ":adapter:agent-default-v1:ruleVersionId:" + ruleId
             ));
 
@@ -260,7 +260,7 @@ class AiReviewIntegrationTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.aiCall.aiReviewRuleId").doesNotExist())
             .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
-                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:1:adapter:agent-default-v1"
+                "submission:" + submissionId + ":ai_review:promptVersionId:1:adapter:agent-default-v1"
             ));
 
         JsonNode publishedRule = saveAndPublishRule(taskIdForSubmission(submissionId), "rule-key-isolation-prompt");
@@ -273,7 +273,7 @@ class AiReviewIntegrationTest {
             .andExpect(jsonPath("$.aiCall.promptVersionId").value(rulePromptVersionId))
             .andExpect(jsonPath("$.aiCall.aiReviewRuleId").value(ruleId))
             .andExpect(jsonPath("$.aiCall.idempotencyKey").value(
-                "submission:" + submissionId + ":provider:mock:model:mock-v1:promptVersionId:"
+                "submission:" + submissionId + ":ai_review:promptVersionId:"
                     + rulePromptVersionId + ":adapter:agent-default-v1:ruleVersionId:" + ruleId
             ));
 
