@@ -97,9 +97,9 @@ class SessionServiceTest {
 
     @Test
     void claim_creates_session_and_marks_dataset_item_claimed() {
-        when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(1);
-        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(publishedTask());
         when(datasetItemMapper.selectNextAvailableForUpdate(500L, 10L)).thenReturn(item(700L));
+        when(taskMapper.incrementQuotaClaimedBy(10L, 1)).thenReturn(1);
         when(datasetItemMapper.updateStatus(700L, "claimed")).thenReturn(1);
         when(sessionMapper.insert(any(SessionEntity.class))).thenAnswer(invocation -> {
             SessionEntity entity = invocation.getArgument(0);
@@ -203,43 +203,47 @@ class SessionServiceTest {
     }
 
     @Test
-    void claim_rejects_when_task_optimistic_update_fails() {
-        when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(0);
+    void claim_rejects_when_task_quota_is_exhausted() {
+        TaskEntity task = publishedTask();
+        task.setQuotaTotal(5);
+        task.setQuotaClaimed(5);
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
 
         assertThatThrownBy(() -> sessionService.claim(10L, 1002L))
             .isInstanceOf(TaskNotAvailableException.class);
 
-        verify(taskMapper, never()).selectById(any());
+        verify(datasetItemMapper, never()).selectNextAvailableForUpdate(any(), any());
+        verify(taskMapper, never()).incrementQuotaClaimedBy(any(), any());
         verify(sessionMapper, never()).insert(any(SessionEntity.class));
     }
 
     @Test
     void claim_rejects_when_no_dataset_item_is_available() {
-        when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(1);
-        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(publishedTask());
         when(datasetItemMapper.selectNextAvailableForUpdate(500L, 10L)).thenReturn(null);
 
         assertThatThrownBy(() -> sessionService.claim(10L, 1002L))
             .isInstanceOf(NoAvailableDatasetItemException.class);
 
+        verify(taskMapper, never()).incrementQuotaClaimedBy(any(), any());
         verify(datasetItemMapper, never()).updateStatus(any(), any());
         verify(sessionMapper, never()).insert(any(SessionEntity.class));
     }
 
     @Test
-    void claim_updates_claim_counter_before_selecting_dataset_item() {
-        when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(1);
-        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+    void claim_locks_task_then_item_then_increments_quota() {
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(publishedTask());
         when(datasetItemMapper.selectNextAvailableForUpdate(500L, 10L)).thenReturn(item(700L));
+        when(taskMapper.incrementQuotaClaimedBy(10L, 1)).thenReturn(1);
         when(datasetItemMapper.updateStatus(700L, "claimed")).thenReturn(1);
         when(sessionMapper.insert(any(SessionEntity.class))).thenReturn(1);
 
         sessionService.claim(10L, 1002L);
 
         InOrder inOrder = inOrder(taskMapper, datasetItemMapper, sessionMapper);
-        inOrder.verify(taskMapper).incrementQuotaClaimedIfAvailable(10L);
-        inOrder.verify(taskMapper).selectById(10L);
+        inOrder.verify(taskMapper).selectByIdForUpdate(10L);
         inOrder.verify(datasetItemMapper).selectNextAvailableForUpdate(500L, 10L);
+        inOrder.verify(taskMapper).incrementQuotaClaimedBy(10L, 1);
         inOrder.verify(datasetItemMapper).updateStatus(700L, "claimed");
         inOrder.verify(sessionMapper).insert(any(SessionEntity.class));
     }
@@ -248,9 +252,9 @@ class SessionServiceTest {
     void claim_binds_schema_version_from_task_current_pointer() {
         TaskEntity task = publishedTask();
         task.setCurrentSchemaVersionId(4242L);
-        when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(1);
-        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(task);
         when(datasetItemMapper.selectNextAvailableForUpdate(500L, 10L)).thenReturn(item(700L));
+        when(taskMapper.incrementQuotaClaimedBy(10L, 1)).thenReturn(1);
         when(datasetItemMapper.updateStatus(700L, "claimed")).thenReturn(1);
         when(sessionMapper.insert(any(SessionEntity.class))).thenReturn(1);
 
@@ -294,9 +298,9 @@ class SessionServiceTest {
     void claim_records_dataset_item_payload_in_snapshot() {
         DatasetItemEntity item = item(700L);
         item.setItemPayload(Map.of("source", "row-1"));
-        when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(1);
-        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(publishedTask());
         when(datasetItemMapper.selectNextAvailableForUpdate(500L, 10L)).thenReturn(item);
+        when(taskMapper.incrementQuotaClaimedBy(10L, 1)).thenReturn(1);
         when(datasetItemMapper.updateStatus(700L, "claimed")).thenReturn(1);
         when(sessionMapper.insert(any(SessionEntity.class))).thenReturn(1);
 
@@ -307,9 +311,9 @@ class SessionServiceTest {
 
     @Test
     void claim_requires_one_row_for_dataset_item_status_update() {
-        when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(1);
-        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(publishedTask());
         when(datasetItemMapper.selectNextAvailableForUpdate(500L, 10L)).thenReturn(item(700L));
+        when(taskMapper.incrementQuotaClaimedBy(10L, 1)).thenReturn(1);
         when(datasetItemMapper.updateStatus(700L, "claimed")).thenReturn(0);
 
         assertThatThrownBy(() -> sessionService.claim(10L, 1002L))
@@ -319,9 +323,9 @@ class SessionServiceTest {
 
     @Test
     void claim_requires_one_row_for_session_insert() {
-        when(taskMapper.incrementQuotaClaimedIfAvailable(10L)).thenReturn(1);
-        when(taskMapper.selectById(10L)).thenReturn(publishedTask());
+        when(taskMapper.selectByIdForUpdate(10L)).thenReturn(publishedTask());
         when(datasetItemMapper.selectNextAvailableForUpdate(500L, 10L)).thenReturn(item(700L));
+        when(taskMapper.incrementQuotaClaimedBy(10L, 1)).thenReturn(1);
         when(datasetItemMapper.updateStatus(700L, "claimed")).thenReturn(1);
         when(sessionMapper.insert(any(SessionEntity.class))).thenReturn(0);
 

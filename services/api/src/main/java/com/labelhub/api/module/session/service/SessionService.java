@@ -203,19 +203,23 @@ public class SessionService {
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public SessionEntity claim(Long taskId, Long labelerId) {
-        int quotaRows = taskMapper.incrementQuotaClaimedIfAvailable(taskId);
-        if (quotaRows != 1) {
+        // Lock order: tasks row (selectByIdForUpdate) -> dataset_items row -> guarded quota update on
+        // the already-locked tasks row — identical to claimBatch, so concurrent claim/claimBatch on the
+        // same task can never acquire the two row locks in opposite order (deadlock-free by construction).
+        TaskEntity task = taskMapper.selectByIdForUpdate(taskId);
+        if (!isClaimableTask(task)) {
             throw new TaskNotAvailableException(taskId);
         }
-
-        TaskEntity task = taskMapper.selectById(taskId);
-        if (task == null || task.getCurrentDatasetId() == null || task.getCurrentSchemaVersionId() == null) {
+        if (remainingQuota(task) <= 0) {
             throw new TaskNotAvailableException(taskId);
         }
 
         DatasetItemEntity item = datasetItemMapper.selectNextAvailableForUpdate(task.getCurrentDatasetId(), taskId);
         if (item == null) {
             throw new NoAvailableDatasetItemException(taskId, task.getCurrentDatasetId());
+        }
+        if (taskMapper.incrementQuotaClaimedBy(taskId, 1) != 1) {
+            throw new TaskNotAvailableException(taskId);
         }
         requireOneRow(datasetItemMapper.updateStatus(item.getId(), ITEM_CLAIMED), "update dataset item status");
 
