@@ -77,6 +77,9 @@ services:
     entrypoint: ["/bin/sh", "-c", "exec java $$JAVA_OPTS -jar /app/app.jar"]
     environment:
       JAVA_OPTS: ${API_JAVA_OPTS:--Xmx768m}
+      # Activates ProductionSecretsGuard so the API refuses to start with the committed dev-default
+      # JWT_SECRET / LABELHUB_INTERNAL_TOKEN. Non-prod (local/demo/test) keep the default profile.
+      SPRING_PROFILES_ACTIVE: prod
       DATABASE_URL: ${DATABASE_URL:-jdbc:mysql://mysql:3306/labelhub?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
       MYSQL_USER: ${MYSQL_USER:-labelhub}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
