@@ -128,6 +128,49 @@ class QuotaEnforcementIntegrationTest {
     }
 
     @Test
+    void concurrent_single_claims_via_service_never_exceed_quota() throws Exception {
+        long ownerId = seedUser("owner-claim-service");
+        long labelerId = seedUser("labeler-claim-service");
+        int quotaTotal = 4;
+        int threads = 16;
+        // More available items than the quota, so quota (not item availability) is the limiter.
+        long taskId = seedPublishedTask("quota-claim-service", ownerId, quotaTotal, 0, threads);
+
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Callable<Boolean>> tasks = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            tasks.add(() -> {
+                start.await();
+                try {
+                    sessionService.claim(taskId, labelerId);
+                    return true;
+                } catch (RuntimeException ignored) {
+                    return false;
+                }
+            });
+        }
+        List<Future<Boolean>> futures = new ArrayList<>();
+        for (Callable<Boolean> task : tasks) {
+            futures.add(pool.submit(task));
+        }
+        start.countDown();
+        int succeeded = 0;
+        for (Future<Boolean> future : futures) {
+            if (Boolean.TRUE.equals(future.get())) {
+                succeeded++;
+            }
+        }
+        pool.shutdown();
+
+        assertThat(succeeded).isEqualTo(quotaTotal);
+        assertThat(quotaClaimed(taskId)).isEqualTo(quotaTotal);
+        Integer sessionCount = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM sessions WHERE task_id=?", Integer.class, taskId);
+        assertThat(sessionCount).isEqualTo(quotaTotal);
+    }
+
+    @Test
     void batch_increment_is_rejected_when_it_would_exceed_quota() {
         long ownerId = seedUser("owner-batch-guard");
         long taskId = seedPublishedTask("quota-batch-guard", ownerId, 3, 2, 5);
