@@ -135,6 +135,33 @@ public class LedgerService {
         Map<String, Object> payload,
         Set<String> reviewerRoles
     ) {
+        return doCreateEntry(submissionId, reviewerUserId, entryType, payload, reviewerRoles);
+    }
+
+    /**
+     * Per-item ledger write used by batch review: runs in its OWN physical transaction so one item's
+     * rollback (self-review / not-found) cannot mark the batch's shared transaction rollback-only and
+     * silently discard the other items' committed entries. The cross-bean call from ReviewerBatchService
+     * is what makes REQUIRES_NEW actually take effect.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public QualityLedgerEntryEntity createEntryInNewTransaction(
+        Long submissionId,
+        Long reviewerUserId,
+        String entryType,
+        Map<String, Object> payload,
+        Set<String> reviewerRoles
+    ) {
+        return doCreateEntry(submissionId, reviewerUserId, entryType, payload, reviewerRoles);
+    }
+
+    private QualityLedgerEntryEntity doCreateEntry(
+        Long submissionId,
+        Long reviewerUserId,
+        String entryType,
+        Map<String, Object> payload,
+        Set<String> reviewerRoles
+    ) {
         if (!REVIEWER_OVERALL_VERDICT.equals(entryType)) {
             throw new LedgerEntryTypeNotSupportedException(entryType);
         }
