@@ -76,17 +76,17 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
                    WHEN s.status = 'returned_for_revision' THEN 'returned_for_revision'
                    WHEN s.status = 'abandoned' THEN 'abandoned'
                    WHEN s.status = 'submitted'
-                        AND JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict')) = 'approve'
+                        AND JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'approve'
                      THEN 'approved'
                    WHEN s.status = 'submitted'
-                        AND JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict')) = 'reject'
+                        AND JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'reject'
                      THEN 'rejected'
                    WHEN s.status = 'submitted' THEN 'submitted'
                    ELSE s.status
                  END AS labeler_work_status,
                  CASE
-                   WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict')) = 'approve' THEN 'approved'
-                   WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict')) = 'reject' THEN 'rejected'
+                   WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'approve' THEN 'approved'
+                   WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'reject' THEN 'rejected'
                    WHEN active_submission.id IS NOT NULL THEN 'pending'
                    ELSE NULL
                  END AS final_verdict
@@ -105,7 +105,7 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
             WHERE ranked.rn = 1
           ) active_submission ON active_submission.session_id = s.id
           LEFT JOIN (
-            SELECT ranked_senior.*
+            SELECT ranked_verdict.*
             FROM (
               SELECT qle.*,
                      ROW_NUMBER() OVER (
@@ -114,10 +114,9 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
                      ) AS rn
               FROM quality_ledger_entries qle
               WHERE qle.evidence_type = 'reviewer_overall_verdict'
-                AND JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')) = 'senior_reviewer'
-            ) ranked_senior
-            WHERE ranked_senior.rn = 1
-          ) latest_senior ON latest_senior.submission_id = active_submission.id
+            ) ranked_verdict
+            WHERE ranked_verdict.rn = 1
+          ) latest_verdict ON latest_verdict.submission_id = active_submission.id
           WHERE s.labeler_id = #{labelerId}
           <if test="statusFilter != null and statusFilter != ''">
             AND s.status = #{statusFilter}
@@ -146,10 +145,10 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
                    WHEN s.status = 'returned_for_revision' THEN 'returned_for_revision'
                    WHEN s.status = 'abandoned' THEN 'abandoned'
                    WHEN s.status = 'submitted'
-                        AND JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict')) = 'approve'
+                        AND JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'approve'
                      THEN 'approved'
                    WHEN s.status = 'submitted'
-                        AND JSON_UNQUOTE(JSON_EXTRACT(latest_senior.payload, '$.verdict')) = 'reject'
+                        AND JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'reject'
                      THEN 'rejected'
                    WHEN s.status = 'submitted' THEN 'submitted'
                    ELSE s.status
@@ -169,7 +168,7 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
             WHERE ranked.rn = 1
           ) active_submission ON active_submission.session_id = s.id
           LEFT JOIN (
-            SELECT ranked_senior.*
+            SELECT ranked_verdict.*
             FROM (
               SELECT qle.*,
                      ROW_NUMBER() OVER (
@@ -178,10 +177,9 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
                      ) AS rn
               FROM quality_ledger_entries qle
               WHERE qle.evidence_type = 'reviewer_overall_verdict'
-                AND JSON_UNQUOTE(JSON_EXTRACT(qle.payload, '$.reviewLevel')) = 'senior_reviewer'
-            ) ranked_senior
-            WHERE ranked_senior.rn = 1
-          ) latest_senior ON latest_senior.submission_id = active_submission.id
+            ) ranked_verdict
+            WHERE ranked_verdict.rn = 1
+          ) latest_verdict ON latest_verdict.submission_id = active_submission.id
           WHERE s.labeler_id = #{labelerId}
         ) labeler_sessions
         GROUP BY labeler_work_status
