@@ -58,6 +58,23 @@ class ExportArtifactBuilderBusinessFormatTest {
     }
 
     @Test
+    void build_neutralizes_formula_injection_in_csv_and_xlsx() throws Exception {
+        ExportArtifact artifact = builder.build(injectionBundle());
+
+        String csv = utf8(file(artifact, "training-results.csv"));
+        assertThat(csv).contains("'+inc");          // item.prompt (col 8)
+        assertThat(csv).contains("'=1+1");           // answer.label (col 9)
+        assertThat(csv).contains("\"'=a,b\"");       // answer.notes (col 10): neutralized then RFC-4180 quoted
+
+        try (var workbook = WorkbookFactory.create(new ByteArrayInputStream(file(artifact, "training-results.xlsx").content()))) {
+            Row row = workbook.getSheetAt(0).getRow(1);
+            assertThat(row.getCell(8).getStringCellValue()).isEqualTo("'+inc");
+            assertThat(row.getCell(9).getStringCellValue()).isEqualTo("'=1+1");
+            assertThat(row.getCell(10).getStringCellValue()).isEqualTo("'=a,b");
+        }
+    }
+
+    @Test
     void build_applies_field_mapping_to_business_formats_and_manifest_hash() {
         ExportArtifact defaultArtifact = builder.build(bundle());
         ExportArtifact mappedArtifact = builder.build(bundle(), new ExportFieldMapping(List.of(
@@ -179,6 +196,26 @@ class ExportArtifactBuilderBusinessFormatTest {
             List.of(),
             List.of(ledger),
             Map.of(300L, DerivedVerdictSnapshot.derive(300L, ledger)),
+            ExportDataScope.APPROVED_ONLY
+        );
+    }
+
+    private static ExportFactBundle injectionBundle() {
+        QualityLedgerEntryEntity ledger = ledgerEntry();
+        DatasetItemEntity item = new DatasetItemEntity();
+        item.setId(200L);
+        item.setTaskId(100L);
+        item.setItemPayload(linkedMap("prompt", "+inc", "meta", linkedMap("lang", "en")));
+        SubmissionEntity submission = new SubmissionEntity();
+        submission.setId(300L);
+        submission.setTaskId(100L);
+        submission.setDatasetItemId(200L);
+        submission.setSchemaVersionId(400L);
+        submission.setCreatedAt(LocalDateTime.parse("2026-05-30T10:15:00"));
+        submission.setAnswerPayload(linkedMap("label", "=1+1", "notes", "=a,b"));
+        return new ExportFactBundle(
+            task(), List.of(), List.of(item), List.of(submission), List.of(), List.of(),
+            List.of(ledger), Map.of(300L, DerivedVerdictSnapshot.derive(300L, ledger)),
             ExportDataScope.APPROVED_ONLY
         );
     }

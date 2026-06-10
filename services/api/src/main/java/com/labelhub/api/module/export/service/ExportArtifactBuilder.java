@@ -243,13 +243,13 @@ public class ExportArtifactBuilder {
             var sheet = workbook.createSheet("training-results");
             Row headerRow = sheet.createRow(0);
             for (int index = 0; index < columns.size(); index++) {
-                headerRow.createCell(index).setCellValue(columns.get(index).columnName());
+                headerRow.createCell(index).setCellValue(neutralizeFormula(columns.get(index).columnName()));
             }
             for (int rowIndex = 0; rowIndex < rows.size(); rowIndex++) {
                 Row row = sheet.createRow(rowIndex + 1);
                 Map<String, String> values = rows.get(rowIndex);
                 for (int columnIndex = 0; columnIndex < columns.size(); columnIndex++) {
-                    row.createCell(columnIndex).setCellValue(values.getOrDefault(columns.get(columnIndex).source(), ""));
+                    row.createCell(columnIndex).setCellValue(neutralizeFormula(values.getOrDefault(columns.get(columnIndex).source(), "")));
                 }
             }
             workbook.write(output);
@@ -271,11 +271,23 @@ public class ExportArtifactBuilder {
     }
 
     private String csv(String value) {
-        String safe = value == null ? "" : value;
+        String safe = neutralizeFormula(value == null ? "" : value);
         if (safe.contains(",") || safe.contains("\"") || safe.contains("\n") || safe.contains("\r")) {
             return "\"" + safe.replace("\"", "\"\"") + "\"";
         }
         return safe;
+    }
+
+    // Cells whose first char is one of these are auto-evaluated as a formula by Excel/Sheets/
+    // LibreOffice when the export is opened -> CSV/formula injection. Prefix a single apostrophe to
+    // force the spreadsheet app to treat the value as text (lossless on display).
+    private static final String FORMULA_TRIGGERS = "=+-@\t\r";
+
+    private String neutralizeFormula(String value) {
+        if (value == null || value.isEmpty()) {
+            return value;
+        }
+        return FORMULA_TRIGGERS.indexOf(value.charAt(0)) >= 0 ? "'" + value : value;
     }
 
     private String computeSourceStateHash(List<ArtifactFile> files) {
