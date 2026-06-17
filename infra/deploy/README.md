@@ -47,7 +47,7 @@ Target: single Alibaba Cloud ECS, Ubuntu 24.04, Docker Compose, public entry on 
    docker compose --env-file .env.prod -f docker-compose.prod.yml ps
    ```
 
-   Flyway runs in the API container on startup and applies the 27 migrations.
+   Flyway runs in the API container on startup and applies any pending migrations.
 
 8. Smoke test:
 
