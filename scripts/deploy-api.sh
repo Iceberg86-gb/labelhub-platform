@@ -14,13 +14,27 @@ sync_started="$(date +%s)"
 
 echo "Syncing source tree to ${remote}:${remote_root}/"
 rsync -az -e "$rsync_ssh_cmd" \
+  --include=.env*.example \
   --exclude=node_modules \
   --exclude=.git \
   --exclude=dist \
+  --exclude=.env \
+  --exclude=.env.* \
   --exclude=.env.prod \
   --exclude=web-dist \
   --exclude=.DS_Store \
   --exclude=.pnpm-store \
+  --exclude=.claude \
+  --exclude=.codex \
+  --exclude=application-secrets.yml \
+  --exclude=logs \
+  --exclude=*.log \
+  --exclude=coverage \
+  --exclude=*.tsbuildinfo \
+  --exclude=mysql-data \
+  --exclude=minio-data \
+  --exclude=target \
+  --exclude=/*.bundle \
   --exclude=/submission \
   --exclude=docs/screenshots \
   --exclude=docs/design-assets \
