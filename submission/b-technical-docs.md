@@ -1,6 +1,6 @@
 # B. 基础技术文档(整理索引)
 
-> 整理日期:2026-06-10。本文档是 LabelHub 基础技术文档的分类导览,每份文档附定位摘要与新鲜度评估。AI Coding 过程类文件见 [a-ai-coding-process.md](a-ai-coding-process.md)。
+> 整理日期:2026-06-26。本文档是 LabelHub 基础技术文档的分类导览,每份文档附定位摘要与新鲜度评估。AI Coding 过程类文件见 [a-ai-coding-process.md](a-ai-coding-process.md)。
 
 ## 0. 文档地图
 
@@ -64,7 +64,7 @@
 ## 6. 环境与运维
 
 - **[docs/dev-environment.md](../docs/dev-environment.md)** — 开发环境手册(~170 行):JDK 17 探测、pnpm workspace、本地基础设施 compose、测试库隔离(`labelhub_test`)、Makefile 目标、关键环境变量。
-- **[docs/demo-environment.md](../docs/demo-environment.md)** — 演示环境说明(2026-06-10):公网入口 `http://120.26.182.61:8443/`、演示账号、7 容器拓扑、五角色演示动线、已知限制与挂账。
+- **[docs/demo-environment.md](../docs/demo-environment.md)** — 演示环境说明(2026-06-26):公网入口 `http://120.26.182.61:8443/`、健康探针、账号名与密码发放规则、7 容器拓扑、五角色演示动线、已知限制与挂账。
 - **[infra/deploy/README.md](../infra/deploy/README.md)** — 生产部署 runbook:单 ECS 九步部署、密钥生成、备份 cron 与恢复演练、ICP/TLS 切换计划。
 
 ## 7. 设计资产(docs/design-assets/)

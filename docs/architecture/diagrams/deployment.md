@@ -4,7 +4,7 @@
 
 - 当前生产目标是单台阿里云 ECS，部署根目录 `/opt/labelhub`，由 `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build` 启动。
 - `scripts/deploy-web.sh` 在开发机执行 Web build，然后用 `rsync` 同步 `apps/web/dist/` 到 `/opt/labelhub/infra/web-dist/`，并同步源码到 `/opt/labelhub/`。
-- 公开访问路径仍是 `http://120.26.182.61:8443/`，`nginx` 只做 `8443:80` 映射；ICP备案与 HTTPS 证书切换尚未完成。
+- 公开访问路径仍是 `http://120.26.182.61:8443/`，`nginx` 只做 `8443:80` 映射；ICP备案与 HTTPS 证书切换尚未完成。`127.0.0.1:5173` 仅是本机 Vite 开发地址,不属于生产入口。
 - 生产 compose 实际包含 `mysql`、`redis`、`minio`、`minio-init`、`api`、`agent`、`nginx`；公网只暴露 `nginx`，其他端口在 compose 网络内使用。
 - Redis 补查命中仅限 `infra/docker-compose.yml` 与 `infra/docker-compose.prod.yml` 的服务定义/healthcheck，未发现业务消费者，属于候选裁剪项。
 
@@ -56,7 +56,7 @@ flowchart LR
 | --- | --- | --- |
 | 开发机(Developer Machine) | `scripts/deploy-web.sh` 执行 `pnpm --filter @labelhub/web build`，然后 rsync Web dist 与源码。 | `scripts/deploy-web.sh`、`docs/dev-environment.md` |
 | Web 产物同步(Web Dist Sync) | `apps/web/dist/` 同步到 `root@120.26.182.61:/opt/labelhub/infra/web-dist/`，使用 `--delete`。 | `scripts/deploy-web.sh`、`infra/deploy/README.md` |
-| 源码同步(Source Tree Sync) | 源码同步到 `/opt/labelhub/`，排除 `node_modules`、`.git`、`dist`、`.env.prod`、`web-dist`、`.DS_Store`、`.pnpm-store`、`submission`、`docs/screenshots`、`docs/design-assets`。 | `scripts/deploy-web.sh`、`docs/dev-environment.md` |
+| 源码同步(Source Tree Sync) | 源码同步到 `/opt/labelhub/`，保留 `.env*.example`，排除 `node_modules`、`.git`、`dist`、`.env`、`.env.*`、`.env.prod`、`web-dist`、`.DS_Store`、`.pnpm-store`、`.claude`、`.codex`、`application-secrets.yml`、`logs`、`*.log`、`coverage`、`*.tsbuildinfo`、`mysql-data`、`minio-data`、`target`、根目录 `*.bundle`、`submission`、`docs/screenshots`、`docs/design-assets`。 | `scripts/deploy-web.sh`、`docs/dev-environment.md` |
 | 浏览器(Browser) | 当前公网入口为 `http://120.26.182.61:8443/`；ICP备案与 HTTPS 证书切换尚未完成。 | `infra/deploy/README.md`、`infra/docker-compose.prod.yml` |
 | 阿里云 ECS(Alibaba Cloud ECS) | 单机 Ubuntu 24.04，部署根目录 `/opt/labelhub`，compose 在 `/opt/labelhub/infra` 执行。 | `infra/deploy/README.md` |
 | nginx | image `nginx:1.27-alpine`；公开端口映射 `8443:80`；挂载 `./web-dist:/usr/share/nginx/html:ro` 与 `./nginx/labelhub.conf:/etc/nginx/conf.d/default.conf:ro`。 | `infra/docker-compose.prod.yml`、`infra/nginx/labelhub.conf` |

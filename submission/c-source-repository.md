@@ -47,6 +47,15 @@ LabelHub - Platform/                  ← Monorepo 根(pnpm workspace + Maven re
 
 ## 4. 评审可执行的验证入口
 
+公网演示环境:
+
+```bash
+open http://120.26.182.61:8443/
+curl -f http://120.26.182.61:8443/api/actuator/health
+```
+
+本地复现环境:
+
 ```bash
 make doctor                                # 环境自检(JDK17/Docker/pnpm)
 make dev-up && make dev-api                # 基础设施 + 后端(/api)
@@ -84,9 +93,9 @@ git archive --format=zip -o labelhub-platform-src.zip HEAD
 
 ### 提交前检查清单
 
-- [ ] 未跟踪文件入库:`docs/api-inventory.md`、`docs/demo-environment.md`、`submission/`(当前 `git status` 显示这三项未跟踪);
+- [ ] 文档入库状态:根 README、`docs/api-inventory.md`、`docs/demo-environment.md`、`submission/` 均已纳入仓库跟踪;打包前仍需确认 `git status --short` 干净;
 - [ ] 敏感信息核对(已验证现状):`.env` / `.env.prod` 均未被 git 跟踪,仓库内只有 `.env.example` 三份样例,无 `.pem` 入库;
-- [ ] **`docs/demo-environment.md` 含公网演示账号真实密码**——交给答辩评审属有意为之(评审需要登录演示环境);若仓库日后公开(如推 GitHub public),需先移除该节并轮换密码;
+- [ ] `docs/demo-environment.md` 只保留公网入口、账号名和密码发放规则;公网演示密码由项目 Owner 私密发放,不写入仓库;
 - [ ] `scripts/deploy-*.sh` 与 `infra/deploy/README.md` 含服务器 IP 与 SSH key 路径——答辩范围可接受,公开发布前同样需评估;
 - [ ] 打包后在干净目录做一次还原演练:`git clone <bundle>` → `make doctor` → `make verify`,确认评审侧可复现。
 
@@ -103,4 +112,4 @@ git archive --format=zip -o labelhub-platform-src.zip HEAD
 | 5 | 可访问的演示环境说明文档 | [docs/demo-environment.md](../docs/demo-environment.md)(http://120.26.182.61:8443/) |
 | 6 | API 文档(Markdown 形式) | [docs/api-inventory.md](../docs/api-inventory.md) + [packages/contracts/openapi/labelhub.yaml](../packages/contracts/openapi/labelhub.yaml) |
 
-> 注:`submission/` 含 78MB 视频,入库后 git bundle 体积相应增加(约 240MB → 320MB);若交付渠道对体积敏感,可在 bundle 之外单独传视频文件。`scripts/deploy-*.sh` 的 rsync 已锚定排除 `/submission`,不会被部署到服务器。
+> 注:`submission/` 含 78MB 视频,入库后 git bundle 体积相应增加(约 240MB → 320MB);若交付渠道对体积敏感,可在 bundle 之外单独传视频文件。`scripts/deploy-*.sh` 的 rsync 已锚定排除 `/submission`,并排除本地密钥、构建产物、根目录 `*.bundle` 与本地数据目录,不会被部署到服务器。

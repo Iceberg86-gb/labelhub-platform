@@ -6,7 +6,8 @@
 
 ## 1. 总体约定
 
-- **Base URL**：`http://localhost:8080/api`（context path 为 `/api`）
+- **生产 Base URL**：`http://120.26.182.61:8443/api`（公网 HTTP + IP + 8443,外部访问使用此地址）
+- **本地 Base URL**：`http://localhost:8080/api`（context path 为 `/api`,仅本机开发/测试使用）
 - **鉴权**：全局 `bearerAuth`（JWT Bearer Token）；仅 `/auth/*` 四个端点公开。
   Refresh token 走 `labelhub_refresh` HttpOnly Cookie，**不接受请求体传递**。
 - **内部接口**：`/internal/**` 在 Spring Security 层 `permitAll`，实际由 `InternalTokenFilter` 校验 `X-Internal-Token` 请求头，仅供 `services/agent` Worker 回调。

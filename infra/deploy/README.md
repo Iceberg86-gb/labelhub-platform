@@ -1,6 +1,8 @@
 # LabelHub Production Deploy
 
-Target: single Alibaba Cloud ECS, Ubuntu 24.04, Docker Compose, public entry on 8443 before ICP/certificate cutover.
+Target: single Alibaba Cloud ECS, Ubuntu 24.04, Docker Compose, public entry `http://120.26.182.61:8443/` before ICP/certificate cutover.
+
+Use the public URL for users, reviewers, and external smoke checks. `127.0.0.1` checks are only meaningful on the ECS host itself.
 
 ## Steps
 
@@ -26,7 +28,13 @@ Target: single Alibaba Cloud ECS, Ubuntu 24.04, Docker Compose, public entry on 
 
    Generate `JWT_SECRET`, `LABELHUB_INTERNAL_TOKEN`, and `LABELHUB_LLM_PROVIDER_MASTER_KEY` with a secure local command such as `openssl rand -base64 32`. Keep the master key backed up offline; losing it makes saved provider secrets unreadable.
 
-5. Build the web UI locally and sync it to the server:
+5. Build the web UI locally and sync it to the server. Prefer `scripts/deploy-web.sh` for the normal production flow because it builds, syncs web dist, syncs source with production-safe excludes, reconciles nginx, and runs edge probes:
+
+   ```bash
+   scripts/deploy-web.sh
+   ```
+
+   Manual dist sync, when needed:
 
    ```bash
    pnpm --filter @labelhub/web build
@@ -49,14 +57,21 @@ Target: single Alibaba Cloud ECS, Ubuntu 24.04, Docker Compose, public entry on 
 
    Flyway runs in the API container on startup and applies any pending migrations.
 
-8. Smoke test:
+8. Smoke test from a normal network path:
+
+   ```bash
+   curl -f http://120.26.182.61:8443/api/actuator/health
+   curl -I http://120.26.182.61:8443/
+   ```
+
+   Smoke test from the ECS host itself:
 
    ```bash
    curl -f http://127.0.0.1:8443/api/actuator/health
    curl -I http://127.0.0.1:8443/
    ```
 
-   Open `http://120.26.182.61:8443/` while the public entry is still 8443.
+   Open `http://120.26.182.61:8443/` while the public entry is still 8443. Do not use `https://` or omit `:8443` until ICP/certificate cutover is complete.
 
 9. Install backups:
 
