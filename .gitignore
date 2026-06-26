@@ -3,6 +3,7 @@
 **/dist/
 **/node_modules/
 **/.gradle/
+*.bundle
 
 # Package manager caches
 .pnpm-store/
