@@ -447,21 +447,21 @@ E2E 测试使用 Playwright 覆盖 Owner、Labeler、Reviewer 三大角色完整
 
 ## 14. 部署与运维
 
-本地启动使用 docker-compose，包含 MySQL、Redis、API、Agent、Web 和对象存储模拟服务。
-最小启动检查清单：Web 首页可打开；API `/health` 返回 OK；MySQL migration 已执行；AI Worker 能消费一条 fake job；Export Worker 能生成一个测试文件。
-docker-compose 需要暴露 Web、API、MySQL、Redis、对象存储管理页五类端口，README 中列出默认账号和重置方式。
+本地启动使用 docker-compose，包含 MySQL、Redis、MinIO；API 与 Agent 由本地 Maven 进程或生产 compose 运行，Web 开发入口为 `http://127.0.0.1:5173`。
+生产演示环境运行在单台阿里云 ECS，公开入口为 `http://120.26.182.61:8443/`，公网只暴露 nginx 的 `8443:80`，API、Agent、MySQL、Redis、MinIO 均在 compose 网络内使用。
+最小启动检查清单：公网 Web 首页可打开；`/api/actuator/health` 返回 UP；MySQL migration 已执行；AI Worker 能消费 outbox 事件；Export Worker 能生成 Trusted Export 文件。
+docker-compose 生产编排包含 `mysql`、`redis`、`minio`、`minio-init`、`api`、`agent`、`nginx` 七个服务，README 与演示环境文档区分本地账号和公网轮换密码。
 数据库迁移使用 Flyway，迁移文件位于 `services/api/src/main/resources/db/migration/`，演示环境启动时自动执行 migration。
 环境变量分为五组：数据库、Redis、对象存储、LLM 模型、认证密钥。
 关键变量包括：`DATABASE_URL`、`REDIS_URL`、`OBJECT_STORAGE_ENDPOINT`、`OBJECT_STORAGE_BUCKET`、`DOUBAO_API_KEY`、`DOUBAO_ENDPOINT`、`OPENAI_API_KEY`（fallback）、`JWT_SECRET`。
 LLM 凭证默认使用课题提供的豆包 EP 和 APIKEY，OpenAI API Key 仅作为 fallback；所有密钥禁止写入仓库，本地 `.env.example` 只放变量名和说明。
-云部署建议：前端部署到 Vercel，后端和 worker 部署到 Railway 或 Render，数据库使用托管 MySQL，对象存储使用兼容 S3 的服务。
-云部署图可以画成：Vercel Web -> API Service -> MySQL/Object Storage；AI Worker 和 Export Worker 与 API 共用数据库和对象存储。
-演示环境需要准备三类测试账号：Owner、Labeler、Reviewer；并提供一套可恢复的 demo seed 数据。
+生产部署通过 `scripts/deploy-web.sh` 与 `scripts/deploy-api.sh` 完成：本地构建 Web、同步 dist 与源码、远端 compose 构建/重启、nginx 配置校验和健康探针自检。source sync 会排除 `.env*`、`target/`、根目录 `*.bundle`、本地配置与数据目录。
+公网演示环境需要准备 Owner、Labeler、Reviewer、Senior Reviewer、Platform Admin 五类账号；公网密码不写入仓库，由项目 Owner 私密发放。
 运维页面至少展示 AI 队列失败任务、导出失败任务、最近审计记录和最近 10 次状态迁移。
 失败恢复策略保持简单：AI 失败任务可重试或转人工，导出失败任务可按原参数重试，误导出可 revoked。
 启动检查脚本建议输出 5 个结果：数据库连接、迁移版本、AI fake call、导出测试文件、Web 静态资源访问。
-演示环境每天重置 demo seed，避免前一天的审核状态影响答辩流程。
-部署说明中要写清楚“无真实敏感数据”，演示文件只使用样例数据，避免评审担心隐私问题。
+演示环境通过每日 04:00 备份保留最近 7 份，可用 `infra/deploy/restore.sh` 做恢复演练；演示数据不承载真实敏感数据。
+部署说明中要写清楚“公网入口不是本地 Vite 地址”，外部用户必须使用 `http://120.26.182.61:8443/`，本地 `127.0.0.1:5173` 仅用于开发。
 默认调用豆包；豆包不可用时按 `LlmProvider` 抽象切换到 OpenAI 或 fake provider，仍展示 Function Calling 输出结构和人工兜底路径。
 启动验收以“Owner 发布、Labeler 提交、Reviewer 通过、导出下载”四步全链路跑通为准。
 

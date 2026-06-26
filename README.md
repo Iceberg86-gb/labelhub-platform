@@ -2,13 +2,23 @@
 
 LabelHub 是一个面向数据标注全流程的可信证据平台,核心治理理念是 **「AI 辅助 + 人类问责」**:AI 预审产出结构化证据与完整 provenance,但最终质量裁决始终由人类审核者负责;所有关键事实(Schema 版本、提交、审核、AI 调用、导出)以 append-only 方式落库,使标注结果成为**可审计、可复现的数据资产**,而不是可变的数据库快照。
 
+## 生产访问
+
+当前可供他人访问的生产/演示入口是 **http://120.26.182.61:8443/**。
+该入口为 HTTP + IP + 8443 端口,ICP备案与 HTTPS 证书切换尚未完成;访问时必须保留 `http://` 和 `:8443`。
+
+- 公网页面:`http://120.26.182.61:8443/`
+- 公共健康探针:`http://120.26.182.61:8443/api/actuator/health`
+- 本机开发地址 `http://127.0.0.1:5173` 只在开发机上有效,不能发给外部用户。
+- 公网演示账号密码由项目 Owner 通过私密渠道发放;仓库文档只保留账号名和访问入口。
+
 ## 系统架构
 
 整体采用 **模块化单体 + 独立 AI Worker** 的双进程架构,契约先行(contract-first):
 
 ```
                        packages/contracts/openapi/labelhub.yaml
-                      (API 唯一源头, 87 operations, v0.10.0)
+                      (API 唯一源头, 89 operations, v0.10.0)
                         ↓ openapi-typescript        ↓ 人工对齐
 ┌─────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
 │   apps/web      │   │    services/api      │   │   services/agent     │
@@ -117,16 +127,16 @@ pnpm --filter @labelhub/web dev
 # LABELHUB_API_PROXY_TARGET=http://127.0.0.1:18080 pnpm --filter @labelhub/web dev
 ```
 
-浏览器访问 `http://127.0.0.1:5173`。环境变量样例见 `.env.example`(JWT 密钥、数据库、对象存储、LLM provider 等)。
+浏览器访问 `http://127.0.0.1:5173`。这是本机开发地址,只对启动 Vite 的机器有效;给评审或外部用户访问时使用生产入口 `http://120.26.182.61:8443/`。环境变量样例见 `.env.example`(JWT 密钥、数据库、对象存储、LLM provider 等)。
 
-Demo 账号(密码均为 `demo1234`):`owner_demo` / `labeler_demo` / `reviewer_demo` / `senior_reviewer_demo`。新增演示账号请走注册页创建,不要手工 SQL INSERT(避免 hash 转义与 id 冲突问题)。
+本地 demo 账号(密码均为 `demo1234`):`owner_demo` / `labeler_demo` / `reviewer_demo` / `senior_reviewer_demo`。公网演示环境已轮换密码,由项目 Owner 单独发放。新增演示账号请走注册页创建,不要手工 SQL INSERT(避免 hash 转义与 id 冲突问题)。
 
 ### 常用验证
 
 ```bash
 make verify                                  # 后端测试(自动准备测试库 + JDK17)
 make migrate-check                           # 仅验证 Flyway 迁移 + 上下文启动
-pnpm --filter @labelhub/web test             # 前端测试(当前 69 文件 / 338 条)
+pnpm --filter @labelhub/web test             # 前端测试(当前 73 文件 / 357 条)
 pnpm --filter @labelhub/web typecheck
 pnpm --filter @labelhub/web build
 bash scripts/check-protected-endpoints.sh    # 受保护端点鉴权检查
@@ -135,7 +145,14 @@ pnpm --filter @labelhub/web bench            # Formily vs legacy 渲染基准
 
 ### 生产部署
 
-`scripts/deploy-api.sh` / `deploy-web.sh` 实现四阶段闭环:rsync 同步(exclude 模式必须锚定,如 `--exclude=/submission`)→ 远端构建 → 带 `--env-file .env.prod` 重启 → 健康探针自检。生产编排见 `infra/docker-compose.prod.yml`(含内存限额与健康检查)。生产命令仅由项目 Owner 执行。
+`scripts/deploy-api.sh` / `deploy-web.sh` 实现四阶段闭环:rsync 同步(exclude 模式必须锚定,如 `--exclude=/submission`,并排除 `.env*`、`target/`、根目录 `*.bundle`、本地配置和本地数据目录)→ 远端构建 → 带 `--env-file .env.prod` 重启 → 健康探针自检。生产编排见 `infra/docker-compose.prod.yml`(含内存限额与健康检查)。生产命令仅由项目 Owner 执行。
+
+生产发布后至少验证:
+
+```bash
+curl -f http://120.26.182.61:8443/api/actuator/health
+curl -I http://120.26.182.61:8443/
+```
 
 ## 关键设计取舍
 

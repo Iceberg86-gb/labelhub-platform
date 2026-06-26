@@ -138,7 +138,9 @@ scripts/deploy-web.sh
 It runs `pnpm --filter @labelhub/web build`, syncs `apps/web/dist/` to
 `root@120.26.182.61:/opt/labelhub/infra/web-dist/` with `--delete`, then syncs
 the source tree to `/opt/labelhub/` without `--delete`. SSH uses
-`~/.ssh/labelhub-deploy.pem`.
+`~/.ssh/labelhub-deploy.pem`. After publish, the public entry is
+`http://120.26.182.61:8443/`; the local Vite address `http://127.0.0.1:5173`
+is not usable by external users.
 
 Preview the rsync plan without changing the server:
 
@@ -147,9 +149,12 @@ scripts/deploy-web.sh --dry-run
 ```
 
 Dry-run still performs the local web build, then adds `-n --itemize-changes` to
-both rsync calls. The source sync excludes `node_modules`, `.git`, `dist`,
-`.env.prod`, `web-dist`, `.DS_Store`, `.pnpm-store`, `submission`,
-`docs/screenshots`, and `docs/design-assets`.
+both rsync calls. The source sync keeps `.env*.example` available and excludes
+`node_modules`, `.git`, `dist`, `.env`, `.env.*`, `.env.prod`, `web-dist`,
+`.DS_Store`, `.pnpm-store`, `.claude`, `.codex`, `application-secrets.yml`,
+`logs`, `*.log`, `coverage`, `*.tsbuildinfo`, `mysql-data`, `minio-data`,
+`target`, root `*.bundle`, `submission`, `docs/screenshots`, and
+`docs/design-assets`.
 
 ## Dev Container
 
