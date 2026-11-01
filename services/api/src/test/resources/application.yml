@@ -5,7 +5,11 @@ spring:
     password: labelhub
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
-    ignore-migration-patterns: ["*:missing"]
+    # Integration tests log in as owner_demo / labeler_demo (password demo1234), which only exist
+    # in the demo seed since a86bb4c moved it out of db/migration. Load it like the local profile.
+    # "*:ignored" keeps an existing labelhub_test that was migrated without the seed valid.
+    locations: classpath:db/migration,classpath:db/demo-seed
+    ignore-migration-patterns: ["*:missing", "*:ignored"]
 
 # This file shadows src/main/resources/application.yml on the test classpath, so every property
 # the context needs to boot must have a test value here. Integration tests that start their own
