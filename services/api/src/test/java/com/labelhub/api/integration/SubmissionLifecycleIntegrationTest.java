@@ -61,7 +61,7 @@ class SubmissionLifecycleIntegrationTest {
         .withPassword("labelhub");
 
     @Container
-    static final GenericContainer<?> MINIO = new GenericContainer<>(DockerImageName.parse("minio/minio:latest"))
+    static final GenericContainer<?> MINIO = new GenericContainer<>(DockerImageName.parse("pgsty/minio:RELEASE.2026-08-04T00-00-00Z"))
         .withEnv("MINIO_ROOT_USER", MINIO_USER)
         .withEnv("MINIO_ROOT_PASSWORD", MINIO_PASSWORD)
         .withCommand("server", "/data")

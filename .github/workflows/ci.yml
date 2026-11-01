@@ -87,3 +87,18 @@ jobs:
       - uses: actions/checkout@v4
       - run: sh scripts/check-protected-endpoints.sh
       - run: bash scripts/deploy-rsync-excludes.test.sh
+
+  compose-smoke:
+    name: Compose smoke (MinIO + bucket init images)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: MinIO starts and the init container creates the bucket (dev compose)
+        # minio-init runs infra/minio/init.sh (mc alias set + mc mb) and exits; its exit code is the check.
+        run: docker compose -f infra/docker-compose.yml up --exit-code-from minio-init minio minio-init
+      - name: Prod compose file parses
+        # env_file .env.prod is required by the prod compose; the example's placeholders are enough to parse.
+        run: |
+          cp infra/.env.prod.example infra/.env.prod
+          docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod config -q
