@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { act } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import type { LinkageAtomicCondition, SchemaField } from '../../../entities/schema/schemaTypes';
+import type { SchemaField } from '../../../entities/schema/schemaTypes';
 import { validateSchemaForUI } from '../../../entities/schema/schemaValidation';
 import { renderClient } from '../../labeling/formily/__tests__/renderClient';
 import {

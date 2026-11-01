@@ -94,7 +94,6 @@ function selectField(stableId: string, label: string, patch: Partial<SchemaField
 
 const relevanceField = selectField('relevance_score', '相关性');
 const accuracyField = selectField('accuracy_score', '准确性');
-const formatField = selectField('format_score', '表达与格式');
 const allOfFormatField = selectField('format_score', '表达与格式', {
   visibleWhen: {
     allOf: [

@@ -1,3 +1,4 @@
+import type { Field } from '@formily/core';
 import type { ISchema } from '@formily/react';
 import { buildFlatValueIndex, isFieldConditionallyRequired, isFieldVisible } from '../../../../entities/labeling/linkageEvaluator';
 import type { SchemaField, SchemaFieldOption, SchemaFieldValidation } from '../../../../entities/schema/schemaTypes';
@@ -87,7 +88,7 @@ function fieldToSchema(field: SchemaField, runtimeContext: SchemaRuntimeContext)
 
 function schemaToFormilyReactions(field: SchemaField, rootFields: SchemaField[]): ISchema['x-reactions'] | undefined {
   if (!field.visibleWhen && !field.requiredWhen) return undefined;
-  return (formilyField: any) => {
+  return (formilyField: Field) => {
     const values = formilyValuesToAnswerPayload(formilyField.form?.values ?? {}, rootFields);
     const flatValues = buildFlatValueIndex(rootFields, values);
     const visible = isFieldVisible(field, flatValues);
