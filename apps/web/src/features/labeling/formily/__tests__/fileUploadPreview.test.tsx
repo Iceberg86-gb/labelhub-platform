@@ -332,7 +332,9 @@ function imageValue(objectKey: string) {
 
 function mockImageDownload() {
   const fetchMock = vi.fn(async (_input?: RequestInfo | URL) =>
-    new Response(new Blob(['image'], { type: 'image/png' }), { status: 200 }));
+    // Byte body rather than a jsdom Blob: Node's undici Response can't read jsdom's Blob
+    // (no .stream()) on Node 22, which made this mock throw before the component ran.
+    new Response(new TextEncoder().encode('image'), { status: 200, headers: { 'Content-Type': 'image/png' } }));
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
