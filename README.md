@@ -1,5 +1,7 @@
 # LabelHub Platform
 
+[![CI](https://github.com/Iceberg86-gb/labelhub-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Iceberg86-gb/labelhub-platform/actions/workflows/ci.yml)
+
 LabelHub 是一个面向数据标注全流程的可信证据平台,核心治理理念是 **「AI 辅助 + 人类问责」**:AI 预审产出结构化证据与完整 provenance,但最终质量裁决始终由人类审核者负责;所有关键事实(Schema 版本、提交、审核、AI 调用、导出)以 append-only 方式落库,使标注结果成为**可审计、可复现的数据资产**,而不是可变的数据库快照。
 
 ## 生产访问
@@ -133,10 +135,13 @@ pnpm --filter @labelhub/web dev
 
 ### 常用验证
 
+以下检查在 CI(`.github/workflows/ci.yml`)中每次 push 自动执行。
+
 ```bash
 make verify                                  # 后端测试(自动准备测试库 + JDK17)
 make migrate-check                           # 仅验证 Flyway 迁移 + 上下文启动
-pnpm --filter @labelhub/web test             # 前端测试(当前 73 文件 / 357 条)
+pnpm --filter @labelhub/web lint             # 前端 ESLint(typescript-eslint + react-hooks)
+pnpm --filter @labelhub/web test             # 前端测试
 pnpm --filter @labelhub/web typecheck
 pnpm --filter @labelhub/web build
 bash scripts/check-protected-endpoints.sh    # 受保护端点鉴权检查
