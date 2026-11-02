@@ -17,7 +17,7 @@ LabelHub - Platform/                  ← Monorepo 根(pnpm workspace + Maven re
 ├── scripts/                          ← dev-up / deploy-api / deploy-web / 契约保护检查
 ├── docs/                             ← 基线、ADR×15、架构图×4、状态机、截图证据(见 b 文档)
 ├── submission/                       ← 答辩提交材料索引(本目录)
-├── humanpending.md / CODEX.md / coderules.md   ← AI Coding 三契约(见 a 文档)
+├── docs/process/humanpending.md / docs/engineering/conventions.md / docs/engineering/agent-charter.md   ← AI Coding 三契约(见 a 文档)
 ├── pom.xml                           ← Maven reactor 根(api + agent 多模块)
 ├── pnpm-workspace.yaml / package.json ← pnpm workspace 根(web + contracts)
 └── Makefile                          ← doctor / dev-up / dev-api / verify 统一入口
@@ -41,9 +41,9 @@ LabelHub - Platform/                  ← Monorepo 根(pnpm workspace + Maven re
 
 本仓库的 git 历史与过程文件互为锚点,**建议交付时保留完整提交史**:
 
-- 每个批次以 `--no-ff` 合并,merge commit 与 `humanpending.md` 的 closure 序号对应;
+- 每个批次以 `--no-ff` 合并,merge commit 与 `docs/process/humanpending.md` 的 closure 序号对应;
 - closure 记录里的封板锚点(HEAD commit / OpenAPI MD5 / 迁移数)可在历史中逐一对账;
-- commit message 遵循 `fix:/feat:` 约定并带批次标记(如 `(P2-8)`),与 `docs/internal/` 的 scope-budget 文件可交叉引用。
+- commit message 遵循 `fix:/feat:` 约定并带批次标记(如 `(P2-8)`),与 `docs/archive/milestones/` 的 scope-budget 文件可交叉引用。
 
 ## 4. 评审可执行的验证入口
 
@@ -93,9 +93,9 @@ git archive --format=zip -o labelhub-platform-src.zip HEAD
 
 ### 提交前检查清单
 
-- [ ] 文档入库状态:根 README、`docs/api-inventory.md`、`docs/demo-environment.md`、`submission/` 均已纳入仓库跟踪;打包前仍需确认 `git status --short` 干净;
+- [ ] 文档入库状态:根 README、`docs/api/inventory.md`、`docs/guides/demo-environment.md`、`submission/` 均已纳入仓库跟踪;打包前仍需确认 `git status --short` 干净;
 - [ ] 敏感信息核对(已验证现状):`.env` / `.env.prod` 均未被 git 跟踪,仓库内只有 `.env.example` 三份样例,无 `.pem` 入库;
-- [ ] `docs/demo-environment.md` 只保留公网入口、账号名和密码发放规则;公网演示密码由项目 Owner 私密发放,不写入仓库;
+- [ ] `docs/guides/demo-environment.md` 只保留公网入口、账号名和密码发放规则;公网演示密码由项目 Owner 私密发放,不写入仓库;
 - [ ] `scripts/deploy-*.sh` 与 `infra/deploy/README.md` 含服务器 IP 与 SSH key 路径——答辩范围可接受,公开发布前同样需评估;
 - [ ] 打包后在干净目录做一次还原演练:`git clone <bundle>` → `make doctor` → `make verify`,确认评审侧可复现。
 
@@ -105,11 +105,11 @@ git archive --format=zip -o labelhub-platform-src.zip HEAD
 |---|---------|--------|
 | 1 | 源码仓库(前端+后端+Agent,Monorepo) | 本仓库(bundle 或归档,见上) |
 | 2 | README.md(架构、模块、启动指引、设计取舍) | [README.md](README.md)(根 README 副本,源头为 [../README.md](../README.md)) |
-| 3 | 演示视频(5–10 分钟,三大角色完整链路) | [演示视频.mp4](演示视频.mp4)(约 78MB;录制动线参照 docs/workflows/demo-script.md) |
-| 4 | 相关文档(架构图、关键技术点、Demo 截图) | [LabelHub-架构图与状态机.md](LabelHub-架构图与状态机.md);截图证据索引 [docs/screenshots/INDEX.md](../docs/screenshots/INDEX.md) |
+| 3 | 演示视频(5–10 分钟,三大角色完整链路) | [演示视频.mp4](演示视频.mp4)(约 78MB;录制动线参照 docs/guides/demo-script.md) |
+| 4 | 相关文档(架构图、关键技术点、Demo 截图) | [LabelHub-架构图与状态机.md](LabelHub-架构图与状态机.md);截图证据索引 [docs/archive/screenshots/INDEX.md](../docs/archive/screenshots/INDEX.md) |
 | 4a | AI Coding 过程记录 | [a-ai-coding-process.md](a-ai-coding-process.md) + 仓库内过程文件原件 |
 | 4b | 基础技术文档 | [b-technical-docs.md](b-technical-docs.md) + docs/ 原件 |
-| 5 | 可访问的演示环境说明文档 | [docs/demo-environment.md](../docs/demo-environment.md)(http://120.26.182.61:8443/) |
-| 6 | API 文档(Markdown 形式) | [docs/api-inventory.md](../docs/api-inventory.md) + [packages/contracts/openapi/labelhub.yaml](../packages/contracts/openapi/labelhub.yaml) |
+| 5 | 可访问的演示环境说明文档 | [docs/guides/demo-environment.md](../docs/guides/demo-environment.md)(http://120.26.182.61:8443/) |
+| 6 | API 文档(Markdown 形式) | [docs/api/inventory.md](../docs/api/inventory.md) + [packages/contracts/openapi/labelhub.yaml](../packages/contracts/openapi/labelhub.yaml) |
 
 > 注:`submission/` 含 78MB 视频,入库后 git bundle 体积相应增加(约 240MB → 320MB);若交付渠道对体积敏感,可在 bundle 之外单独传视频文件。`scripts/deploy-*.sh` 的 rsync 已锚定排除 `/submission`,并排除本地密钥、构建产物、根目录 `*.bundle` 与本地数据目录,不会被部署到服务器。

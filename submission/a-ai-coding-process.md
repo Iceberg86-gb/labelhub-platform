@@ -8,13 +8,13 @@ LabelHub 采用 **「人类 Owner 裁决 + AI 实施代理执行」** 的协作�
 
 | 契约文件 | 角色 |
 |---------|------|
-| [coderules.md](../coderules.md) | **META v2.1 宪章**(Principal Architect Charter):AI 代理的工程价值观与行为规则——R1 第一性原理分解、R5 执行即真相、R6 测试编码契约、R8 校准化汇报(executed/inspected/assumed 三级标注)、R9 反驳义务等 11 条规则,外加 Scoped Zero-Pause 层(ZPR0-ZPR5)与 LabelHub 项目特定约束(LH-1~LH-5) |
-| [CODEX.md](../CODEX.md) | **开发协同契约**:工程实现规范——技术栈锁定、架构边界(api 是业务权威/agent 只回写证据/前端只发 command)、append-only 对象清单、幂等键统一格式、hash 规范化规则、四大亮点的不可妥协硬约束 |
-| [humanpending.md](../humanpending.md) | **append-only 审计台账**(ADR-014 Scoped Zero-Pause 的落地):无法安全推断的业务规则不阻塞开发,记为 scoped 条目;每个合入批次留下交付与验证记录。当前已记录 **261 个闭环批次**,每条含交付内容、验证铁证、事故记录与封板锚点 |
+| [docs/engineering/agent-charter.md](../docs/engineering/agent-charter.md) | **META v2.1 宪章**(Principal Architect Charter):AI 代理的工程价值观与行为规则——R1 第一性原理分解、R5 执行即真相、R6 测试编码契约、R8 校准化汇报(executed/inspected/assumed 三级标注)、R9 反驳义务等 11 条规则,外加 Scoped Zero-Pause 层(ZPR0-ZPR5)与 LabelHub 项目特定约束(LH-1~LH-5) |
+| [docs/engineering/conventions.md](../docs/engineering/conventions.md) | **开发协同契约**:工程实现规范——技术栈锁定、架构边界(api 是业务权威/agent 只回写证据/前端只发 command)、append-only 对象清单、幂等键统一格式、hash 规范化规则、四大亮点的不可妥协硬约束 |
+| [docs/process/humanpending.md](../docs/process/humanpending.md) | **append-only 审计台账**(ADR-014 Scoped Zero-Pause 的落地):无法安全推断的业务规则不阻塞开发,记为 scoped 条目;每个合入批次留下交付与验证记录。当前已记录 **261 个闭环批次**,每条含交付内容、验证铁证、事故记录与封板锚点 |
 
 ## 2. 批次工作流(开发思路核心)
 
-每个实施批次遵循固定的五阶段闭环,阶段产物全部落盘在 `docs/internal/`:
+每个实施批次遵循固定的五阶段闭环,阶段产物全部落盘在 `docs/archive/milestones/`:
 
 ```
 [Research 研究] ──── 跨域问题探索,产出决策素材(选项→推荐→理由)
@@ -27,13 +27,13 @@ LabelHub 采用 **「人类 Owner 裁决 + AI 实施代理执行」** 的协作�
       ↓               500 行安全阀暂停复审、全过程记入 ai-coding-log.md
 [Verification 验证] ── 估算 vs 实际对照、逐项核验命令输出、
       ↓               禁区未触碰确认(No-Touch)、截图证据
-[Closure 封板] ────── 人类 Owner 亲手写入 humanpending.md,
+[Closure 封板] ────── 人类 Owner 亲手写入 docs/process/humanpending.md,
                       封板锚点:HEAD commit / OpenAPI MD5 / 迁移数 / 台账序号
 ```
 
 里程碑级别另有两类把关:**Audit**(批次健康度审计,检验决策是否全部留痕)与 **Smoke/Regression**(端到端全景体检,按 P0/P1/P2 分级记录缺陷与复现步骤)。
 
-## 3. 过程文件全景(docs/internal/,共 124 个)
+## 3. 过程文件全景(docs/archive/milestones/,共 124 个)
 
 ### 3.1 按类型统计
 
@@ -50,12 +50,12 @@ LabelHub 采用 **「人类 Owner 裁决 + AI 实施代理执行」** 的协作�
 
 | 文件 | 说明 |
 |------|------|
-| [docs/internal/ai-coding-log.md](../docs/internal/ai-coding-log.md) | **AI 工作日志**(541 行):自 2026-05-22 M0 起,每个批次记录 Prompt 原文、Red Check(TDD 失败先行)、Accepted(采纳的实现)、Manual Correction(人工更正及原因)、Verification(验证命令与结果)、截图证据路径。是"AI 写了什么、人改了什么、为什么改"的逐批流水 |
-| [docs/internal/decision-log.md](../docs/internal/decision-log.md) | **决策日志**:全项目级决策史,按时间线记录每个阶段的技术决策与论证链(如:为何 `Schema` 改名 `LabelSchema`、为何表名用 `label_schemas`、事务写入顺序为何是 transition→audit→status) |
-| [docs/internal/m3-startup-overview.md](../docs/internal/m3-startup-overview.md) | 批次启动总览样本:动笔前必须回答的 11 个元问题(provider 选择、同步/异步、权限模型等) |
-| [docs/internal/coverage-checklist.md](../docs/internal/coverage-checklist.md) | 需求 vs 实施产物的双向追踪清单 |
-| [docs/internal/LabelHub-pre-refactor-seal-snapshot.md](../docs/internal/LabelHub-pre-refactor-seal-snapshot.md) | UI 重构前的封板快照:OpenAPI MD5、迁移数、ADR 状态等不可被 UI 改动触碰的基线 |
-| [docs/internal/m6p0-smoke-audit-report.md](../docs/internal/m6p0-smoke-audit-report.md) / [m6p5-final-regression-report.md](../docs/internal/m6p5-final-regression-report.md) | 端到端体检报告样本:按用户路径分轨审计,P0/P1/P2 缺陷分级与复现步骤 |
+| [docs/process/ai-coding-log.md](../docs/process/ai-coding-log.md) | **AI 工作日志**(541 行):自 2026-05-22 M0 起,每个批次记录 Prompt 原文、Red Check(TDD 失败先行)、Accepted(采纳的实现)、Manual Correction(人工更正及原因)、Verification(验证命令与结果)、截图证据路径。是"AI 写了什么、人改了什么、为什么改"的逐批流水 |
+| [docs/process/decision-log.md](../docs/process/decision-log.md) | **决策日志**:全项目级决策史,按时间线记录每个阶段的技术决策与论证链(如:为何 `Schema` 改名 `LabelSchema`、为何表名用 `label_schemas`、事务写入顺序为何是 transition→audit→status) |
+| [docs/archive/milestones/m3-startup-overview.md](../docs/archive/milestones/m3-startup-overview.md) | 批次启动总览样本:动笔前必须回答的 11 个元问题(provider 选择、同步/异步、权限模型等) |
+| [docs/archive/milestones/coverage-checklist.md](../docs/archive/milestones/coverage-checklist.md) | 需求 vs 实施产物的双向追踪清单 |
+| [docs/archive/milestones/LabelHub-pre-refactor-seal-snapshot.md](../docs/archive/milestones/LabelHub-pre-refactor-seal-snapshot.md) | UI 重构前的封板快照:OpenAPI MD5、迁移数、ADR 状态等不可被 UI 改动触碰的基线 |
+| [docs/archive/milestones/m6p0-smoke-audit-report.md](../docs/archive/milestones/m6p0-smoke-audit-report.md) / [m6p5-final-regression-report.md](../docs/archive/milestones/m6p5-final-regression-report.md) | 端到端体检报告样本:按用户路径分轨审计,P0/P1/P2 缺陷分级与复现步骤 |
 
 ### 3.3 按里程碑分布
 
@@ -69,11 +69,11 @@ LabelHub 采用 **「人类 Owner 裁决 + AI 实施代理执行」** 的协作�
 | Backend Batch A/B | 5 | 后端加固(安全/事务/死锁修复) |
 | M3 与其他 | 其余 | AI 集成启动、专项研究与跨批次工具文档 |
 
-研究类文档单列:Formily 选型([m7p2-formily-research.md](../docs/internal/m7p2-formily-research.md))、联动 DSL([m7p3b-linkage-dsl-research.md](../docs/internal/m7p3b-linkage-dsl-research.md))、离线草稿 localStorage vs IndexedDB([m7p5-offline-draft-research.md](../docs/internal/m7p5-offline-draft-research.md))、移动端适配([mobile-adaptation-research.md](../docs/internal/mobile-adaptation-research.md))、Designer/Renderer 课题合规([designer-renderer-compliance-research.md](../docs/internal/designer-renderer-compliance-research.md))、OpenAPI 工具链([openapi-setup-plan.md](../docs/internal/openapi-setup-plan.md))等。
+研究类文档单列:Formily 选型([m7p2-formily-research.md](../docs/archive/milestones/m7p2-formily-research.md))、联动 DSL([m7p3b-linkage-dsl-research.md](../docs/archive/milestones/m7p3b-linkage-dsl-research.md))、离线草稿 localStorage vs IndexedDB([m7p5-offline-draft-research.md](../docs/archive/milestones/m7p5-offline-draft-research.md))、移动端适配([mobile-adaptation-research.md](../docs/archive/milestones/mobile-adaptation-research.md))、Designer/Renderer 课题合规([designer-renderer-compliance-research.md](../docs/archive/milestones/designer-renderer-compliance-research.md))、OpenAPI 工具链([openapi-setup-plan.md](../docs/archive/milestones/openapi-setup-plan.md))等。
 
 ## 4. 证据链:截图体系
 
-[docs/screenshots/INDEX.md](../docs/screenshots/INDEX.md) 按 M1 Shell → M2 Schema → M3 AI Provenance → M4 Quality Ledger → M5 Export 的演进链组织 100+ 张截图,核心是**四大亮点的可复演证据链**:
+[docs/archive/screenshots/INDEX.md](../docs/archive/screenshots/INDEX.md) 按 M1 Shell → M2 Schema → M3 AI Provenance → M4 Quality Ledger → M5 Export 的演进链组织 100+ 张截图,核心是**四大亮点的可复演证据链**:
 
 1. **Schema 版本化**:v1 提交 → v2 发布 → 历史提交仍按 v1 渲染;
 2. **Ledger 派生**:pending → approve 后 Verdict 变化且 ledger 只增不改;
@@ -96,7 +96,7 @@ LabelHub 采用 **「人类 Owner 裁决 + AI 实施代理执行」** 的协作�
 
 ## 6. 阅读路线建议
 
-- **看协作机制** → coderules.md → CODEX.md →任选一组三件套(推荐 m7p2 的 pre-estimate / scope-budget / verification)
-- **看完整流水** → docs/internal/ai-coding-log.md 从头读(M0 脚手架到 M2 全链最具代表性)
-- **看质量闭环** → humanpending.md 的 closure 236(生产部署批,含五连缺陷与事故账)与 closure 258(Senior Reviewer 正交化重构)
-- **看证据** → docs/screenshots/INDEX.md 的"90 秒四亮点演示路径"
+- **看协作机制** → docs/engineering/agent-charter.md → docs/engineering/conventions.md →任选一组三件套(推荐 m7p2 的 pre-estimate / scope-budget / verification)
+- **看完整流水** → docs/process/ai-coding-log.md 从头读(M0 脚手架到 M2 全链最具代表性)
+- **看质量闭环** → docs/process/humanpending.md 的 closure 236(生产部署批,含五连缺陷与事故账)与 closure 258(Senior Reviewer 正交化重构)
+- **看证据** → docs/archive/screenshots/INDEX.md 的"90 秒四亮点演示路径"

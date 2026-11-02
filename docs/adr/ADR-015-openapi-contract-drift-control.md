@@ -17,7 +17,7 @@ OpenAPI endpoints tied to the four baseline differentiators must remain in the c
 - Quality Ledger re-derivation: `/adjudication-rules/{ruleId}/recompute`
 - Trusted Export diff: `/exports/snapshots/{snapshotId}/diff`
 
-Any future removal or semantic rename of these endpoints must be recorded in `docs/internal/decision-log.md` and requires a matching ADR update.
+Any future removal or semantic rename of these endpoints must be recorded in `docs/process/decision-log.md` and requires a matching ADR update.
 
 `scripts/check-protected-endpoints.sh` is the local guard for this ADR. It greps the OpenAPI contract for the five protected endpoint paths and exits non-zero when one is missing.
 

@@ -1,7 +1,7 @@
 # LabelHub 演示环境说明
 
 > 整理日期:2026-06-26(当日实测公网首页 200 OK,健康探针返回 `{"status":"UP"}`)。
-> 事实来源:`infra/docker-compose.prod.yml`、`infra/deploy/README.md`、`infra/nginx/labelhub.conf`、`docs/architecture/diagrams/deployment.md`、`humanpending.md`(closure 236/237/238)。
+> 事实来源:`infra/docker-compose.prod.yml`、`infra/deploy/README.md`、`infra/nginx/labelhub.conf`、`docs/architecture/diagrams/deployment.md`、`docs/process/humanpending.md`(closure 236/237/238)。
 
 ## 1. 访问入口一览
 

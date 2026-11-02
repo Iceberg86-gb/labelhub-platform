@@ -85,7 +85,7 @@ src/
 - `infra` — 本地 / demo / 生产三套 docker compose,MySQL 初始化、MinIO bucket 初始化、nginx
 - `scripts` — `dev-up.sh`、`deploy-api.sh` / `deploy-web.sh`(四阶段生产部署)、受保护端点检查
 - `docs` — 完整设计基线、15 份 ADR、四张架构图、各里程碑验收清单、截图证据索引
-- `humanpending.md` — **append-only 审计台账**,259 个已封闭批次的交付与验证记录
+- `docs/process/humanpending.md` — **append-only 审计台账**,259 个已封闭批次的交付与验证记录
 - `submission` — 答辩提交材料索引
 
 ## 角色与核心流程
@@ -156,7 +156,7 @@ curl -I http://120.26.182.61:8443/
 
 ## 关键设计取舍
 
-以下取舍均有 ADR 或 `humanpending.md` 闭环记录支撑:
+以下取舍均有 ADR 或 `docs/process/humanpending.md` 闭环记录支撑:
 
 **1. 模块化单体,而非微服务(ADR-001)。** 毕设项目需要清晰边界而非部署复杂度。13 个业务模块以包边界隔离、单进程部署、单一数据库;唯一拆出的进程是 AI Worker——因为它消费异步事件、可独立失败,不应拖垮请求处理。
 
@@ -176,15 +176,15 @@ curl -I http://120.26.182.61:8443/
 
 **9. 配额语义收敛(闭环 259)。** 任务配额不再由 Owner 手填,改为绑定数据集后由题目数派生,领取按实际可用 dataset item 控制——消除配额字段与真实题量脱节这一整类不一致。
 
-**10. Scoped Zero Pause(ADR-014)。** 无法安全推断的业务规则不阻塞无关开发,而是作为 scoped 条目记入根目录 `humanpending.md`;该文件同时是 append-only 的批次审计台账,每个合入批次留下交付与验证记录。配套流程纪律:FCFS 领取用乐观锁守护配额(ADR-007)、所有合并 `--no-ff`、单元测试通过不等于功能正确——浏览器实测 + 数据库 COUNT 才是最高证据标准。
+**10. Scoped Zero Pause(ADR-014)。** 无法安全推断的业务规则不阻塞无关开发,而是作为 scoped 条目记入根目录 `docs/process/humanpending.md`;该文件同时是 append-only 的批次审计台账,每个合入批次留下交付与验证记录。配套流程纪律:FCFS 领取用乐观锁守护配额(ADR-007)、所有合并 `--no-ff`、单元测试通过不等于功能正确——浏览器实测 + 数据库 COUNT 才是最高证据标准。
 
 ## 文档索引
 
 - `docs/architecture/labelhub-complete-design-baseline.md` — 系统完整设计基线
 - `docs/architecture/diagrams/` — 四张架构图
 - `docs/adr/` — ADR-001 ~ ADR-015 架构决策记录
-- `docs/internal/decision-log.md` — 架构与实现决策日志
+- `docs/process/decision-log.md` — 架构与实现决策日志
 - `docs/m2 ~ m5-acceptance-checklist.md` — 各里程碑验收清单
-- `docs/screenshots/INDEX.md` — 截图证据索引
-- `humanpending.md` — 全部批次闭环台账(当前至 #259)
-- `CODEX.md` / `coderules.md` — 实施代理工作约定与代码规则
+- `docs/archive/screenshots/INDEX.md` — 截图证据索引
+- `docs/process/humanpending.md` — 全部批次闭环台账(当前至 #259)
+- `docs/engineering/conventions.md` / `docs/engineering/agent-charter.md` — 实施代理工作约定与代码规则

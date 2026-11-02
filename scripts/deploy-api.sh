@@ -36,8 +36,8 @@ rsync -az -e "$rsync_ssh_cmd" \
   --exclude=target \
   --exclude=/*.bundle \
   --exclude=/submission \
-  --exclude=docs/screenshots \
-  --exclude=docs/design-assets \
+  --exclude=docs/archive \
+  --exclude=docs/design-system \
   "$repo_root/" \
   "$remote:${remote_root}/"
 

@@ -6,11 +6,11 @@ Proposed
 
 ## Context
 
-The project uses `humanpending.md` as a visible root-level queue for unresolved decisions. This prevents the agent from silently making broad architecture changes just to keep moving.
+The project uses `docs/process/humanpending.md` as a visible queue for unresolved decisions. This prevents the agent from silently making broad architecture changes just to keep moving.
 
 ## Decision
 
-When a business rule cannot be safely inferred, record a scoped item in `humanpending.md` instead of blocking unrelated implementation work.
+When a business rule cannot be safely inferred, record a scoped item in `docs/process/humanpending.md` instead of blocking unrelated implementation work.
 
 ## Consequences
 

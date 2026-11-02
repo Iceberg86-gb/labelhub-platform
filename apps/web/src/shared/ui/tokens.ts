@@ -1,6 +1,6 @@
 /**
  * Design-system token references. These mirror the CSS custom properties defined in
- * `docs/design-assets/tokens/tokens.css`. Use them instead of hardcoding px / hex values
+ * `./tokens.css`. Use them instead of hardcoding px / hex values
  * when a token is unavoidable in inline styles (prefer className + styles.css where possible).
  */
 

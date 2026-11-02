@@ -1,4 +1,6 @@
-# CODEX.md
+# 工程实现约束(Engineering Conventions)
+
+> 原根目录 `CODEX.md`,2026-11 随仓库整理迁入 `docs/engineering/`。
 
 > LabelHub 开发协同契约
 >
@@ -376,12 +378,16 @@ CI 由 `.github/workflows/ci.yml` 在每次 push 时执行:前端 lint / typeche
 
 文档目录:
 
-- `docs/architecture/`:基线、架构图、模块设计
+文档的完整导航见 `docs/README.md`。分层约定:
+
+- `docs/architecture/`:设计基线、架构图、状态机(`state-machines/`)
 - `docs/adr/`:架构决策记录,**重大技术选型变更必须落 ADR**
-- `docs/api/`:OpenAPI 规范、Postman Collection、关键接口示例
-- `docs/workflows/`:业务流程图、状态机图、演示脚本
-- `docs/internal/`:撰写过程的工件(自检表、审计日志、AI Coding 过程记录),不进入最终答辩主文档
-- `docs/screenshots/`:Demo 截图,按 `01-owner-task-console.png` 顺序前缀命名
+- `docs/api/`:OpenAPI 说明与接口清单(契约源头在 `packages/contracts/openapi/labelhub.yaml`)
+- `docs/guides/`:开发环境、演示环境、演示脚本
+- `docs/engineering/`:工程规范(本文档)与 AI 协作宪章
+- `docs/design-system/`:设计资产与规范(运行时 token 在 `apps/web/src/shared/ui/tokens.css`)
+- `docs/process/`:进行中的过程记录(append-only 的 `humanpending.md`、决策日志、AI Coding 日志)
+- `docs/archive/`:已封闭里程碑的过程工件与截图证据,只读,不再更新
 
 ADR 规范:
 

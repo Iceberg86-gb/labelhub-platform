@@ -9,11 +9,11 @@
 | 项目总览 | [README.md](../README.md) | 1 |
 | 架构与设计基线 | `docs/architecture/` | 1 基线 + 4 图 |
 | 架构决策记录 | `docs/adr/` | 15 份 ADR |
-| 业务工作流 | `docs/workflows/` | 3 状态机 + 1 演示脚本 |
+| 业务工作流 | `docs/architecture/state-machines/`、`docs/guides/demo-script.md` | 3 状态机 + 1 演示脚本 |
 | API 契约 | `packages/contracts/openapi/` + `docs/api*` | 契约 + 2 索引 |
-| 环境与运维 | `docs/dev-environment.md`、`docs/demo-environment.md`、`infra/deploy/README.md` | 3 |
-| 设计资产 | `docs/design-assets/` | tokens + 30+ SVG |
-| 证据索引 | `docs/screenshots/` | INDEX + 100+ 截图 |
+| 环境与运维 | `docs/guides/dev-environment.md`、`docs/guides/demo-environment.md`、`infra/deploy/README.md` | 3 |
+| 设计资产 | `docs/design-system/` | tokens + 30+ SVG |
+| 证据索引 | `docs/archive/screenshots/` | INDEX + 100+ 截图 |
 
 ## 1. 项目总览
 
@@ -45,36 +45,36 @@
 | [011](../docs/adr/ADR-011-doubao-default-openai-fallback.md) | LLM registry-first(Batch B 修订) | DB 配置优先,配置错误显式可见,不静默回退 |
 | [012](../docs/adr/ADR-012-contract-first-openapi.md) | 契约先行 | labelhub.yaml 是唯一 API 源头,类型全生成 |
 | [013](../docs/adr/ADR-013-fsd-frontend.md) | 简化 Feature-Sliced 前端 | app/pages/features/entities/shared 五层 |
-| [014](../docs/adr/ADR-014-scoped-zero-pause.md) | Scoped Zero-Pause(Proposed) | 未决项入 humanpending.md,不阻塞无关开发 |
+| [014](../docs/adr/ADR-014-scoped-zero-pause.md) | Scoped Zero-Pause(Proposed) | 未决项入 docs/process/humanpending.md,不阻塞无关开发 |
 | [015](../docs/adr/ADR-015-openapi-contract-drift-control.md) | 契约漂移控制 | 4 个基线端点受保护,脚本守护 |
 
-## 4. 业务工作流(docs/workflows/)
+## 4. 业务工作流(docs/architecture/state-machines/)
 
-- **[state-machine-task.md](../docs/workflows/state-machine-task.md)** — Task 四态:draft→published→paused/ended,迁移写 `task_transitions` + `audit_logs`;
-- **[state-machine-submission.md](../docs/workflows/state-machine-submission.md)** — Submission 核心链:created→under_ai_review→under_human_initial→…→accepted,打回分支 needs_revision→superseded(基线旧表已过期,**以此文档为准**);
-- **[state-machine-export.md](../docs/workflows/state-machine-export.md)** — Export Job:created→queued→running→completed/failed,支持 revoked;
-- **[demo-script.md](../docs/workflows/demo-script.md)** — 10 分钟答辩演示脚本,含四亮点分钟级排程。
+- **[state-machine-task.md](../docs/architecture/state-machines/task.md)** — Task 四态:draft→published→paused/ended,迁移写 `task_transitions` + `audit_logs`;
+- **[state-machine-submission.md](../docs/architecture/state-machines/submission.md)** — Submission 核心链:created→under_ai_review→under_human_initial→…→accepted,打回分支 needs_revision→superseded(基线旧表已过期,**以此文档为准**);
+- **[state-machine-export.md](../docs/architecture/state-machines/export.md)** — Export Job:created→queued→running→completed/failed,支持 revoked;
+- **[demo-script.md](../docs/guides/demo-script.md)** — 10 分钟答辩演示脚本,含四亮点分钟级排程。
 
 ## 5. API 契约
 
 - **[packages/contracts/openapi/labelhub.yaml](../packages/contracts/openapi/labelhub.yaml)** — API 唯一源头:v0.10.0,89 个 operation、15 个 tag、151 个 schema;前端类型与后端 Controller 接口均由此生成。
-- **[docs/api-inventory.md](../docs/api-inventory.md)** — 整理版 API 清单(2026-06-10):全部 89 端点按业务域分组,含方法/路径/operationId/权限/中文说明、角色模型、命名约定,以及 3 处契约与实现差异记录。
+- **[docs/api/inventory.md](../docs/api/inventory.md)** — 整理版 API 清单(2026-06-10):全部 89 端点按业务域分组,含方法/路径/operationId/权限/中文说明、角色模型、命名约定,以及 3 处契约与实现差异记录。
 - **[docs/api/README.md](../docs/api/README.md)** — API 产物索引(极简,声明契约源头)。
 
 ## 6. 环境与运维
 
-- **[docs/dev-environment.md](../docs/dev-environment.md)** — 开发环境手册(~170 行):JDK 17 探测、pnpm workspace、本地基础设施 compose、测试库隔离(`labelhub_test`)、Makefile 目标、关键环境变量。
-- **[docs/demo-environment.md](../docs/demo-environment.md)** — 演示环境说明(2026-06-26):公网入口 `http://120.26.182.61:8443/`、健康探针、账号名与密码发放规则、7 容器拓扑、五角色演示动线、已知限制与挂账。
+- **[docs/guides/dev-environment.md](../docs/guides/dev-environment.md)** — 开发环境手册(~170 行):JDK 17 探测、pnpm workspace、本地基础设施 compose、测试库隔离(`labelhub_test`)、Makefile 目标、关键环境变量。
+- **[docs/guides/demo-environment.md](../docs/guides/demo-environment.md)** — 演示环境说明(2026-06-26):公网入口 `http://120.26.182.61:8443/`、健康探针、账号名与密码发放规则、7 容器拓扑、五角色演示动线、已知限制与挂账。
 - **[infra/deploy/README.md](../infra/deploy/README.md)** — 生产部署 runbook:单 ECS 九步部署、密钥生成、备份 cron 与恢复演练、ICP/TLS 切换计划。
 
-## 7. 设计资产(docs/design-assets/)
+## 7. 设计资产(docs/design-system/)
 
-- **[README.md](../docs/design-assets/README.md)** — 资产清单:功能 icons、空状态 illustrations、审核状态 status 标签、hero 图,附 SVGR 导入与 CSS 变量使用规范;
-- **[tokens/](../docs/design-assets/tokens/README.md)** — 设计令牌:`tokens.css` 与 `tokens.ts` 双格式同步维护(浅色表面、冷灰绿侧栏渐变、低饱和语义色、柔和圆角)。
+- **[README.md](../docs/design-system/README.md)** — 资产清单:功能 icons、空状态 illustrations、审核状态 status 标签、hero 图,附 SVGR 导入与 CSS 变量使用规范;
+- **[tokens.css](../apps/web/src/shared/ui/tokens.css)** — 设计令牌的唯一来源（CSS 变量：浅色表面、冷灰绿侧栏渐变、低饱和语义色、柔和圆角），`tokens.ts` 只导出 `var(--…)` 引用。
 
-## 8. 证据索引(docs/screenshots/)
+## 8. 证据索引(docs/archive/screenshots/)
 
-- **[INDEX.md](../docs/screenshots/INDEX.md)** — 按 M1→M5 演进链组织的截图总索引,核心是四大亮点证据链与防御性证据(403/404/状态守卫),含"90 秒四亮点演示路径";批次级 before/after 对照目录(m6p6、m7p1、m7p2 等)各自带子 INDEX。
+- **[INDEX.md](../docs/archive/screenshots/INDEX.md)** — 按 M1→M5 演进链组织的截图总索引,核心是四大亮点证据链与防御性证据(403/404/状态守卫),含"90 秒四亮点演示路径";批次级 before/after 对照目录(m6p6、m7p1、m7p2 等)各自带子 INDEX。
 
 ## 9. 新鲜度评估与已知漂移
 
