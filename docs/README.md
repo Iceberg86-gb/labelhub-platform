@@ -8,6 +8,7 @@
 | 决策 | [`adr/`](adr/) | 架构决策记录 ADR-001 ~ 017，新决策用 [模板](adr/ADR-template.md) |
 | 工程规范 | [`engineering/`](engineering/) | [工程实现约束](engineering/conventions.md)、[AI 协作宪章](engineering/agent-charter.md) |
 | 接口 | [`api/`](api/) | [接口清单](api/inventory.md)。契约源头是 [`packages/contracts/openapi/labelhub.yaml`](../packages/contracts/openapi/labelhub.yaml) |
+| 评测 | [`../evals/`](../evals/) | AI 预审离线评测：数据、指标、录制/回放（ADR-017 H1） |
 | 指南 | [`guides/`](guides/) | [开发环境](guides/dev-environment.md)、[演示环境与部署](guides/demo-environment.md)、[演示脚本](guides/demo-script.md) |
 | 设计系统 | [`design-system/`](design-system/) | 视觉语言、图标、插画、状态标签。运行时 token 在 `apps/web/src/shared/ui/tokens.css` |
 | 过程记录 | [`process/`](process/) | [批次审计台账](process/humanpending.md)（append-only）、[决策日志](process/decision-log.md)、[AI Coding 日志](process/ai-coding-log.md) |

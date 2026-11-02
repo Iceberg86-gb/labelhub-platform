@@ -16,7 +16,7 @@ JAVA17_HOME := $(shell \
 	fi)
 JAVA17_ENV := JAVA_HOME="$(JAVA17_HOME)" PATH="$(JAVA17_HOME)/bin:$$PATH"
 
-.PHONY: doctor dev-up dev-down test-db dev-api verify migrate-check require-java17
+.PHONY: doctor dev-up dev-down test-db dev-api verify migrate-check require-java17 eval-setup eval-test eval-smoke eval-record
 
 require-java17:
 	@if [ -z "$(JAVA17_HOME)" ]; then \
@@ -79,3 +79,25 @@ verify: test-db require-java17
 
 migrate-check: test-db require-java17
 	@$(JAVA17_ENV) mvn -o -pl services/api -Dtest=ApplicationContextStartupTest test-compile $(SUREFIRE_GOAL)
+
+# ---- Offline evals (evals/, ADR-017 H1) -------------------------------------------------------------
+EVAL_PY := evals/.venv/bin/python
+
+eval-setup:
+	@test -x $(EVAL_PY) || python3 -m venv evals/.venv
+	@$(EVAL_PY) -m pip install -q -e 'evals[dev]'
+
+eval-test: eval-setup
+	@cd evals && .venv/bin/ruff check . && .venv/bin/pytest -q
+
+# Offline and free: replays committed recordings (evals/recordings). Misses are routed to a human and reported.
+eval-smoke: eval-setup
+	@cd evals && .venv/bin/python -m labelhub_evals run --dataset helpsteer2-smoke --provider replay
+
+# Live calls, saved as recordings. Needs LABELHUB_EVAL_API_KEY (and LABELHUB_EVAL_BASE_URL for non-DeepSeek).
+# Override the dataset with EVAL_DATASET=helpsteer2-full.
+EVAL_DATASET ?= helpsteer2-smoke
+eval-record: eval-setup
+	@test -n "$$LABELHUB_EVAL_API_KEY" || (echo "LABELHUB_EVAL_API_KEY is not set" && exit 1)
+	@cd evals && .venv/bin/python -m labelhub_evals run --dataset $(EVAL_DATASET) --provider record
+

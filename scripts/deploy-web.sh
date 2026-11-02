@@ -59,6 +59,7 @@ rsync "${rsync_flags[@]}" -e "$rsync_ssh_cmd" \
   --exclude=target \
   --exclude=/*.bundle \
   --exclude=docs/archive \
+  --exclude=/evals \
   --exclude=docs/design-system \
   "$repo_root/" \
   "$remote:/opt/labelhub/"

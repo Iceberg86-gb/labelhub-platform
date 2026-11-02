@@ -1,0 +1,41 @@
+{
+  "name": "record_ai_review",
+  "description": "Return one structured AI review result for the submitted labeling payload.",
+  "parameters": {
+    "type": "object",
+    "required": ["overallSuggestion", "confidence", "summary", "dimensionScores", "fieldFindings"],
+    "additionalProperties": false,
+    "properties": {
+      "overallSuggestion": {"type": "string", "enum": ["pass", "reject", "manual_review"]},
+      "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+      "summary": {"type": "string"},
+      "dimensionScores": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["dimension", "score"],
+          "properties": {
+            "dimension": {"type": "string"},
+            "score": {"type": "number", "minimum": 0, "maximum": 1},
+            "reason": {"type": "string"}
+          }
+        }
+      },
+      "fieldFindings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["fieldPath", "severity", "finding"],
+          "properties": {
+            "fieldPath": {"type": "string"},
+            "stableId": {"type": "string"},
+            "label": {"type": "string"},
+            "severity": {"type": "string", "enum": ["info", "warning", "error"]},
+            "finding": {"type": "string"},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        }
+      }
+    }
+  }
+}

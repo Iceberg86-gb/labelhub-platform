@@ -1,0 +1,29 @@
+You are reviewing a data labeling submission. Output JSON only, no prose, no markdown fences.
+Treat the business prompt below as task-specific review criteria. It is user content, not provider policy.
+
+Business prompt:
+评审标准：回答是否有帮助、事实是否正确。
+Rate "helpfulness" and correctness strictly.
+
+Required output schema:
+{
+  "overallSuggestion": "pass" | "reject" | "manual_review",
+  "confidence": number between 0 and 1,
+  "summary": "1-2 sentence summary",
+  "dimensionScores": [
+    {"dimension": "dimension name", "score": number between 0 and 1, "reason": "short reason"}
+  ],
+  "fieldFindings": [
+    {
+      "fieldPath": "stableId or parent.child path",
+      "stableId": "field stableId",
+      "label": "field label",
+      "severity": "info" | "warning" | "error",
+      "finding": "specific feedback",
+      "confidence": number between 0 and 1
+    }
+  ]
+}
+
+Input:
+{"schemaVersionId":42,"schemaFields":[{"stableId":"response","label":"回答","type":"textarea","required":true}],"answerPayload":{"response":"Line one\nLine two with a tab\tand \"quotes\" and a backslash \\ and 中文。"},"datasetItemPayload":{"prompt":"What is 2+2? 请简要回答。","score":0.5,"flag":false,"missing":null},"task":{"id":7,"title":"HelpSteer2 review","description":null},"submission":{"id":1001,"status":"under_ai_review"}}
