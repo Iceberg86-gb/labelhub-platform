@@ -1,0 +1,29 @@
+{
+  "golden_sha256": "8c38ba033822a9c70e1d1b5f58e86ecdbe121825796db31730658a4f44a1727d",
+  "label_counts": {
+    "pass": 359,
+    "reject": 141
+  },
+  "label_rule": {
+    "rule": "pass iff helpfulness >= 3 and correctness >= 3 (0-4 scale); otherwise reject",
+    "version": "hs2-pass-v1"
+  },
+  "license": "CC-BY-4.0",
+  "name": "helpsteer2-h1",
+  "sampling": {
+    "method": "random.Random(seed).sample, sorted by source index",
+    "requested_size": 500,
+    "seed": 20261102
+  },
+  "size": 500,
+  "smoke": {
+    "sha256": "a8ea99842512dd9a7b3f9a3355b058d9291117e66a1735fa65367f6cb153a677",
+    "size": 24
+  },
+  "source": {
+    "dataset": "nvidia/HelpSteer2",
+    "file": "validation.jsonl.gz",
+    "revision": "990b2711a36180dd19d9c94b8627844866f8982a",
+    "sha256": "610eeb5289494d613c4c0f70aade2df8df0b499f3a24e76d232f74e6909d010a"
+  }
+}

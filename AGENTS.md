@@ -20,6 +20,7 @@ AI 编码 agent 的入口（Codex、Claude Code 等）。人类开发者请从 [
 
 ```bash
 make verify                                   # 后端：单元测试 + Testcontainers 集成测试
+make evals                                    # 离线评测：pytest + 回放复现 smoke 基线（改动 evals/ 时）
 pnpm --filter @labelhub/web lint
 pnpm --filter @labelhub/web typecheck
 pnpm --filter @labelhub/web test
