@@ -72,7 +72,8 @@ class PromptVersionsApiIntegrationTest {
         SecretKey key = Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8));
         return Jwts.builder()
             .subject(username)
-            .claim("uid", userId)
+            .claim("userId", userId)
+            .claim("username", username)
             .claim("roles", java.util.List.of(role))
             .issuedAt(Date.from(Instant.parse("2026-05-25T12:00:00Z")))
             .expiration(Date.from(Instant.parse("2030-01-01T00:00:00Z")))

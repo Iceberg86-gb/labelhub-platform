@@ -177,7 +177,7 @@ class AiReviewIntegrationTest {
     @Test
     void trigger_with_different_prompt_creates_new_ai_call() throws Exception {
         long submissionId = submissionFixture("ai-review-new-prompt");
-        long secondPromptVersionId = insertPromptVersion(2, "m3-owner-review-v2");
+        long secondPromptVersionId = insertPromptVersion("m3-owner-review-v2");
 
         triggerReview(submissionId, 1L).andExpect(status().isCreated());
         triggerReview(submissionId, secondPromptVersionId)
@@ -334,7 +334,7 @@ class AiReviewIntegrationTest {
                 .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"taskId":%d,"promptTemplate":"%s","dimensions":["accuracy","safety"],"threshold":0.8}
+                    {"taskId":%d,"promptTemplate":"%s","dimensions":["accuracy","safety"],"passThreshold":0.8,"rejectThreshold":0.4}
                     """.formatted(taskId, promptTemplate)))
             .andExpect(status().isCreated())
             .andReturn()
@@ -353,11 +353,13 @@ class AiReviewIntegrationTest {
         return jdbcTemplate.queryForObject("SELECT task_id FROM submissions WHERE id=?", Long.class, submissionId);
     }
 
-    private long insertPromptVersion(int versionNumber, String content) {
+    private long insertPromptVersion(String content) {
+        // Rule tests in this class also create prompt versions in the shared database; take the next free number.
+        int versionNumber = jdbcTemplate.queryForObject("SELECT COALESCE(MAX(version_no), 0) + 1 FROM prompt_versions", Integer.class);
         return insertAndReturnId("""
             INSERT INTO prompt_versions(version_no, content, content_hash, status, owner_id, published_at, created_at)
             VALUES (?, ?, ?, 'published', 1001, NOW(3), NOW(3))
-            """, versionNumber, content, fixedHash("prompt-version-" + versionNumber));
+            """, versionNumber, content, fixedHash("prompt-version-" + content));
     }
 
     private Long insertLegacyAiCall(long submissionId, String idempotencyKey) {
