@@ -320,8 +320,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     g = sub.add_parser("golden", help="golden set").add_subparsers(dest="golden_cmd", required=True)
     gb = g.add_parser("build", help="download pinned HelpSteer2 and rebuild the golden set deterministically")
-    gb.add_argument("--seed", type=int, default=golden.DEFAULT_SEED)
-    gb.add_argument("--size", type=int, default=golden.DEFAULT_SIZE)
+    gb.add_argument("--seed", type=int, default=golden.DEFAULT_SEED, help="only used with --size")
+    gb.add_argument("--size", type=int, default=golden.DEFAULT_SIZE, help="subsample N rows (default: all rows)")
     gb.add_argument("--force", action="store_true", help="allow a manifest change (new seed/size/rule)")
     gb.set_defaults(fn=cmd_golden_build)
 

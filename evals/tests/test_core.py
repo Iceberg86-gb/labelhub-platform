@@ -52,6 +52,13 @@ def test_golden_sampling_is_a_pure_function_of_seed_and_size():
     assert a == b and a != c
 
 
+def test_default_golden_set_uses_every_row_in_source_order():
+    rows = _rows(30)
+    items = golden.build_items(rows, size=None)
+    assert [i.source_index for i in items] == list(range(30))
+    assert golden.DEFAULT_SIZE is None
+
+
 def test_golden_item_id_is_the_canonical_input_hash_and_duplicates_are_dropped():
     rows = _rows(10) + [dict(_rows(1)[0])]
     items = golden.build_items(rows, seed=1, size=11)

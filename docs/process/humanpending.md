@@ -812,3 +812,15 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
   - 阻塞范围：改动这段 prompt 需要提升 `PROMPT_VERSION`，之前的录制会全部失效。
 - **[264-4] 真实模型 H1 基线**
   - 需要 owner 先 `chatgpt login`，然后选定基线模型和推理强度，在完整黄金集上 `run --mode record`，把录制文件和 `runs/<run_id>/` 提交进仓库。之后 ADR-017 H1 和 ADR-018 才能改为 Accepted。
+
+## 265. #264 待决策项裁决：W1 黄金集改为全量(2026-11-02)
+
+裁决（owner 同意按 agent 建议执行）：
+- **[264-1] 已决**：保留 `hs2-pass-v1`（helpfulness ≥ 3 且 correctness ≥ 3）。依据：在全部 1038 条上，加入 coherence ≥ 3 只改变 3 条（736 → 733），因为 976/1038 条的 coherence 本来就 ≥ 3；两项都 ≥ 4 时只剩 425 条 pass，标准明显严于"可以进入训练集"。
+- **[264-2] 已决**：不抽样，使用 validation 全部 1038 条（736 pass / 302 reject），保留自然的类别比例；reject 从 141 条增加到 302 条，首要指标更稳定。`golden build` 默认改为全量；`--size/--seed` 只用于本地快速实验。
+- **[264-3] 已决**：基线使用 `h1-single-call-v1`，不做预先调优。之后的 prompt 改动按 ADR-017 的评测关卡，与这条基线对比。
+- **[264-4] 方案已定，待 owner 执行**：用 `chatgpt select --auto-latest`，推理强度取该模型的默认值；在全量黄金集上 `run --mode record`，录制文件和 `runs/<run_id>/` 单独开 PR 提交。合并之后，ADR-017 H1 和 ADR-018 才能改为 Accepted。
+
+交付：黄金集 manifest 改为全量（golden sha256 `5e0df257…`）。smoke 集变为源数据的前 24 条，新的 smoke 管线基线是 `evals/runs/1fef5379b2aec412/`。旧的 `runs/d9a11ef8ee7f6210/` 和对应的录制文件按只追加原则保留，不再被 CI 引用。
+
+验证：`make evals` 通过，57 条测试（executed）。重建两次，哈希一致（executed）。

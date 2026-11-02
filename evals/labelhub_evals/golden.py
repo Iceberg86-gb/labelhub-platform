@@ -28,7 +28,9 @@ SOURCE_SHA256 = "610eeb5289494d613c4c0f70aade2df8df0b499f3a24e76d232f74e6909d010
 SOURCE_URL = f"https://huggingface.co/datasets/{SOURCE_DATASET}/resolve/{SOURCE_REVISION}/{SOURCE_FILE}"
 
 DEFAULT_SEED = 20261102
-DEFAULT_SIZE = 500
+# humanpending #265 (264-2): use every validation row. size=None means "all rows, source order";
+# a size subsamples with the seed (kept for quick local experiments).
+DEFAULT_SIZE: int | None = None
 SMOKE_SIZE = 24
 
 # Provisional truth mapping, recorded in docs/process/humanpending.md (#264) until the owner confirms.
@@ -85,10 +87,17 @@ def read_source(path: Path) -> list[dict]:
         return [json.loads(line) for line in handle if line.strip()]
 
 
-def build_items(rows: list[dict], *, seed: int = DEFAULT_SEED, size: int = DEFAULT_SIZE) -> list[GoldenItem]:
-    if size > len(rows):
-        raise ValueError(f"size {size} exceeds source rows {len(rows)}")
-    indices = sorted(random.Random(seed).sample(range(len(rows)), size))
+def sampling_method(size: int | None) -> str:
+    return "all rows, source order" if size is None else "random.Random(seed).sample, sorted by source index"
+
+
+def build_items(rows: list[dict], *, seed: int = DEFAULT_SEED, size: int | None = DEFAULT_SIZE) -> list[GoldenItem]:
+    if size is None:
+        indices = list(range(len(rows)))
+    else:
+        if size > len(rows):
+            raise ValueError(f"size {size} exceeds source rows {len(rows)}")
+        indices = sorted(random.Random(seed).sample(range(len(rows)), size))
     items: list[GoldenItem] = []
     seen: set[str] = set()
     for index in indices:
@@ -107,7 +116,7 @@ def jsonl_bytes(items: Iterable[GoldenItem]) -> bytes:
     return "".join(canonical_json(item.to_json()) + "\n" for item in items).encode("utf-8")
 
 
-def manifest_for(items: list[GoldenItem], golden_bytes: bytes, smoke_bytes: bytes, *, seed: int, size: int) -> dict:
+def manifest_for(items: list[GoldenItem], golden_bytes: bytes, smoke_bytes: bytes, *, seed: int, size: int | None) -> dict:
     counts = {"pass": 0, "reject": 0}
     for item in items:
         counts[item.truth] += 1
@@ -120,7 +129,7 @@ def manifest_for(items: list[GoldenItem], golden_bytes: bytes, smoke_bytes: byte
             "file": SOURCE_FILE,
             "sha256": SOURCE_SHA256,
         },
-        "sampling": {"seed": seed, "requested_size": size, "method": "random.Random(seed).sample, sorted by source index"},
+        "sampling": {"method": sampling_method(size)} if size is None else {"method": sampling_method(size), "requested_size": size, "seed": seed},
         "label_rule": {"version": LABEL_RULE_VERSION, "rule": LABEL_RULE},
         "size": len(items),
         "label_counts": counts,
@@ -129,7 +138,7 @@ def manifest_for(items: list[GoldenItem], golden_bytes: bytes, smoke_bytes: byte
     }
 
 
-def build(out_dir: Path, cache_dir: Path, *, seed: int = DEFAULT_SEED, size: int = DEFAULT_SIZE, check: bool = True) -> dict:
+def build(out_dir: Path, cache_dir: Path, *, seed: int = DEFAULT_SEED, size: int | None = DEFAULT_SIZE, check: bool = True) -> dict:
     rows = read_source(fetch_source(cache_dir))
     items = build_items(rows, seed=seed, size=size)
     golden_bytes = jsonl_bytes(items)

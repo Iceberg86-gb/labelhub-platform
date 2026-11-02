@@ -13,13 +13,13 @@ python -m pytest -q
 ## 1. 黄金集
 
 ```bash
-python -m labelhub_evals golden build    # 下载固定版本的 HelpSteer2 validation，按种子抽 500 条
+python -m labelhub_evals golden build    # 下载固定版本的 HelpSteer2 validation，使用全部 1038 条
 ```
 
-- 数据源按 Hugging Face revision 和 SHA-256 双重固定；抽样种子、条数和真值规则都写在 [`manifest.json`](datasets/helpsteer2-h1/manifest.json) 里。
+- 数据源按 Hugging Face revision 和 SHA-256 双重固定；默认使用全部 1038 条（736 pass / 302 reject），不抽样（humanpending #265）。`--size N --seed S` 只用于本地快速实验。取数方式和真值规则都写在 [`manifest.json`](datasets/helpsteer2-h1/manifest.json) 里。
 - 重新构建得到的文件，如果与 manifest 不一致，命令会直接拒绝覆盖。
 - 仓库里只提交 manifest 和 24 条 `smoke.jsonl`（供 CI 使用）。完整的 `golden.jsonl` 在本地按需重建。
-- 真值规则 `hs2-pass-v1`：helpfulness ≥ 3 且 correctness ≥ 3 判为 pass，否则判为 reject。这条规则是**临时假设**，等待 owner 确认，见 humanpending #264。
+- 真值规则 `hs2-pass-v1`：helpfulness ≥ 3 且 correctness ≥ 3 判为 pass，否则判为 reject。已由 owner 确认（humanpending #265）。
 
 ## 2. 跑评测
 
@@ -49,7 +49,7 @@ python -m labelhub_evals run --provider chatgpt --model gpt-5.5 --effort medium 
   - p50/p95 延迟
 - **格式违规的处理**：模型没有调用 `record_ai_review`，或者参数不合法时，这一条**确定性地转人工**，并且计入格式违规率。
 
-`runs/d9a11ef8ee7f6210/` 是 `fake` provider 在 smoke 集上的管线基线，CI 用回放模式逐字节复现它。它只用来证明管线本身可复现，**不代表模型质量**。真实模型的 H1 基线需要 owner 登录之后录制，见下一节。
+`runs/1fef5379b2aec412/` 是 `fake` provider 在当前 smoke 集上的管线基线（`runs/d9a11ef8ee7f6210/` 对应已被替换的 500 条抽样版黄金集，按只追加原则保留），CI 用回放模式逐字节复现它。它只用来证明管线本身可复现，**不代表模型质量**。真实模型的 H1 基线需要 owner 登录之后录制，见下一节。
 
 ## 3. ChatGPT 登录与模型切换
 

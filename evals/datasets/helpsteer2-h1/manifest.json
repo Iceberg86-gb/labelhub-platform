@@ -1,8 +1,8 @@
 {
-  "golden_sha256": "8c38ba033822a9c70e1d1b5f58e86ecdbe121825796db31730658a4f44a1727d",
+  "golden_sha256": "5e0df257bb341d48a184c7a2c00cdb0b7cc2a57224378b9ae249e086f002c81e",
   "label_counts": {
-    "pass": 359,
-    "reject": 141
+    "pass": 736,
+    "reject": 302
   },
   "label_rule": {
     "rule": "pass iff helpfulness >= 3 and correctness >= 3 (0-4 scale); otherwise reject",
@@ -11,13 +11,11 @@
   "license": "CC-BY-4.0",
   "name": "helpsteer2-h1",
   "sampling": {
-    "method": "random.Random(seed).sample, sorted by source index",
-    "requested_size": 500,
-    "seed": 20261102
+    "method": "all rows, source order"
   },
-  "size": 500,
+  "size": 1038,
   "smoke": {
-    "sha256": "a8ea99842512dd9a7b3f9a3355b058d9291117e66a1735fa65367f6cb153a677",
+    "sha256": "3a68d2295657ea38facc595b6a833adbb0f270ecaa56ca311d10621db3703403",
     "size": 24
   },
   "source": {
