@@ -23,6 +23,7 @@ make verify                                   # 后端：单元测试 + Testcont
 pnpm --filter @labelhub/web lint
 pnpm --filter @labelhub/web typecheck
 pnpm --filter @labelhub/web test
+make eval-test                                # 评测框架（改动 AI 行为时，还需附一份 make eval-record 的评测对比）
 ```
 
 CI（`.github/workflows/ci.yml`）会执行同样的检查。只要有集成测试被跳过，CI 就判失败。

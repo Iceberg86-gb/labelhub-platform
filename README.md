@@ -59,6 +59,7 @@ pnpm --filter @labelhub/web dev      # 启动前端 http://127.0.0.1:5173（启�
 ```bash
 make verify                          # 后端单元测试 + Testcontainers 集成测试
 pnpm --filter @labelhub/web lint && pnpm --filter @labelhub/web typecheck && pnpm --filter @labelhub/web test
+make eval-test                       # 评测框架：lint + 测试（含与 Java 的契约一致性）
 ```
 
 ## 角色
@@ -77,7 +78,8 @@ pnpm --filter @labelhub/web lint && pnpm --filter @labelhub/web typecheck && pnp
 apps/web/              React 18 + TypeScript + Vite，Semi Design，Formily 渲染器（Feature-Sliced Design，ADR-013）
 services/api/          Spring Boot 模块化单体：业务权威、契约实现、Flyway 迁移
 services/agent/        AI worker：轮询 outbox，执行 AI 预审和导出
-packages/contracts/    OpenAPI 契约（唯一源头）与校验语料
+packages/contracts/    OpenAPI 契约（唯一源头）、校验语料、AI 请求与打分的共享契约
+evals/                 AI 预审离线评测（Python）：HelpSteer2、录制/回放、风险指标
 infra/                 本地 / 演示 / 生产三套 compose，nginx，MinIO 初始化
 scripts/               开发启动、部署、CI 辅助脚本
 docs/                  设计基线、ADR、指南、设计系统、过程记录（导航见 docs/README.md）
@@ -97,7 +99,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | W0 | CI 与工程基线：集成测试真实运行，跳过即判失败 | ✅ 完成 |
-| W1 | 离线评测框架：基于 HelpSteer2 的黄金集、录制/回放、单次调用的基线成绩 | 进行中 |
+| W1 | 离线评测框架：基于 HelpSteer2 的黄金集、录制/回放、与 Java 共享的契约测试（[evals/](evals/)） | 框架完成；基线成绩等待接入 API key 后录制 |
 | W2 | Agent 循环：工具层 + 基于 Schema 校验器的自我纠错 | 计划中 |
 | W3 | 策略层：三区阈值改造成权限模式，预算控制，阈值校准 | 计划中 |
 | W4 | 判例记忆：检索人类裁决作为参考，人机分歧回流 | 计划中 |

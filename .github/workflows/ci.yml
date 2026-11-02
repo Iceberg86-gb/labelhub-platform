@@ -79,6 +79,24 @@ jobs:
           path: services/*/target/surefire-reports
           retention-days: 7
 
+  evals:
+    name: Evals (contract parity · metrics · record/replay)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: evals
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -e '.[dev]'
+      - name: Lint
+        run: ruff check .
+      - name: Test (includes parity with packages/contracts/ai, which the Java suites also assert)
+        run: pytest -q
+
   repo-checks:
     name: Repo checks (contract endpoints · deploy excludes)
     runs-on: ubuntu-latest
