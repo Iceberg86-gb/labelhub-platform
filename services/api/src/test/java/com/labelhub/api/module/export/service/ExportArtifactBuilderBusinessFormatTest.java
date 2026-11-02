@@ -8,11 +8,15 @@ import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.shared.canonical.Canonicalizer;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.junit.jupiter.api.Test;
@@ -300,5 +304,45 @@ class ExportArtifactBuilderBusinessFormatTest {
             map.put(pairs[i], pairs[i + 1]);
         }
         return map;
+    }
+
+    // Reproducibility contract (Trusted Export): artifact bytes must not depend on when the export ran.
+    // POI stamps xlsx zip entries with the wall clock, which changed the file sha256 and the manifest hash.
+    @Test
+    void xlsx_zip_entries_carry_a_fixed_timestamp() throws Exception {
+        byte[] xlsx = file(builder.build(bundle()), "training-results.xlsx").content();
+
+        int entries = 0;
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(xlsx))) {
+            for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+                entries++;
+                assertThat(entry.getTimeLocal()).as(entry.getName()).isEqualTo(LocalDateTime.of(1980, 1, 1, 0, 0));
+            }
+        }
+        assertThat(entries).isPositive();
+    }
+
+    @Test
+    void zip_normalization_makes_identical_content_byte_identical_regardless_of_entry_times() throws Exception {
+        byte[] earlier = zipWithEntryTime(LocalDateTime.of(2026, 1, 1, 10, 0, 0));
+        byte[] later = zipWithEntryTime(LocalDateTime.of(2026, 1, 1, 10, 0, 4));
+        assertThat(earlier).isNotEqualTo(later);
+
+        assertThat(ExportArtifactBuilder.withFixedZipEntryTimes(earlier))
+            .isEqualTo(ExportArtifactBuilder.withFixedZipEntryTimes(later));
+    }
+
+    private static byte[] zipWithEntryTime(LocalDateTime time) throws Exception {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(bytes)) {
+            for (String name : List.of("[Content_Types].xml", "xl/workbook.xml")) {
+                ZipEntry entry = new ZipEntry(name);
+                entry.setTimeLocal(time);
+                zip.putNextEntry(entry);
+                zip.write(("content of " + name).getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        return bytes.toByteArray();
     }
 }
