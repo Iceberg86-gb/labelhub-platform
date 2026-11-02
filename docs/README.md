@@ -5,7 +5,7 @@
 | 层 | 目录 | 内容 |
 |---|---|---|
 | 业务事实 | [`architecture/`](architecture/) | [设计基线](architecture/labelhub-complete-design-baseline.md)、[架构图](architecture/diagrams/)、[状态机](architecture/state-machines/)（任务 / 提交 / 导出） |
-| 决策 | [`adr/`](adr/) | 架构决策记录 ADR-001 ~ 016，新决策用 [模板](adr/ADR-template.md) |
+| 决策 | [`adr/`](adr/) | 架构决策记录 ADR-001 ~ 017，新决策用 [模板](adr/ADR-template.md) |
 | 工程规范 | [`engineering/`](engineering/) | [工程实现约束](engineering/conventions.md)、[AI 协作宪章](engineering/agent-charter.md) |
 | 接口 | [`api/`](api/) | [接口清单](api/inventory.md)。契约源头是 [`packages/contracts/openapi/labelhub.yaml`](../packages/contracts/openapi/labelhub.yaml) |
 | 指南 | [`guides/`](guides/) | [开发环境](guides/dev-environment.md)、[演示环境与部署](guides/demo-environment.md)、[演示脚本](guides/demo-script.md) |
