@@ -1,195 +1,108 @@
-# LabelHub Platform
+# LabelHub
 
 [![CI](https://github.com/Iceberg86-gb/labelhub-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Iceberg86-gb/labelhub-platform/actions/workflows/ci.yml)
 
-LabelHub 是一个面向数据标注全流程的可信证据平台,核心治理理念是 **「AI 辅助 + 人类问责」**:AI 预审产出结构化证据与完整 provenance,但最终质量裁决始终由人类审核者负责;所有关键事实(Schema 版本、提交、审核、AI 调用、导出)以 append-only 方式落库,使标注结果成为**可审计、可复现的数据资产**,而不是可变的数据库快照。
+**面向训练数据生产的可信工作台。AI 负责提供证据，人类负责最终裁决，每一份交付都可以复现、可以验证。**
 
-## 生产访问
+LabelHub 覆盖从数据导入、标注、AI 预审、多级人工审核，到导出 SFT/偏好训练格式的完整链路。和普通标注工具不同的是，它把每一个关键事实都以 append-only 的方式记录下来，包括 Schema 版本、提交、审核结论、AI 调用和导出快照。所以它能回答一个大多数工具答不上来的问题：
 
-当前可供他人访问的生产/演示入口是 **http://120.26.182.61:8443/**。
-该入口为 HTTP + IP + 8443 端口,ICP备案与 HTTPS 证书切换尚未完成;访问时必须保留 `http://` 和 `:8443`。
+> **你凭什么说这批训练数据是对的？**
 
-- 公网页面:`http://120.26.182.61:8443/`
-- 公共健康探针:`http://120.26.182.61:8443/api/actuator/health`
-- 本机开发地址 `http://127.0.0.1:5173` 只在开发机上有效,不能发给外部用户。
-- 公网演示账号密码由项目 Owner 通过私密渠道发放;仓库文档只保留账号名和访问入口。
+项目正在演进为一个**标注垂类 Agent Harness**：让 LLM agent 在规则、校验器和人类问责的约束下生产训练数据。详见[路线图](#路线图)。
 
-## 系统架构
+---
 
-整体采用 **模块化单体 + 独立 AI Worker** 的双进程架构,契约先行(contract-first):
+## 它如何工作
 
 ```
-                       packages/contracts/openapi/labelhub.yaml
-                      (API 唯一源头, 89 operations, v0.10.0)
-                        ↓ openapi-typescript        ↓ 人工对齐
-┌─────────────────┐   ┌──────────────────────┐   ┌──────────────────────┐
-│   apps/web      │   │    services/api      │   │   services/agent     │
-│ React 18 + TS   │──→│  Spring Boot 单体    │   │   AI Worker 进程     │
-│ Vite + Semi     │   │  13 个业务模块       │   │  轮询 outbox 表      │
-│ Formily 渲染器  │   │  业务权威边界        │   │  AI 预审 / 导出执行  │
-└─────────────────┘   └──────────┬───────────┘   └──────────┬───────────┘
-                                 │      MySQL 8 (Flyway ×29)│
-                                 │   ┌── outbox 事件表 ←────┘
-                                 ├───┤   append-only 事实表群
-                                 │   └── (schema_versions / submissions /
-                                 │        quality_ledger_entries / ai_calls /
-                                 │        export_snapshots / senior_review_cases …)
-                                 ├─── Redis 7 (预留)
-                                 └─── MinIO (S3 兼容, Trusted Export 产物)
+ 数据集导入 ──→ Schema 设计（版本不可变） ──→ 标注员领取并作答（绑定领取时的 Schema 版本）
+                                                      │
+                                                      ▼
+                                AI 预审（强制 function calling，按三区阈值分流）
+                                    ├─ 高置信度 → 建议通过 ┐
+                                    ├─ 不确定   → 转人工   ├──→ 人类审核与仲裁（最终裁决）
+                                    └─ 低分     → 建议打回 ┘          │
+                                                                      ▼
+             Quality Ledger（append-only，结论实时派生）──→ 可信导出（可复现，按哈希校验）
 ```
 
-关键链路:
+- **请求边界**：所有业务写入只经过 `services/api`。业务状态和 outbox 事件在同一个事务里写入（[ADR-008](docs/adr/ADR-008-outbox-pattern.md)）。
+- **异步边界**：`services/agent` 轮询 outbox，执行 AI 预审和导出作业，具备幂等、重试、死信，并会记录 `last_error`。
+- **契约边界**：`packages/contracts/openapi/labelhub.yaml` 是唯一的 API 源头，前端类型全部由它生成（[ADR-012](docs/adr/ADR-012-contract-first-openapi.md)）。
 
-- **请求边界**:所有业务写入只经过 `services/api`。API 在同一事务内原子写入业务状态 + outbox 事件(ADR-008),不依赖 Kafka 等外部队列。
-- **异步边界**:`services/agent` 轮询 outbox,消费 AI 预审与导出作业。Worker 具备幂等键、重试计数、`last_error` 记录与死信路径;配置类失败(密钥缺失、解密失败、鉴权失败)**不会静默回退**到环境变量配置,必须在重试/死信链路上可见(ADR-011 修订版)。
-- **LLM 接入**:registry-first 解析——任务 Owner 在平台内配置的 LLM Provider(密钥经 `LABELHUB_LLM_PROVIDER_MASTER_KEY` 加密存库)优先;无配置时回退 env;多个启用配置视为配置错误而非任选其一。AI 预审强制 function-calling 结构化输出,纯文本解析不被接受(ADR-006)。
-- **契约同步**:前端每次 dev/build/typecheck 自动执行 `gen:api`,从 OpenAPI YAML 生成 TypeScript 类型;生成物不是修改源头。
+## 核心设计取舍
 
-## 模块划分
+| 取舍 | 理由 | 记录 |
+|---|---|---|
+| **AI 是证据，不是裁决** | AI 结论连同 prompt 版本、模型、input hash、成本和延迟一起作为证据写入账本，可以检视、导出或排除，但不能改写最终结论。人类审核者是训练数据准入的问责闸门。 | [ADR-005](docs/adr/ADR-005-ai-evidence-not-verdict.md) |
+| **事实只追加，不修改** | 已发布的 Schema 版本不可变，历史提交永远能按原样渲染。Verdict 从最新的账本条目实时派生，用读时计算换取写路径的简单，以及事实不可篡改。 | [ADR-002](docs/adr/ADR-002-schema-immutability.md) / [003](docs/adr/ADR-003-quality-ledger.md) / [009](docs/adr/ADR-009-local-immutability.md) |
+| **导出可复现** | 规范化序列化后，同一份数据导出两次得到逐字节相同的文件和 manifest 哈希，并且有测试守护。 | [ADR-004](docs/adr/ADR-004-export-snapshot.md) |
+| **结构化输出是硬约束** | AI 预审必须通过 function calling 输出，不解析纯文本。校验失败时，走确定性的重试或转人工路径。 | [ADR-006](docs/adr/ADR-006-function-calling-required.md) |
+| **拒绝静默回退** | Provider 配置出错时，失败会在重试和死信链路上显式暴露，不会悄悄退回到环境变量的配置。 | [ADR-011](docs/adr/ADR-011-doubao-default-openai-fallback.md) |
+| **模块化单体 + 独立 worker** | 13 个业务模块之间靠包边界隔离，单库单进程部署。只有消费异步事件、可能独立失败的 AI worker 被拆成单独进程。 | [ADR-001](docs/adr/ADR-001-modular-monolith.md) |
 
-### 后端 `services/api`(`com.labelhub.api.module.*`)
+## 快速开始
 
-| 模块 | 职责 |
-|------|------|
-| `auth` / `user` | JWT 认证、refresh token、注册、RBAC 角色授予 |
-| `task` | 任务生命周期、状态迁移事实(`task_transitions`)、配额派生 |
-| `schema` | Schema Designer 后端、append-only 版本化、JSON 运行时校验、模板库 |
-| `dataset` | JSON/JSONL 导入事实、`dataset_items`、当前数据集绑定 |
-| `session` / `submission` | 领取(claim-time schema binding)、草稿自动保存、提交、历史渲染 |
-| `quality` | Quality Ledger append-only 写入、Verdict 实时派生、`senior_review_cases` 仲裁工作台 |
-| `ai` | AI 预审编排、prompt 版本、三区阈值规则、provenance、幂等复用、LLM provider 配置 |
-| `export` | Trusted Export canonical 产物、多训练格式(表格快照 / OpenAI 微调 / TRL SFT / TRL 偏好)、快照 diff |
-| `outbox` | 事务性事件出箱 |
-| `platform` | 平台管理员视角:成本、效率、人力计量仪表盘 |
-| `admin` | 审计日志(payload hash)、用户管理 |
-| `shared` / `security` | canonical JSON 序列化、统一异常、安全过滤链 |
-
-### AI Worker `services/agent`
-
-独立 Spring 进程:`OutboxAiReviewWorker` / `OutboxExportWorker` 轮询消费;`RuntimeProviderResolver` 实现 registry-first provider 解析与本地密钥解密;`AgentSecretRedactor` 保证敏感凭据不进入日志(已用 canary 注入法验证零泄漏)。
-
-### 前端 `apps/web`(Feature-Sliced Design,ADR-013)
-
-```
-src/
-├── app/        应用骨架、路由、鉴权守卫
-├── pages/      按角色分区: owner / labeler / reviewer / platform / admin …
-├── features/   16 个特性切片: schema-design, labeling, quality, export, ai, …
-├── entities/   领域实体
-└── shared/     生成的 API 类型、通用 UI、工具
-```
-
-核心技术:Semi Design 组件库、Formily 驱动的 Schema Designer/Renderer(支持联动 DSL、富文本、附件链、虚拟化长表单)、TanStack Query/Virtual、dnd-kit。Labeler 全链路已完成移动端适配。
-
-### 其他目录
-
-- `packages/contracts` — OpenAPI 契约源头 + fixtures
-- `infra` — 本地 / demo / 生产三套 docker compose,MySQL 初始化、MinIO bucket 初始化、nginx
-- `scripts` — `dev-up.sh`、`deploy-api.sh` / `deploy-web.sh`(四阶段生产部署)、受保护端点检查
-- `docs` — 完整设计基线、15 份 ADR、四张架构图、各里程碑验收清单、截图证据索引
-- `humanpending.md` — **append-only 审计台账**,259 个已封闭批次的交付与验证记录
-- `submission` — 答辩提交材料索引
-
-## 角色与核心流程
-
-五种角色,职责正交:
-
-1. **Owner**:创建任务 → 导入数据集(配额由数据集题目数派生,不再手填)→ Designer 设计并发布 Schema 版本 → 发布任务 → 触发 AI 预审 → 创建 Trusted Export。
-2. **Labeler**:任务广场领取(FCFS + 乐观锁,ADR-007)→ Renderer 按领取时绑定的 Schema 版本作答 → 自动保存 → 支持自定义数量批量领取与本批次批量提交。
-3. **Reviewer**:全量初审队列 → 单条标注 approve/reject → Verdict 从 latest ledger entry 实时派生 → 疑难可标记升级。
-4. **Senior Reviewer**:不做二次全量审核,而是基于独立 `senior_review_cases` 的**仲裁工作台**——处理 AI 升级、Reviewer 疑难标记与抽检 case。
-5. **Platform Admin**:LLM Provider 接入、成本/效率/人力计量仪表盘、用户与角色管理、审计日志。
-
-## 本地启动指引
-
-### 前置依赖
-
-- JDK 17(Makefile 会自动探测并强校验)
-- Node + pnpm(workspace 由 `pnpm-workspace.yaml` 管理)
-- Docker(MySQL 8 / Redis 7 / MinIO)
-
-### 快速启动
+依赖：JDK 17、Node 20+、pnpm 9、Docker。
 
 ```bash
-# 0. 环境自检
-make doctor
-
-# 1. 启动基础设施(MySQL + Redis + MinIO,自动建 bucket)
-make dev-up
-
-# 2. 启动后端(自动确保 labelhub_test 测试库存在;默认 context path 为 /api)
-make dev-api
-# 或手动: mvn -pl services/api spring-boot:run
-# 端口冲突时: LABELHUB_API_PORT=18080 mvn -pl services/api spring-boot:run
-
-# 3. 启动前端(自动从 OpenAPI 生成 TS 类型)
+make dev-up                          # MySQL 8 + Redis 7 + MinIO（自动创建 bucket）
+make dev-api                         # 启动后端，默认运行在 :8080/api，自动准备 labelhub_test 测试库
 pnpm install
-pnpm --filter @labelhub/web dev
-# 后端跑在 18080 时:
-# LABELHUB_API_PROXY_TARGET=http://127.0.0.1:18080 pnpm --filter @labelhub/web dev
+pnpm --filter @labelhub/web dev      # 启动前端 http://127.0.0.1:5173（启动前从 OpenAPI 生成类型）
 ```
 
-浏览器访问 `http://127.0.0.1:5173`。这是本机开发地址,只对启动 Vite 的机器有效;给评审或外部用户访问时使用生产入口 `http://120.26.182.61:8443/`。环境变量样例见 `.env.example`(JWT 密钥、数据库、对象存储、LLM provider 等)。
+本地演示账号的密码都是 `demo1234`：`owner_demo`、`labeler_demo`、`reviewer_demo`、`senior_reviewer_demo`。环境变量样例见 [`.env.example`](.env.example)，详细说明见 [开发环境指南](docs/guides/dev-environment.md)。
 
-本地 demo 账号(密码均为 `demo1234`):`owner_demo` / `labeler_demo` / `reviewer_demo` / `senior_reviewer_demo`。公网演示环境已轮换密码,由项目 Owner 单独发放。新增演示账号请走注册页创建,不要手工 SQL INSERT(避免 hash 转义与 id 冲突问题)。
-
-### 常用验证
-
-以下检查在 CI(`.github/workflows/ci.yml`)中每次 push 自动执行。
+**验证**（CI 每次 push 都会执行同样的检查）：
 
 ```bash
-make verify                                  # 后端测试(自动准备测试库 + JDK17)
-make migrate-check                           # 仅验证 Flyway 迁移 + 上下文启动
-pnpm --filter @labelhub/web lint             # 前端 ESLint(typescript-eslint + react-hooks)
-pnpm --filter @labelhub/web test             # 前端测试
-pnpm --filter @labelhub/web typecheck
-pnpm --filter @labelhub/web build
-bash scripts/check-protected-endpoints.sh    # 受保护端点鉴权检查
-pnpm --filter @labelhub/web bench            # Formily vs legacy 渲染基准
+make verify                          # 后端单元测试 + Testcontainers 集成测试
+pnpm --filter @labelhub/web lint && pnpm --filter @labelhub/web typecheck && pnpm --filter @labelhub/web test
 ```
 
-### 生产部署
+## 角色
 
-`scripts/deploy-api.sh` / `deploy-web.sh` 实现四阶段闭环:rsync 同步(exclude 模式必须锚定,如 `--exclude=/submission`,并排除 `.env*`、`target/`、根目录 `*.bundle`、本地配置和本地数据目录)→ 远端构建 → 带 `--env-file .env.prod` 重启 → 健康探针自检。生产编排见 `infra/docker-compose.prod.yml`(含内存限额与健康检查)。生产命令仅由项目 Owner 执行。
+| 角色 | 职责 |
+|---|---|
+| Owner | 创建任务、导入数据集（配额由题目数派生）、设计并发布 Schema、触发 AI 预审、创建可信导出 |
+| Labeler | 先到先得领取（乐观锁守护配额，[ADR-007](docs/adr/ADR-007-fcfs-distribution.md)），按领取时绑定的 Schema 版本作答，自动保存草稿，批量领取和提交 |
+| Reviewer | 初审 approve/reject，疑难提交可以标记升级 |
+| Senior Reviewer | 在独立的仲裁工作台处理 AI 升级、疑难标记和抽检，不做二次全量审核 |
+| Platform Admin | 配置 LLM Provider（密钥加密存库）、查看成本/效率/人力仪表盘、管理用户与角色、查看审计日志 |
 
-生产发布后至少验证:
+## 仓库结构
 
-```bash
-curl -f http://120.26.182.61:8443/api/actuator/health
-curl -I http://120.26.182.61:8443/
+```
+apps/web/              React 18 + TypeScript + Vite，Semi Design，Formily 渲染器（Feature-Sliced Design，ADR-013）
+services/api/          Spring Boot 模块化单体：业务权威、契约实现、Flyway 迁移
+services/agent/        AI worker：轮询 outbox，执行 AI 预审和导出
+packages/contracts/    OpenAPI 契约（唯一源头）与校验语料
+infra/                 本地 / 演示 / 生产三套 compose，nginx，MinIO 初始化
+scripts/               开发启动、部署、CI 辅助脚本
+docs/                  设计基线、ADR、指南、设计系统、过程记录（导航见 docs/README.md）
 ```
 
-## 关键设计取舍
+## 文档
 
-以下取舍均有 ADR 或 `humanpending.md` 闭环记录支撑:
+从 [**docs/README.md**](docs/README.md) 开始。常用入口：
 
-**1. 模块化单体,而非微服务(ADR-001)。** 毕设项目需要清晰边界而非部署复杂度。13 个业务模块以包边界隔离、单进程部署、单一数据库;唯一拆出的进程是 AI Worker——因为它消费异步事件、可独立失败,不应拖垮请求处理。
+- [设计基线](docs/architecture/labelhub-complete-design-baseline.md)：业务事实模型的权威来源
+- [架构决策记录](docs/adr/)：ADR-001 ~ 015
+- [工程规范](docs/engineering/conventions.md) 和 [AI 协作宪章](docs/engineering/agent-charter.md)，AI 编码 agent 的入口是 [AGENTS.md](AGENTS.md)
+- [批次审计台账](docs/process/humanpending.md)：append-only，记录了每个合入批次的交付和验证过程
 
-**2. Append-only 事实流,而非可变状态(ADR-002/003/009)。** 已发布 Schema 版本不可变,字段 stableId 发布后不可复用;每个 submission 绑定提交时的 Schema 版本,历史提交永远能按原貌渲染。Quality Ledger 只追加不更新,Verdict(`pending/approved/rejected`)从 latest entry **实时派生**而非维护物化表——用读时计算换取写路径的绝对简单与事实不可篡改。
+## 路线图
 
-**3. AI 是证据,不是裁决(ADR-005)。** AI 预审结果(含 prompt 版本、模型、input/output hash、cost、latency)作为 provenance 写入 ledger,可被检视、导出或排除,但不直接改写最终 verdict。人类审核者是训练数据准入的问责闸门。配套约束:AI 输出必须经 function-calling 结构化(ADR-006),校验失败走确定性的重试/转人工路径——这也是选 deepseek-chat 而非不支持 `tool_choice` 的变体的原因。
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| W0 | CI 与工程基线：集成测试真实运行，跳过即判失败 | ✅ 完成 |
+| W1 | 离线评测框架：基于 HelpSteer2 的黄金集、录制/回放、单次调用的基线成绩 | 进行中 |
+| W2 | Agent 循环：工具层 + 基于 Schema 校验器的自我纠错 | 计划中 |
+| W3 | 策略层：三区阈值改造成权限模式，预算控制，阈值校准 | 计划中 |
+| W4 | 判例记忆：检索人类裁决作为参考，人机分歧回流 | 计划中 |
+| W5 | MCP Server：外部 agent 可以在同一套治理与审计规则下接入 | 计划中 |
 
-**4. Outbox 轮询,而非消息队列(ADR-008)。** MySQL outbox 表 + 轮询 worker,让 API 事务能原子地写业务状态和事件,Stage 1 无需引入 Kafka。代价是 worker 必须自带幂等、重试与死信;收益是部署面缩到 2C4G 单机可承载。
+## 在线演示
 
-**5. Provider 解析拒绝静默回退(ADR-011 修订)。** DB 配置的 provider 出现永久性配置错误时,agent 不会悄悄退回 env 配置"让它先跑起来",而是让失败在重试/死信链路上显式可见——隐藏配置错误比短暂不可用更危险。
-
-**6. 契约先行 + 漂移控制(ADR-012/015)。** OpenAPI YAML 是唯一 API 源头,前端类型全部生成,契约 MD5 与迁移数作为每个批次的硬变更锚点,杜绝前后端口径漂移。
-
-**7. Formily 换可扩展性,接受首屏开销(M7-P2 基准)。** 5000 字段首屏 Formily 约 96ms vs legacy 52ms,但 500 字段表单单字段变更时 legacy 重跑全部 500 个字段分支,Formily 只触发 1 次回调。标注场景以高频局部编辑为主,精确响应式 + 虚拟化是正确的取舍。
-
-**8. Senior Reviewer 正交化(闭环 258)。** 高级审核从"二次全量 approve/reject"重构为独立 `senior_review_cases` 承载的仲裁工作台,只处理 AI 升级、疑难标记与抽检——避免两层审核职责重叠导致问责模糊。
-
-**9. 配额语义收敛(闭环 259)。** 任务配额不再由 Owner 手填,改为绑定数据集后由题目数派生,领取按实际可用 dataset item 控制——消除配额字段与真实题量脱节这一整类不一致。
-
-**10. Scoped Zero Pause(ADR-014)。** 无法安全推断的业务规则不阻塞无关开发,而是作为 scoped 条目记入根目录 `humanpending.md`;该文件同时是 append-only 的批次审计台账,每个合入批次留下交付与验证记录。配套流程纪律:FCFS 领取用乐观锁守护配额(ADR-007)、所有合并 `--no-ff`、单元测试通过不等于功能正确——浏览器实测 + 数据库 COUNT 才是最高证据标准。
-
-## 文档索引
-
-- `docs/architecture/labelhub-complete-design-baseline.md` — 系统完整设计基线
-- `docs/architecture/diagrams/` — 四张架构图
-- `docs/adr/` — ADR-001 ~ ADR-015 架构决策记录
-- `docs/internal/decision-log.md` — 架构与实现决策日志
-- `docs/m2 ~ m5-acceptance-checklist.md` — 各里程碑验收清单
-- `docs/screenshots/INDEX.md` — 截图证据索引
-- `humanpending.md` — 全部批次闭环台账(当前至 #259)
-- `CODEX.md` / `coderules.md` — 实施代理工作约定与代码规则
+演示入口是 `http://120.26.182.61:8443/`。备案和 HTTPS 切换还没完成，所以访问时必须带上 `http://` 和 `:8443`。公网演示账号由项目 Owner 私下发放。部署方式见 [演示环境说明](docs/guides/demo-environment.md)。
