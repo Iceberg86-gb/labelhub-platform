@@ -16,11 +16,17 @@ import com.labelhub.api.module.session.exception.TaskNotAvailableException;
 import com.labelhub.api.module.task.service.TaskPublishGuardException;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class GlobalExceptionHandlerTest {
 
@@ -223,5 +229,35 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getCode()).isEqualTo("INVALID_DATASET_FOR_TASK");
+    }
+
+    // Contract: a malformed/missing JSON body (or an out-of-contract enum value) is the client's fault -> 400, never 500.
+    @Test
+    void unreadable_request_body_returns_bad_request() {
+        ResponseEntity<ApiError> response = handler.unreadableBody(
+            new HttpMessageNotReadableException("JSON parse error", mock(HttpInputMessage.class)));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode()).isEqualTo("MALFORMED_REQUEST_BODY");
+    }
+
+    // Contract: Spring MVC client errors keep their own 4xx status instead of being masked as 500.
+    @Test
+    void framework_client_errors_keep_their_status() {
+        assertThat(handler.internal(new HttpMediaTypeNotSupportedException(MediaType.TEXT_PLAIN, java.util.List.of(MediaType.APPLICATION_JSON)))
+            .getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        assertThat(handler.internal(new HttpRequestMethodNotSupportedException("PUT")).getStatusCode())
+            .isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+    }
+
+    // Contract: genuinely unexpected exceptions still return a generic 500 without leaking details.
+    @Test
+    void unexpected_exception_returns_internal_error() {
+        ResponseEntity<ApiError> response = handler.internal(new IllegalStateException("db exploded"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getMessage()).isEqualTo("Internal server error");
     }
 }

@@ -57,6 +57,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -337,8 +339,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("UNAUTHORIZED", exception.getMessage()));
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiError> unreadableBody(HttpMessageNotReadableException exception) {
+        // Malformed JSON, a missing body, or a value outside a contract enum is a client error.
+        return ResponseEntity.badRequest().body(error("MALFORMED_REQUEST_BODY", "Request body is missing or malformed"));
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> internal(Exception exception) {
+        if (exception instanceof ErrorResponse frameworkError && frameworkError.getStatusCode().is4xxClientError()) {
+            // Spring MVC's own client errors (unsupported Content-Type, wrong method, missing parameter, ...)
+            // carry their status; without this they fell through to a 500.
+            return ResponseEntity.status(frameworkError.getStatusCode())
+                .body(error("BAD_REQUEST", frameworkError.getBody().getDetail()));
+        }
         log.error("Unhandled API exception", exception);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(error("INTERNAL_ERROR", "Internal server error"));
