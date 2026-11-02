@@ -294,6 +294,30 @@ def test_catalog_keeps_listed_models_and_parses_optional_fields(stub, store):
     assert models[2].reasoning_efforts == () and models[2].display_name == "gpt-5.5-mini"
 
 
+def test_catalog_request_has_no_client_version_query(stub, store):
+    from labelhub_evals.chatgpt.models import fetch_catalog_raw
+
+    seen = []
+    orig = Http.json
+
+    def spy(self, method, url, **kw):
+        seen.append(url)
+        return orig(self, method, url, **kw)
+
+    store.save(creds())
+    Http.json = spy
+    try:
+        fetch_catalog_raw(ChatGPTSession(store, Http(), stub.endpoints, clock=lambda: NOW), Http(), stub.endpoints)
+    finally:
+        Http.json = orig
+    assert seen == [stub.base + "/v1/models"]
+
+
+def test_codex_minimal_client_version_does_not_hide_models_by_default():
+    models = [ModelInfo("gpt-5.5", "", (), None, 1, "0.98.0")]
+    assert pick_latest(models).slug == "gpt-5.5"
+
+
 def test_new_catalog_models_are_picked_up_without_code_changes():
     models = parse_catalog({"models": [{"slug": "gpt-5.5", "priority": 1}, {"slug": "gpt-6", "priority": 1}]})
     assert pick_latest(models).slug == "gpt-6"
