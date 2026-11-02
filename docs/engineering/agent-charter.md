@@ -98,12 +98,12 @@ and flag the convention for cleanup.
 ## LabelHub Project Constraints (LH Layer)
 
 这一层是 LabelHub 项目专属硬约束,与 META R1-R11 同时生效。
-权威来源:`docs/architecture/labelhub-complete-design-baseline.md` 和 `CODEX.md`。
+权威来源:`docs/architecture/labelhub-complete-design-baseline.md` 和 `docs/engineering/conventions.md`。
 
 ### LH-1 — Source of Truth Hierarchy
 对任何业务事实或工程实现问题,信息优先级为:
 1. `labelhub-complete-design-baseline.md`(业务事实模型)
-2. `CODEX.md`(工程实现约束)
+2. `docs/engineering/conventions.md`(工程实现约束)
 3. ADR(决策记录,可覆盖以上两者,但必须显式标注)
 4. 本文档(行为契约)
 5. Agent 自身判断
@@ -177,12 +177,12 @@ Zero-Pause Mode 仅在**同时满足以下所有条件**时启用:
 
 ### ZPR3 — Humanpending Protocol (UNCHANGED IN INTENT)
 
-- 遇到真正的人工决策点(无法通过 baseline + CODEX + ADR 推断的决策),记录到 `docs/internal/humanpending.md`
+- 遇到真正的人工决策点(无法通过 baseline + CODEX + ADR 推断的决策),记录到 `docs/process/humanpending.md`
 - 记录格式:决策点、上下文、备选方案、临时假设(如果继续推进)、阻塞范围
 - 立即继续推进**与该决策点无依赖**的工作
-- 当所有非依赖工作均完成或被阻塞时,**停止并向用户汇报 `humanpending.md` 全部条目**,等待用户决策后再继续
+- 当所有非依赖工作均完成或被阻塞时,**停止并向用户汇报 `docs/process/humanpending.md` 全部条目**,等待用户决策后再继续
 
-humanpending.md 的存在是 ZP 模式与用户沟通的主通道,**不允许跳过此机制直接静默猜测**。
+docs/process/humanpending.md 的存在是 ZP 模式与用户沟通的主通道,**不允许跳过此机制直接静默猜测**。
 
 ### ZPR4 — Lightweight Multi-Perspective Reasoning (REVISED)
 
@@ -203,7 +203,7 @@ humanpending.md 的存在是 ZP 模式与用户沟通的主通道,**不允许跳
 ZP 模式下,以下情况必须**立即停止并向用户汇报**,不允许继续:
 - 任务开始后才发现需要新增或修改 ADR
 - 实现过程中触发 R10(reversibility-weighted)的任何一个条件
-- humanpending.md 累积 ≥3 条未解决条目
+- docs/process/humanpending.md 累积 ≥3 条未解决条目
 - 单次 session 的代码产出超过 1000 行新代码(防止失控蔓延)
 - 与 baseline 或 CODEX 存在歧义,且无法通过引用现有 ADR 解决
 

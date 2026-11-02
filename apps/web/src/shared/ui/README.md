@@ -12,7 +12,7 @@ import { StatusBadge, EmptyState, FlowStrip, StatTile, SectionCard, TruncatedHas
 
 ## Tokens (the foundation)
 
-Design tokens live in [`docs/design-assets/tokens/tokens.css`](../../../../../docs/design-assets/tokens/tokens.css) and are loaded globally in `app/main.tsx`. TS references are re-exported as `tokens` (`tokens.fontSize.caption`, `tokens.color.accentBlue`, …) for the rare inline-style case.
+Design tokens live in [`tokens.css`](./tokens.css) and are loaded globally in `app/main.tsx`. TS references are re-exported as `tokens` (`tokens.fontSize.caption`, `tokens.color.accentBlue`, …) for the rare inline-style case.
 
 - **Type scale (never use raw px):** `display 28 · page-title 22 · section-title 18 · card-title 15 · body 14 · body-strong 14/600 · small 13 · caption 12 · table-header 12/600 · micro-label 11/600`.
 - **Fonts:** `--font-family-sans` (Inter), `--font-family-mono` (one canonical mono stack — never inline a `"SF Mono", …` list).

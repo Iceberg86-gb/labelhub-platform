@@ -1,4 +1,6 @@
-# CODEX.md
+# 工程实现约束(Engineering Conventions)
+
+> 原根目录 `CODEX.md`,2026-11 随仓库整理迁入 `docs/engineering/`。
 
 > LabelHub 开发协同契约
 >
@@ -76,7 +78,6 @@ LLM:
 本地依赖:
 
 - MySQL 8.0
-- Redis 7
 - MinIO(S3 兼容对象存储)
 - Docker Compose
 
@@ -219,17 +220,7 @@ MySQL 是事实数据源。
 
 主队列:**MySQL outbox + 应用层轮询**。对齐基线 ADR-008。
 
-Redis 用途严格限制:
-
-- 短期任务状态缓存(例如 export job 进度推送)
-- 轻量分布式锁(例如同一 task 的批量审核操作互斥)
-- 本地开发缓存(限流、登录状态)
-
-Redis 禁止用途:
-
-- **不得作为权威队列**(主队列是 MySQL outbox)
-- **不得作为主存储**(任何业务事实必须落 MySQL)
-- 不得缓存 schema_versions / submissions / quality_ledger_entries(这些是 append-only 事实,直接读 MySQL)
+Redis 已移除(ADR-016):它从未有业务消费者。将来如果需要短期状态缓存或分布式锁,必须先写 ADR;即便重新引入,也**不得作为权威队列或主存储**,不得缓存 append-only 事实(schema_versions / submissions / quality_ledger_entries)。
 
 文件存储:
 
@@ -344,7 +335,7 @@ AI 角色边界:
 测试栈:
 
 - 后端单测:JUnit 5 + Mockito + AssertJ
-- 后端集成测试:JUnit 5 + Testcontainers(真实 MySQL + Redis + MinIO)
+- 后端集成测试:JUnit 5 + Testcontainers(真实 MySQL + MinIO)
 - 前端单测:Vitest + React Testing Library
 - E2E:Playwright
 - API 契约测试:基于 OpenAPI 的 schema 校验,前端 mock server 用 Prism
@@ -376,12 +367,16 @@ CI 由 `.github/workflows/ci.yml` 在每次 push 时执行:前端 lint / typeche
 
 文档目录:
 
-- `docs/architecture/`:基线、架构图、模块设计
+文档的完整导航见 `docs/README.md`。分层约定:
+
+- `docs/architecture/`:设计基线、架构图、状态机(`state-machines/`)
 - `docs/adr/`:架构决策记录,**重大技术选型变更必须落 ADR**
-- `docs/api/`:OpenAPI 规范、Postman Collection、关键接口示例
-- `docs/workflows/`:业务流程图、状态机图、演示脚本
-- `docs/internal/`:撰写过程的工件(自检表、审计日志、AI Coding 过程记录),不进入最终答辩主文档
-- `docs/screenshots/`:Demo 截图,按 `01-owner-task-console.png` 顺序前缀命名
+- `docs/api/`:OpenAPI 说明与接口清单(契约源头在 `packages/contracts/openapi/labelhub.yaml`)
+- `docs/guides/`:开发环境、演示环境、演示脚本
+- `docs/engineering/`:工程规范(本文档)与 AI 协作宪章
+- `docs/design-system/`:设计资产与规范(运行时 token 在 `apps/web/src/shared/ui/tokens.css`)
+- `docs/process/`:进行中的过程记录(append-only 的 `humanpending.md`、决策日志、AI Coding 日志)
+- `docs/archive/`:已封闭里程碑的过程工件与截图证据,只读,不再更新
 
 ADR 规范:
 

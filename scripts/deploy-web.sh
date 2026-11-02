@@ -58,9 +58,8 @@ rsync "${rsync_flags[@]}" -e "$rsync_ssh_cmd" \
   --exclude=minio-data \
   --exclude=target \
   --exclude=/*.bundle \
-  --exclude=/submission \
-  --exclude=docs/screenshots \
-  --exclude=docs/design-assets \
+  --exclude=docs/archive \
+  --exclude=docs/design-system \
   "$repo_root/" \
   "$remote:/opt/labelhub/"
 

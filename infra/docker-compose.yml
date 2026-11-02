@@ -17,16 +17,6 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   minio:
     image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z # minio/minio was removed from Docker Hub; community fork, pinned
     command: server /data --address ":9000" --console-address ":9001"
