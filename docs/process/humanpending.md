@@ -775,3 +775,52 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 边界声明:修复仅动 `SessionMapper` 的 labeler 工作状态派生 SQL,零改后端业务语义、零 migration;收敛为纯前端组件替换,`StatusBadge` 渲染等价、旧测试零破。
 
 验证:前端 `pnpm --filter @labelhub/web test` 71 文件 / 349 条通过、`typecheck` 通过、`build` 通过、`git diff --check` 通过;后端 `SessionServiceTest` 54 条通过、`SessionApiIntegrationTest` 因本机 Colima/Docker 对 Testcontainers 不可达而跳过(CI 执行)。owner 人工验收"审核中→通过"修复。本批合并 main 后按 owner 要求执行 web + api 双脚本生产同步。
+
+## 264. W1 / ADR-017 H1 评测框架 + ChatGPT 登录（ADR-018）(2026-11-02)
+
+交付：新增 `evals/` Python 包。
+- HelpSteer2 黄金集：数据源按 revision 和 SHA-256 固定，抽样种子固定，重建时逐字节一致，与 manifest 不一致则拒绝覆盖。
+- 录制 / 回放：缓存键为 `(model, prompt_version, input_hash)`，录制文件只追加。
+- 单次调用评测：prompt 和 `record_ai_review` 工具 schema 与 `services/agent` 一致，三区打分与 `AiReviewScoringPolicy` 一致（`equal-weight-three-zone-v2`）。
+- 成绩单：自动通过区错误率、转人工比例、κ、格式违规率、token、成本、p50/p95 延迟。`runs/<run_id>/` 只追加，配置相同时必须逐字节复现。
+- ChatGPT 登录（ADR-018）：PKCE、动态 client、`127.0.0.1` 回调、加密存储、5 分钟提前刷新、401 时强制刷新并重试一次、模型目录、select → test → apply → rollback、流式回答。
+- CI 新增 evals job，用回放模式复现提交进仓库的 smoke 管线基线。
+
+取舍说明：
+- ChatGPT 登录**按 OpenAI 官方开源应用文档实现**，没有照搬参考实现的 Codex client_id 和 `chatgpt.com/backend-api`，并且只放在本地评测里，不进入生产 `services/agent`（理由见 ADR-018）。
+- "Auto latest"在评测里改为"执行时解析并固定"加 `check-latest` 提醒，不做后台定时自动切换，以保证评测可复现。
+- Python 侧的规范化是 `Canonicalizer.java` 的镜像：键排序、紧凑格式、UTF-8，并禁止浮点数。这是对 conventions §7.2"必须复用同一份实现"的一处显式偏离，理由是 evals 不能依赖 JVM；用固定向量测试守护字节格式。
+
+边界声明：零改 `services/`、`apps/`、`packages/contracts`、数据库和 migration；不改变生产 provider 的选择。
+
+验证：
+- `cd evals && python -m pytest -q`：56 条通过（executed）。
+- CLI 端到端（executed）：对着本地桩服务跑通 login → models → select --auto-latest → test → apply → ask → run record → run replay --require-reproduced → logout(revoke)。
+- 真实 OpenAI 账号的登录**未验证**（本环境没有账号），需要 owner 在本机手动验收一次。
+
+待人工决策（阻塞 H1 关卡，下面的临时假设已经用于实现）：
+
+- **[264-1] HelpSteer2 → pass/reject 真值映射**
+  - 临时假设：`hs2-pass-v1`，即 helpfulness ≥ 3 且 correctness ≥ 3 判为 pass（500 条中 359 pass / 141 reject）。
+  - 备选：加入 coherence ≥ 3；只看 helpfulness；阈值改为 ≥ 4。
+  - 阻塞范围：真值，以及所有基于真值的指标。改规则需要提升 `LABEL_RULE_VERSION`，并且用 `golden build --force` 重建。
+- **[264-2] 抽样方式**
+  - 临时假设：从 validation（1038 条）中简单随机抽 500 条，保留自然的类别比例（约 72/28）。
+  - 备选：按类别分层，均衡到 250/250，这样自动通过区错误率的置信区间更窄；或者用满 1038 条。
+- **[264-3] 评测用的业务 prompt（`h1-single-call-v1`）**
+  - 临时假设：见 `evals/labelhub_evals/review.py` 中的 `BUSINESS_PROMPT`。
+  - 阻塞范围：改动这段 prompt 需要提升 `PROMPT_VERSION`，之前的录制会全部失效。
+- **[264-4] 真实模型 H1 基线**
+  - 需要 owner 先 `chatgpt login`，然后选定基线模型和推理强度，在完整黄金集上 `run --mode record`，把录制文件和 `runs/<run_id>/` 提交进仓库。之后 ADR-017 H1 和 ADR-018 才能改为 Accepted。
+
+## 265. #264 待决策项裁决：W1 黄金集改为全量(2026-11-02)
+
+裁决（owner 同意按 agent 建议执行）：
+- **[264-1] 已决**：保留 `hs2-pass-v1`（helpfulness ≥ 3 且 correctness ≥ 3）。依据：在全部 1038 条上，加入 coherence ≥ 3 只改变 3 条（736 → 733），因为 976/1038 条的 coherence 本来就 ≥ 3；两项都 ≥ 4 时只剩 425 条 pass，标准明显严于"可以进入训练集"。
+- **[264-2] 已决**：不抽样，使用 validation 全部 1038 条（736 pass / 302 reject），保留自然的类别比例；reject 从 141 条增加到 302 条，首要指标更稳定。`golden build` 默认改为全量；`--size/--seed` 只用于本地快速实验。
+- **[264-3] 已决**：基线使用 `h1-single-call-v1`，不做预先调优。之后的 prompt 改动按 ADR-017 的评测关卡，与这条基线对比。
+- **[264-4] 方案已定，待 owner 执行**：用 `chatgpt select --auto-latest`，推理强度取该模型的默认值；在全量黄金集上 `run --mode record`，录制文件和 `runs/<run_id>/` 单独开 PR 提交。合并之后，ADR-017 H1 和 ADR-018 才能改为 Accepted。
+
+交付：黄金集 manifest 改为全量（golden sha256 `5e0df257…`）。smoke 集变为源数据的前 24 条，新的 smoke 管线基线是 `evals/runs/1fef5379b2aec412/`。旧的 `runs/d9a11ef8ee7f6210/` 和对应的录制文件按只追加原则保留，不再被 CI 引用。
+
+验证：`make evals` 通过，57 条测试（executed）。重建两次，哈希一致（executed）。

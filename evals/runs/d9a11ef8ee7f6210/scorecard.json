@@ -1,0 +1,46 @@
+{
+  "run": {
+    "dimensions": [
+      "overall"
+    ],
+    "golden": {
+      "name": "helpsteer2-h1-smoke",
+      "sha256": "a8ea99842512dd9a7b3f9a3355b058d9291117e66a1735fa65367f6cb153a677"
+    },
+    "model": "fake/hash-heuristic-v1",
+    "pass_threshold": "0.80",
+    "prompt_version": "h1-single-call-v1",
+    "reject_threshold": "0.20",
+    "scoring_rule_version": "equal-weight-three-zone-v2"
+  },
+  "run_id": "d9a11ef8ee7f6210",
+  "scorecard": {
+    "auto_pass_error_rate": "0.214286",
+    "auto_reject_error_rate": null,
+    "cohen_kappa_decided": "0.000000",
+    "cost_per_item_usd": null,
+    "decided_agreement": "0.785714",
+    "format_violation_rate": "0.000000",
+    "items": 24,
+    "latency_ms": {
+      "p50": 739,
+      "p95": 1339
+    },
+    "manual_review_rate": "0.416667",
+    "routed_counts": {
+      "manual_review": 10,
+      "pass": 14,
+      "reject": 0
+    },
+    "tokens": {
+      "input_total": 15306,
+      "items_with_usage": 24,
+      "output_total": 1440
+    },
+    "truth_counts": {
+      "pass": 16,
+      "reject": 8
+    },
+    "validator_correction_success_rate": null
+  }
+}

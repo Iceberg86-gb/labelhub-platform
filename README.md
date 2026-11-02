@@ -78,6 +78,7 @@ apps/web/              React 18 + TypeScript + Vite，Semi Design，Formily 渲�
 services/api/          Spring Boot 模块化单体：业务权威、契约实现、Flyway 迁移
 services/agent/        AI worker：轮询 outbox，执行 AI 预审和导出
 packages/contracts/    OpenAPI 契约（唯一源头）与校验语料
+evals/                 离线评测（Python）：黄金集、录制/回放、成绩单、ChatGPT 登录（ADR-017/018）
 infra/                 本地 / 演示 / 生产三套 compose，nginx，MinIO 初始化
 scripts/               开发启动、部署、CI 辅助脚本
 docs/                  设计基线、ADR、指南、设计系统、过程记录（导航见 docs/README.md）
@@ -88,7 +89,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 从 [**docs/README.md**](docs/README.md) 开始。常用入口：
 
 - [设计基线](docs/architecture/labelhub-complete-design-baseline.md)：业务事实模型的权威来源
-- [架构决策记录](docs/adr/)：ADR-001 ~ 017
+- [架构决策记录](docs/adr/)：ADR-001 ~ 018
 - [工程规范](docs/engineering/conventions.md) 和 [AI 协作宪章](docs/engineering/agent-charter.md)，AI 编码 agent 的入口是 [AGENTS.md](AGENTS.md)
 - [批次审计台账](docs/process/humanpending.md)：append-only，记录了每个合入批次的交付和验证过程
 
@@ -97,7 +98,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | W0 | CI 与工程基线：集成测试真实运行，跳过即判失败 | ✅ 完成 |
-| W1 | 离线评测框架：基于 HelpSteer2 的黄金集、录制/回放、单次调用的基线成绩 | 进行中 |
+| W1 | 离线评测框架：基于 HelpSteer2 的黄金集、录制/回放、单次调用的基线成绩（[`evals/`](evals/)，支持 ChatGPT 登录跑评测，[ADR-018](docs/adr/ADR-018-chatgpt-sign-in-for-local-evals.md)） | 进行中 |
 | W2 | Agent 循环：工具层 + 基于 Schema 校验器的自我纠错 | 计划中 |
 | W3 | 策略层：三区阈值改造成权限模式，预算控制，阈值校准 | 计划中 |
 | W4 | 判例记忆：检索人类裁决作为参考，人机分歧回流 | 计划中 |

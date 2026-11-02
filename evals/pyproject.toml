@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "labelhub-evals"
+version = "0.1.0"
+description = "LabelHub offline evaluation harness (ADR-017 H1) with Sign in with ChatGPT for local runs (ADR-018)"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = ["cryptography>=41"]
+
+[project.optional-dependencies]
+keyring = ["keyring>=24"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+labelhub-evals = "labelhub_evals.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["labelhub_evals*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

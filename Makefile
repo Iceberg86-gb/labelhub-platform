@@ -16,7 +16,7 @@ JAVA17_HOME := $(shell \
 	fi)
 JAVA17_ENV := JAVA_HOME="$(JAVA17_HOME)" PATH="$(JAVA17_HOME)/bin:$$PATH"
 
-.PHONY: doctor dev-up dev-down test-db dev-api verify migrate-check require-java17
+.PHONY: doctor dev-up dev-down test-db dev-api verify migrate-check require-java17 evals
 
 require-java17:
 	@if [ -z "$(JAVA17_HOME)" ]; then \
@@ -79,3 +79,8 @@ verify: test-db require-java17
 
 migrate-check: test-db require-java17
 	@$(JAVA17_ENV) mvn -o -pl services/api -Dtest=ApplicationContextStartupTest test-compile $(SUREFIRE_GOAL)
+
+# Offline evals (ADR-017 H1): unit tests + replay of the committed smoke baseline. No network, no credentials.
+evals:
+	cd evals && python3 -m pytest -q && python3 -m labelhub_evals run --golden datasets/helpsteer2-h1/smoke.jsonl \
+		--golden-name helpsteer2-h1-smoke --provider fake --mode replay --require-reproduced

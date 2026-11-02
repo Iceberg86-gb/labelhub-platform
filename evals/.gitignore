@@ -1,0 +1,7 @@
+# Downloaded source data and locally built full golden sets (rebuilt deterministically from manifest.json)
+.cache/
+datasets/*/golden.jsonl
+__pycache__/
+*.egg-info/
+.pytest_cache/
+runs/_live/
