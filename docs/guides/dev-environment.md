@@ -153,8 +153,8 @@ both rsync calls. The source sync keeps `.env*.example` available and excludes
 `node_modules`, `.git`, `dist`, `.env`, `.env.*`, `.env.prod`, `web-dist`,
 `.DS_Store`, `.pnpm-store`, `.claude`, `.codex`, `application-secrets.yml`,
 `logs`, `*.log`, `coverage`, `*.tsbuildinfo`, `mysql-data`, `minio-data`,
-`target`, root `*.bundle`, `submission`, `docs/screenshots`, and
-`docs/design-assets`.
+`target`, root `*.bundle`, `submission`, `docs/archive`, and
+`docs/design-system`.
 
 ## Dev Container
 

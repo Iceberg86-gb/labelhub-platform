@@ -6,7 +6,7 @@ description: Audit apps/web UI for Design System compliance — flags raw px fon
 # Design System review
 
 Audit the LabelHub web app (`apps/web`) against the Design System defined in
-`apps/web/src/shared/ui/README.md` and the tokens in `docs/design-assets/tokens/tokens.css`.
+`apps/web/src/shared/ui/README.md` and the tokens in `apps/web/src/shared/ui/tokens.css`.
 Report violations with file:line and a concrete fix. Do **not** auto-fix unless asked.
 
 ## Scope

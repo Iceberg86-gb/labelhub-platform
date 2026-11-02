@@ -54,9 +54,9 @@ flowchart LR
 
 | 节点 | 关键细节 | 实证来源 |
 | --- | --- | --- |
-| 开发机(Developer Machine) | `scripts/deploy-web.sh` 执行 `pnpm --filter @labelhub/web build`，然后 rsync Web dist 与源码。 | `scripts/deploy-web.sh`、`docs/dev-environment.md` |
+| 开发机(Developer Machine) | `scripts/deploy-web.sh` 执行 `pnpm --filter @labelhub/web build`，然后 rsync Web dist 与源码。 | `scripts/deploy-web.sh`、`docs/guides/dev-environment.md` |
 | Web 产物同步(Web Dist Sync) | `apps/web/dist/` 同步到 `root@120.26.182.61:/opt/labelhub/infra/web-dist/`，使用 `--delete`。 | `scripts/deploy-web.sh`、`infra/deploy/README.md` |
-| 源码同步(Source Tree Sync) | 源码同步到 `/opt/labelhub/`，保留 `.env*.example`，排除 `node_modules`、`.git`、`dist`、`.env`、`.env.*`、`.env.prod`、`web-dist`、`.DS_Store`、`.pnpm-store`、`.claude`、`.codex`、`application-secrets.yml`、`logs`、`*.log`、`coverage`、`*.tsbuildinfo`、`mysql-data`、`minio-data`、`target`、根目录 `*.bundle`、`submission`、`docs/screenshots`、`docs/design-assets`。 | `scripts/deploy-web.sh`、`docs/dev-environment.md` |
+| 源码同步(Source Tree Sync) | 源码同步到 `/opt/labelhub/`，保留 `.env*.example`，排除 `node_modules`、`.git`、`dist`、`.env`、`.env.*`、`.env.prod`、`web-dist`、`.DS_Store`、`.pnpm-store`、`.claude`、`.codex`、`application-secrets.yml`、`logs`、`*.log`、`coverage`、`*.tsbuildinfo`、`mysql-data`、`minio-data`、`target`、根目录 `*.bundle`、`submission`、`docs/archive`、`docs/design-system`。 | `scripts/deploy-web.sh`、`docs/guides/dev-environment.md` |
 | 浏览器(Browser) | 当前公网入口为 `http://120.26.182.61:8443/`；ICP备案与 HTTPS 证书切换尚未完成。 | `infra/deploy/README.md`、`infra/docker-compose.prod.yml` |
 | 阿里云 ECS(Alibaba Cloud ECS) | 单机 Ubuntu 24.04，部署根目录 `/opt/labelhub`，compose 在 `/opt/labelhub/infra` 执行。 | `infra/deploy/README.md` |
 | nginx | image `nginx:1.27-alpine`；公开端口映射 `8443:80`；挂载 `./web-dist:/usr/share/nginx/html:ro` 与 `./nginx/labelhub.conf:/etc/nginx/conf.d/default.conf:ro`。 | `infra/docker-compose.prod.yml`、`infra/nginx/labelhub.conf` |
@@ -87,7 +87,7 @@ flowchart LR
 - 生产 compose 容器、端口、依赖和环境变量：`infra/docker-compose.prod.yml`。
 - Nginx 静态资源根目录与 `/api/` 反向代理：`infra/nginx/labelhub.conf`。
 - 单 ECS、8443 公网入口、HTTP IP 访问与 TLS cutover 说明：`infra/deploy/README.md`。
-- Web build 与 rsync 部署路径：`scripts/deploy-web.sh`、`docs/dev-environment.md`。
+- Web build 与 rsync 部署路径：`scripts/deploy-web.sh`、`docs/guides/dev-environment.md`。
 - API context path、默认端口、对象存储和数据库配置：`services/api/src/main/resources/application.yml`。
 - Agent 端口、API base URL、outbox worker 配置和 LLM env 配置：`services/agent/src/main/resources/application.yml`。
 - Agent 同一进程内包含 AI review 与 export outbox worker：`services/agent/src/main/java/com/labelhub/agent/outbox/OutboxAiReviewWorker.java`、`services/agent/src/main/java/com/labelhub/agent/outbox/OutboxExportWorker.java`。
