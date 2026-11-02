@@ -64,8 +64,8 @@ flowchart LR
 | agent | build `services/agent/Dockerfile`；container port `8081`；health `http://localhost:8081/actuator/health`；运行 AI review 与 export outbox workers；mem_limit `768m`。 | `infra/docker-compose.prod.yml`、`services/agent/src/main/resources/application.yml`、`services/agent/src/main/java/com/labelhub/agent/outbox/` |
 | mysql | image `mysql:8.0`；volume `labelhub-mysql-data`；container port `3306`；healthcheck `mysqladmin ping`。 | `infra/docker-compose.prod.yml` |
 | redis | image `redis:7-alpine`；container port `6379`；healthcheck `redis-cli ping`；grep 未发现业务消费者。 | `infra/docker-compose.prod.yml`、`infra/docker-compose.yml` |
-| minio | image `minio/minio:latest`；container ports `9000` API / `9001` console；volume `labelhub-minio-data`。 | `infra/docker-compose.prod.yml` |
-| minio-init | image `minio/mc:latest`；通过 `mc mb --ignore-existing` 创建 `${OBJECT_STORAGE_BUCKET:-labelhub-exports}`。 | `infra/docker-compose.prod.yml` |
+| minio | image `pgsty/minio:RELEASE.2026-08-04T00-00-00Z`(minio/minio 已从 Docker Hub 下架，改用固定版本的社区分支)；container ports `9000` API / `9001` console；volume `labelhub-minio-data`。 | `infra/docker-compose.prod.yml` |
+| minio-init | image `pgsty/mc`(按 digest 固定)；通过 `mc mb --ignore-existing` 创建 `${OBJECT_STORAGE_BUCKET:-labelhub-exports}`。 | `infra/docker-compose.prod.yml` |
 
 ### 连线明细(Edge Details)
 

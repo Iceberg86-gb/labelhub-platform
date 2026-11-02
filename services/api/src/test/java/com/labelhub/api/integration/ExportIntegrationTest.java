@@ -54,6 +54,11 @@ class ExportIntegrationTest {
     private static final String EXPORT_BUCKET = "labelhub-exports-test";
     private static final String MINIO_USER = "testadmin";
     private static final String MINIO_PASSWORD = "testadmin123";
+    // 10 canonical evidence files (task, source-state, schema-versions, dataset-items, submissions, answers,
+    // ai-calls, ai-call-in-fields, ledger-entries, verdicts) + training-results.csv + training-results.xlsx.
+    private static final int EXPORT_DATA_FILES = 12;
+    // Every data file plus manifest.json is written to object storage.
+    private static final int EXPORT_OBJECTS = EXPORT_DATA_FILES + 1;
 
     @Container
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -62,7 +67,7 @@ class ExportIntegrationTest {
         .withPassword("labelhub");
 
     @Container
-    static final GenericContainer<?> MINIO = new GenericContainer<>(DockerImageName.parse("minio/minio:latest"))
+    static final GenericContainer<?> MINIO = new GenericContainer<>(DockerImageName.parse("pgsty/minio:RELEASE.2026-08-04T00-00-00Z"))
         .withEnv("MINIO_ROOT_USER", MINIO_USER)
         .withEnv("MINIO_ROOT_PASSWORD", MINIO_PASSWORD)
         .withCommand("server", "/data")
@@ -122,8 +127,8 @@ class ExportIntegrationTest {
         assertThat(snap1.get("sourceStateHash").asText()).isEqualTo(snap2.get("sourceStateHash").asText());
         assertThat(snap1.get("fileHash").asText()).isEqualTo(snap2.get("fileHash").asText());
 
-        assertThat(objectCountUnder(snap1.get("objectKey").asText())).isEqualTo(11);
-        assertThat(objectCountUnder(snap2.get("objectKey").asText())).isEqualTo(11);
+        assertThat(objectCountUnder(snap1.get("objectKey").asText())).isEqualTo(EXPORT_OBJECTS);
+        assertThat(objectCountUnder(snap2.get("objectKey").asText())).isEqualTo(EXPORT_OBJECTS);
     }
 
     @Test
@@ -140,7 +145,7 @@ class ExportIntegrationTest {
             .andExpect(jsonPath("$.hashMatches.fileHash").value(true))
             .andExpect(jsonPath("$.hashMatches.manifestHash").value(true))
             .andExpect(jsonPath("$.hashMatches.sourceStateHash").value(true))
-            .andExpect(jsonPath("$.fileLevelMatches.length()").value(10))
+            .andExpect(jsonPath("$.fileLevelMatches.length()").value(EXPORT_DATA_FILES))
             .andExpect(jsonPath("$.fileLevelMatches[*].match").value(everyItem(is(true))));
     }
 
@@ -209,11 +214,11 @@ class ExportIntegrationTest {
     }
 
     @Test
-    void export_creates_all_11_objects_in_minio() throws Exception {
+    void export_writes_every_package_object_to_minio() throws Exception {
         Fixture fixture = exportFixture("export-minio-objects", 1001L, 1002L);
         JsonNode snap = createExport(fixture.taskId());
 
-        assertThat(objectCountUnder(snap.get("objectKey").asText())).isEqualTo(11);
+        assertThat(objectCountUnder(snap.get("objectKey").asText())).isEqualTo(EXPORT_OBJECTS);
     }
 
     @Test
@@ -226,14 +231,24 @@ class ExportIntegrationTest {
         assertThat(snap.at("/recordCounts/trainingResults").asInt()).isEqualTo(1);
     }
 
+    /**
+     * Exports are asynchronous: the owner request only queues an export job (plus an outbox event) and the
+     * agent worker builds the snapshot via the internal run endpoint. No agent runs here, so do its step.
+     */
     private JsonNode createExport(Long taskId) throws Exception {
-        MvcResult result = mockMvc.perform(post("/tasks/{taskId}/exports", taskId)
+        MvcResult queued = mockMvc.perform(post("/tasks/{taskId}/exports", taskId)
                 .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
             .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value("queued"))
             .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString());
+        long exportJobId = objectMapper.readTree(queued.getResponse().getContentAsString()).get("id").asLong();
+        MvcResult snapshot = mockMvc.perform(post("/internal/exports/jobs/{exportJobId}/run", exportJobId)
+                .header("X-Internal-Token", INTERNAL_TOKEN))
+            .andExpect(status().isOk())
+            .andReturn();
+        return objectMapper.readTree(snapshot.getResponse().getContentAsString());
     }
 
     private int objectCountUnder(String prefix) {

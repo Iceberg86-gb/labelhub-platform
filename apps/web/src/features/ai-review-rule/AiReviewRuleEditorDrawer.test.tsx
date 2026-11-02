@@ -6,7 +6,6 @@ import { AiReviewRuleEditorDrawer } from './AiReviewRuleEditorDrawer';
 import {
   AI_REVIEW_RULE_FORM_MESSAGES,
   buildAiReviewRuleRequest,
-  createDefaultAiReviewRuleFormState,
   submitAiReviewRuleForm,
   validateAiReviewRuleForm,
 } from './aiReviewRuleFormModel';

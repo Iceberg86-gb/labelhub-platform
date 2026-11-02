@@ -8,6 +8,7 @@ import com.labelhub.api.module.schema.entity.SchemaVersionEntity;
 import com.labelhub.api.module.schema.entity.SubmissionEntity;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.shared.canonical.Canonicalizer;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -25,12 +26,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeSet;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 
 @Component
 public class ExportArtifactBuilder {
+
+    /** Earliest time a zip (DOS) timestamp can hold; used for every .xlsx entry so the bytes are reproducible. */
+    private static final LocalDateTime FIXED_ZIP_ENTRY_TIME = LocalDateTime.of(1980, 1, 1, 0, 0);
 
     public static final String CANONICALIZATION_VERSION = "labelhub-canonical-v1";
 
@@ -253,11 +260,31 @@ public class ExportArtifactBuilder {
                 }
             }
             workbook.write(output);
-            byte[] content = output.toByteArray();
+            byte[] content = withFixedZipEntryTimes(output.toByteArray());
             return new ArtifactFile(name, content, sha256(content), rows.size() + 1, content.length);
         } catch (IOException exception) {
             throw new UncheckedIOException("Unable to build Excel export artifact", exception);
         }
+    }
+
+    /**
+     * An .xlsx is a zip whose entries POI stamps with the current wall-clock time (2-second DOS resolution), so
+     * the same rows exported twice produced different bytes, a different file sha256 and therefore a different
+     * manifest hash. Re-pack the entries in their original order with one fixed, timezone-independent time.
+     */
+    static byte[] withFixedZipEntryTimes(byte[] zip) throws IOException {
+        ByteArrayOutputStream normalized = new ByteArrayOutputStream(zip.length);
+        try (ZipInputStream in = new ZipInputStream(new ByteArrayInputStream(zip));
+             ZipOutputStream out = new ZipOutputStream(normalized)) {
+            for (ZipEntry entry = in.getNextEntry(); entry != null; entry = in.getNextEntry()) {
+                ZipEntry copy = new ZipEntry(entry.getName());
+                copy.setTimeLocal(FIXED_ZIP_ENTRY_TIME);
+                out.putNextEntry(copy);
+                in.transferTo(out);
+                out.closeEntry();
+            }
+        }
+        return normalized.toByteArray();
     }
 
     private void appendCsvRow(StringBuilder builder, List<String> values) {

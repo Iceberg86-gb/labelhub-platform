@@ -30,7 +30,12 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -81,21 +86,18 @@ class QualityLedgerIntegrationTest {
         mockMvc.perform(get("/reviewer/submissions")
                 .header("Authorization", bearer(tokenForUser(1003L, "reviewer_demo", "REVIEWER"))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.items", hasSize(1)))
-            .andExpect(jsonPath("$.items[0].id").value(fixture.submissionId()))
-            .andExpect(jsonPath("$.items[0].verdict.status").value("pending"))
-            .andExpect(jsonPath("$.total").value(1));
+            .andExpect(jsonPath("$.items[?(@.id == %d)].verdict.status", fixture.submissionId()).value(contains("pending")));
     }
 
     @Test
     void reviewer_lists_queue_filters_by_verdict_pending() throws Exception {
-        submissionFixture("reviewer-queue-pending", 1001L, 1002L, "submitted");
+        Fixture fixture = submissionFixture("reviewer-queue-pending", 1001L, 1002L, "submitted");
 
         mockMvc.perform(get("/reviewer/submissions?verdict=pending")
                 .header("Authorization", bearer(tokenForUser(1003L, "reviewer_demo", "REVIEWER"))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.items", hasSize(1)))
-            .andExpect(jsonPath("$.items[0].verdict.status").value("pending"));
+            .andExpect(jsonPath("$.items[*].id", hasItem(fixture.submissionId().intValue())))
+            .andExpect(jsonPath("$.items[*].verdict.status", everyItem(equalTo("pending"))));
     }
 
     @Test
@@ -103,12 +105,19 @@ class QualityLedgerIntegrationTest {
         Fixture fixture = submissionFixture("reviewer-queue-approved", 1001L, 1002L, "submitted");
         insertLedgerEntry(fixture.submissionId(), fixture.taskId(), 1003L, "approve");
 
-        mockMvc.perform(get("/reviewer/submissions?verdict=approved")
+        // A reviewer verdict takes the submission out of the reviewer-level to-do queue...
+        mockMvc.perform(get("/reviewer/submissions")
                 .header("Authorization", bearer(tokenForUser(1003L, "reviewer_demo", "REVIEWER"))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.items", hasSize(1)))
-            .andExpect(jsonPath("$.items[0].id").value(fixture.submissionId()))
-            .andExpect(jsonPath("$.items[0].verdict.status").value("approved"));
+            .andExpect(jsonPath("$.items[*].id", not(hasItem(fixture.submissionId().intValue()))));
+
+        // ...and the verdict filter applies at the senior level, where reviewer-approved work is listed.
+        insertLedgerEntry(fixture.submissionId(), fixture.taskId(), 1004L, "approve", "senior_reviewer");
+        mockMvc.perform(get("/reviewer/submissions?reviewLevel=senior_reviewer&verdict=approved")
+                .header("Authorization", bearer(tokenForUser(1004L, "senior_reviewer_demo", "SENIOR_REVIEWER"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[*].id", hasItem(fixture.submissionId().intValue())))
+            .andExpect(jsonPath("$.items[*].verdict.status", everyItem(equalTo("approved"))));
     }
 
     @Test
@@ -133,7 +142,7 @@ class QualityLedgerIntegrationTest {
                 .header("Authorization", bearer(tokenForUser(1003L, "reviewer_demo", "REVIEWER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve","reason":"Looks good"}}
+                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve","reviewLevel":"reviewer","reason":"Looks good"}}
                     """))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.entryType").value("reviewer_overall_verdict"))
@@ -156,7 +165,7 @@ class QualityLedgerIntegrationTest {
                 .header("Authorization", bearer(tokenForUser(1003L, "reviewer_demo", "REVIEWER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve"}}
+                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve","reviewLevel":"reviewer"}}
                     """))
             .andExpect(status().isConflict())
             .andExpect(jsonPath("$.code").value("SELF_REVIEW_NOT_ALLOWED"));
@@ -176,7 +185,7 @@ class QualityLedgerIntegrationTest {
                 .header("Authorization", bearer(tokenForUser(1003L, "reviewer_demo", "REVIEWER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve"}}
+                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve","reviewLevel":"reviewer"}}
                     """))
             .andExpect(status().isCreated());
 
@@ -190,7 +199,7 @@ class QualityLedgerIntegrationTest {
                 .header("Authorization", bearer(tokenForUser(1003L, "reviewer_demo", "REVIEWER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"reject"}}
+                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"reject","reviewLevel":"reviewer","reason":"Missing evidence"}}
                     """))
             .andExpect(status().isCreated());
 
@@ -208,7 +217,7 @@ class QualityLedgerIntegrationTest {
                 .header("Authorization", bearer(tokenForUser(1002L, "labeler_demo", "LABELER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve"}}
+                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve","reviewLevel":"reviewer"}}
                     """))
             .andExpect(status().isForbidden());
     }
@@ -221,7 +230,7 @@ class QualityLedgerIntegrationTest {
                 .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve"}}
+                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve","reviewLevel":"reviewer"}}
                     """))
             .andExpect(status().isForbidden());
     }
@@ -289,13 +298,14 @@ class QualityLedgerIntegrationTest {
         mockMvc.perform(get("/submissions/{submissionId}/ledger-entries", fixture.submissionId())
                 .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER"))))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.total").value(1))
+            .andExpect(jsonPath("$.total").value(2))
+            .andExpect(jsonPath("$.items[1].entryType").value("ai_overall_recommendation"))
             .andExpect(jsonPath("$.items[0].entryType").value("ai_field_finding"))
             .andExpect(jsonPath("$.items[0].actorType").value("ai"))
             .andExpect(jsonPath("$.items[0].actorUserId").value(nullValue()))
             .andExpect(jsonPath("$.items[0].aiCallId").isNumber())
             .andExpect(jsonPath("$.items[0].payload.fieldPath").value("field-title"))
-            .andExpect(jsonPath("$.items[0].payload.severity").value("warning"))
+            .andExpect(jsonPath("$.items[0].payload.severity").value("info"))
             .andExpect(jsonPath("$.items[0].payload.aiCallId").doesNotExist());
     }
 
@@ -306,14 +316,14 @@ class QualityLedgerIntegrationTest {
         triggerAiReview(fixture.submissionId(), 1L)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(false));
-        assertThat(ledgerEntryCount(fixture.submissionId())).isEqualTo(1);
+        assertThat(ledgerEntryCount(fixture.submissionId())).isEqualTo(2);
 
         triggerAiReview(fixture.submissionId(), 1L)
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.idempotencyHit").value(true));
 
         assertThat(mockAiProvider.getCallCount()).isEqualTo(1);
-        assertThat(ledgerEntryCount(fixture.submissionId())).isEqualTo(1);
+        assertThat(ledgerEntryCount(fixture.submissionId())).isEqualTo(2);
     }
 
     @Test
@@ -366,7 +376,8 @@ class QualityLedgerIntegrationTest {
     private Fixture submissionWithAiReview(String seed) throws Exception {
         Fixture fixture = submissionFixture(seed, 1001L, 1002L, "under_ai_review");
         triggerAiReview(fixture.submissionId(), 1L).andExpect(status().isCreated());
-        assertThat(ledgerEntryCount(fixture.submissionId())).isEqualTo(1);
+        // one ai_field_finding + one ai_overall_recommendation
+        assertThat(ledgerEntryCount(fixture.submissionId())).isEqualTo(2);
         return fixture;
     }
 
@@ -414,10 +425,14 @@ class QualityLedgerIntegrationTest {
     }
 
     private void insertLedgerEntry(Long submissionId, Long taskId, Long reviewerId, String verdict) {
+        insertLedgerEntry(submissionId, taskId, reviewerId, verdict, "reviewer");
+    }
+
+    private void insertLedgerEntry(Long submissionId, Long taskId, Long reviewerId, String verdict, String reviewLevel) {
         jdbcTemplate.update("""
             INSERT INTO quality_ledger_entries(submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at)
-            VALUES (?, ?, 'reviewer_overall_verdict', 'reviewer', ?, NULL, JSON_OBJECT('verdict', ?), NOW(3))
-            """, submissionId, taskId, reviewerId, verdict);
+            VALUES (?, ?, 'reviewer_overall_verdict', 'reviewer', ?, NULL, JSON_OBJECT('verdict', ?, 'reviewLevel', ?), NOW(3))
+            """, submissionId, taskId, reviewerId, verdict, reviewLevel);
     }
 
     private Long insertAndReturnId(String sql, Object... args) {

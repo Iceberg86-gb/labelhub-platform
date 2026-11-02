@@ -28,7 +28,7 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z # minio/minio was removed from Docker Hub; community fork, pinned
     command: server /data --address ":9000" --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY:-labelhub}
@@ -40,7 +40,7 @@ services:
       - minio-data:/data
 
   minio-init:
-    image: minio/mc:latest
+    image: pgsty/mc@sha256:ce62c9053c69ce12a527a322345b5ad9f44b5f8a7b8189f82e516f2e3f30f1d8 # minio/mc was removed from Docker Hub; community fork, pinned by digest
     depends_on:
       - minio
     entrypoint: ["/bin/sh", "/scripts/init.sh"]

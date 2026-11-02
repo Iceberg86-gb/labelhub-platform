@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.time.Instant;
 import java.util.Date;
 import javax.crypto.SecretKey;
@@ -14,6 +16,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,6 +39,8 @@ class M1ApiIntegrationTest {
 
     private static final String JWT_SECRET = "dev-only-32-bytes-minimum-secret-please-change-me";
     private static final String INTERNAL_TOKEN = "dev-internal-token";
+    // Seeded by PlatformAdminSeeder from labelhub.platform-admin.initial-password (test application.yml).
+    private static final String PLATFORM_ADMIN_PASSWORD = "test-only-pa-initial-password";
 
     @Container
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
@@ -84,15 +90,16 @@ class M1ApiIntegrationTest {
             .getResponse()
             .getContentAsString();
         long taskId = objectMapper.readTree(createdBody).get("id").asLong();
+        bindPublishPrerequisites(taskId);
 
         mockMvc.perform(get("/tasks").header("Authorization", bearer(token)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.total").value(1));
 
-        transition(token, taskId, "PUBLISHED", "ready");
-        transition(token, taskId, "PAUSED", "pause");
-        transition(token, taskId, "PUBLISHED", "resume");
-        transition(token, taskId, "ENDED", "done");
+        transition(token, taskId, "published", "ready");
+        transition(token, taskId, "paused", "pause");
+        transition(token, taskId, "published", "resume");
+        transition(token, taskId, "ended", "done");
 
         Integer transitionCount = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM task_transitions WHERE task_id = ?", Integer.class, taskId);
@@ -185,11 +192,20 @@ class M1ApiIntegrationTest {
                 .header("Authorization", bearer(ownerToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
+                    {"role":"REVIEWER","enabled":true}
+                    """))
+            .andExpect(status().isForbidden());
+
+        String adminToken = login("platform_admin", PLATFORM_ADMIN_PASSWORD);
+        mockMvc.perform(post("/users/{userId}/roles", 1002L)
+                .header("Authorization", bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
                     {"role":"OWNER","enabled":true}
                     """))
             .andExpect(status().isBadRequest());
         mockMvc.perform(post("/users/{userId}/roles", 1002L)
-                .header("Authorization", bearer(ownerToken))
+                .header("Authorization", bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"role":"AI_AGENT","enabled":true}
@@ -209,7 +225,7 @@ class M1ApiIntegrationTest {
     }
 
     @Test
-    void owner_can_list_registered_users_without_password_fields() throws Exception {
+    void platform_admin_can_list_registered_users_without_password_fields() throws Exception {
         mockMvc.perform(post("/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -222,9 +238,9 @@ class M1ApiIntegrationTest {
                     """))
             .andExpect(status().isCreated());
 
-        String ownerToken = login("owner_demo", "demo1234");
+        String adminToken = login("platform_admin", PLATFORM_ADMIN_PASSWORD);
         String body = mockMvc.perform(get("/users")
-                .header("Authorization", bearer(ownerToken))
+                .header("Authorization", bearer(adminToken))
                 .param("page", "1")
                 .param("size", "20"))
             .andExpect(status().isOk())
@@ -240,6 +256,9 @@ class M1ApiIntegrationTest {
         String labelerToken = login("labeler_demo", "demo1234");
         mockMvc.perform(get("/users").header("Authorization", bearer(labelerToken)))
             .andExpect(status().isForbidden());
+        String ownerToken = login("owner_demo", "demo1234");
+        mockMvc.perform(get("/users").header("Authorization", bearer(ownerToken)))
+            .andExpect(status().isForbidden());
     }
 
     @Test
@@ -247,7 +266,9 @@ class M1ApiIntegrationTest {
         mockMvc.perform(post("/internal/ai-review/results"))
             .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(post("/internal/ai-review/results").header("X-Internal-Token", INTERNAL_TOKEN))
+        mockMvc.perform(post("/internal/ai-review/results")
+                .header("X-Internal-Token", INTERNAL_TOKEN)
+                .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isBadRequest());
     }
 
@@ -255,7 +276,11 @@ class M1ApiIntegrationTest {
     void state_transition_rolls_back_transition_and_audit_when_audit_insert_fails_in_mysql() throws Exception {
         String token = login("owner_demo", "demo1234");
         long taskId = createDraftTask(token);
-        jdbcTemplate.execute("ALTER TABLE audit_logs ADD CONSTRAINT chk_phase4_force_audit_failure CHECK (payload_hash = 'force_fail')");
+        bindPublishPrerequisites(taskId);
+        // Reject only rows written after this point, so audit rows left by earlier tests (any order) still pass.
+        String cutoff = jdbcTemplate.queryForObject("SELECT DATE_FORMAT(NOW(3), '%Y-%m-%d %H:%i:%s.%f')", String.class);
+        jdbcTemplate.execute(
+            "ALTER TABLE audit_logs ADD CONSTRAINT chk_phase4_force_audit_failure CHECK (created_at <= '" + cutoff + "')");
         try {
             mockMvc.perform(patch("/tasks/{taskId}/transition", taskId)
                     .header("Authorization", bearer(token))
@@ -341,6 +366,38 @@ class M1ApiIntegrationTest {
         return json.get("accessToken").asText();
     }
 
+    /** Satisfies TaskService.canPublish: a published schema version and a dataset bound to the task. */
+    private void bindPublishPrerequisites(long taskId) {
+        long schemaId = insertAndReturnId(
+            "INSERT INTO label_schemas(task_id, name, owner_id) VALUES (?, 'M1 schema', 1001)", taskId);
+        long schemaVersionId = insertAndReturnId("""
+            INSERT INTO schema_versions(schema_id, version_no, schema_json, field_stable_ids, content_hash, status, published_at, created_at)
+            VALUES (?, 1, JSON_OBJECT('fields', JSON_ARRAY(JSON_OBJECT('stableId','answer','label','Answer','type','text'))),
+                    JSON_ARRAY('answer'), SHA2(CONCAT('m1-schema-', ?), 256), 'published', NOW(3), NOW(3))
+            """, schemaId, taskId);
+        long datasetId = insertAndReturnId(
+            "INSERT INTO datasets(task_id, source_type, item_count, import_status) VALUES (?, 'json', 1, 'completed')", taskId);
+        jdbcTemplate.update("UPDATE label_schemas SET current_version_id=? WHERE id=?", schemaVersionId, schemaId);
+        jdbcTemplate.update("UPDATE tasks SET current_schema_version_id=?, current_dataset_id=? WHERE id=?",
+            schemaVersionId, datasetId, taskId);
+    }
+
+    private long insertAndReturnId(String sql, Object... args) {
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            for (int i = 0; i < args.length; i++) {
+                statement.setObject(i + 1, args[i]);
+            }
+            return statement;
+        }, keyHolder);
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("Insert did not return a generated key");
+        }
+        return key.longValue();
+    }
+
     private long createDraftTask(String token) throws Exception {
         return createDraftTask(token, 1, "2030-01-01T00:00:00Z");
     }
@@ -371,7 +428,7 @@ class M1ApiIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"toStatus\":\"" + status + "\",\"reason\":\"" + reason + "\"}"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value(status.toLowerCase()));
+            .andExpect(jsonPath("$.status").value(status));
     }
 
     private String expiredOwnerToken() {

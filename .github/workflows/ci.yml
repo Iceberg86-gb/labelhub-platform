@@ -1,0 +1,104 @@
+name: CI
+
+# Every branch push runs CI (PRs from this repo's branches are covered by the push run).
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web (lint · typecheck · test · build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm --filter @labelhub/web lint
+      - name: Typecheck (regenerates API types from the OpenAPI contract)
+        run: pnpm --filter @labelhub/web typecheck
+      - name: Generated API types match the contract
+        run: git diff --exit-code -- apps/web/src/shared/api/generated
+      - name: Test
+        run: pnpm --filter @labelhub/web test
+      - name: Build
+        run: pnpm --filter @labelhub/web build
+
+  backend:
+    name: Backend (api + agent, unit + Testcontainers + Flyway)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      # ApplicationContextStartupTest boots the full context against a real MySQL and runs every
+      # Flyway migration; credentials match services/api/src/test/resources/application.yml.
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: labelhub-root
+          MYSQL_DATABASE: labelhub_test
+          MYSQL_USER: labelhub
+          MYSQL_PASSWORD: labelhub
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -plabelhub-root"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      # Docker Engine >= 25 rejects docker-java's default API negotiation (see scripts/verify-backend.sh).
+      JAVA_TOOL_OPTIONS: -Dapi.version=1.44
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Test
+        run: mvn -B -ntp test
+      - name: Fail if Testcontainers integration tests were skipped
+        # They are @Testcontainers(disabledWithoutDocker = true): if Docker is unreachable they
+        # skip silently and the build still goes green. Every skip in this repo is one of those.
+        run: python3 scripts/ci/assert-no-skipped-tests.py services/api/target/surefire-reports services/agent/target/surefire-reports
+      - name: Upload surefire reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: services/*/target/surefire-reports
+          retention-days: 7
+
+  repo-checks:
+    name: Repo checks (contract endpoints · deploy excludes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/check-protected-endpoints.sh
+      - run: bash scripts/deploy-rsync-excludes.test.sh
+
+  compose-smoke:
+    name: Compose smoke (MinIO + bucket init images)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: MinIO starts and the init container creates the bucket (dev compose)
+        # minio-init runs infra/minio/init.sh (mc alias set + mc mb) and exits; its exit code is the check.
+        run: docker compose -f infra/docker-compose.yml up --exit-code-from minio-init minio minio-init
+      - name: Prod compose file parses
+        # env_file .env.prod is required by the prod compose; the example's placeholders are enough to parse.
+        run: |
+          cp infra/.env.prod.example infra/.env.prod
+          docker compose -f infra/docker-compose.prod.yml --env-file infra/.env.prod config -q

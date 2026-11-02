@@ -131,6 +131,21 @@ class SessionApiIntegrationTest {
     }
 
     @Test
+    void my_sessions_work_status_filter_accepts_contract_values_and_rejects_constant_names() throws Exception {
+        String labelerToken = login("labeler_demo", "demo1234");
+
+        // The labeler "my sessions" tabs send these snake_case values; they used to be rejected with 400.
+        for (String workStatus : new String[] {"in_progress", "returned_for_revision"}) {
+            mockMvc.perform(get("/my/sessions").param("workStatus", workStatus)
+                    .header("Authorization", bearer(labelerToken)))
+                .andExpect(status().isOk());
+        }
+        mockMvc.perform(get("/my/sessions").param("workStatus", "IN_PROGRESS")
+                .header("Authorization", bearer(labelerToken)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void concurrent_claim_with_quota_1_allows_only_one_winner() throws Exception {
         String labelerToken = login("labeler_demo", "demo1234");
         Fixture fixture = publishedTaskFixture("marketplace-concurrent", 1, 5);

@@ -367,7 +367,7 @@ E2E 必须覆盖:
 - Reviewer 完整链路:接收待审 → 查看 AI 评语 → 通过/打回 → 批量操作
 - 跨角色:Labeler 提交 → AI 预审 → Reviewer 通过 → Owner 导出 → 文件可下载
 
-CI 暂不强制(个人项目),但 commit 前必须本地全绿。
+CI 由 `.github/workflows/ci.yml` 在每次 push 时执行:前端 lint / typecheck / test / build、后端 api + agent 全量测试(含 Testcontainers 集成测试与 Flyway 迁移启动校验,集成测试被跳过即判失败)、契约端点与部署排除项检查。commit 前仍须本地全绿。
 
 
 ## 9. 文档规则
