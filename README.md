@@ -46,7 +46,7 @@ LabelHub 覆盖从数据导入、标注、AI 预审、多级人工审核，到�
 依赖：JDK 17、Node 20+、pnpm 9、Docker。
 
 ```bash
-make dev-up                          # MySQL 8 + Redis 7 + MinIO（自动创建 bucket）
+make dev-up                          # MySQL 8 + MinIO（自动创建 bucket）
 make dev-api                         # 启动后端，默认运行在 :8080/api，自动准备 labelhub_test 测试库
 pnpm install
 pnpm --filter @labelhub/web dev      # 启动前端 http://127.0.0.1:5173（启动前从 OpenAPI 生成类型）
@@ -88,7 +88,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 从 [**docs/README.md**](docs/README.md) 开始。常用入口：
 
 - [设计基线](docs/architecture/labelhub-complete-design-baseline.md)：业务事实模型的权威来源
-- [架构决策记录](docs/adr/)：ADR-001 ~ 015
+- [架构决策记录](docs/adr/)：ADR-001 ~ 016
 - [工程规范](docs/engineering/conventions.md) 和 [AI 协作宪章](docs/engineering/agent-charter.md)，AI 编码 agent 的入口是 [AGENTS.md](AGENTS.md)
 - [批次审计台账](docs/process/humanpending.md)：append-only，记录了每个合入批次的交付和验证过程
 
@@ -106,3 +106,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 ## 在线演示
 
 演示入口是 `http://120.26.182.61:8443/`。备案和 HTTPS 切换还没完成，所以访问时必须带上 `http://` 和 `:8443`。公网演示账号由项目 Owner 私下发放。部署方式见 [演示环境说明](docs/guides/demo-environment.md)。
+
+## 许可证
+
+[Apache License 2.0](LICENSE)

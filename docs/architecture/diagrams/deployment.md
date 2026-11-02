@@ -5,8 +5,8 @@
 - 当前生产目标是单台阿里云 ECS，部署根目录 `/opt/labelhub`，由 `docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build` 启动。
 - `scripts/deploy-web.sh` 在开发机执行 Web build，然后用 `rsync` 同步 `apps/web/dist/` 到 `/opt/labelhub/infra/web-dist/`，并同步源码到 `/opt/labelhub/`。
 - 公开访问路径仍是 `http://120.26.182.61:8443/`，`nginx` 只做 `8443:80` 映射；ICP备案与 HTTPS 证书切换尚未完成。`127.0.0.1:5173` 仅是本机 Vite 开发地址,不属于生产入口。
-- 生产 compose 实际包含 `mysql`、`redis`、`minio`、`minio-init`、`api`、`agent`、`nginx`；公网只暴露 `nginx`，其他端口在 compose 网络内使用。
-- Redis 补查命中仅限 `infra/docker-compose.yml` 与 `infra/docker-compose.prod.yml` 的服务定义/healthcheck，未发现业务消费者，属于候选裁剪项。
+- 生产 compose 实际包含 `mysql`、`minio`、`minio-init`、`api`、`agent`、`nginx`；公网只暴露 `nginx`，其他端口在 compose 网络内使用。
+- Redis 从未有业务消费者，已按 ADR-016 从 compose 中移除。
 
 ```mermaid
 flowchart LR
@@ -23,7 +23,6 @@ flowchart LR
         api["业务 API(Business API)<br/>api<br/>/api"]
         agent["异步工作容器(Async Worker Container)<br/>agent<br/>AI + export workers"]
         mysql["业务数据库(Business Database)<br/>mysql<br/>MySQL 8.0"]
-        redis["Redis 缓存服务(Redis Cache Service)<br/>redis<br/>no business consumer"]
         minio["对象存储(Object Storage)<br/>minio<br/>S3-compatible"]
         minio_init["对象存储初始化(Object Storage Init)<br/>minio-init<br/>bucket init"]
     end
@@ -63,7 +62,6 @@ flowchart LR
 | api | build `services/api/Dockerfile`；container port `8080`；context path `/api`；health `http://localhost:8080/api/actuator/health`；mem_limit `1280m`。 | `infra/docker-compose.prod.yml`、`services/api/src/main/resources/application.yml` |
 | agent | build `services/agent/Dockerfile`；container port `8081`；health `http://localhost:8081/actuator/health`；运行 AI review 与 export outbox workers；mem_limit `768m`。 | `infra/docker-compose.prod.yml`、`services/agent/src/main/resources/application.yml`、`services/agent/src/main/java/com/labelhub/agent/outbox/` |
 | mysql | image `mysql:8.0`；volume `labelhub-mysql-data`；container port `3306`；healthcheck `mysqladmin ping`。 | `infra/docker-compose.prod.yml` |
-| redis | image `redis:7-alpine`；container port `6379`；healthcheck `redis-cli ping`；grep 未发现业务消费者。 | `infra/docker-compose.prod.yml`、`infra/docker-compose.yml` |
 | minio | image `pgsty/minio:RELEASE.2026-08-04T00-00-00Z`(minio/minio 已从 Docker Hub 下架，改用固定版本的社区分支)；container ports `9000` API / `9001` console；volume `labelhub-minio-data`。 | `infra/docker-compose.prod.yml` |
 | minio-init | image `pgsty/mc`(按 digest 固定)；通过 `mc mb --ignore-existing` 创建 `${OBJECT_STORAGE_BUCKET:-labelhub-exports}`。 | `infra/docker-compose.prod.yml` |
 
@@ -91,4 +89,3 @@ flowchart LR
 - API context path、默认端口、对象存储和数据库配置：`services/api/src/main/resources/application.yml`。
 - Agent 端口、API base URL、outbox worker 配置和 LLM env 配置：`services/agent/src/main/resources/application.yml`。
 - Agent 同一进程内包含 AI review 与 export outbox worker：`services/agent/src/main/java/com/labelhub/agent/outbox/OutboxAiReviewWorker.java`、`services/agent/src/main/java/com/labelhub/agent/outbox/OutboxExportWorker.java`。
-- Redis 补查命中清单：`infra/docker-compose.yml`、`infra/docker-compose.prod.yml`；未命中 `services/`、`apps/`、`packages/` 业务代码。
