@@ -8,7 +8,7 @@ LabelHub 覆盖从数据导入、标注、AI 预审、多级人工审核，到�
 
 > **你凭什么说这批训练数据是对的？**
 
-项目正在演进为一个**标注垂类 Agent Harness**：让 LLM agent 在规则、校验器和人类问责的约束下生产训练数据。详见[路线图](#路线图)。
+项目正在演进为一个**标注垂类 Agent Harness**：让 LLM agent 在规则、校验器和人类问责的约束下生产训练数据。设计见 [ADR-017](docs/adr/ADR-017-annotation-agent-harness.md)，进度见[路线图](#路线图)。
 
 ---
 
@@ -88,7 +88,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 从 [**docs/README.md**](docs/README.md) 开始。常用入口：
 
 - [设计基线](docs/architecture/labelhub-complete-design-baseline.md)：业务事实模型的权威来源
-- [架构决策记录](docs/adr/)：ADR-001 ~ 016
+- [架构决策记录](docs/adr/)：ADR-001 ~ 017
 - [工程规范](docs/engineering/conventions.md) 和 [AI 协作宪章](docs/engineering/agent-charter.md)，AI 编码 agent 的入口是 [AGENTS.md](AGENTS.md)
 - [批次审计台账](docs/process/humanpending.md)：append-only，记录了每个合入批次的交付和验证过程
 
