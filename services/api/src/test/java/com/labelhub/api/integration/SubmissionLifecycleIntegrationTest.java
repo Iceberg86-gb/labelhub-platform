@@ -121,13 +121,27 @@ class SubmissionLifecycleIntegrationTest {
     @Test
     void trusted_export_includes_submission_created_by_real_submit_path() throws Exception {
         Fixture fixture = publishedTaskFixture("lifecycle-export", 1, 1);
-        claimAndSubmit(fixture);
+        long submissionId = claimAndSubmit(fixture);
+        // The default export scope is approved_only, so the submission needs a reviewer approval to be included.
+        mockMvc.perform(post("/submissions/{submissionId}/ledger-entries", submissionId)
+                .header("Authorization", bearer(tokenForUser(1003L, "reviewer_demo", "REVIEWER")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"entryType":"reviewer_overall_verdict","payload":{"verdict":"approve","reviewLevel":"reviewer"}}
+                    """))
+            .andExpect(status().isCreated());
 
-        MvcResult result = mockMvc.perform(post("/tasks/{taskId}/exports", fixture.taskId())
+        MvcResult queued = mockMvc.perform(post("/tasks/{taskId}/exports", fixture.taskId())
                 .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
             .andExpect(status().isCreated())
+            .andReturn();
+        // Exports are queued; the agent worker builds the snapshot through the internal run endpoint.
+        long exportJobId = objectMapper.readTree(queued.getResponse().getContentAsString()).get("id").asLong();
+        MvcResult result = mockMvc.perform(post("/internal/exports/jobs/{exportJobId}/run", exportJobId)
+                .header("X-Internal-Token", INTERNAL_TOKEN))
+            .andExpect(status().isOk())
             .andReturn();
 
         JsonNode snapshot = objectMapper.readTree(result.getResponse().getContentAsString());
