@@ -3,6 +3,7 @@ package com.labelhub.api.security;
 import com.labelhub.api.config.SecurityProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import java.util.List;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
@@ -23,8 +24,11 @@ public class JwtValidator {
             .build()
             .parseSignedClaims(token)
             .getPayload();
-        Object userId = claims.get("userId");
+        if (!(claims.get("userId") instanceof Number userId)) {
+            // A signed token without a numeric userId is malformed: reject it as unauthenticated (401), not a 500.
+            throw new MalformedJwtException("JWT is missing a numeric userId claim");
+        }
         List<String> roles = claims.get("roles", List.class);
-        return new JwtPrincipal(((Number) userId).longValue(), claims.get("username", String.class), roles == null ? List.of() : roles);
+        return new JwtPrincipal(userId.longValue(), claims.get("username", String.class), roles == null ? List.of() : roles);
     }
 }
