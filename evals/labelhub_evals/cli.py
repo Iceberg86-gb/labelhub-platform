@@ -193,9 +193,24 @@ def _catalog():
 
 
 def cmd_models(args) -> int:
-    from labelhub_evals.chatgpt.models import ranked
+    import json
 
-    models = _catalog()
+    from labelhub_evals.chatgpt.models import diagnose_catalog, parse_catalog, ranked
+
+    session, http, _, _ = _chatgpt_context()
+    from labelhub_evals.chatgpt.models import fetch_catalog_raw
+
+    payload = fetch_catalog_raw(session, http, session.endpoints)
+    if args.raw:
+        # Model metadata only: the access token is in the request header, never in this body.
+        print(json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True))
+        return 0
+    models = parse_catalog(payload)
+    if not models:
+        print("no usable model found in the catalog: " + diagnose_catalog(payload))
+        print("send the output of `chatgpt models --raw` to the maintainer, or pick a model directly:")
+        print("  python -m labelhub_evals chatgpt select MODEL --skip-catalog")
+        return 1
     order = ranked(models)
     _, _, _, profiles = _chatgpt_context()
     active = profiles.active()
@@ -215,6 +230,13 @@ def cmd_select(args) -> int:
 
     session, _, _, profiles = _chatgpt_context()
     creds = session.credentials()
+    if args.skip_catalog:
+        # Escape hatch when the catalog cannot be read; `chatgpt test` still proves the model works.
+        if args.auto_latest or not args.model:
+            raise SystemExit("--skip-catalog needs an explicit MODEL (and is incompatible with --auto-latest)")
+        profiles.select(creds.account_key, Selection(args.model, args.effort), "manual-skip-catalog")
+        print(f"draft: {args.model}@{args.effort or 'default'} (catalog not checked). Next: `chatgpt test`, then `chatgpt apply`.")
+        return 0
     models = _catalog()
     if args.auto_latest:
         chosen = pick_latest(models)
@@ -349,11 +371,14 @@ def build_parser() -> argparse.ArgumentParser:
     login.set_defaults(fn=cmd_login)
     c.add_parser("logout").set_defaults(fn=cmd_logout)
     c.add_parser("status").set_defaults(fn=cmd_status)
-    c.add_parser("models", help="list the account's model catalog, recommended first").set_defaults(fn=cmd_models)
+    models_p = c.add_parser("models", help="list the account's model catalog, recommended first")
+    models_p.add_argument("--raw", action="store_true", help="print the catalog JSON as returned (for debugging)")
+    models_p.set_defaults(fn=cmd_models)
     sel = c.add_parser("select", help="write a draft model selection")
     sel.add_argument("model", nargs="?")
     sel.add_argument("--effort")
     sel.add_argument("--auto-latest", action="store_true", help="resolve the recommended latest model now and pin it")
+    sel.add_argument("--skip-catalog", action="store_true", help="select MODEL without checking the catalog (test still required)")
     sel.set_defaults(fn=cmd_select)
     c.add_parser("test", help="make one real request with the draft").set_defaults(fn=cmd_test)
     c.add_parser("apply", help="apply a tested draft (saves a rollback point)").set_defaults(fn=cmd_apply)
@@ -373,7 +398,9 @@ def main(argv: list[str] | None = None) -> int:
         from labelhub_evals.chatgpt.oauth import OAuthError
         from labelhub_evals.chatgpt.session import NotSignedIn
 
-        if isinstance(exc, (NotSignedIn, OAuthError, ProviderError)):
+        from labelhub_evals.chatgpt.http import HttpError
+
+        if isinstance(exc, (NotSignedIn, OAuthError, ProviderError, HttpError, ValueError)):
             print(f"error: {exc}", file=sys.stderr)
             return 1
         raise
