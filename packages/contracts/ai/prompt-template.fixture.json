@@ -1,0 +1,11 @@
+{
+  "businessPrompt": "评审标准：回答是否有帮助、事实是否正确。\nRate \"helpfulness\" and correctness strictly.",
+  "input": {
+    "schemaVersionId": 42,
+    "schemaFields": [{"stableId": "response", "label": "回答", "type": "textarea", "required": true}],
+    "answerPayload": {"response": "Line one\nLine two with a tab\tand \"quotes\" and a backslash \\ and 中文。"},
+    "datasetItemPayload": {"prompt": "What is 2+2? 请简要回答。", "score": 0.5, "flag": false, "missing": null},
+    "task": {"id": 7, "title": "HelpSteer2 review", "description": null},
+    "submission": {"id": 1001, "status": "under_ai_review"}
+  }
+}

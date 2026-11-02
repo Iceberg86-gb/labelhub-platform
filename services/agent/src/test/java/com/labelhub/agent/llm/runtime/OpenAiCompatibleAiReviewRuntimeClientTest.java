@@ -1,5 +1,6 @@
 package com.labelhub.agent.llm.runtime;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.labelhub.agent.api.AiReviewContext;
 import com.labelhub.agent.api.AiReviewResultPayload;
@@ -16,6 +17,8 @@ import java.nio.ByteBuffer;
 import java.io.ByteArrayOutputStream;
 import java.time.Duration;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CompletableFuture;
@@ -77,6 +80,41 @@ class OpenAiCompatibleAiReviewRuntimeClientTest {
         assertThat(result.modelName()).isEqualTo("doubao-lite");
         assertThat(result.responsePayload().toString()).doesNotContain(SECRET);
         assertThat(result.rawResponse()).doesNotContain(SECRET);
+    }
+
+    // Contract: the request the agent sends is the one the offline eval harness (evals/) replays. Its tool
+    // definition must equal packages/contracts/ai/record-ai-review.tool.json, with a forced tool call at
+    // temperature 0 and the API-rendered prompt as the single user message.
+    @Test
+    void request_matches_shared_record_ai_review_contract() throws Exception {
+        RecordingHttpClient httpClient = new RecordingHttpClient(200, """
+            {"choices":[{"message":{"tool_calls":[{"function":{"name":"record_ai_review","arguments":"{\\"overallSuggestion\\":\\"pass\\",\\"confidence\\":0.9,\\"summary\\":\\"ok\\",\\"dimensionScores\\":[],\\"fieldFindings\\":[]}"}}]}}]}
+            """);
+        new OpenAiCompatibleAiReviewRuntimeClient(new ObjectMapper(), httpClient).review(context(), source());
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode request = mapper.readTree(httpClient.requestBody());
+        JsonNode contract = mapper.readTree(Files.readString(repoRoot().resolve("packages/contracts/ai/record-ai-review.tool.json")));
+
+        assertThat(request.at("/tools/0/type").asText()).isEqualTo("function");
+        assertThat(request.at("/tools/0/function")).isEqualTo(contract);
+        assertThat(request.get("tools")).hasSize(1);
+        assertThat(request.at("/tool_choice/function/name").asText()).isEqualTo(contract.get("name").asText());
+        assertThat(request.get("temperature").asInt()).isZero();
+        assertThat(request.get("messages")).hasSize(1);
+        assertThat(request.at("/messages/0/role").asText()).isEqualTo("user");
+        assertThat(request.at("/messages/0/content").asText()).isEqualTo(context().renderedPrompt());
+    }
+
+    private static Path repoRoot() {
+        Path current = Path.of("").toAbsolutePath();
+        while (current != null) {
+            if (Files.exists(current.resolve("pnpm-workspace.yaml"))) {
+                return current;
+            }
+            current = current.getParent();
+        }
+        throw new AssertionError("Unable to find repo root from " + Path.of("").toAbsolutePath());
     }
 
     @Test
