@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Keep this rsync exclude list in sync with scripts/deploy-web.sh.
-# In particular, /submission must stay anchored so same-named source modules are not skipped.
+# Keep this rsync exclude list in sync with scripts/deploy-web.sh. Anchor root-only patterns
+# (e.g. /*.bundle) so same-named source paths are not skipped.
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 remote="root@120.26.182.61"
 remote_root="/opt/labelhub"
@@ -35,7 +35,6 @@ rsync -az -e "$rsync_ssh_cmd" \
   --exclude=minio-data \
   --exclude=target \
   --exclude=/*.bundle \
-  --exclude=/submission \
   --exclude=docs/archive \
   --exclude=docs/design-system \
   "$repo_root/" \

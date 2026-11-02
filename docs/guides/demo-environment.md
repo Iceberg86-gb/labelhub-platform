@@ -48,7 +48,7 @@
                                           └── /api/ ──▶ api (Spring Boot, 1280m, Flyway 自动迁移)
                                                           │ 同事务写 outbox
                               agent (AI Worker, 768m) ──┘ 轮询 outbox / X-Internal-Token 回调 api
-                              mysql 8 (1g) · redis 7 (192m, 预留) · minio + minio-init (512m, 导出产物)
+                              mysql 8 (1g) · minio + minio-init (512m, 导出产物)
 ```
 
 - API 以 `SPRING_PROFILES_ACTIVE=prod` 启动,`ProductionSecretsGuard` 会拒绝使用仓库内开发默认的 `JWT_SECRET` / `LABELHUB_INTERNAL_TOKEN` 起服——密钥必须在 `.env.prod` 中显式提供。
@@ -80,7 +80,7 @@
 | 公网快速自检 | `curl -f http://120.26.182.61:8443/api/actuator/health && curl -I http://120.26.182.61:8443/` |
 | ECS 本机自检 | `curl -f http://127.0.0.1:8443/api/actuator/health && curl -I http://127.0.0.1:8443/` |
 
-部署脚本为四阶段闭环,rsync exclude 列表必须锚定(如 `--exclude=/submission`)且两个脚本保持同步。当前 source sync 会排除 `.env*`、`target/`、根目录 `*.bundle`、本地配置目录、日志、coverage、本地数据目录、`submission/`、截图与设计资产,避免把本机产物或敏感配置带到生产。
+部署脚本为四阶段闭环,rsync exclude 列表中只针对根目录的模式必须锚定(如 `--exclude=/*.bundle`),且两个脚本保持同步。当前 source sync 会排除 `.env*`、`target/`、根目录 `*.bundle`、本地配置目录、日志、coverage、本地数据目录、归档文档(`docs/archive`)与设计资产,避免把本机产物或敏感配置带到生产。
 
 ## 6. 已知限制与挂账(演示前请知悉)
 
@@ -95,7 +95,7 @@
 公网不可用时,本地起全套(详见根 README):
 
 ```bash
-make doctor && make dev-up        # MySQL + Redis + MinIO
+make doctor && make dev-up        # MySQL + MinIO
 make dev-api                      # 后端(context path /api)
 pnpm install && pnpm --filter @labelhub/web dev   # 前端 → http://127.0.0.1:5173
 ```

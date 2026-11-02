@@ -1,8 +1,8 @@
 # Development Environment
 
 LabelHub uses Java 17 for backend development, Node 26 with pnpm 9 for the web app,
-and the Docker Compose services in `infra/docker-compose.yml` for local MySQL,
-Redis, and MinIO.
+and the Docker Compose services in `infra/docker-compose.yml` for local MySQL
+and MinIO.
 
 ## Host Setup
 
@@ -153,7 +153,7 @@ both rsync calls. The source sync keeps `.env*.example` available and excludes
 `node_modules`, `.git`, `dist`, `.env`, `.env.*`, `.env.prod`, `web-dist`,
 `.DS_Store`, `.pnpm-store`, `.claude`, `.codex`, `application-secrets.yml`,
 `logs`, `*.log`, `coverage`, `*.tsbuildinfo`, `mysql-data`, `minio-data`,
-`target`, root `*.bundle`, `submission`, `docs/archive`, and
+`target`, root `*.bundle`, `docs/archive`, and
 `docs/design-system`.
 
 ## Dev Container

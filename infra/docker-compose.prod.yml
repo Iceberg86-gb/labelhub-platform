@@ -25,16 +25,6 @@ services:
       retries: 10
       start_period: 30s
 
-  redis:
-    <<: *prod-defaults
-    image: redis:7-alpine
-    mem_limit: 192m
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   minio:
     <<: *prod-defaults
     image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z # minio/minio was removed from Docker Hub; community fork, pinned

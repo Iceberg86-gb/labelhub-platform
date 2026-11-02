@@ -78,7 +78,6 @@ LLM:
 本地依赖:
 
 - MySQL 8.0
-- Redis 7
 - MinIO(S3 兼容对象存储)
 - Docker Compose
 
@@ -221,17 +220,7 @@ MySQL 是事实数据源。
 
 主队列:**MySQL outbox + 应用层轮询**。对齐基线 ADR-008。
 
-Redis 用途严格限制:
-
-- 短期任务状态缓存(例如 export job 进度推送)
-- 轻量分布式锁(例如同一 task 的批量审核操作互斥)
-- 本地开发缓存(限流、登录状态)
-
-Redis 禁止用途:
-
-- **不得作为权威队列**(主队列是 MySQL outbox)
-- **不得作为主存储**(任何业务事实必须落 MySQL)
-- 不得缓存 schema_versions / submissions / quality_ledger_entries(这些是 append-only 事实,直接读 MySQL)
+Redis 已移除(ADR-016):它从未有业务消费者。将来如果需要短期状态缓存或分布式锁,必须先写 ADR;即便重新引入,也**不得作为权威队列或主存储**,不得缓存 append-only 事实(schema_versions / submissions / quality_ledger_entries)。
 
 文件存储:
 
@@ -346,7 +335,7 @@ AI 角色边界:
 测试栈:
 
 - 后端单测:JUnit 5 + Mockito + AssertJ
-- 后端集成测试:JUnit 5 + Testcontainers(真实 MySQL + Redis + MinIO)
+- 后端集成测试:JUnit 5 + Testcontainers(真实 MySQL + MinIO)
 - 前端单测:Vitest + React Testing Library
 - E2E:Playwright
 - API 契约测试:基于 OpenAPI 的 schema 校验,前端 mock server 用 Prism
