@@ -85,3 +85,7 @@ run/ask ─ 令牌距离过期不足 5 分钟时先刷新；遇到 401 强制刷
 - `LABELHUB_EVALS_HOME`：令牌和配置的存放目录，默认是 `~/.config/labelhub-evals`
 - `LABELHUB_EVALS_NO_KEYRING=1`：不使用系统钥匙串
 - `LABELHUB_EVALS_AUTH_BASE` / `LABELHUB_EVALS_API_BASE`：仅测试时使用
+
+## 排错
+
+- `chatgpt models` 没有列出模型：输出会说明原因（条目数量、因 visibility 过滤掉多少、缺少 slug 的有多少）。再运行 `chatgpt models --raw`，把输出发给维护者，里面只有模型元数据，不含令牌。临时绕过：`chatgpt select 模型名 --skip-catalog`，之后照常 `test` → `apply`，实测失败时不会生效。

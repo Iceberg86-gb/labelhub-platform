@@ -40,17 +40,51 @@ def _efforts(entry: dict) -> tuple[str, ...]:
     return ()
 
 
-def parse_catalog(payload: dict) -> list[ModelInfo]:
-    entries = payload.get("data") if isinstance(payload.get("data"), list) else payload.get("models")
-    if not isinstance(entries, list):
-        raise ValueError("model catalog has neither `data` nor `models` list")
+def _entries(payload) -> list:
+    if isinstance(payload, list):
+        return payload
+    if not isinstance(payload, dict):
+        raise ValueError("model catalog is not a JSON object or array")
+    for key in ("data", "models", "items"):
+        if isinstance(payload.get(key), list):
+            return payload[key]
+    raise ValueError(f"model catalog has no data/models list (top-level keys: {', '.join(sorted(payload)) or 'none'})")
+
+
+def _slug(entry: dict) -> str | None:
+    for key in ("slug", "id", "model", "name"):
+        value = entry.get(key)
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _listed(entry: dict) -> bool:
+    visibility = entry.get("visibility")
+    return visibility is None or str(visibility).lower() == "list"
+
+
+def diagnose_catalog(payload) -> str:
+    """Why parse_catalog kept nothing: shape and per-entry drop reasons, no secrets involved."""
+    try:
+        entries = _entries(payload)
+    except ValueError as exc:
+        return str(exc)
+    from collections import Counter
+
+    visibility = Counter(str(e.get("visibility")) for e in entries if isinstance(e, dict) and not _listed(e))
+    no_slug = sum(1 for e in entries if isinstance(e, dict) and _listed(e) and _slug(e) is None)
+    keys = sorted({k for e in entries if isinstance(e, dict) for k in e})
+    return (f"{len(entries)} catalog entries; dropped as not visibility=list: {dict(visibility) or 0}; "
+            f"no slug/id: {no_slug}; entry keys seen: {', '.join(keys) or 'none'}")
+
+
+def parse_catalog(payload) -> list[ModelInfo]:
     models: list[ModelInfo] = []
-    for entry in entries:
-        if not isinstance(entry, dict):
+    for entry in _entries(payload):
+        if not isinstance(entry, dict) or not _listed(entry):
             continue
-        if "visibility" in entry and entry["visibility"] != "list":
-            continue
-        slug = entry.get("slug") or entry.get("id")
+        slug = _slug(entry)
         if not isinstance(slug, str) or not slug:
             continue
         priority = entry.get("priority")
@@ -87,11 +121,15 @@ def ranked(models: list[ModelInfo], client_version: str = CLIENT_VERSION) -> lis
 def pick_latest(models: list[ModelInfo], client_version: str = CLIENT_VERSION) -> ModelInfo:
     order = ranked(models, client_version)
     if not order:
-        raise ValueError("no model in the account catalog is usable by this client version")
+        raise ValueError("no usable model in the account catalog; run `chatgpt models` to see why, "
+                         "or pick one explicitly with `chatgpt select MODEL --skip-catalog`")
     return order[0]
 
 
-def fetch_catalog(session, http, endpoints) -> list[ModelInfo]:
+def fetch_catalog_raw(session, http, endpoints):
     url = f"{endpoints.api_base}/models?client_version={CLIENT_VERSION}"
-    payload = session.call(lambda token: http.json("GET", url, headers={"Authorization": f"Bearer {token}"}))
-    return parse_catalog(payload)
+    return session.call(lambda token: http.json("GET", url, headers={"Authorization": f"Bearer {token}"}))
+
+
+def fetch_catalog(session, http, endpoints) -> list[ModelInfo]:
+    return parse_catalog(fetch_catalog_raw(session, http, endpoints))

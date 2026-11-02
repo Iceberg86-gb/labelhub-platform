@@ -419,3 +419,52 @@ def test_review_request_forces_the_tool_and_disables_storage():
 def test_http_error_never_echoes_tokens():
     err = HttpError(401, b'{"error":"x"}', "https://api.openai.com/v1/responses?access_token=leak")
     assert "leak" not in str(err)
+
+
+# --- catalog robustness (first real-account run returned no usable model) ---------------------------
+def test_catalog_accepts_standard_openai_list_shape_and_case_insensitive_visibility():
+    from labelhub_evals.chatgpt.models import parse_catalog
+
+    standard = {"object": "list", "data": [{"id": "gpt-5.5", "object": "model", "owned_by": "openai"}]}
+    assert [m.slug for m in parse_catalog(standard)] == ["gpt-5.5"]
+    assert [m.slug for m in parse_catalog({"models": [{"slug": "a", "visibility": "LIST"}, {"slug": "b", "visibility": "hide"}]})] == ["a"]
+    assert [m.slug for m in parse_catalog([{"model": "c"}])] == ["c"]
+
+
+def test_empty_catalog_is_explained_not_silent():
+    from labelhub_evals.chatgpt.models import diagnose_catalog
+
+    text = diagnose_catalog({"data": [{"slug": "x", "visibility": "hidden"}, {"visibility": "list"}]})
+    assert "2 catalog entries" in text and "'hidden': 1" in text and "no slug/id: 1" in text
+    assert "top-level keys: foo" in diagnose_catalog({"foo": 1})
+
+
+def _cli(stub, tmp_path, monkeypatch, *argv):
+    from labelhub_evals import cli
+
+    monkeypatch.setenv("LABELHUB_EVALS_HOME", str(tmp_path))
+    monkeypatch.setenv("LABELHUB_EVALS_AUTH_BASE", stub.base)
+    monkeypatch.setenv("LABELHUB_EVALS_API_BASE", stub.base + "/v1")
+    monkeypatch.setenv("LABELHUB_EVALS_NO_KEYRING", "1")
+    return cli.main(list(argv))
+
+
+def test_models_command_reports_why_catalog_is_empty_and_raw_dumps_it(stub, tmp_path, monkeypatch, capsys):
+    CredentialsStore(tmp_path, use_keyring=False).save(creds(expires_at=10**10))
+    stub.catalog = {"data": [{"slug": "gpt-x", "visibility": "hidden"}]}
+    assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "models") == 1
+    out = capsys.readouterr().out
+    assert "no usable model" in out and "'hidden': 1" in out and "--skip-catalog" in out
+    assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "models", "--raw") == 0
+    assert json.loads(capsys.readouterr().out) == stub.catalog
+
+
+def test_select_skip_catalog_still_requires_a_passing_test(stub, tmp_path, monkeypatch, capsys):
+    CredentialsStore(tmp_path, use_keyring=False).save(creds(expires_at=10**10))
+    stub.catalog = {"data": []}
+    assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "select", "--auto-latest") == 1  # clean error, no traceback
+    assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "select", "gpt-5.5", "--skip-catalog") == 0
+    assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "apply") == 1
+    assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "test") == 0
+    assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "apply") == 0
+    assert ProfileStore(tmp_path).active().identity() == "chatgpt/gpt-5.5"
