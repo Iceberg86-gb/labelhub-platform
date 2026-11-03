@@ -1,0 +1,46 @@
+{
+  "run": {
+    "dimensions": [
+      "overall"
+    ],
+    "golden": {
+      "name": "helpsteer2-h1-smoke",
+      "sha256": "3a68d2295657ea38facc595b6a833adbb0f270ecaa56ca311d10621db3703403"
+    },
+    "model": "chatgpt/gpt-6.1-terra@low",
+    "pass_threshold": "0.80",
+    "prompt_version": "h1-single-call-v1",
+    "reject_threshold": "0.20",
+    "scoring_rule_version": "equal-weight-three-zone-v2"
+  },
+  "run_id": "5edc06702ec12c02",
+  "scorecard": {
+    "auto_pass_error_rate": "0.000000",
+    "auto_reject_error_rate": "0.166667",
+    "cohen_kappa_decided": "0.851064",
+    "cost_per_item_usd": null,
+    "decided_agreement": "0.928571",
+    "format_violation_rate": "0.000000",
+    "items": 24,
+    "latency_ms": {
+      "p50": 4805,
+      "p95": 6941
+    },
+    "manual_review_rate": "0.416667",
+    "routed_counts": {
+      "manual_review": 10,
+      "pass": 8,
+      "reject": 6
+    },
+    "tokens": {
+      "input_total": 19529,
+      "items_with_usage": 24,
+      "output_total": 4304
+    },
+    "truth_counts": {
+      "pass": 17,
+      "reject": 7
+    },
+    "validator_correction_success_rate": null
+  }
+}

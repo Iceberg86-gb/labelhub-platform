@@ -1,0 +1,46 @@
+{
+  "run": {
+    "dimensions": [
+      "overall"
+    ],
+    "golden": {
+      "name": "golden",
+      "sha256": "5e0df257bb341d48a184c7a2c00cdb0b7cc2a57224378b9ae249e086f002c81e"
+    },
+    "model": "chatgpt/gpt-6.1-terra@low",
+    "pass_threshold": "0.80",
+    "prompt_version": "h1-single-call-v1",
+    "reject_threshold": "0.20",
+    "scoring_rule_version": "equal-weight-three-zone-v2"
+  },
+  "run_id": "700607c95f112de6",
+  "scorecard": {
+    "auto_pass_error_rate": "0.089286",
+    "auto_reject_error_rate": "0.531401",
+    "cohen_kappa_decided": "0.340892",
+    "cost_per_item_usd": null,
+    "decided_agreement": "0.646974",
+    "format_violation_rate": "0.000000",
+    "items": 1038,
+    "latency_ms": {
+      "p50": 5414,
+      "p95": 10681
+    },
+    "manual_review_rate": "0.331407",
+    "routed_counts": {
+      "manual_review": 344,
+      "pass": 280,
+      "reject": 414
+    },
+    "tokens": {
+      "input_total": 949747,
+      "items_with_usage": 1038,
+      "output_total": 217749
+    },
+    "truth_counts": {
+      "pass": 736,
+      "reject": 302
+    },
+    "validator_correction_success_rate": null
+  }
+}
