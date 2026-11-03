@@ -17,16 +17,23 @@ type CreateExportVariables = {
   fieldMapping?: ExportFieldMapping;
   trainingFormat?: TrainingExportFormat;
   trainingProfile?: TrainingExportProfile;
+  /** ADR-020: also export submissions admitted by the auto-pass policy (no human verdict). Opt-in only. */
+  includePolicyAccepted?: boolean;
 };
 
 export function useCreateExportMutation() {
   const queryClient = useQueryClient();
 
   return useMutation<ExportJob, CreateExportFailure, CreateExportVariables>({
-    mutationFn: async ({ taskId, fieldMapping, trainingFormat, trainingProfile }) => {
+    mutationFn: async ({ taskId, fieldMapping, trainingFormat, trainingProfile, includePolicyAccepted }) => {
       const { data, error, response } = await apiClient.POST('/tasks/{taskId}/exports', {
         params: { path: { taskId } },
-        body: { mode: 'approved_only', fieldMapping, trainingFormat: trainingFormat ?? 'flat_table', trainingProfile },
+        body: {
+          mode: exportModeFor(includePolicyAccepted),
+          fieldMapping,
+          trainingFormat: trainingFormat ?? 'flat_table',
+          trainingProfile,
+        },
       });
       if (error || !data) {
         const body = error as { code?: string; message?: string } | undefined;
@@ -42,6 +49,11 @@ export function useCreateExportMutation() {
       await queryClient.invalidateQueries({ queryKey: ['tasks', variables.taskId, 'exports'] });
     },
   });
+}
+
+/** Default is human-approved only; policy-admitted data is never exported unless the owner opts in. */
+export function exportModeFor(includePolicyAccepted: boolean | undefined): 'approved_only' | 'approved_with_policy' {
+  return includePolicyAccepted ? 'approved_with_policy' : 'approved_only';
 }
 
 function mapExportErrorMessage(status: number, code: string | undefined, message: string | undefined): string {

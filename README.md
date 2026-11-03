@@ -34,7 +34,7 @@ LabelHub 覆盖从数据导入、标注、AI 预审、多级人工审核，到�
 
 | 取舍 | 理由 | 记录 |
 |---|---|---|
-| **AI 是证据，不是裁决** | AI 结论连同 prompt 版本、模型、input hash、成本和延迟一起作为证据写入账本，可以检视、导出或排除，但不能改写最终结论。人类审核者是训练数据准入的问责闸门。 | [ADR-005](docs/adr/ADR-005-ai-evidence-not-verdict.md) |
+| **AI 是证据，不是裁决** | AI 结论连同 prompt 版本、模型、input hash、成本和延迟一起作为证据写入账本，可以检视、导出或排除，但不能改写最终结论。人类审核者是训练数据准入的问责闸门；唯一的例外是 Owner 显式开启的自动通过，此时由该 Owner 问责，并且受到三重约束：影子数据门槛、盲审抽检、熔断。策略准入的数据默认不导出。 | [ADR-005](docs/adr/ADR-005-ai-evidence-not-verdict.md) / [020](docs/adr/ADR-020-h3-policy-layer.md) |
 | **事实只追加，不修改** | 已发布的 Schema 版本不可变，历史提交永远能按原样渲染。Verdict 从最新的账本条目实时派生，用读时计算换取写路径的简单，以及事实不可篡改。 | [ADR-002](docs/adr/ADR-002-schema-immutability.md) / [003](docs/adr/ADR-003-quality-ledger.md) / [009](docs/adr/ADR-009-local-immutability.md) |
 | **导出可复现** | 规范化序列化后，同一份数据导出两次得到逐字节相同的文件和 manifest 哈希，并且有测试守护。 | [ADR-004](docs/adr/ADR-004-export-snapshot.md) |
 | **结构化输出是硬约束** | AI 预审必须通过 function calling 输出，不解析纯文本。校验失败时，走确定性的重试或转人工路径。 | [ADR-006](docs/adr/ADR-006-function-calling-required.md) |
@@ -100,7 +100,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 | W0 | CI 与工程基线：集成测试真实运行，跳过即判失败 | ✅ 完成 |
 | W1 | 离线评测框架：基于 HelpSteer2 的黄金集、录制/回放、单次调用的基线成绩（[`evals/`](evals/)，支持 ChatGPT 登录跑评测，[ADR-018](docs/adr/ADR-018-chatgpt-sign-in-for-local-evals.md)；[基线报告](evals/reports/w1-baseline.md)） | ✅ 完成 |
 | W2 | Agent 循环：校验 AI 审核输出并自我纠错（[ADR-019](docs/adr/ADR-019-h2-review-output-validation-loop.md)；[对比报告](evals/reports/w2v2-vs-w1.md)） | ✅ 完成 |
-| W3 | 策略层：升级规则、阈值校准、受控的自动通过（[ADR-020](docs/adr/ADR-020-h3-policy-layer.md)；[校准报告](evals/reports/w3a-calibration.md)） | 进行中（W3a） |
+| W3 | 策略层：升级规则、阈值校准、受控的自动通过（[ADR-020](docs/adr/ADR-020-h3-policy-layer.md)；[校准报告](evals/reports/w3a-calibration.md)） | ✅ 完成 |
 | W4 | 判例记忆：检索人类裁决作为参考，人机分歧回流 | 计划中 |
 | W5 | MCP Server：外部 agent 可以在同一套治理与审计规则下接入 | 计划中 |
 

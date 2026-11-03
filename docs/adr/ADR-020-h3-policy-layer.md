@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed（2026-11-03）。对应 ADR-017 的 H3 阶段。
+Accepted（2026-11-03）。对应 ADR-017 的 H3 阶段，已全部落地：W3a 见 PR #9，W3b 后端见 PR #10，W3b 前端见 W3b-2 PR。H3 关卡已满足：用 evals 回放给出了"仲裁比例 vs 漏检"曲线，并在约束下选定了工作点（humanpending #271）。
 
 **本 ADR 显式覆盖以下条款（LH-1）：** 设计基线 §7.5"AI 结论只进入审核证据，不直接跳过人工审核"、§8.1 不变量"未通过人工复审不得导出"，以及 ADR-005 的后果条款"Human review remains the accountable gate"。覆盖范围**只限于**本 ADR §3 定义的 `auto` 模式；`off` 和 `suggest` 两种模式下，上述条款继续有效。
 

@@ -53,6 +53,10 @@ vi.mock('./useSaveAiReviewRuleMutation', async () => {
   };
 });
 
+vi.mock('./AutoPolicyPanel', () => ({
+  AutoPolicyPanel: () => <section data-testid="auto-policy-panel" />,
+}));
+
 vi.mock('./AiReviewRuleHistoryPanel', () => ({
   AiReviewRuleHistoryPanel: () => (
     <section data-testid="ai-review-rule-history-section">

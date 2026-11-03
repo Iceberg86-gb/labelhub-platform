@@ -564,4 +564,65 @@ describe('Reviewer pages design shell', () => {
     expect(html).toContain('最终裁决来源');
     expect(html).toContain('已通过');
   });
+
+  it('renders auto-pass policy evidence for seniors and a neutral AI card when the overall judgement is withheld (ADR-020)', () => {
+    userMock.mockReturnValue({ id: 1003, roles: ['SENIOR_REVIEWER'] });
+    routeState.searchParams = new URLSearchParams('reviewLevel=reviewer');
+    reviewerQueueQueryMock.mockReturnValue({
+      data: { items: [{ ...queueSubmission, id: 501, reviewLevel: 'reviewer' }], total: 1 },
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    seniorReviewCasesQueryMock.mockReturnValue({
+      data: { items: [], total: 0 },
+      error: null,
+      isError: false,
+      isFetching: false,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+    renderSchemaQueryMock.mockReturnValue({
+      data: renderSchema,
+      isError: false,
+      isLoading: false,
+    });
+    createLedgerEntryMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    markReviewDifficultyMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    resolveSeniorReviewCaseMutationMock.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    verdictQueryMock.mockReturnValue({
+      data: { derivedAt: '2026-11-03T10:00:00Z', derivedFromEntryId: 31, status: 'accepted_by_policy' },
+    });
+    ledgerEntriesQueryMock.mockReturnValue({
+      data: {
+        items: [
+          {
+            actorType: 'system',
+            actorUserId: null,
+            aiCallId: 6,
+            createdAt: '2026-11-03T10:00:00Z',
+            entryType: 'policy_auto_accept',
+            id: 31,
+            payload: { policyEventId: 500, ruleId: 19, modelName: 'gpt-6.1-terra', maxError: '0.05', sampleRate: '0.10', enabledBy: 1001 },
+            submissionId: 501,
+            taskId: 22,
+          },
+        ],
+        total: 1,
+      },
+      isError: false,
+      isLoading: false,
+    });
+
+    const html = renderToString(<ReviewerSubmissionPage />);
+
+    expect(html).toContain('策略准入');
+    expect(html).toContain('未经人工审核');
+    expect(html).toContain('gpt-6.1-terra');
+    expect(html).toContain('Owner #<!-- -->1001');
+    // No ai_overall_recommendation entry (as for a blind sample): neutral copy, no claim that pre-review is unfinished.
+    expect(html).toContain('暂无 AI 综合判定');
+    expect(html).not.toContain('预审未完成');
+  });
 });

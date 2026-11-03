@@ -78,6 +78,10 @@ vi.mock('./useListAiReviewRulesQuery', async () => {
   };
 });
 
+vi.mock('./AutoPolicyPanel', () => ({
+  AutoPolicyPanel: () => <section data-testid="auto-policy-panel" />,
+}));
+
 vi.mock('./usePublishAiReviewRuleMutation', () => ({
   usePublishAiReviewRuleMutation: () => ({ isPending: false, mutateAsync: publishMock }),
 }));

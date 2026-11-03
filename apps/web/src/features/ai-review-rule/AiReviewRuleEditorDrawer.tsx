@@ -8,6 +8,7 @@ import {
   type AiReviewRuleFormState,
 } from './aiReviewRuleFormModel';
 import { AiReviewRuleHistoryPanel } from './AiReviewRuleHistoryPanel';
+import { AutoPolicyPanel } from './AutoPolicyPanel';
 import { AiReviewRuleMutationFailure, useSaveAiReviewRuleMutation } from './useSaveAiReviewRuleMutation';
 
 type AiReviewRuleEditorDrawerProps = {
@@ -190,6 +191,7 @@ export function AiReviewRuleEditorDrawer({ taskId, open, onClose }: AiReviewRule
         </section>
 
         <AiReviewRuleHistoryPanel taskId={taskId} />
+        <AutoPolicyPanel taskId={taskId} />
       </div>
     </SideSheet>
   );
