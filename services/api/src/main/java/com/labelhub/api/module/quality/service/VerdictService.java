@@ -12,6 +12,7 @@ import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class VerdictService {
+
+    public static final String ACCEPTED_BY_POLICY = "accepted_by_policy";
 
     private final SubmissionMapper submissionMapper;
     private final TaskMapper taskMapper;
@@ -55,6 +58,11 @@ public class VerdictService {
         requireReadableSubmission(submissionId, requesterUserId, requesterRoles);
         QualityLedgerEntryEntity latest = qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(submissionId);
         if (latest == null) {
+            // ADR-020 §3: admitted by the owner's auto-pass policy and not judged by a human since.
+            List<QualityLedgerEntryEntity> policy = qualityLedgerEntryMapper.selectBySubmissionIdAndType(submissionId, LedgerService.POLICY_AUTO_ACCEPT);
+            if (!policy.isEmpty()) {
+                return new VerdictView(submissionId, ACCEPTED_BY_POLICY, policy.get(policy.size() - 1).getId(), LocalDateTime.now(clock));
+            }
             return new VerdictView(submissionId, "pending", null, LocalDateTime.now(clock));
         }
         return new VerdictView(

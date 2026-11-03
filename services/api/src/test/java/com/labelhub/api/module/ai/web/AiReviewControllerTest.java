@@ -46,7 +46,8 @@ class AiReviewControllerTest {
         aiReviewRuleService,
         aiReviewRuleDtoMapper,
         taskAiPrereviewService,
-        mock(com.labelhub.api.module.ai.service.AiReviewShadowStatsService.class)
+        mock(com.labelhub.api.module.ai.service.AiReviewShadowStatsService.class),
+        mock(com.labelhub.api.module.ai.service.AutoPolicyService.class)
     );
 
     @AfterEach

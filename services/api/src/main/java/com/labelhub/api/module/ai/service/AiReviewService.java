@@ -84,6 +84,19 @@ public class AiReviewService {
     private final AuditLogService auditLogService;
     private final AiReviewScoringPolicy scoringPolicy;
     private final SchemaRuntimeAdapter schemaRuntimeAdapter;
+    private AutoAcceptService autoAcceptService;
+    private com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper qualityLedgerEntryMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setQualityLedgerEntryMapper(com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper qualityLedgerEntryMapper) {
+        this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
+    }
+
+    /** ADR-020: optional so the many unit tests constructing this service stay unchanged. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAutoAcceptService(AutoAcceptService autoAcceptService) {
+        this.autoAcceptService = autoAcceptService;
+    }
 
     @Autowired
     public AiReviewService(
@@ -348,8 +361,23 @@ public class AiReviewService {
             throw new SubmissionNotFoundException(submissionId);
         }
         List<AiCallEntity> aiCalls = aiCallMapper.selectBySubmissionId(submissionId);
+        boolean blind = qualityLedgerEntryMapper != null && com.labelhub.api.module.quality.service.BlindReviewPolicy.isBlind(
+            qualityLedgerEntryMapper, submissionId, requesterRoles, isOwner, isLabeler);
         for (AiCallEntity aiCall : aiCalls) {
             aiCall.setOutputHash(hash(aiCall.getResponsePayload()));
+            if (blind) {
+                // ADR-020 blind sampling: keep field-level findings, hide the overall judgement and scores.
+                Object findings = aiCall.getResponsePayload() == null ? null : aiCall.getResponsePayload().get("fieldFindings");
+                aiCall.setResponsePayload(findings == null ? Map.of() : Map.of("fieldFindings", findings));
+                aiCall.setScores(Map.of());
+                aiCall.setVerdict(null);
+                if (aiCall.getRequestPayload() != null && aiCall.getRequestPayload().containsKey("normalizedOutputShape")) {
+                    // The request record also carries the normalized output (suggestion and scores): strip it too.
+                    Map<String, Object> request = new LinkedHashMap<>(aiCall.getRequestPayload());
+                    request.remove("normalizedOutputShape");
+                    aiCall.setRequestPayload(request);
+                }
+            }
         }
         return new SubmissionAiProvenanceView(
             submissionId,
@@ -502,6 +530,10 @@ public class AiReviewService {
         requireOneRow(aiCallMapper.insert(aiCall), "insert ai_call");
         List<AiCallInFieldEntity> rows = appendFieldRows(command.submissionId(), aiCall.getId(), result.fieldFindings(), now);
         appendAiEvidenceLedger(command.submissionId(), submission.getTaskId(), aiCall.getId(), result);
+        if (autoAcceptService != null) {
+            // ADR-020 §3: only the agent path (H2-validated) can be admitted by the auto-pass policy.
+            autoAcceptService.onAgentResultRecorded(command.submissionId(), submission.getTaskId(), aiCall, result);
+        }
         aiCall.setOutputHash(hash(responsePayload));
         return new AiReviewResultView(aiCall, result, rows, false);
     }

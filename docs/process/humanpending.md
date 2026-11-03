@@ -981,3 +981,32 @@ owner 选择 ≤ 25% 仲裁预算这一档：
 落地方式：Owner 在规则编辑器中按上述取值发布新的规则版本。已有规则版本不会被改写，规则按版本只追加，代码层面的默认值仍然是"关闭"。
 
 #270-2 的前提条件继续有效：换任务或换模型需要重新校准；真实任务进入 suggest 模式后，用影子统计验证。
+
+## 272. W3b-1：auto 模式后端核心(2026-11-03)
+
+裁决（owner 选择）：
+- **导出**：默认不包含策略准入的数据；
+- **抽检**：用盲审方式；
+- **交付**：分两个 PR，本 PR 是后端（W3b-1），前端在 W3b-2。
+
+交付：
+- **策略事件表**：数据库迁移 `V202612150900` 新建 `ai_review_auto_policy_events`，只追加。表已登记进 conventions §4 的只追加清单，也加入了任务硬删除的级联。
+- **门槛与开关接口**：`GET/POST /ai-review/rules/{id}/auto-policy[/enable|/disable]`，只限 Owner。门槛只认系统自己的影子证据，并且必须对应精确的（规则, prompt, 模型）组合：样本 ≥ 200，Wilson 95% 上界 ≤ `maxError`；只有任务当前生效的规则版本可以开启。
+- **自动准入**：只有 agent 路径的结果才会被考虑，并且必须同时满足：API 路由为 pass、H2 循环结果是 valid 或 corrected、没有 error 级字段发现、模型和 prompt 与门槛一致。抽检按 `sha256(提交 id : 策略事件 id)` 确定性选取，默认比例 10%。被抽中的写 `policy_auto_sample`；其余的写 `policy_auto_accept`，并退出初审队列。
+- **熔断**：人工裁决提交之后，抽检错误率的 Wilson 95% **下界**超过 `maxError` 时，系统追加 `circuit_break` 事件，自动退回 suggest，并写审计日志。这修订了 ADR 原文写的"上界"。
+- **派生状态 `accepted_by_policy`**：用于 verdict 接口和导出快照。在标注员状态和 Owner 进度统计里按"已通过"计算，不再计入待审核。
+- **导出**：新增 `approved_with_policy` 模式（需要显式选择）。默认的 `approved_only` 导出与之前逐字节相同。
+- **盲审**：只对纯初审员、并且只对抽检样本生效。这类请求在 ledger 列表、AI 溯源和队列行里都看不到 AI 的整体建议和分数，也看不到抽检标记；字段级发现照常展示。
+
+另外发现一个既有问题，已经单独提成任务：任务硬删除没有处理 `ai_review_rules`，有过规则的任务删除时，大概率会撞上外键约束。
+
+验证：
+- 单元测试（executed）：AutoPolicyServiceTest 10 条、AutoAcceptServiceTest 6 条、BlindReviewPolicyTest 3 条、VerdictServiceTest 11 条、ExportFactCollectorTest 4 条、LedgerServiceTest 21 条、TaskServiceDeleteTest 6 条，以及策略事件 mapper 只追加的契约测试，全部通过。
+- 端到端集成测试 `AutoPolicyIntegrationTest` 覆盖：门槛拒绝 → 影子证据 → 开启 → 自动准入 / 抽检 → 队列、verdict、导出 → 盲审 → 抽检被打回触发熔断 → 熔断后不再自动准入。这个测试需要 Docker，由 CI 执行。
+- web：typecheck 通过，测试 358 条通过。
+
+W3b-2（前端）待做：
+- 规则面板：影子统计展示、开关表单、当前状态和熔断提示；
+- 状态标签"策略准入"的完整展示；
+- 导出时"包含策略准入"的选项；
+- 审核台的盲审展示。

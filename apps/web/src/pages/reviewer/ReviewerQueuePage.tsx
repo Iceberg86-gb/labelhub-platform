@@ -401,8 +401,10 @@ function parsePositiveInt(value: string | null) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function parseVerdict(value: string | null): VerdictStatus | undefined {
-  return VERDICT_FILTERS.includes(value as VerdictStatus) ? (value as VerdictStatus) : undefined;
+type QueueVerdictFilter = Exclude<VerdictStatus, 'accepted_by_policy'>;
+
+function parseVerdict(value: string | null): QueueVerdictFilter | undefined {
+  return VERDICT_FILTERS.includes(value as QueueVerdictFilter) ? (value as QueueVerdictFilter) : undefined;
 }
 
 function parseReviewLevel(value: string | null): ReviewLevel | undefined {

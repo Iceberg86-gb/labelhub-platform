@@ -6,7 +6,8 @@ export type ReviewerQueueQueryOptions = {
   page?: number;
   size?: number;
   status?: string;
-  verdict?: VerdictStatus;
+  /** Queue filter; accepted_by_policy never appears in the initial-review queue (ADR-020). */
+  verdict?: Exclude<VerdictStatus, 'accepted_by_policy'>;
   reviewLevel?: ReviewLevel;
   enabled?: boolean;
 };

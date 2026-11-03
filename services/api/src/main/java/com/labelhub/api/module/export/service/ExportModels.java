@@ -28,6 +28,11 @@ record DerivedVerdictSnapshot(Long submissionId, String status, Long derivedFrom
             : "reject".equals(verdict) ? "rejected" : "pending";
         return new DerivedVerdictSnapshot(submissionId, status, latest.getId());
     }
+
+    /** ADR-020 §3: no human verdict, admitted by the auto-pass policy. */
+    static DerivedVerdictSnapshot acceptedByPolicy(Long submissionId, QualityLedgerEntryEntity policyEntry) {
+        return new DerivedVerdictSnapshot(submissionId, "accepted_by_policy", policyEntry.getId());
+    }
 }
 
 record ArtifactFile(String name, byte[] content, String sha256, int lines, long sizeBytes) {

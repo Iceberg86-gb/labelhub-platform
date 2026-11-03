@@ -161,6 +161,7 @@ LabelHub 采用**局部不可变**,而不是全量事件溯源。
 - `export_snapshots`
 - `audit_logs`
 - `task_transitions`
+- `ai_review_auto_policy_events`(ADR-020:auto 模式的开启 / 关闭 / 熔断事件,当前态 = 最新事件)
 
 允许作为**当前态**更新的对象(可 update):
 

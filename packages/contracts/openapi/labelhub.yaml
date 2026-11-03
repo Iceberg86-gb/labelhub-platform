@@ -1803,6 +1803,102 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           description: Requested resource does not exist.
+  /ai-review/rules/{ruleId}/auto-policy:
+    get:
+      tags: [AIReview]
+      operationId: getAiReviewAutoPolicy
+      description: ADR-020 §3. Current auto-pass mode of the rule version, its append-only event history and live sample statistics.
+      parameters:
+        - in: path
+          name: ruleId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Auto policy state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiReviewAutoPolicyState'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          description: Requested resource does not exist.
+  /ai-review/rules/{ruleId}/auto-policy/enable:
+    post:
+      tags: [AIReview]
+      operationId: enableAiReviewAutoPolicy
+      description: >-
+        ADR-020 §3. Enable auto-pass for the task's current published rule version. Refused with 409 AUTO_GATE_NOT_MET
+        unless the shadow evidence for exactly (rule, promptVersionId, modelName) has at least minSamples AI-pass
+        submissions with a human verdict and its Wilson 95% upper bound is <= maxError. Appends an enable event.
+      parameters:
+        - in: path
+          name: ruleId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiReviewAutoPolicyEnableRequest'
+      responses:
+        '200':
+          description: Auto-pass enabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiReviewAutoPolicyState'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          description: Requested resource does not exist.
+        '409':
+          description: Gate not met (AUTO_GATE_NOT_MET), with the measured evidence in the message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /ai-review/rules/{ruleId}/auto-policy/disable:
+    post:
+      tags: [AIReview]
+      operationId: disableAiReviewAutoPolicy
+      description: ADR-020 §3. Back to suggest mode (appends a disable event; idempotent when already suggest).
+      parameters:
+        - in: path
+          name: ruleId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AiReviewAutoPolicyDisableRequest'
+      responses:
+        '200':
+          description: Auto-pass disabled.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiReviewAutoPolicyState'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          description: Requested resource does not exist.
   /ai-review/rules/{ruleId}/publish:
     post:
       tags: [AIReview]
@@ -3003,7 +3099,10 @@ components:
           format: int64
         status:
           type: string
-          enum: [pending, approved, rejected]
+          enum: [pending, approved, rejected, accepted_by_policy]
+          description: >-
+            accepted_by_policy (ADR-020): admitted by the owner's auto-pass policy (policy_auto_accept evidence) and
+            not judged by a human since. Distinct from approved, which always means a human verdict.
         derivedFromEntryId:
           type: integer
           format: int64
@@ -4164,6 +4263,120 @@ components:
           type: string
           format: date-time
           nullable: true
+    AiReviewAutoPolicyEnableRequest:
+      type: object
+      required: [promptVersionId, modelName, maxError]
+      properties:
+        promptVersionId:
+          type: integer
+          format: int64
+        modelName:
+          type: string
+        maxError:
+          type: number
+          minimum: 0
+          maximum: 0.5
+          description: Owner-set ceiling for the auto-pass error rate; no default (the owner is accountable for it).
+        minSamples:
+          type: integer
+          minimum: 200
+          nullable: true
+          description: Shadow AI-pass submissions with a human verdict required; default and floor 200.
+        sampleRate:
+          type: number
+          minimum: 0.05
+          maximum: 1
+          nullable: true
+          description: Share of would-be auto-accepted submissions still sent to blind initial review; default 0.10.
+    AiReviewAutoPolicyDisableRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          nullable: true
+    AiReviewAutoPolicyEvent:
+      type: object
+      required: [id, action, actorType, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        action:
+          type: string
+          enum: [enable, disable, circuit_break]
+        promptVersionId:
+          type: integer
+          format: int64
+          nullable: true
+        modelName:
+          type: string
+          nullable: true
+        maxError:
+          type: string
+          format: decimal
+          nullable: true
+        minSamples:
+          type: integer
+          nullable: true
+        sampleRate:
+          type: string
+          format: decimal
+          nullable: true
+        evidence:
+          type: object
+          additionalProperties: true
+        actorType:
+          type: string
+          enum: [owner, system]
+        actorId:
+          type: integer
+          format: int64
+          nullable: true
+        reason:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    AiReviewAutoPolicySampleStats:
+      type: object
+      required: [sampled, judged, humanRejected, autoAccepted]
+      properties:
+        sampled:
+          type: integer
+        judged:
+          type: integer
+        humanRejected:
+          type: integer
+        wilsonLower95:
+          type: string
+          format: decimal
+          nullable: true
+          description: The circuit breaker trips when this exceeds maxError.
+        wilsonUpper95:
+          type: string
+          format: decimal
+          nullable: true
+        autoAccepted:
+          type: integer
+    AiReviewAutoPolicyState:
+      type: object
+      required: [ruleId, mode, events]
+      properties:
+        ruleId:
+          type: integer
+          format: int64
+        mode:
+          type: string
+          enum: [suggest, auto]
+        current:
+          $ref: '#/components/schemas/AiReviewAutoPolicyEvent'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiReviewAutoPolicyEvent'
+        samples:
+          $ref: '#/components/schemas/AiReviewAutoPolicySampleStats'
     AiReviewRuleShadowStats:
       type: object
       required: [ruleId, groups]
@@ -4526,16 +4739,49 @@ components:
           format: date-time
     QualityLedgerEntryType:
       type: string
-      enum: [reviewer_overall_verdict, ai_field_finding, ai_overall_recommendation]
+      enum: [reviewer_overall_verdict, ai_field_finding, ai_overall_recommendation, policy_auto_accept, policy_auto_sample]
       description: |
         Quality ledger entry types. M4 implemented `reviewer_overall_verdict`.
         M5 adds `ai_field_finding` for AI-derived field-level evidence.
         P-A adds `ai_overall_recommendation` as non-final AI evidence.
+        ADR-020 adds system evidence `policy_auto_accept` (admitted by the owner's auto-pass policy) and
+        `policy_auto_sample` (sampled for blind human review; hidden from initial reviewers).
     QualityLedgerEntryPayload:
       oneOf:
         - $ref: '#/components/schemas/ReviewerOverallVerdictPayload'
         - $ref: '#/components/schemas/AiFieldFindingPayload'
         - $ref: '#/components/schemas/AiOverallRecommendationPayload'
+        - $ref: '#/components/schemas/PolicyEvidencePayload'
+    PolicyEvidencePayload:
+      type: object
+      required: [policyEventId, ruleId]
+      properties:
+        policyEventId:
+          type: integer
+          format: int64
+        ruleId:
+          type: integer
+          format: int64
+        promptVersionId:
+          type: integer
+          format: int64
+          nullable: true
+        modelName:
+          type: string
+          nullable: true
+        maxError:
+          type: string
+          format: decimal
+          nullable: true
+        sampleRate:
+          type: string
+          format: decimal
+          nullable: true
+        enabledBy:
+          type: integer
+          format: int64
+          nullable: true
+          description: The owner whose auto-pass policy admitted (or sampled) the submission; accountable for it.
     ReviewLevel:
       type: string
       enum: [reviewer, senior_reviewer]
@@ -4863,8 +5109,10 @@ components:
       properties:
         mode:
           type: string
-          description: Export data scope. Defaults to approved_only.
-          enum: [approved_only, full]
+          description: >-
+            Export data scope. Defaults to approved_only (human-approved only). approved_with_policy (ADR-020) also
+            includes submissions admitted by the auto-pass policy; it is never the default.
+          enum: [approved_only, full, approved_with_policy]
           default: approved_only
         fieldMapping:
           $ref: '#/components/schemas/ExportFieldMapping'

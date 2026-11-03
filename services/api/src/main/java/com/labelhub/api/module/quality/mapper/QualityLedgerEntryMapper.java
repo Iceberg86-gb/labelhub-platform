@@ -71,6 +71,17 @@ public interface QualityLedgerEntryMapper {
     @ResultMap("qualityLedgerEntryResultMap")
     QualityLedgerEntryEntity selectLatestReviewerOverallVerdict(@Param("submissionId") Long submissionId);
 
+    /** ADR-020: all entries of one evidence type for a submission (e.g. policy_auto_accept / policy_auto_sample). */
+    @Select("""
+        SELECT id, submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at
+        FROM quality_ledger_entries
+        WHERE submission_id = #{submissionId}
+          AND evidence_type = #{evidenceType}
+        ORDER BY created_at ASC, id ASC
+        """)
+    @ResultMap("qualityLedgerEntryResultMap")
+    List<QualityLedgerEntryEntity> selectBySubmissionIdAndType(@Param("submissionId") Long submissionId, @Param("evidenceType") String evidenceType);
+
     @Select("""
         SELECT id, submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at
         FROM quality_ledger_entries
@@ -136,7 +147,13 @@ public interface QualityLedgerEntryMapper {
                     ELSE JSON_UNQUOTE(JSON_EXTRACT(latest_reviewer.payload, '$.verdict'))
                END AS reviewer_verdict,
                #{reviewLevel} AS review_level,
-               JSON_UNQUOTE(JSON_EXTRACT(latest_ai.payload, '$.recommendation')) AS ai_recommendation
+               CASE
+                    WHEN #{reviewLevel} = 'reviewer' AND EXISTS (
+                        SELECT 1 FROM quality_ledger_entries ps
+                        WHERE ps.submission_id = s.id AND ps.evidence_type = 'policy_auto_sample')
+                    THEN NULL
+                    ELSE JSON_UNQUOTE(JSON_EXTRACT(latest_ai.payload, '$.recommendation'))
+               END AS ai_recommendation
         FROM submissions s
         JOIN tasks t ON t.id = s.task_id
         JOIN schema_versions sv ON sv.id = s.schema_version_id
@@ -200,6 +217,7 @@ public interface QualityLedgerEntryMapper {
                     AND src.source_signal = 'reviewer_difficulty'
               )
           )
+          AND (#{reviewLevel} <> 'reviewer' OR NOT EXISTS (SELECT 1 FROM quality_ledger_entries pa WHERE pa.submission_id = s.id AND pa.evidence_type = 'policy_auto_accept'))
           AND (
               #{verdict} IS NULL
               OR (#{verdict} = 'pending' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer' THEN latest_senior.id ELSE latest_reviewer.id END) IS NULL)
@@ -284,6 +302,7 @@ public interface QualityLedgerEntryMapper {
                     AND src.source_signal = 'reviewer_difficulty'
               )
           )
+          AND (#{reviewLevel} <> 'reviewer' OR NOT EXISTS (SELECT 1 FROM quality_ledger_entries pa WHERE pa.submission_id = s.id AND pa.evidence_type = 'policy_auto_accept'))
           AND (
               #{verdict} IS NULL
               OR (#{verdict} = 'pending' AND (CASE WHEN #{reviewLevel} = 'senior_reviewer' THEN latest_senior.id ELSE latest_reviewer.id END) IS NULL)

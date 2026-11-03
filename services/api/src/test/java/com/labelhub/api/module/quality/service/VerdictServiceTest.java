@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +61,21 @@ class VerdictServiceTest {
         assertThat(verdict.status()).isEqualTo("pending");
         assertThat(verdict.derivedFromEntryId()).isNull();
         assertThat(verdict.derivedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void deriveCurrentVerdict_derives_accepted_by_policy_when_only_auto_pass_evidence_exists() {
+        when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
+        when(qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(SUBMISSION_ID)).thenReturn(null);
+        QualityLedgerEntryEntity accept = new QualityLedgerEntryEntity();
+        accept.setId(950L);
+        accept.setEvidenceType("policy_auto_accept");
+        when(qualityLedgerEntryMapper.selectBySubmissionIdAndType(SUBMISSION_ID, "policy_auto_accept")).thenReturn(List.of(accept));
+
+        VerdictView verdict = verdictService.deriveCurrentVerdict(SUBMISSION_ID, REVIEWER_ID, Set.of("REVIEWER"));
+
+        assertThat(verdict.status()).isEqualTo("accepted_by_policy");  // never "approved": that always means a human
+        assertThat(verdict.derivedFromEntryId()).isEqualTo(950L);
     }
 
     @Test

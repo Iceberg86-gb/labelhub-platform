@@ -98,6 +98,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error("STATE_CONFLICT", exception.getMessage()));
     }
 
+    @ExceptionHandler(com.labelhub.api.module.ai.exception.AutoPolicyGateException.class)
+    ResponseEntity<ApiError> autoPolicyGate(com.labelhub.api.module.ai.exception.AutoPolicyGateException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error("AUTO_GATE_NOT_MET", exception.getMessage()));
+    }
+
     @ExceptionHandler(TaskNotAvailableException.class)
     ResponseEntity<ApiError> taskNotAvailable(TaskNotAvailableException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error("TASK_NOT_AVAILABLE", exception.getMessage()));
