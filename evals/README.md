@@ -51,6 +51,17 @@ python -m labelhub_evals run --provider chatgpt --model gpt-5.5 --effort medium 
 
 `runs/1fef5379b2aec412/` 是 `fake` provider 在当前 smoke 集上的管线基线（`runs/d9a11ef8ee7f6210/` 对应已被替换的 500 条抽样版黄金集，按只追加原则保留），CI 用回放模式逐字节复现它。它只用来证明管线本身可复现，**不代表模型质量**。真实模型的 H1 基线需要 owner 登录之后录制，见下一节。
 
+## 2.1 W1 基线
+
+真实模型基线是 [`runs/700607c95f112de6`](runs/700607c95f112de6/scorecard.md)（`gpt-6.1-terra@low`）。解读见 [`reports/w1-baseline.md`](reports/w1-baseline.md)；逐格误差和阈值扫描由 `analyze` 命令生成。
+
+```bash
+python -m labelhub_evals analyze runs/700607c95f112de6 --out reports/w1-baseline-analysis.md
+make evals-baseline          # 在仓库根目录运行：下载固定版本的数据并回放复现，不需要凭据
+```
+
+之后每一个改变 agent 行为的改动，都要和这条基线对比（ADR-017 §1.5）。
+
 ## 3. ChatGPT 登录与模型切换
 
 ```bash

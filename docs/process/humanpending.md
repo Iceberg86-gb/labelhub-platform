@@ -824,3 +824,29 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 交付：黄金集 manifest 改为全量（golden sha256 `5e0df257…`）。smoke 集变为源数据的前 24 条，新的 smoke 管线基线是 `evals/runs/1fef5379b2aec412/`。旧的 `runs/d9a11ef8ee7f6210/` 和对应的录制文件按只追加原则保留，不再被 CI 引用。
 
 验证：`make evals` 通过，57 条测试（executed）。重建两次，哈希一致（executed）。
+
+## 266. W1 完成：真实模型基线入库，ADR-018 Accepted(2026-11-03)
+
+交付：
+- owner 在本机用 ChatGPT 登录（ADR-018），模型为 `gpt-6.1-terra@low`，在全部 1038 条上录制了 H1 基线 `evals/runs/700607c95f112de6`，同时提交 24 条 smoke 运行 `runs/5edc06702ec12c02`。
+- 新增 `analyze` 命令，生成逐格误差与阈值扫描报告 `evals/reports/w1-baseline-analysis.md`；人工解读写在 `evals/reports/w1-baseline.md`。
+- CI 的 evals job 增加一道关卡：下载固定版本的 HelpSteer2，回放复现真实基线，并校验分析报告没有过期。
+- ADR-018 改为 Accepted；ADR-017 H1 关卡标记为通过；README 路线图中 W1 标记为完成。
+
+基线成绩：
+- 自动通过区错误率 8.93%，自动打回区错误率 53.14%
+- 转人工比例 33.14%，κ 0.34
+- 格式违规率 0%
+
+主要发现：模型的标准系统性地比人类严。人类打满分 (4, 4) 的样本中，仍有 27% 被自动打回；自动打回区即使把阈值收紧到 ≤ 0.05，错误率仍有 31%。
+
+验证：
+- 在 Linux 上回放复现 1038 + 24 条，结果逐字节一致（executed，与 owner 的 macOS 跨平台一致）。
+- `make evals` 共 64 条测试通过（executed）。
+
+#264-4 已关闭。
+
+待人工决策：
+- **[266-1] W2 之前要不要先做"判定标准对齐"实验？** 实验内容是新的 prompt 版本，或者把推理强度提高到 `medium`，每个实验都和本基线对比。
+  - 依据：基线显示主要误差来自判定标准，而 H2 针对的格式 / Schema 校验在 HelpSteer2 上的违规率是 0，测不出收益。
+  - 临时假设：未决定，等 owner 选择。

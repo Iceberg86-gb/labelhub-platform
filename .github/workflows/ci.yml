@@ -55,6 +55,11 @@ jobs:
         run: >-
           python -m labelhub_evals run --golden datasets/helpsteer2-h1/smoke.jsonl --golden-name helpsteer2-h1-smoke
           --provider fake --mode replay --require-reproduced
+      - name: Real-model W1 baseline reproduces byte-for-byte (downloads pinned HelpSteer2, replay only)
+        run: |
+          python -m labelhub_evals golden build
+          python -m labelhub_evals run --provider chatgpt --model gpt-6.1-terra --effort low --mode replay --require-reproduced
+          python -m labelhub_evals analyze runs/700607c95f112de6 --out reports/w1-baseline-analysis.md --check
       - name: Replay must not leave untracked files
         run: test -z "$(git status --porcelain -- .)"
 

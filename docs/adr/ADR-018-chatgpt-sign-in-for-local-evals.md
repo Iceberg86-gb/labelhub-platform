@@ -2,7 +2,9 @@
 
 ## Status
 
-Proposed（2026-11）。随 ADR-017 H1（W1 评测框架）一起落地，仅作用于 `evals/`。
+Accepted（2026-11-03）。仅作用于 `evals/`。owner 已用真实账号完成验收：登录 → 模型目录 → select → test → apply → 1038 条录制（[W1 基线报告](../../evals/reports/w1-baseline.md)）。
+
+验收中修正过一处：模型目录请求不带 `client_version` 查询参数（这个参数来自参考实现，官方文档里没有；带上之后服务端返回空目录），见 PR #6。
 
 本 ADR 扩展 ADR-011 和 ADR-017，不改变生产运行时的 provider 默认选择（LH-2）。
 

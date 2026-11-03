@@ -16,7 +16,7 @@ JAVA17_HOME := $(shell \
 	fi)
 JAVA17_ENV := JAVA_HOME="$(JAVA17_HOME)" PATH="$(JAVA17_HOME)/bin:$$PATH"
 
-.PHONY: doctor dev-up dev-down test-db dev-api verify migrate-check require-java17 evals
+.PHONY: doctor dev-up dev-down test-db dev-api verify migrate-check require-java17 evals evals-baseline
 
 require-java17:
 	@if [ -z "$(JAVA17_HOME)" ]; then \
@@ -84,3 +84,9 @@ migrate-check: test-db require-java17
 evals:
 	cd evals && python3 -m pytest -q && python3 -m labelhub_evals run --golden datasets/helpsteer2-h1/smoke.jsonl \
 		--golden-name helpsteer2-h1-smoke --provider fake --mode replay --require-reproduced
+
+# W1 real-model baseline (ADR-017 H1): downloads pinned HelpSteer2 once, then replays. No credentials.
+evals-baseline:
+	cd evals && python3 -m labelhub_evals golden build && python3 -m labelhub_evals run --provider chatgpt \
+		--model gpt-6.1-terra --effort low --mode replay --require-reproduced && \
+		python3 -m labelhub_evals analyze runs/700607c95f112de6 --out reports/w1-baseline-analysis.md --check
