@@ -36,6 +36,9 @@ vi.mock('@douyinfe/semi-ui', () => ({
     <section className={className}>{children}</section>
   ),
   Empty: ({ title }: { title?: ReactNode }) => <div>{title}</div>,
+  Checkbox: ({ children, checked }: { children?: ReactNode; checked?: boolean }) => (
+    <label><input type="checkbox" checked={Boolean(checked)} readOnly />{children}</label>
+  ),
   Input: ({ placeholder, value }: { placeholder?: string; value?: string }) => (
     <input placeholder={placeholder} value={value} readOnly />
   ),

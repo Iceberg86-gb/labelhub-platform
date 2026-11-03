@@ -1774,6 +1774,35 @@ paths:
           $ref: '#/components/responses/ErrorForbidden'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /ai-review/rules/{ruleId}/shadow-stats:
+    get:
+      tags: [AIReview]
+      operationId: getAiReviewRuleShadowStats
+      description: >-
+        ADR-020 §3 (read-only, W3a). Shadow auto-pass error of this rule version measured on production data: among
+        submissions the AI routed to pass and a human has judged (latest human verdict, so senior arbitration wins),
+        the share the human rejected, with a Wilson 95% upper bound. Grouped by prompt version and model, because a
+        gate decision is only valid for the exact (rule, prompt, model) it was measured on.
+      parameters:
+        - in: path
+          name: ruleId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Shadow statistics for the rule version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiReviewRuleShadowStats'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          description: Requested resource does not exist.
   /ai-review/rules/{ruleId}/publish:
     post:
       tags: [AIReview]
@@ -4063,6 +4092,20 @@ components:
           type: number
           minimum: 0
           maximum: 1
+        disagreementThreshold:
+          type: number
+          nullable: true
+          minimum: 0
+          maximum: 1
+          description: >-
+            ADR-020. When set, a reviewer approve of a submission the AI scored at or below this value opens a
+            senior arbitration case (ai_reviewer_disagreement). Must be <= rejectThreshold. Null disables the signal.
+            Choose it with `python -m labelhub_evals calibrate` (evals/reports/w3a-calibration.md).
+        escalateLoopFlags:
+          type: boolean
+          description: >-
+            ADR-020. Open a senior case (ai_loop_flagged) for agent-loop outcomes flagged/downgraded outside the manual
+            zone. Omitted means false (off): calibration found the flag alone has low precision.
     AiReviewRule:
       type: object
       required: [id, taskId, versionNo, promptVersionId, promptTemplate, dimensions, threshold, passThreshold, rejectThreshold, status, isCurrent, createdAt]
@@ -4095,6 +4138,20 @@ components:
           type: number
           minimum: 0
           maximum: 1
+        disagreementThreshold:
+          type: number
+          nullable: true
+          minimum: 0
+          maximum: 1
+          description: >-
+            ADR-020. When set, a reviewer approve of a submission the AI scored at or below this value opens a
+            senior arbitration case (ai_reviewer_disagreement). Must be <= rejectThreshold. Null disables the signal.
+            Choose it with `python -m labelhub_evals calibrate` (evals/reports/w3a-calibration.md).
+        escalateLoopFlags:
+          type: boolean
+          description: >-
+            ADR-020. Open a senior case (ai_loop_flagged) for agent-loop outcomes flagged/downgraded outside the manual
+            zone. Omitted means false (off): calibration found the flag alone has low precision.
         status:
           $ref: '#/components/schemas/AiReviewRuleStatus'
         isCurrent:
@@ -4107,6 +4164,42 @@ components:
           type: string
           format: date-time
           nullable: true
+    AiReviewRuleShadowStats:
+      type: object
+      required: [ruleId, groups]
+      properties:
+        ruleId:
+          type: integer
+          format: int64
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiReviewRuleShadowStatsGroup'
+    AiReviewRuleShadowStatsGroup:
+      type: object
+      required: [promptVersionId, modelName, aiPassJudged, humanRejected]
+      properties:
+        promptVersionId:
+          type: integer
+          format: int64
+          nullable: true
+        modelName:
+          type: string
+        aiPassJudged:
+          type: integer
+          description: Submissions the AI routed to pass that have a human verdict.
+        humanRejected:
+          type: integer
+          description: Of those, how many the latest human verdict rejected.
+        errorRate:
+          type: string
+          format: decimal
+          nullable: true
+        wilsonUpper95:
+          type: string
+          format: decimal
+          nullable: true
+          description: Wilson score 95% upper bound of the error rate (z = 1.96); the ADR-020 auto gate compares this.
     PromptVersionStatus:
       type: string
       enum: [draft, published]
@@ -4601,7 +4694,7 @@ components:
       enum: [arbitration, sampling]
     SeniorReviewCaseSourceSignal:
       type: string
-      enum: [ai_manual_review, ai_error_conflict, reviewer_difficulty, sampling]
+      enum: [ai_manual_review, ai_error_conflict, reviewer_difficulty, sampling, ai_loop_flagged, ai_reviewer_disagreement]
     SeniorReviewCaseStatus:
       type: string
       enum: [pending_reviewer, open, resolved, canceled]

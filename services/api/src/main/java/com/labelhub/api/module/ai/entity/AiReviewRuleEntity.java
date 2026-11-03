@@ -20,6 +20,10 @@ public class AiReviewRuleEntity {
     private BigDecimal threshold;
     private BigDecimal passThreshold;
     private BigDecimal rejectThreshold;
+    /** ADR-020: open a senior case when the AI score is at or below this and the reviewer approved; null = off. */
+    private BigDecimal disagreementThreshold;
+    /** ADR-020: open a senior case for flagged/downgraded agent-loop outcomes outside the manual zone. */
+    private Boolean escalateLoopFlags;
     @TableField("status")
     private String statusCode;
     private Long createdBy;
@@ -42,6 +46,10 @@ public class AiReviewRuleEntity {
     public void setPassThreshold(BigDecimal passThreshold) { this.passThreshold = passThreshold; }
     public BigDecimal getRejectThreshold() { return rejectThreshold; }
     public void setRejectThreshold(BigDecimal rejectThreshold) { this.rejectThreshold = rejectThreshold; }
+    public BigDecimal getDisagreementThreshold() { return disagreementThreshold; }
+    public void setDisagreementThreshold(BigDecimal disagreementThreshold) { this.disagreementThreshold = disagreementThreshold; }
+    public Boolean getEscalateLoopFlags() { return escalateLoopFlags; }
+    public void setEscalateLoopFlags(Boolean escalateLoopFlags) { this.escalateLoopFlags = escalateLoopFlags; }
     public String getStatusCode() { return statusCode; }
     public void setStatusCode(String statusCode) { this.statusCode = statusCode; }
     public Long getCreatedBy() { return createdBy; }

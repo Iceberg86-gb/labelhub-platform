@@ -30,6 +30,12 @@ public class SeniorReviewCaseService {
     public static final String SIGNAL_AI_MANUAL_REVIEW = "ai_manual_review";
     public static final String SIGNAL_AI_ERROR_CONFLICT = "ai_error_conflict";
     public static final String SIGNAL_REVIEWER_DIFFICULTY = "reviewer_difficulty";
+    /** ADR-020 §1: the agent loop (ADR-019) flagged or downgraded the output, but its score is outside the manual zone. */
+    public static final String SIGNAL_AI_LOOP_FLAGGED = "ai_loop_flagged";
+    /** ADR-020 §1: the AI routed to reject and the reviewer approved — a human/AI disagreement worth arbitration. */
+    public static final String SIGNAL_AI_REVIEWER_DISAGREEMENT = "ai_reviewer_disagreement";
+    static final java.util.Set<String> LOOP_ESCALATION_OUTCOMES = java.util.Set.of(
+        "flagged", "downgraded", "judgement_changed", "correction_failed", "downgraded_no_correction_support");
     public static final String STATUS_PENDING_REVIEWER = "pending_reviewer";
     public static final String STATUS_OPEN = "open";
     public static final String STATUS_RESOLVED = "resolved";
@@ -72,8 +78,13 @@ public class SeniorReviewCaseService {
         if (aiOverallEntry == null || aiOverallEntry.getPayload() == null) {
             return null;
         }
+        Object loopOutcome = aiOverallEntry.getPayload().get("agentLoopOutcome");
+        boolean loopFlagged = loopOutcome != null && LOOP_ESCALATION_OUTCOMES.contains(String.valueOf(loopOutcome));
+        // Off unless the rule opted in: calibration showed the flag alone has low precision (ADR-020 §2).
+        boolean loopEscalation = loopFlagged && Boolean.TRUE.equals(aiOverallEntry.getPayload().get("escalateLoopFlags"));
         if (!"manual_review".equals(aiOverallEntry.getPayload().get("recommendation"))) {
-            return null;
+            // A manual_review case already covers a flagged loop; open a separate one only when the score routed elsewhere.
+            return loopEscalation ? recordLoopFlagged(submissionId, taskId, aiOverallEntry, String.valueOf(loopOutcome)) : null;
         }
         String caseKey = caseKey(submissionId, SIGNAL_AI_MANUAL_REVIEW);
         SeniorReviewCaseEntity existing = seniorReviewCaseMapper.selectByCaseKey(caseKey);
@@ -84,12 +95,41 @@ public class SeniorReviewCaseService {
         payload.put("recommendation", aiOverallEntry.getPayload().get("recommendation"));
         payload.put("finalScore", aiOverallEntry.getPayload().get("finalScore"));
         payload.put("source", "ai_overall_recommendation");
+        if (loopFlagged) {
+            payload.put("agentLoopOutcome", String.valueOf(loopOutcome));
+        }
         return insertCase(
             submissionId,
             taskId,
             caseKey,
             CASE_TYPE_ARBITRATION,
             SIGNAL_AI_MANUAL_REVIEW,
+            STATUS_PENDING_REVIEWER,
+            "normal",
+            null,
+            aiOverallEntry.getId(),
+            null,
+            payload
+        );
+    }
+
+    private SeniorReviewCaseEntity recordLoopFlagged(Long submissionId, Long taskId, QualityLedgerEntryEntity aiOverallEntry, String outcome) {
+        String caseKey = caseKey(submissionId, SIGNAL_AI_LOOP_FLAGGED);
+        SeniorReviewCaseEntity existing = seniorReviewCaseMapper.selectByCaseKey(caseKey);
+        if (existing != null) {
+            return existing;
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("recommendation", aiOverallEntry.getPayload().get("recommendation"));
+        payload.put("finalScore", aiOverallEntry.getPayload().get("finalScore"));
+        payload.put("agentLoopOutcome", outcome);
+        payload.put("source", "ai_overall_recommendation");
+        return insertCase(
+            submissionId,
+            taskId,
+            caseKey,
+            CASE_TYPE_ARBITRATION,
+            SIGNAL_AI_LOOP_FLAGGED,
             STATUS_PENDING_REVIEWER,
             "normal",
             null,
@@ -111,12 +151,13 @@ public class SeniorReviewCaseService {
             reviewerEntry.getActorId(),
             now
         );
+        SeniorReviewCaseEntity disagreement = recordReviewerDisagreement(submission, reviewerEntry);
         List<QualityLedgerEntryEntity> findings = qualityLedgerEntryMapper.selectHighConfidenceErrorFieldFindings(
             submission.getId(),
             DEFAULT_ERROR_CONFLICT_THRESHOLD
         );
         if (findings.isEmpty()) {
-            return null;
+            return disagreement;
         }
         String caseKey = caseKey(submission.getId(), SIGNAL_AI_ERROR_CONFLICT);
         SeniorReviewCaseEntity existing = seniorReviewCaseMapper.selectByCaseKey(caseKey);
@@ -137,6 +178,46 @@ public class SeniorReviewCaseService {
             "high",
             reviewerEntry.getId(),
             null,
+            reviewerEntry.getActorId(),
+            payload
+        );
+    }
+
+    /**
+     * ADR-020 §1: the reviewer approved a submission the AI scored at or below the rule's disagreement threshold
+     * (snapshotted in the AI evidence). Opens immediately: the reviewer has already decided.
+     */
+    private SeniorReviewCaseEntity recordReviewerDisagreement(SubmissionEntity submission, QualityLedgerEntryEntity reviewerEntry) {
+        QualityLedgerEntryEntity ai = qualityLedgerEntryMapper.selectLatestAiOverallRecommendation(submission.getId());
+        if (ai == null || ai.getPayload() == null) {
+            return null;
+        }
+        BigDecimal threshold = decimalOrNull(ai.getPayload().get("disagreementThreshold"));
+        BigDecimal score = decimalOrNull(ai.getPayload().get("finalScore"));
+        if (threshold == null || score == null || score.compareTo(threshold) > 0) {
+            return null;
+        }
+        String caseKey = caseKey(submission.getId(), SIGNAL_AI_REVIEWER_DISAGREEMENT);
+        SeniorReviewCaseEntity existing = seniorReviewCaseMapper.selectByCaseKey(caseKey);
+        if (existing != null) {
+            return existing;
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("aiRecommendation", ai.getPayload().get("recommendation"));
+        payload.put("finalScore", ai.getPayload().get("finalScore"));
+        payload.put("disagreementThreshold", threshold);
+        payload.put("reviewerVerdict", "approve");
+        payload.put("source", "ai_reviewer_disagreement");
+        return insertCase(
+            submission.getId(),
+            submission.getTaskId(),
+            caseKey,
+            CASE_TYPE_ARBITRATION,
+            SIGNAL_AI_REVIEWER_DISAGREEMENT,
+            STATUS_OPEN,
+            "normal",
+            reviewerEntry.getId(),
+            ai.getId(),
             reviewerEntry.getActorId(),
             payload
         );
@@ -274,6 +355,17 @@ public class SeniorReviewCaseService {
                 sessionMapper.updateStatus(submission.getSessionId(), SubmissionStatusCodes.RETURNED_FOR_REVISION),
                 "mark session returned for revision"
             );
+        }
+    }
+
+    private static BigDecimal decimalOrNull(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return value instanceof BigDecimal decimal ? decimal : new BigDecimal(String.valueOf(value));
+        } catch (NumberFormatException invalid) {
+            return null;
         }
     }
 

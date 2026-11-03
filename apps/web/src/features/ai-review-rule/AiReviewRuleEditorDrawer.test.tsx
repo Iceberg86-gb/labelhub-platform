@@ -20,6 +20,9 @@ vi.mock('@douyinfe/semi-ui', () => ({
   Button: ({ children, disabled }: { children?: ReactNode; disabled?: boolean }) => (
     <button disabled={disabled}>{children}</button>
   ),
+  Checkbox: ({ children, checked }: { children?: ReactNode; checked?: boolean }) => (
+    <label><input type="checkbox" checked={Boolean(checked)} readOnly />{children}</label>
+  ),
   Input: ({ placeholder, value }: { placeholder?: string; value?: string }) => (
     <input placeholder={placeholder} value={value} readOnly />
   ),
@@ -60,32 +63,46 @@ vi.mock('./AiReviewRuleHistoryPanel', () => ({
   ),
 }));
 
+const EMPTY_ESCALATION = { disagreementThreshold: '', escalateLoopFlags: false };
+
 describe('aiReviewRuleFormModel', () => {
+  it('validates the optional ADR-020 disagreement threshold and maps escalation settings into the request', () => {
+    const base = { promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '0.6', rejectThreshold: '0.45' };
+    expect(validateAiReviewRuleForm({ ...base, ...EMPTY_ESCALATION })).toEqual({});
+    expect(validateAiReviewRuleForm({ ...base, disagreementThreshold: '0.5', escalateLoopFlags: false }).disagreementThreshold)
+      .toBe(AI_REVIEW_RULE_FORM_MESSAGES.disagreementOrder);
+    expect(validateAiReviewRuleForm({ ...base, disagreementThreshold: 'x', escalateLoopFlags: false }).disagreementThreshold)
+      .toBe(AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange);
+    const result = buildAiReviewRuleRequest(22, { ...base, disagreementThreshold: '0.25', escalateLoopFlags: true });
+    expect(result.ok && result.request).toMatchObject({ disagreementThreshold: 0.25, escalateLoopFlags: true });
+  });
+
   it('validates backend-aligned required and duplicate messages', () => {
-    expect(validateAiReviewRuleForm({ promptTemplate: ' ', dimensions: ['准确性'], passThreshold: '0.8', rejectThreshold: '0.2' }).promptTemplate)
+    expect(validateAiReviewRuleForm({ ...EMPTY_ESCALATION, promptTemplate: ' ', dimensions: ['准确性'], passThreshold: '0.8', rejectThreshold: '0.2' }).promptTemplate)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.promptRequired);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: [], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
+    expect(validateAiReviewRuleForm({ ...EMPTY_ESCALATION, promptTemplate: 'p', dimensions: [], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.dimensionsRequired);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性', ' '], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
+    expect(validateAiReviewRuleForm({ ...EMPTY_ESCALATION, promptTemplate: 'p', dimensions: ['准确性', ' '], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.dimensionsRequired);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性', ' 准确性 '], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
+    expect(validateAiReviewRuleForm({ ...EMPTY_ESCALATION, promptTemplate: 'p', dimensions: ['准确性', ' 准确性 '], passThreshold: '0.8', rejectThreshold: '0.2' }).dimensions)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.dimensionsDuplicate);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '1.1', rejectThreshold: '0.2' }).passThreshold)
+    expect(validateAiReviewRuleForm({ ...EMPTY_ESCALATION, promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '1.1', rejectThreshold: '0.2' }).passThreshold)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], passThreshold: 'abc', rejectThreshold: '0.2' }).passThreshold)
+    expect(validateAiReviewRuleForm({ ...EMPTY_ESCALATION, promptTemplate: 'p', dimensions: ['准确性'], passThreshold: 'abc', rejectThreshold: '0.2' }).passThreshold)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange);
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '0.7', rejectThreshold: '0.7' }).rejectThreshold)
+    expect(validateAiReviewRuleForm({ ...EMPTY_ESCALATION, promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '0.7', rejectThreshold: '0.7' }).rejectThreshold)
       .toBe(AI_REVIEW_RULE_FORM_MESSAGES.thresholdOrder);
   });
 
   it('accepts threshold boundaries and maps trimmed dimensions into a request', () => {
-    expect(validateAiReviewRuleForm({ promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '1', rejectThreshold: '0' })).toEqual({});
+    expect(validateAiReviewRuleForm({ ...EMPTY_ESCALATION, promptTemplate: 'p', dimensions: ['准确性'], passThreshold: '1', rejectThreshold: '0' })).toEqual({});
 
     const result = buildAiReviewRuleRequest(22, {
       promptTemplate: '  review prompt  ',
       dimensions: [' 准确性 ', '完整性'],
       passThreshold: '0.75',
       rejectThreshold: '0.25',
+      ...EMPTY_ESCALATION,
     });
 
     expect(result.ok).toBe(true);
@@ -97,6 +114,8 @@ describe('aiReviewRuleFormModel', () => {
         threshold: 0.75,
         passThreshold: 0.75,
         rejectThreshold: 0.25,
+        disagreementThreshold: null,
+        escalateLoopFlags: false,
       });
     }
   });
@@ -110,6 +129,7 @@ describe('aiReviewRuleFormModel', () => {
       dimensions: ['准确性'],
       passThreshold: '0.8',
       rejectThreshold: '0.2',
+      ...EMPTY_ESCALATION,
     }, save)).resolves.toEqual({ ok: true, rule });
     expect(save).toHaveBeenCalledWith({
       taskId: 22,
@@ -118,6 +138,8 @@ describe('aiReviewRuleFormModel', () => {
       threshold: 0.8,
       passThreshold: 0.8,
       rejectThreshold: 0.2,
+      disagreementThreshold: null,
+      escalateLoopFlags: false,
     });
 
     const failedSave = vi.fn().mockRejectedValue(new AiReviewRuleMutationFailure(400, 'INVALID_AI_REVIEW_RULE', '评分维度不能重复'));
@@ -126,6 +148,7 @@ describe('aiReviewRuleFormModel', () => {
       dimensions: ['准确性'],
       passThreshold: '0.8',
       rejectThreshold: '0.2',
+      ...EMPTY_ESCALATION,
     }, failedSave)).resolves.toEqual({ ok: false, errorMessage: '评分维度不能重复' });
   });
 });

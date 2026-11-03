@@ -75,6 +75,17 @@ public interface QualityLedgerEntryMapper {
         SELECT id, submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at
         FROM quality_ledger_entries
         WHERE submission_id = #{submissionId}
+          AND evidence_type = 'ai_overall_recommendation'
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+        """)
+    @ResultMap("qualityLedgerEntryResultMap")
+    QualityLedgerEntryEntity selectLatestAiOverallRecommendation(@Param("submissionId") Long submissionId);
+
+    @Select("""
+        SELECT id, submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at
+        FROM quality_ledger_entries
+        WHERE submission_id = #{submissionId}
           AND evidence_type = 'reviewer_overall_verdict'
           AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.reviewLevel')), 'reviewer') = #{reviewLevel}
         ORDER BY created_at DESC, id DESC

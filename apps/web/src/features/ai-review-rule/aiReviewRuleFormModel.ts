@@ -6,6 +6,7 @@ export const AI_REVIEW_RULE_FORM_MESSAGES = {
   dimensionsDuplicate: '评分维度不能重复',
   thresholdRange: '阈值必须在 0 到 1 之间',
   thresholdOrder: '打回阈值必须小于通过阈值',
+  disagreementOrder: '人机分歧阈值不能大于打回阈值',
 } as const;
 
 export type AiReviewRuleFormState = {
@@ -13,6 +14,10 @@ export type AiReviewRuleFormState = {
   dimensions: string[];
   passThreshold: string;
   rejectThreshold: string;
+  /** ADR-020: blank = off. Reviewer approve of a submission scored at or below this opens a senior case. */
+  disagreementThreshold: string;
+  /** ADR-020: escalate flagged/downgraded agent-loop outcomes outside the manual zone. */
+  escalateLoopFlags: boolean;
 };
 
 export type AiReviewRuleFormErrors = Partial<Record<keyof AiReviewRuleFormState, string>>;
@@ -34,6 +39,8 @@ export function createDefaultAiReviewRuleFormState(): AiReviewRuleFormState {
     dimensions: [''],
     passThreshold: '0.8',
     rejectThreshold: '0.2',
+    disagreementThreshold: '',
+    escalateLoopFlags: false,
   };
 }
 
@@ -63,6 +70,15 @@ export function validateAiReviewRuleForm(state: AiReviewRuleFormState): AiReview
     errors.rejectThreshold = AI_REVIEW_RULE_FORM_MESSAGES.thresholdOrder;
   }
 
+  if (state.disagreementThreshold.trim() !== '') {
+    const disagreementThreshold = Number(state.disagreementThreshold);
+    if (!Number.isFinite(disagreementThreshold) || disagreementThreshold < 0 || disagreementThreshold > 1) {
+      errors.disagreementThreshold = AI_REVIEW_RULE_FORM_MESSAGES.thresholdRange;
+    } else if (Number.isFinite(rejectThreshold) && disagreementThreshold > rejectThreshold) {
+      errors.disagreementThreshold = AI_REVIEW_RULE_FORM_MESSAGES.disagreementOrder;
+    }
+  }
+
   return errors;
 }
 
@@ -81,6 +97,8 @@ export function buildAiReviewRuleRequest(taskId: number, state: AiReviewRuleForm
       threshold: Number(state.passThreshold),
       passThreshold: Number(state.passThreshold),
       rejectThreshold: Number(state.rejectThreshold),
+      disagreementThreshold: state.disagreementThreshold.trim() === '' ? null : Number(state.disagreementThreshold),
+      escalateLoopFlags: state.escalateLoopFlags,
     },
   };
 }

@@ -2141,6 +2141,10 @@ export interface components {
             threshold?: number | null;
             passThreshold: number;
             rejectThreshold: number;
+            /** @description ADR-020. When set, a reviewer approve of a submission the AI scored at or below this value opens a senior arbitration case (ai_reviewer_disagreement). Must be <= rejectThreshold. Null disables the signal. Choose it with `python -m labelhub_evals calibrate` (evals/reports/w3a-calibration.md). */
+            disagreementThreshold?: number | null;
+            /** @description ADR-020. Open a senior case (ai_loop_flagged) for agent-loop outcomes flagged/downgraded outside the manual zone. Omitted means false (off): calibration found the flag alone has low precision. */
+            escalateLoopFlags?: boolean;
         };
         AiReviewRule: {
             /** Format: int64 */
@@ -2156,6 +2160,10 @@ export interface components {
             threshold: number;
             passThreshold: number;
             rejectThreshold: number;
+            /** @description ADR-020. When set, a reviewer approve of a submission the AI scored at or below this value opens a senior arbitration case (ai_reviewer_disagreement). Must be <= rejectThreshold. Null disables the signal. Choose it with `python -m labelhub_evals calibrate` (evals/reports/w3a-calibration.md). */
+            disagreementThreshold?: number | null;
+            /** @description ADR-020. Open a senior case (ai_loop_flagged) for agent-loop outcomes flagged/downgraded outside the manual zone. Omitted means false (off): calibration found the flag alone has low precision. */
+            escalateLoopFlags?: boolean;
             status: components["schemas"]["AiReviewRuleStatus"];
             /** @description Server-derived. True when this rule id equals the task's current_ai_review_rule_id. */
             isCurrent: boolean;
@@ -2424,7 +2432,7 @@ export interface components {
         /** @enum {string} */
         SeniorReviewCaseType: "arbitration" | "sampling";
         /** @enum {string} */
-        SeniorReviewCaseSourceSignal: "ai_manual_review" | "ai_error_conflict" | "reviewer_difficulty" | "sampling";
+        SeniorReviewCaseSourceSignal: "ai_manual_review" | "ai_error_conflict" | "reviewer_difficulty" | "sampling" | "ai_loop_flagged" | "ai_reviewer_disagreement";
         /** @enum {string} */
         SeniorReviewCaseStatus: "pending_reviewer" | "open" | "resolved" | "canceled";
         /** @enum {string} */

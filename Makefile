@@ -91,4 +91,5 @@ evals-baseline:
 		--model gpt-6.1-terra --effort low --mode replay --require-reproduced && \
 		python3 -m labelhub_evals analyze runs/700607c95f112de6 --out reports/w1-baseline-analysis.md --check && \
 		python3 -m labelhub_evals run --provider chatgpt --model gpt-6.1-terra --effort low --mode replay --loop-max-steps 3 --require-reproduced && \
-		python3 -m labelhub_evals compare runs/700607c95f112de6 runs/76b0cd706ca35fdd --out reports/w2v2-vs-w1.md --check
+		python3 -m labelhub_evals compare runs/700607c95f112de6 runs/76b0cd706ca35fdd --out reports/w2v2-vs-w1.md --check && \
+		python3 -m labelhub_evals calibrate runs/76b0cd706ca35fdd --out reports/w3a-calibration.md --check

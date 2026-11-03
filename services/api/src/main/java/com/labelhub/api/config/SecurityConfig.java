@@ -72,6 +72,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/submissions/*/ai-review").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/submissions/*/ai-review").authenticated()
                 .requestMatchers(HttpMethod.GET, "/prompt-versions/default").authenticated()
+                .requestMatchers(HttpMethod.GET, "/ai-review/rules/*/shadow-stats").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/reviewer/submissions").hasAnyRole("REVIEWER", "SENIOR_REVIEWER")
                 .requestMatchers(HttpMethod.GET, "/senior-review/cases").hasRole("SENIOR_REVIEWER")
                 .requestMatchers(HttpMethod.POST, "/senior-review/cases/*/resolve").hasRole("SENIOR_REVIEWER")

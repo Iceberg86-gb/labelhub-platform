@@ -52,6 +52,7 @@ public class AiReviewRuleService {
         List<String> dimensions = validateDimensions(request.getDimensions());
         validatePromptTemplate(request.getPromptTemplate());
         ThresholdPair thresholds = validateThresholds(request.getPassThreshold(), request.getRejectThreshold(), request.getThreshold());
+        BigDecimal disagreementThreshold = validateDisagreementThreshold(request.getDisagreementThreshold(), thresholds.rejectThreshold());
         TaskEntity task = requireOwnedTask(request.getTaskId(), ownerId);
         PromptVersionEntity promptVersion = promptVersionService.create(request.getPromptTemplate(), ownerId);
 
@@ -62,6 +63,8 @@ public class AiReviewRuleService {
         entity.setThreshold(thresholds.passThreshold());
         entity.setPassThreshold(thresholds.passThreshold());
         entity.setRejectThreshold(thresholds.rejectThreshold());
+        entity.setDisagreementThreshold(disagreementThreshold);
+        entity.setEscalateLoopFlags(Boolean.TRUE.equals(request.getEscalateLoopFlags()));
         entity.setStatusCode("draft");
         entity.setCreatedBy(ownerId);
 
@@ -187,6 +190,17 @@ public class AiReviewRuleService {
     }
 
     private record ThresholdPair(BigDecimal passThreshold, BigDecimal rejectThreshold) {
+    }
+
+    private BigDecimal validateDisagreementThreshold(BigDecimal disagreementThreshold, BigDecimal rejectThreshold) {
+        if (disagreementThreshold == null) {
+            return null;
+        }
+        validateThreshold(disagreementThreshold);
+        if (disagreementThreshold.compareTo(rejectThreshold) > 0) {
+            throw new InvalidAiReviewRuleException("disagreementThreshold", "人机分歧阈值不能大于打回阈值");
+        }
+        return disagreementThreshold;
     }
 
     private String writeDimensions(List<String> dimensions) {

@@ -62,6 +62,37 @@ class AiReviewRuleServiceTest {
         assertThat(result.rule().getStatusCode()).isEqualTo("draft");
         assertThat(result.rule().getCreatedBy()).isEqualTo(1001L);
         assertThat(result.isCurrent()).isFalse();
+        // ADR-020 defaults keep the pre-W3 escalation behaviour.
+        assertThat(result.rule().getDisagreementThreshold()).isNull();
+        assertThat(result.rule().getEscalateLoopFlags()).isFalse();
+    }
+
+    @Test
+    void saveRule_persists_calibrated_escalation_signals() {
+        when(taskMapper.selectById(44L)).thenReturn(task(44L, 1001L));
+        when(promptVersionService.create("Review prompt", 1001L)).thenReturn(promptVersion(7L, "Review prompt"));
+        when(aiReviewRuleMapper.selectMaxVersionByTaskId(44L)).thenReturn(1);
+        when(aiReviewRuleMapper.insert(any())).thenReturn(1);
+        AiReviewRuleRequest request = request(44L, "Review prompt", List.of("overall"), "0.6000", "0.4500");
+        request.setDisagreementThreshold(new BigDecimal("0.25"));
+        request.setEscalateLoopFlags(true);
+
+        AiReviewRuleView result = service.saveRule(request, 1001L);
+
+        assertThat(result.rule().getDisagreementThreshold()).isEqualByComparingTo("0.25");
+        assertThat(result.rule().getEscalateLoopFlags()).isTrue();
+    }
+
+    @Test
+    void saveRule_rejects_disagreement_threshold_above_reject_threshold() {
+        when(taskMapper.selectById(44L)).thenReturn(task(44L, 1001L));
+        AiReviewRuleRequest request = request(44L, "Review prompt", List.of("overall"), "0.8000", "0.2000");
+        request.setDisagreementThreshold(new BigDecimal("0.30"));
+
+        assertThatThrownBy(() -> service.saveRule(request, 1001L))
+            .isInstanceOf(InvalidAiReviewRuleException.class)
+            .hasMessageContaining("人机分歧阈值");
+        verify(promptVersionService, never()).create(any(), any());
     }
 
     @Test
