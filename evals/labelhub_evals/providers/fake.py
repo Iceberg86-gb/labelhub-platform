@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from labelhub_evals import review
 from labelhub_evals.canonical import canonical_hash
 from labelhub_evals.providers.base import ProviderResponse
 
@@ -30,3 +31,14 @@ class FakeProvider:
         }
         tokens_in = 200 + len(json.dumps(review_input)) // 4
         return ProviderResponse(json.dumps(arguments, sort_keys=True), None, tokens_in, 60, 400 + bucket)
+
+    def correct(self, review_input: dict, attempts: list, style: str) -> ProviderResponse:
+        """Deterministic fixer for pipeline tests: drop findings on unknown fields, align the suggestion
+        with the score zone (0.80 / 0.20)."""
+        from labelhub_evals.review_loop import downgraded_output
+
+        output = json.loads(attempts[-1].arguments)
+        fixed = downgraded_output(output, list(attempts[-1].errors))
+        routing = review.route(fixed)
+        fixed["overallSuggestion"] = routing.route
+        return ProviderResponse(json.dumps(fixed, sort_keys=True), None, 300, 60, 500)

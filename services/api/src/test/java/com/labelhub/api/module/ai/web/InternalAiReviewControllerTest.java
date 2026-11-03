@@ -4,12 +4,17 @@ import com.labelhub.api.generated.model.DimensionScore;
 import com.labelhub.api.generated.model.InternalAiReviewContext;
 import com.labelhub.api.generated.model.InternalAiReviewResult;
 import com.labelhub.api.generated.model.InternalAiReviewResultRequest;
+import com.labelhub.api.generated.model.InternalAiReviewValidation;
+import com.labelhub.api.generated.model.InternalAiReviewValidationError;
+import com.labelhub.api.generated.model.InternalAiReviewValidationRequest;
+import com.labelhub.api.module.ai.service.AiReviewOutputValidator;
 import com.labelhub.api.module.ai.service.AiReviewService;
 import com.labelhub.api.module.ai.service.InternalAiReviewResultCommand;
 import com.labelhub.api.module.ai.service.view.InternalAiReviewContextView;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -35,6 +40,44 @@ class InternalAiReviewControllerTest {
         assertThat(body.getPassThreshold()).isEqualByComparingTo("0.80");
         assertThat(body.getRejectThreshold()).isEqualByComparingTo("0.20");
         assertThat(body.getRenderedPrompt()).contains("rendered prompt");
+    }
+
+    @Test
+    void validateAiReviewOutput_uses_submission_context_and_reports_every_error() {
+        when(aiReviewService.getReviewValidationContext(300L)).thenReturn(new AiReviewOutputValidator.Context(
+            List.of("quality"), new BigDecimal("0.80"), new BigDecimal("0.20"), Set.of("answer")));
+        InternalAiReviewValidationRequest request = new InternalAiReviewValidationRequest();
+        request.setOutput(Map.of(
+            "overallSuggestion", "reject",
+            "confidence", 0.5,
+            "summary", "s",
+            "dimensionScores", List.of(Map.of("dimension", "quality", "score", 0.5)),
+            "fieldFindings", List.of(Map.of("fieldPath", "answer", "stableId", "answer-1", "severity", "info", "finding", "f"))
+        ));
+
+        InternalAiReviewValidation body = controller.validateAiReviewOutput(300L, request).getBody();
+
+        assertThat(body).isNotNull();
+        assertThat(body.getValid()).isFalse();
+        assertThat(body.getRulesVersion()).isEqualTo("review-output-v1");
+        assertThat(body.getErrors()).extracting(e -> e.getCode().getValue(), InternalAiReviewValidationError::getPath)
+            .containsExactly(
+                org.assertj.core.groups.Tuple.tuple("unknown_field", "fieldFindings[0].stableId"),
+                org.assertj.core.groups.Tuple.tuple("suggestion_score_conflict", "overallSuggestion"));
+    }
+
+    @Test
+    void validateAiReviewOutput_valid_output_has_no_errors() {
+        when(aiReviewService.getReviewValidationContext(300L)).thenReturn(new AiReviewOutputValidator.Context(
+            List.of("quality"), new BigDecimal("0.80"), new BigDecimal("0.20"), Set.of()));
+        InternalAiReviewValidationRequest request = new InternalAiReviewValidationRequest();
+        request.setOutput(Map.of("overallSuggestion", "pass", "confidence", 0.9, "summary", "s",
+            "dimensionScores", List.of(Map.of("dimension", "quality", "score", 0.9)), "fieldFindings", List.of()));
+
+        InternalAiReviewValidation body = controller.validateAiReviewOutput(300L, request).getBody();
+
+        assertThat(body.getValid()).isTrue();
+        assertThat(body.getErrors()).isEmpty();
     }
 
     @Test

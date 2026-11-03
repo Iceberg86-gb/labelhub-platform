@@ -30,10 +30,11 @@ class OutboxAiReviewWorkerTest {
     private final AiReviewApiClient apiClient = mock(AiReviewApiClient.class);
     private final AiReviewProvider provider = mock(AiReviewProvider.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-05-29T12:00:00Z"), ZoneOffset.UTC);
+    // Loop disabled: these tests pin the outbox lifecycle; AiReviewAgentLoopTest covers the H2 loop.
     private final OutboxAiReviewWorker worker = new OutboxAiReviewWorker(
         repository,
         apiClient,
-        provider,
+        new com.labelhub.agent.loop.AiReviewAgentLoop(provider, apiClient, false, 3),
         new ObjectMapper(),
         clock,
         "worker-1",

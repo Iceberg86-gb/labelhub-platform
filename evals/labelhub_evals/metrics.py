@@ -53,6 +53,7 @@ def scorecard(results: list[dict], *, price_in_per_mtok: Decimal | None = None, 
     if price_in_per_mtok is not None and price_out_per_mtok is not None and n and len(tokens_in) == n and len(tokens_out) == n:
         total = (Decimal(sum(tokens_in)) * price_in_per_mtok + Decimal(sum(tokens_out)) * price_out_per_mtok) / Decimal(1_000_000)
         cost = (total / n).quantize(Decimal("0.000001"))
+    loop = _loop_metrics(results) if results and "steps" in results[0] else None
     truth_counts = {"pass": sum(1 for r in results if r["truth"] == "pass"), "reject": sum(1 for r in results if r["truth"] == "reject")}
     return {
         "items": n,
@@ -64,9 +65,30 @@ def scorecard(results: list[dict], *, price_in_per_mtok: Decimal | None = None, 
         "decided_agreement": _ratio(sum(1 for r in decided if r["truth"] == r["route"]), len(decided)),
         "cohen_kappa_decided": cohen_kappa([(r["truth"], r["route"]) for r in decided]),
         "format_violation_rate": _ratio(violations, n),
-        # H1 is single-call, so there is no correction loop yet; H2 fills this in.
-        "validator_correction_success_rate": None,
+        # H1 is single-call (None); H2 = corrected / (corrected + downgraded).
+        "validator_correction_success_rate": None if loop is None else loop["correction_success_rate"],
         "tokens": {"input_total": sum(tokens_in), "output_total": sum(tokens_out), "items_with_usage": len(tokens_in)},
         "cost_per_item_usd": cost,
         "latency_ms": {"p50": percentile([r["latency_ms"] for r in results], 50), "p95": percentile([r["latency_ms"] for r in results], 95)},
+        **({} if loop is None else {"loop": loop}),
+    }
+
+
+def _loop_metrics(results: list[dict]) -> dict:
+    """ADR-019 loop metrics. Rates are over items whose first answer parsed (format violations never loop)."""
+    from collections import Counter
+
+    looped = [r for r in results if r["loop_outcome"] != "format_violation"]
+    outcomes = Counter(r["loop_outcome"] for r in results)
+    initial = Counter(code for r in looped for code in r["initial_error_codes"])
+    final = Counter(code for r in looped for code in r["final_error_codes"])
+    return {
+        "outcomes": {k: outcomes.get(k, 0) for k in ("valid", "corrected", "downgraded", "format_violation")},
+        "initial_invalid_rate": _ratio(sum(1 for r in looped if r["initial_error_codes"]), len(looped)),
+        "final_invalid_rate": _ratio(outcomes.get("downgraded", 0), len(looped)),
+        "correction_success_rate": _ratio(outcomes.get("corrected", 0), outcomes.get("corrected", 0) + outcomes.get("downgraded", 0)),
+        "mean_steps": None if not results else (Decimal(sum(r["steps"] for r in results)) / Decimal(len(results))).quantize(Decimal("0.0001")),
+        "model_calls": sum(r["steps"] for r in results),
+        "initial_error_codes": dict(sorted(initial.items())),
+        "final_error_codes": dict(sorted(final.items())),
     }

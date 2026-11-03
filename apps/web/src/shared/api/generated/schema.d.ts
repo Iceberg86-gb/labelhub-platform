@@ -1260,6 +1260,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/ai-review/submissions/{submissionId}/validate-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description ADR-019 (ADR-017 H2). Deterministically validates a candidate record_ai_review output against this submission's review context: configured dimensions, pass/reject thresholds and schema stableIds. Read-only. Behaviour is pinned by packages/contracts/fixtures/review-output-validation-corpus.json. */
+        post: operations["validateAiReviewOutput"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2703,6 +2720,24 @@ export interface components {
             scoringRuleVersion: string;
             businessPrompt: string;
             renderedPrompt: string;
+        };
+        InternalAiReviewValidationRequest: {
+            /** @description Candidate record_ai_review arguments exactly as the model produced them (any JSON value). */
+            output: unknown;
+        };
+        InternalAiReviewValidation: {
+            valid: boolean;
+            /** @description Validator rule set version, e.g. review-output-v1. */
+            rulesVersion: string;
+            errors: components["schemas"]["InternalAiReviewValidationError"][];
+        };
+        InternalAiReviewValidationError: {
+            /** @enum {string} */
+            code: "invalid_structure" | "missing_dimension" | "duplicate_dimension" | "unknown_dimension" | "unknown_field" | "suggestion_score_conflict" | "error_finding_on_pass";
+            /** @description Location in the output, e.g. overallSuggestion, dimensionScores[1].dimension, fieldFindings[0].stableId; "$" for the whole value. */
+            path: string;
+            /** @description Human/model readable explanation, fed back to the model verbatim. */
+            message: string;
         };
         InternalAiReviewResult: {
             /** @enum {string} */
@@ -5204,6 +5239,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InternalAiReviewContext"];
+                };
+            };
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    validateAiReviewOutput: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submissionId: components["parameters"]["SubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InternalAiReviewValidationRequest"];
+            };
+        };
+        responses: {
+            /** @description Validation result; valid=false lists every problem the model should correct. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalAiReviewValidation"];
                 };
             };
             404: components["responses"]["ErrorNotFound"];

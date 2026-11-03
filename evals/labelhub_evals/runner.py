@@ -34,8 +34,21 @@ class RunConfig:
     pass_threshold: Decimal = review.DEFAULT_PASS_THRESHOLD
     reject_threshold: Decimal = review.DEFAULT_REJECT_THRESHOLD
     dimensions: tuple[str, ...] = review.DEFAULT_DIMENSIONS
+    # ADR-019 (H2). None = H1 single call; identity (and run_id) of H1 runs is unchanged.
+    loop_max_steps: int | None = None
+    correction_style: str = "tool"
 
     def identity(self, golden_sha256: str) -> dict:
+        ident = self._base_identity(golden_sha256)
+        if self.loop_max_steps is not None:
+            from labelhub_evals.review_loop import FEEDBACK_VERSION
+            from labelhub_evals.review_validation import RULES_VERSION
+
+            ident["loop"] = {"correction_style": self.correction_style, "feedback_version": FEEDBACK_VERSION,
+                             "max_steps": self.loop_max_steps, "rules_version": RULES_VERSION}
+        return ident
+
+    def _base_identity(self, golden_sha256: str) -> dict:
         return {
             "dimensions": list(self.dimensions),
             "golden": {"name": self.golden_name, "sha256": golden_sha256},
@@ -75,6 +88,35 @@ def evaluate_item(item: GoldenItem, response: ProviderResponse, config: RunConfi
     }
 
 
+def evaluate_loop_item(item: GoldenItem, recorder, config: RunConfig) -> dict:
+    """H2: run produce -> validate -> correct, then score the final output exactly like H1 (routing by
+    score, as the API does). The review input's keys are the fields a finding may reference."""
+    from labelhub_evals.review_loop import downgraded_output, run_loop
+    from labelhub_evals.review_validation import ValidationContext
+
+    ctx = ValidationContext(config.dimensions, config.pass_threshold, config.reject_threshold, frozenset(item.input))
+    loop = run_loop(recorder, item.item_id, item.input, ctx, config.loop_max_steps, config.correction_style)
+    final = loop.final
+    if loop.outcome == "downgraded":
+        final = ProviderResponse(json.dumps(downgraded_output(json.loads(final.arguments), loop.step_errors[-1]), sort_keys=True),
+                                 None, final.input_tokens, final.output_tokens, final.latency_ms)
+
+    def total(attr):
+        values = [getattr(r, attr) for r in loop.responses if getattr(r, attr) is not None]
+        return sum(values) if values else None
+
+    final = ProviderResponse(final.arguments, final.violation, total("input_tokens"), total("output_tokens"), sum(r.latency_ms for r in loop.responses))
+    row = evaluate_item(item, final, config)
+    codes = lambda errors: sorted({e.code for e in errors})  # noqa: E731
+    row.update({
+        "steps": loop.steps,
+        "loop_outcome": loop.outcome,
+        "initial_error_codes": codes(loop.step_errors[0]) if loop.step_errors else [],
+        "final_error_codes": codes(loop.step_errors[-1]) if loop.step_errors and loop.outcome == "downgraded" else [],
+    })
+    return row
+
+
 def _json_default(value):
     if isinstance(value, Decimal):
         return str(value)
@@ -105,6 +147,23 @@ def render_markdown(card: dict) -> str:
         f"| Latency p50 / p95 (ms) | {s['latency_ms']['p50']} / {s['latency_ms']['p95']} |",
         "",
     ]
+    if "loop" in s:
+        loop, cfg = s["loop"], ident["loop"]
+        o = loop["outcomes"]
+        lines += [
+            f"## Validate-and-correct loop (`{cfg['feedback_version']}`, max {cfg['max_steps']} steps, {cfg['correction_style']} style, rules `{cfg['rules_version']}`)",
+            "",
+            "| Metric | Value |",
+            "|---|---|",
+            f"| Invalid on first answer | {pct(loop['initial_invalid_rate'])} |",
+            f"| Still invalid after the loop (downgraded) | {pct(loop['final_invalid_rate'])} |",
+            f"| Correction success rate | {pct(loop['correction_success_rate'])} |",
+            f"| Outcomes valid / corrected / downgraded / format violation | {o['valid']} / {o['corrected']} / {o['downgraded']} / {o['format_violation']} |",
+            f"| Model calls (mean steps per item) | {loop['model_calls']} ({loop['mean_steps']}) |",
+            f"| First-answer error codes | {', '.join(f'{k} {v}' for k, v in loop['initial_error_codes'].items()) or '-'} |",
+            f"| Error codes left after the loop | {', '.join(f'{k} {v}' for k, v in loop['final_error_codes'].items()) or '-'} |",
+            "",
+        ]
     return "\n".join(lines)
 
 
@@ -117,7 +176,10 @@ def run(items: list[GoldenItem], provider: RecordingProvider, config: RunConfig,
     if price_in is not None or price_out is not None:
         identity["pricing_usd_per_mtok"] = {"input": str(price_in), "output": str(price_out)}
     run_id = canonical_hash(identity)[:16]
-    results = [evaluate_item(item, provider.review(item.item_id, item.input), config) for item in items]
+    if config.loop_max_steps is None:
+        results = [evaluate_item(item, provider.review(item.item_id, item.input), config) for item in items]
+    else:
+        results = [evaluate_loop_item(item, provider, config) for item in items]
     card = {
         "run_id": run_id,
         "run": identity,

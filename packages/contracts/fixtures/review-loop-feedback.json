@@ -1,0 +1,14 @@
+{
+  "description": "ADR-019 correction prompt fed back to the model after a failed validate-review. services/agent (ReviewFeedback) and evals (review_loop.py) must render byte-identical text; both test against this file.",
+  "promptVersion": "h2-validate-loop-v1",
+  "header": "Your record_ai_review call failed validation:",
+  "line": "- [{code}] {path}: {message}",
+  "footer": "Call record_ai_review again with a complete, corrected result. Fix exactly the problems listed. Only reference fields that exist, score every configured dimension once, and make overallSuggestion agree with the zone your scores fall in. Change your judgement of the submission only if an error shows your own fields contradict each other.",
+  "example": {
+    "errors": [
+      {"code": "unknown_field", "path": "fieldFindings[0].stableId", "message": "stableId response-1 does not exist; known fields: prompt, response"},
+      {"code": "suggestion_score_conflict", "path": "overallSuggestion", "message": "overallSuggestion reject contradicts the scores: final score 0.3500 routes to manual_review (pass >= 0.80, reject <= 0.20); change the suggestion or the scores so they agree"}
+    ],
+    "rendered": "Your record_ai_review call failed validation:\n- [unknown_field] fieldFindings[0].stableId: stableId response-1 does not exist; known fields: prompt, response\n- [suggestion_score_conflict] overallSuggestion: overallSuggestion reject contradicts the scores: final score 0.3500 routes to manual_review (pass >= 0.80, reject <= 0.20); change the suggestion or the scores so they agree\nCall record_ai_review again with a complete, corrected result. Fix exactly the problems listed. Only reference fields that exist, score every configured dimension once, and make overallSuggestion agree with the zone your scores fall in. Change your judgement of the submission only if an error shows your own fields contradict each other."
+  }
+}

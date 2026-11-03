@@ -143,6 +143,34 @@ class OpenAiCompatibleAiReviewRuntimeClientTest {
         );
     }
 
+    @Test
+    void correction_turn_replays_failed_tool_call_and_validation_feedback_then_forces_the_tool_again() throws Exception {
+        RecordingHttpClient httpClient = new RecordingHttpClient(200, """
+            {"choices":[{"message":{"tool_calls":[{"function":{"name":"record_ai_review",
+              "arguments":"{\\"overallSuggestion\\":\\"manual_review\\",\\"confidence\\":0.35,\\"summary\\":\\"s\\",\\"dimensionScores\\":[],\\"fieldFindings\\":[]}"}}]}}]}
+            """);
+        RuntimeProviderSource source = RuntimeProviderSource.db(9L, "openai-compatible", "p", "https://provider.example.test/v1", "m", SECRET);
+        OpenAiCompatibleAiReviewRuntimeClient client = new OpenAiCompatibleAiReviewRuntimeClient(new ObjectMapper(), httpClient);
+        com.labelhub.agent.api.ReviewValidationError conflict = new com.labelhub.agent.api.ReviewValidationError(
+            "suggestion_score_conflict", "overallSuggestion", "reject contradicts the scores");
+
+        client.review(context(), source, java.util.List.of(new com.labelhub.agent.llm.ReviewAttempt("{\"overallSuggestion\":\"reject\"}", java.util.List.of(conflict))));
+
+        com.fasterxml.jackson.databind.JsonNode body = new ObjectMapper().readTree(httpClient.requestBody());
+        com.fasterxml.jackson.databind.JsonNode messages = body.get("messages");
+        assertThat(messages).hasSize(3);
+        assertThat(messages.get(0).get("role").asText()).isEqualTo("user");
+        assertThat(messages.get(1).get("role").asText()).isEqualTo("assistant");
+        assertThat(messages.get(1).get("tool_calls").get(0).get("id").asText()).isEqualTo("call_review_attempt_1");
+        assertThat(messages.get(1).get("tool_calls").get(0).get("function").get("arguments").asText()).isEqualTo("{\"overallSuggestion\":\"reject\"}");
+        assertThat(messages.get(2).get("role").asText()).isEqualTo("tool");
+        assertThat(messages.get(2).get("tool_call_id").asText()).isEqualTo("call_review_attempt_1");
+        assertThat(messages.get(2).get("content").asText())
+            .isEqualTo(com.labelhub.agent.llm.ReviewFeedback.render(java.util.List.of(conflict)))
+            .contains("[suggestion_score_conflict] overallSuggestion");
+        assertThat(body.get("tool_choice").get("function").get("name").asText()).isEqualTo("record_ai_review");
+    }
+
     private static final class RecordingHttpClient extends HttpClient {
 
         private final String responseBody;

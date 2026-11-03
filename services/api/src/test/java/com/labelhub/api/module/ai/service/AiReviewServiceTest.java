@@ -652,6 +652,43 @@ class AiReviewServiceTest {
     }
 
     @Test
+    void review_validation_context_uses_active_rule_dimensions_thresholds_and_nested_schema_stable_ids() {
+        TaskEntity task = task(10L, 1001L);
+        task.setCurrentAiReviewRuleId(19L);
+        AiReviewRuleEntity rule = activeRule(19L, 10L, 7L);
+        rule.setDimensionsJson("[\"accuracy\",\"format\"]");
+        rule.setPassThreshold(new BigDecimal("0.85"));
+        rule.setRejectThreshold(new BigDecimal("0.30"));
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        when(aiReviewRuleMapper.selectById(19L)).thenReturn(rule);
+        SchemaVersionEntity nested = schemaVersion();
+        nested.setSchemaJson(Map.of("fields", List.of(
+            Map.of("stableId", "field-title", "label", "标题", "type", "text"),
+            Map.of("stableId", "group", "label", "组", "type", "nested_object", "children", List.of(
+                Map.of("stableId", "group-child", "label", "子字段", "type", "text")
+            ))
+        )));
+        when(schemaVersionMapper.selectById(700L)).thenReturn(nested);
+
+        AiReviewOutputValidator.Context context = service.getReviewValidationContext(300L);
+
+        assertThat(context.dimensions()).containsExactly("accuracy", "format");
+        assertThat(context.passThreshold()).isEqualByComparingTo("0.85");
+        assertThat(context.rejectThreshold()).isEqualByComparingTo("0.30");
+        assertThat(context.stableIds()).containsExactly("field-title", "group", "group-child");
+    }
+
+    @Test
+    void review_validation_context_without_rule_falls_back_to_overall_and_system_thresholds() {
+        AiReviewOutputValidator.Context context = service.getReviewValidationContext(300L);
+
+        assertThat(context.dimensions()).containsExactly("overall");
+        assertThat(context.passThreshold()).isEqualByComparingTo("0.80");
+        assertThat(context.rejectThreshold()).isEqualByComparingTo("0.20");
+        assertThat(context.stableIds()).containsExactly("field-title");
+    }
+
+    @Test
     void internal_agent_result_uses_api_scoring_authority_instead_of_agent_recommendation() {
         TaskEntity task = task(10L, 1001L);
         task.setCurrentAiReviewRuleId(19L);

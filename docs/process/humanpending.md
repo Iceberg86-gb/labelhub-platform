@@ -850,3 +850,39 @@ live 验证教训:①JVM 未重启会导致后端修复复测假阴性,涉及服
 - **[266-1] W2 之前要不要先做"判定标准对齐"实验？** 实验内容是新的 prompt 版本，或者把推理强度提高到 `medium`，每个实验都和本基线对比。
   - 依据：基线显示主要误差来自判定标准，而 H2 针对的格式 / Schema 校验在 HelpSteer2 上的违规率是 0，测不出收益。
   - 临时假设：未决定，等 owner 选择。
+
+## 267. W2 / ADR-019：H2 改为校验 AI 审核输出的纠错循环(2026-11-03)
+
+背景：按 ADR-017 原文实施 H2 时发现，`AnswerPayloadValidator` 在提交时已经拦截了不合格的答案，所以预审阶段再拿它校验同一份答案，结果恒为零错误，循环无事可做。owner 选择方案 A：改为校验 AI 自己的审核输出。
+
+交付：
+- **ADR-019**：修订 ADR-017 的 H2 阶段。
+- **契约**：
+  - 新增内部接口 `POST /internal/ai-review/submissions/{id}/validate-review`。
+  - 新增契约语料 `review-output-validation-corpus.json`，共 21 个用例，覆盖 7 种错误码。
+  - 新增反馈 prompt 固定文件 `review-loop-feedback.json`。
+- **api**：新增 `AiReviewOutputValidator`；`AiReviewService.getReviewValidationContext` 解析当前生效的维度、阈值，以及 Schema 中递归展开后的 stableId；新增对应的接口实现。
+- **agent**：新增 `AiReviewAgentLoop`（最多 3 步，用尽后确定性降级，各步记录写入 `agentSteps`），`OpenAiCompatibleAiReviewRuntimeClient` 支持多轮修正。可以用 `LABELHUB_AGENT_REVIEW_LOOP_ENABLED=false` 回到 H1 行为。
+- **evals**：
+  - 新增 Python 校验器镜像，与 Java 跑同一份语料。
+  - `run --loop-max-steps`：第 1 步复用 W1 的录制，修正步骤单独录制。
+  - 新增 `compare` 命令作为关卡。
+
+W1 数据回放（没有新的模型调用）：656/1038（63%）条第一次的输出至少有一项错误，其中 `suggestion_score_conflict` 333 条，`unknown_field` 562 条。
+
+取舍与风险：
+- **降级后仍按分数路由。** API 是评分权威，降级只改写建议、剔除无效字段发现，不改变路由。由 H3 读取 `agentLoop.outcome` 强制转人工。
+- **outbox 租约从 60 秒调到 150 秒。** 3 次模型调用加上校验请求，会超过原来的 60 秒。这次改动涉及 `application.yml`、`.env.prod.example` 和 `docker-compose.prod.yml`。
+- **成本**：按 W1 的出错率估算，模型调用量增加 63%～126%。
+
+验证：
+- api：`AiReviewOutputValidatorCorpusTest`（23 条，Double 和 BigDecimal 两种解析方式都覆盖）、`InternalAiReviewControllerTest`、`AiReviewServiceTest` 通过。完整的单元测试 853 条，0 失败（executed）。`ApplicationContextStartupTest` 需要 MySQL，本机不可用，在 CI 中执行。
+- agent：`AiReviewAgentLoopTest`（8 条，覆盖全部分支）、`ReviewFeedbackTest`、修正轮请求体测试、worker 测试全部通过（executed）。
+- evals：101 条测试通过；W1 基线回放仍然逐字节复现（executed）。
+- **H2 关卡未完成**：需要 owner 在本机用 `gpt-6.1-terra@low` 跑 `run --loop-max-steps 3 --mode record`，再用 `compare` 和 W1 基线对比。关卡通过之前，PR 保持 draft。
+
+待人工决策：
+- **[267-1] 关卡失败怎么办？** 如果自动通过区错误率高于 8.93%，有两个方向：
+  - 保留循环，但 `unknown_field` 改为确定性剔除，只把冲突交给模型修正；
+  - 或者 H2 不合入，转去做 H3。
+  - 临时假设：先看实测数据再决定。

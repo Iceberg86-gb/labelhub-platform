@@ -83,7 +83,8 @@ def cmd_run(args) -> int:
     live = None if args.mode == "replay" else _live_provider(args)
     model = _model_identity(args, live)
     provider = RecordingProvider(live, RecordingStore(Path(args.recordings_dir)), args.mode, model, review.PROMPT_VERSION)
-    config = RunConfig(golden_name=Path(args.golden).stem if args.golden_name is None else args.golden_name, model=model)
+    config = RunConfig(golden_name=Path(args.golden).stem if args.golden_name is None else args.golden_name, model=model,
+                       loop_max_steps=args.loop_max_steps, correction_style=args.correction_style)
     price_in = Decimal(args.price_in) if args.price_in else None
     price_out = Decimal(args.price_out) if args.price_out else None
     try:
@@ -123,6 +124,27 @@ def cmd_analyze(args) -> int:
     else:
         print(text)
     return 0
+
+
+def cmd_compare(args) -> int:
+    from labelhub_evals.compare import CompareError, compare
+
+    try:
+        text, passed = compare(Path(args.baseline), Path(args.candidate))
+    except CompareError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if args.out:
+        out = Path(args.out)
+        if args.check:
+            if not out.exists() or out.read_text(encoding="utf-8") != text:
+                print(f"{out} is stale; regenerate with `compare {args.baseline} {args.candidate} --out {args.out}`", file=sys.stderr)
+                return 3
+        else:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(text, encoding="utf-8")
+    print(text)
+    return 0 if passed else 1
 
 
 # --- chatgpt ---------------------------------------------------------------------------------------
@@ -380,6 +402,9 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--price-out", help="USD per 1M output tokens")
     r.add_argument("--runs-dir", default=str(EVALS_ROOT / "runs"))
     r.add_argument("--recordings-dir", default=str(EVALS_ROOT / "recordings"))
+    r.add_argument("--loop-max-steps", type=int, default=None, help="ADR-019 H2: validate-and-correct with at most N model calls per item")
+    r.add_argument("--correction-style", choices=["tool", "text"], default="tool",
+                   help="how failed calls are replayed to the model (text: fallback if replayed tool calls are rejected)")
     r.add_argument("--require-reproduced", action="store_true", help="fail unless an identical run already exists (CI gate)")
     r.set_defaults(fn=cmd_run)
 
@@ -389,6 +414,13 @@ def build_parser() -> argparse.ArgumentParser:
     an.add_argument("--out", help="write the markdown report here")
     an.add_argument("--check", action="store_true", help="fail if --out differs from a fresh analysis (CI)")
     an.set_defaults(fn=cmd_analyze)
+
+    cp = sub.add_parser("compare", help="compare a candidate run with a baseline (exit 1 if the gate fails)")
+    cp.add_argument("baseline")
+    cp.add_argument("candidate")
+    cp.add_argument("--out")
+    cp.add_argument("--check", action="store_true")
+    cp.set_defaults(fn=cmd_compare)
 
     c = sub.add_parser("chatgpt", help="Sign in with ChatGPT (ADR-018)").add_subparsers(dest="chatgpt_cmd", required=True)
     login = c.add_parser("login")

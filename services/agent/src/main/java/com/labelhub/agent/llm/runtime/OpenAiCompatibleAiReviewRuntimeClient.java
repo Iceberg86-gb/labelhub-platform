@@ -8,6 +8,8 @@ import com.labelhub.agent.api.AiReviewContext;
 import com.labelhub.agent.api.AiReviewResultPayload;
 import com.labelhub.agent.api.DimensionScorePayload;
 import com.labelhub.agent.api.FieldFindingPayload;
+import com.labelhub.agent.llm.ReviewAttempt;
+import com.labelhub.agent.llm.ReviewFeedback;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -45,9 +47,14 @@ public class OpenAiCompatibleAiReviewRuntimeClient {
     }
 
     public AiReviewResultPayload review(AiReviewContext context, RuntimeProviderSource source) {
+        return review(context, source, List.of());
+    }
+
+    /** ADR-019: with attempts, the conversation replays each failed tool call followed by its validation feedback. */
+    public AiReviewResultPayload review(AiReviewContext context, RuntimeProviderSource source, List<ReviewAttempt> attempts) {
         long start = System.nanoTime();
         try {
-            HttpResponse<String> response = httpClient.send(httpRequest(context, source), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(httpRequest(context, source, attempts), HttpResponse.BodyHandlers.ofString());
             long latencyMs = elapsedMs(start);
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw providerHttpError(response.statusCode(), response.body());
@@ -63,8 +70,8 @@ public class OpenAiCompatibleAiReviewRuntimeClient {
         }
     }
 
-    private HttpRequest httpRequest(AiReviewContext context, RuntimeProviderSource source) {
-        String body = serialize(chatCompletionBody(context, source));
+    private HttpRequest httpRequest(AiReviewContext context, RuntimeProviderSource source, List<ReviewAttempt> attempts) {
+        String body = serialize(chatCompletionBody(context, source, attempts));
         return HttpRequest.newBuilder(chatCompletionsUri(source.baseUrl()))
             .timeout(Duration.ofSeconds(30))
             .header("Authorization", "Bearer " + source.apiKey())
@@ -73,13 +80,25 @@ public class OpenAiCompatibleAiReviewRuntimeClient {
             .build();
     }
 
-    private Map<String, Object> chatCompletionBody(AiReviewContext context, RuntimeProviderSource source) {
+    Map<String, Object> chatCompletionBody(AiReviewContext context, RuntimeProviderSource source, List<ReviewAttempt> attempts) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("model", source.modelName());
-        body.put("messages", List.of(Map.of(
-            "role", "user",
-            "content", prompt(context)
-        )));
+        List<Map<String, Object>> messages = new ArrayList<>();
+        messages.add(Map.of("role", "user", "content", prompt(context)));
+        for (int i = 0; i < attempts.size(); i++) {
+            String callId = "call_review_attempt_" + (i + 1);
+            Map<String, Object> assistant = new LinkedHashMap<>();
+            assistant.put("role", "assistant");
+            assistant.put("content", null);
+            assistant.put("tool_calls", List.of(Map.of(
+                "id", callId,
+                "type", "function",
+                "function", Map.of("name", "record_ai_review", "arguments", attempts.get(i).arguments())
+            )));
+            messages.add(assistant);
+            messages.add(Map.of("role", "tool", "tool_call_id", callId, "content", ReviewFeedback.render(attempts.get(i).errors())));
+        }
+        body.put("messages", messages);
         body.put("temperature", 0);
         body.put("tools", List.of(Map.of(
             "type", "function",

@@ -113,6 +113,23 @@ def review_body(model: str, effort: str | None, review_input: dict) -> dict:
     return body
 
 
+def correction_body(model: str, effort: str | None, review_input: dict, attempts: list, style: str) -> dict:
+    """ADR-019 correction turn for the Responses API (store=false, so the conversation is sent inline).
+    tool style: each failed call is replayed as a function_call item followed by its function_call_output.
+    text style: one user turn quoting the previous calls (fallback if a model rejects replayed calls)."""
+    from labelhub_evals.review_loop import text_style_message
+
+    body = review_body(model, effort, review_input)
+    if style == "text":
+        body["input"] = [{"role": "user", "content": [{"type": "input_text", "text": text_style_message(review_input, attempts)}]}]
+        return body
+    for i, attempt in enumerate(attempts, 1):
+        call_id = f"call_review_attempt_{i}"
+        body["input"].append({"type": "function_call", "call_id": call_id, "name": review.TOOL_NAME, "arguments": attempt.arguments})
+        body["input"].append({"type": "function_call_output", "call_id": call_id, "output": attempt.feedback})
+    return body
+
+
 class ChatGPTProvider:
     def __init__(self, client: ResponsesClient, model: str, effort: str | None):
         self.client, self.model, self.effort = client, model, effort
@@ -122,8 +139,14 @@ class ChatGPTProvider:
         return f"chatgpt/{self.model}" + (f"@{self.effort}" if self.effort else "")
 
     def review(self, review_input: dict) -> ProviderResponse:
+        return self._call(review_body(self.model, self.effort, review_input))
+
+    def correct(self, review_input: dict, attempts: list, style: str) -> ProviderResponse:
+        return self._call(correction_body(self.model, self.effort, review_input, attempts, style))
+
+    def _call(self, body: dict) -> ProviderResponse:
         start = time.monotonic()
-        result = self.client.stream(review_body(self.model, self.effort, review_input))
+        result = self.client.stream(body)
         latency_ms = int((time.monotonic() - start) * 1000)
         tokens = (result.usage.get("input_tokens"), result.usage.get("output_tokens"))
         calls = [c for c in result.function_calls if c.get("name") == review.TOOL_NAME]

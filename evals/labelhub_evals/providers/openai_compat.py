@@ -35,10 +35,31 @@ class OpenAiCompatibleProvider:
             "tool_choice": {"type": "function", "function": {"name": review.TOOL_NAME}},
         }
 
+    def correction_body(self, review_input: dict, attempts: list, style: str) -> dict:
+        """Same conversation shape as services/agent OpenAiCompatibleAiReviewRuntimeClient."""
+        from labelhub_evals.review_loop import text_style_message
+
+        body = self.request_body(review_input)
+        if style == "text":
+            body["messages"][1]["content"] = text_style_message(review_input, attempts)
+            return body
+        for i, attempt in enumerate(attempts, 1):
+            call_id = f"call_review_attempt_{i}"
+            body["messages"].append({"role": "assistant", "content": None, "tool_calls": [
+                {"id": call_id, "type": "function", "function": {"name": review.TOOL_NAME, "arguments": attempt.arguments}}]})
+            body["messages"].append({"role": "tool", "tool_call_id": call_id, "content": attempt.feedback})
+        return body
+
+    def correct(self, review_input: dict, attempts: list, style: str) -> ProviderResponse:
+        return self._send(self.correction_body(review_input, attempts, style))
+
     def review(self, review_input: dict) -> ProviderResponse:
+        return self._send(self.request_body(review_input))
+
+    def _send(self, body: dict) -> ProviderResponse:
         request = urllib.request.Request(
             self.base_url + "/chat/completions",
-            data=json.dumps(self.request_body(review_input)).encode("utf-8"),
+            data=json.dumps(body).encode("utf-8"),
             headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
             method="POST",
         )
