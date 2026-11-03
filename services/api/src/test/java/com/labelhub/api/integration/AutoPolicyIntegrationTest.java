@@ -174,7 +174,11 @@ class AutoPolicyIntegrationTest {
         assertThat(seniorLedger).contains("ai_overall_recommendation").contains("policy_auto_sample");
         String blindProvenance = mockMvc.perform(get("/submissions/{id}/ai-review", sampled).header("Authorization", bearer(reviewer)))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        assertThat(blindProvenance).doesNotContain("\"overallSuggestion\"");
+        assertThat(blindProvenance).doesNotContain("\"overallSuggestion\"").doesNotContain("normalizedOutputShape")
+            .doesNotContain("\"finalScore\"").contains("\"fieldFindings\"");
+        String seniorProvenance = mockMvc.perform(get("/submissions/{id}/ai-review", sampled).header("Authorization", bearer(senior)))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(seniorProvenance).contains("\"overallSuggestion\"");
 
         // 8. Export admission: default excludes the policy-admitted submission; approved_with_policy includes it.
         assertThat(submissionMapper.selectApprovedByTaskOrderedById(fx.taskId())).extracting(SubmissionEntity::getId).doesNotContain(accepted);

@@ -371,6 +371,12 @@ public class AiReviewService {
                 aiCall.setResponsePayload(findings == null ? Map.of() : Map.of("fieldFindings", findings));
                 aiCall.setScores(Map.of());
                 aiCall.setVerdict(null);
+                if (aiCall.getRequestPayload() != null && aiCall.getRequestPayload().containsKey("normalizedOutputShape")) {
+                    // The request record also carries the normalized output (suggestion and scores): strip it too.
+                    Map<String, Object> request = new LinkedHashMap<>(aiCall.getRequestPayload());
+                    request.remove("normalizedOutputShape");
+                    aiCall.setRequestPayload(request);
+                }
             }
         }
         return new SubmissionAiProvenanceView(
