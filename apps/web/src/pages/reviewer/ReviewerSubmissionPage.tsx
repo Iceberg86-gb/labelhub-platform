@@ -345,7 +345,7 @@ function AiRecommendationCard({
     return (
       <Card className="ai-recommendation-card ai-recommendation-card--pending reviewer-ai-summary-band" title="AI 综合判定（建议）" bordered={false}>
         <div className="reviewer-ai-summary-band__metrics">
-          <Typography.Text type="tertiary">预审未完成时不显示判定结论。AI 只提供建议证据,非最终裁决。</Typography.Text>
+          <Typography.Text type="tertiary">暂无 AI 综合判定。AI 只提供建议证据,非最终裁决。</Typography.Text>
         </div>
       </Card>
     );
@@ -541,6 +541,23 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
     );
   }
 
+  if (entry.entryType === 'policy_auto_accept' || entry.entryType === 'policy_auto_sample') {
+    // ADR-020: system evidence from the owner's auto-pass policy. Initial reviewers never receive these (blind sampling).
+    const payload = entry.payload as PolicyEvidenceLedgerPayload;
+    const accepted = entry.entryType === 'policy_auto_accept';
+    return (
+      <div className="ledger-entry-item ledger-entry-timeline">
+        <time>{formatDateTime(entry.createdAt)}</time>
+        <Typography.Text className="mono-value">{accepted ? '策略准入' : '策略抽检'}</Typography.Text>
+        <span>
+          <StatusBadge tone={accepted ? 'warning' : 'info'} size="small">{accepted ? '未经人工审核' : '盲审抽检'}</StatusBadge>
+          {payload.modelName ?? '-'} · 错误率上限 {formatDecimal(payload.maxError)}
+        </span>
+        <Typography.Text type="tertiary">Owner #{payload.enabledBy ?? '-'} 的策略</Typography.Text>
+      </div>
+    );
+  }
+
   const payload = entry.payload as ReviewerVerdictLedgerPayload;
   const verdict = payload.verdict;
   return (
@@ -557,6 +574,7 @@ function LedgerEntryItem({ entry }: { entry: QualityLedgerEntry }) {
 }
 
 type ReviewerVerdictLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { verdict: ReviewerVerdict }>;
+type PolicyEvidenceLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { policyEventId: number }>;
 type AiFieldFindingLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { fieldPath: string }>;
 type AiOverallRecommendationLedgerPayload = Extract<NonNullable<QualityLedgerEntry['payload']>, { recommendation: 'pass' | 'reject' | 'manual_review' }>;
 

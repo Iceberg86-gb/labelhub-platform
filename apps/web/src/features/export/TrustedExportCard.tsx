@@ -156,6 +156,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [mappingRows, setMappingRows] = useState<FieldMappingDraftRow[]>(DEFAULT_FIELD_MAPPING_ROWS);
   const [trainingFormat, setTrainingFormat] = useState<TrainingExportFormat>('flat_table');
+  const [includePolicyAccepted, setIncludePolicyAccepted] = useState(false);
   const [trainingProfile, setTrainingProfile] = useState<TrainingProfileDraft>(DEFAULT_TRAINING_PROFILE);
   const [mappingExpanded, setMappingExpanded] = useState(false);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
@@ -326,6 +327,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         fieldMapping: buildFieldMapping(mappingRows),
         trainingFormat: 'flat_table',
         trainingProfile: undefined,
+        includePolicyAccepted,
       });
       Toast.success('标注结果包快照已提交');
     } catch (error) {
@@ -345,6 +347,7 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
         fieldMapping: buildFieldMapping(mappingRows),
         trainingFormat,
         trainingProfile: buildTrainingProfile(trainingFormat, trainingProfile),
+        includePolicyAccepted,
       });
       Toast.success('训练数据包快照已提交');
     } catch (error) {
@@ -481,6 +484,14 @@ export function TrustedExportCard({ taskId }: TrustedExportCardProps) {
           <Button icon={<IconRefresh />} disabled={!canDiff} onClick={() => setDiffModalOpen(true)}>
             对比所选
           </Button>
+          <Tooltip content="默认只导出人工审核通过的数据。勾选后,自动通过策略准入(未经人工审核)的数据也会导出,准入来源记录在快照中。">
+            <Checkbox
+              checked={includePolicyAccepted}
+              onChange={(event) => setIncludePolicyAccepted(Boolean(event.target.checked))}
+            >
+              包含策略准入(未经人工审核)
+            </Checkbox>
+          </Tooltip>
           <Button
             icon={<IconUpload />}
             theme="solid"
