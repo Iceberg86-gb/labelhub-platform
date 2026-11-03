@@ -316,6 +316,66 @@ class AiReviewIntegrationTest {
             .andExpect(jsonPath("$.aiCalls[1].aiReviewRuleId").value(ruleId));
     }
 
+    @Test
+    void shadow_stats_count_ai_pass_submissions_by_latest_human_verdict_per_prompt_and_model() throws Exception {
+        long anchor = submissionFixture("shadow-anchor");
+        long ruleId = saveAndPublishRule(taskIdForSubmission(anchor), "shadow-stats-rule").get("id").asLong();
+        long promptVersionId = jdbcTemplate.queryForObject("SELECT current_prompt_version_id FROM ai_review_rules WHERE id=?", Long.class, ruleId);
+
+        long approved = shadowSubmission("shadow-approved", ruleId, promptVersionId, "model-a", "pass");
+        humanVerdict(approved, "approve", "reviewer", 0);
+        long rejected = shadowSubmission("shadow-rejected", ruleId, promptVersionId, "model-a", "pass");
+        humanVerdict(rejected, "reject", "reviewer", 0);
+        long overturned = shadowSubmission("shadow-overturned", ruleId, promptVersionId, "model-a", "pass");
+        humanVerdict(overturned, "approve", "reviewer", 0);
+        humanVerdict(overturned, "reject", "senior_reviewer", 1);  // latest human verdict wins
+        long aiReject = shadowSubmission("shadow-ai-reject", ruleId, promptVersionId, "model-a", "reject");
+        humanVerdict(aiReject, "approve", "reviewer", 0);  // not an AI pass: excluded
+        shadowSubmission("shadow-unjudged", ruleId, promptVersionId, "model-a", "pass");  // no human verdict yet: excluded
+        long otherModel = shadowSubmission("shadow-model-b", ruleId, promptVersionId, "model-b", "pass");
+        humanVerdict(otherModel, "approve", "reviewer", 0);
+
+        mockMvc.perform(get("/ai-review/rules/{ruleId}/shadow-stats", ruleId)
+                .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.ruleId").value(ruleId))
+            .andExpect(jsonPath("$.groups", hasSize(2)))
+            .andExpect(jsonPath("$.groups[0].modelName").value("model-a"))
+            .andExpect(jsonPath("$.groups[0].aiPassJudged").value(3))
+            .andExpect(jsonPath("$.groups[0].humanRejected").value(2))
+            .andExpect(jsonPath("$.groups[1].modelName").value("model-b"))
+            .andExpect(jsonPath("$.groups[1].aiPassJudged").value(1))
+            .andExpect(jsonPath("$.groups[1].humanRejected").value(0));
+
+        mockMvc.perform(get("/ai-review/rules/{ruleId}/shadow-stats", ruleId)
+                .header("Authorization", bearer(tokenForUser(9999L, "other_owner", "OWNER"))))
+            .andExpect(status().isNotFound());
+        mockMvc.perform(get("/ai-review/rules/{ruleId}/shadow-stats", ruleId)
+                .header("Authorization", bearer(tokenForUser(1002L, "labeler_demo", "LABELER"))))
+            .andExpect(status().isForbidden());
+    }
+
+    private long shadowSubmission(String seed, long ruleId, long promptVersionId, String modelName, String aiVerdict) {
+        long submissionId = submissionFixture(seed);
+        insertAndReturnId("""
+            INSERT INTO ai_calls(submission_id, purpose, prompt_version, prompt_version_id, ai_review_rule_id, model_provider, model_name,
+                                 input_hash, request_payload, response_payload, verdict, token_input, token_output,
+                                 cost_decimal, latency_ms, status, idempotency_key, created_at, completed_at)
+            VALUES (?, 'submission_review', 'shadow', ?, ?, 'openai-compatible', ?,
+                    ?, JSON_OBJECT(), JSON_OBJECT(), ?, 0, 0, 0, 1, 'completed', ?, NOW(3), NOW(3))
+            """, submissionId, promptVersionId, ruleId, modelName, fixedHash("shadow-input-" + seed), aiVerdict, "shadow:" + seed);
+        return submissionId;
+    }
+
+    private void humanVerdict(long submissionId, String verdict, String reviewLevel, int secondsLater) {
+        long actor = "senior_reviewer".equals(reviewLevel) ? 1001L : 1003L;
+        insertAndReturnId("""
+            INSERT INTO quality_ledger_entries(submission_id, task_id, evidence_type, actor_type, actor_id, payload, created_at)
+            VALUES (?, ?, 'reviewer_overall_verdict', 'reviewer', ?, JSON_OBJECT('verdict', ?, 'reviewLevel', ?),
+                    DATE_ADD(NOW(3), INTERVAL ? SECOND))
+            """, submissionId, taskIdForSubmission(submissionId), actor, verdict, reviewLevel, secondsLater);
+    }
+
     private org.springframework.test.web.servlet.ResultActions triggerReview(long submissionId, Long promptVersionId) throws Exception {
         return mockMvc.perform(post("/submissions/{submissionId}/ai-review", submissionId)
             .header("Authorization", bearer(tokenForUser(1001L, "owner_demo", "OWNER")))

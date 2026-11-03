@@ -147,6 +147,27 @@ def cmd_compare(args) -> int:
     return 0 if passed else 1
 
 
+def cmd_calibrate(args) -> int:
+    from labelhub_evals.calibrate import load, render
+
+    run_dir = Path(args.run_dir)
+    text = render(run_dir.name, load(run_dir), [Decimal(e) for e in args.reviewer_error], [Decimal(b) for b in args.budget])
+    if args.out:
+        out = Path(args.out)
+        if args.check:
+            if not out.exists() or out.read_text(encoding="utf-8") != text:
+                print(f"{out} is stale; regenerate with `calibrate {args.run_dir} --out {args.out}`", file=sys.stderr)
+                return 3
+            print(f"{out} is up to date")
+            return 0
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+        print(f"wrote {out}")
+    else:
+        print(text)
+    return 0
+
+
 # --- chatgpt ---------------------------------------------------------------------------------------
 def _chatgpt_context():
     from labelhub_evals.chatgpt.config import Endpoints, home_dir
@@ -421,6 +442,14 @@ def build_parser() -> argparse.ArgumentParser:
     cp.add_argument("--out")
     cp.add_argument("--check", action="store_true")
     cp.set_defaults(fn=cmd_compare)
+
+    cal = sub.add_parser("calibrate", help="ADR-020: escalation-rate vs bad-export frontier over threshold policies (replay only)")
+    cal.add_argument("run_dir")
+    cal.add_argument("--reviewer-error", nargs="+", default=["0.05", "0.10", "0.20"])
+    cal.add_argument("--budget", nargs="+", default=["0.15", "0.25", "0.35", "0.45"], help="escalation-rate budgets")
+    cal.add_argument("--out")
+    cal.add_argument("--check", action="store_true")
+    cal.set_defaults(fn=cmd_calibrate)
 
     c = sub.add_parser("chatgpt", help="Sign in with ChatGPT (ADR-018)").add_subparsers(dest="chatgpt_cmd", required=True)
     login = c.add_parser("login")

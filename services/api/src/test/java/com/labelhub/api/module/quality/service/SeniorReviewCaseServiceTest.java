@@ -113,6 +113,109 @@ class SeniorReviewCaseServiceTest {
     }
 
     @Test
+    void flagged_agent_loop_outside_manual_zone_opens_pending_loop_flagged_case_when_the_rule_opted_in() {
+        QualityLedgerEntryEntity aiOverall = withPayload(aiOverallEntry(800L, "pass", "flagged"), "escalateLoopFlags", true);
+        stubInsert(702L);
+
+        SeniorReviewCaseEntity created = seniorReviewCaseService.recordAiOverallRecommendation(SUBMISSION_ID, TASK_ID, aiOverall);
+
+        assertThat(created.getSourceSignal()).isEqualTo("ai_loop_flagged");
+        assertThat(created.getStatus()).isEqualTo("pending_reviewer");
+        assertThat(created.getPayload()).containsEntry("agentLoopOutcome", "flagged");
+    }
+
+    @Test
+    void flagged_agent_loop_is_not_escalated_unless_the_rule_opted_in() {
+        assertThat(seniorReviewCaseService.recordAiOverallRecommendation(SUBMISSION_ID, TASK_ID, aiOverallEntry(800L, "pass", "flagged"))).isNull();
+        verify(seniorReviewCaseMapper, never()).insert(any(SeniorReviewCaseEntity.class));
+    }
+
+    @Test
+    void flagged_agent_loop_in_manual_zone_is_covered_by_the_single_manual_review_case() {
+        QualityLedgerEntryEntity aiOverall = aiOverallEntry(800L, "manual_review", "flagged");
+        stubInsert(703L);
+
+        SeniorReviewCaseEntity created = seniorReviewCaseService.recordAiOverallRecommendation(SUBMISSION_ID, TASK_ID, aiOverall);
+
+        assertThat(created.getSourceSignal()).isEqualTo("ai_manual_review");
+        assertThat(created.getPayload()).containsEntry("agentLoopOutcome", "flagged");
+        verify(seniorReviewCaseMapper, never()).selectByCaseKey("submission:300:ai_loop_flagged");
+    }
+
+    @Test
+    void valid_or_corrected_loop_with_pass_route_opens_no_case() {
+        for (String outcome : List.of("valid", "corrected")) {
+            assertThat(seniorReviewCaseService.recordAiOverallRecommendation(SUBMISSION_ID, TASK_ID, aiOverallEntry(800L, "pass", outcome))).isNull();
+        }
+        assertThat(seniorReviewCaseService.recordAiOverallRecommendation(SUBMISSION_ID, TASK_ID, aiOverallEntry(800L, "reject"))).isNull();
+        verify(seniorReviewCaseMapper, never()).insert(any(SeniorReviewCaseEntity.class));
+    }
+
+    @Test
+    void reviewer_approving_a_submission_scored_at_or_below_the_disagreement_threshold_opens_a_case_immediately() {
+        QualityLedgerEntryEntity ai = withPayload(withPayload(aiOverallEntry(800L, "reject"), "finalScore", "0.2500"), "disagreementThreshold", "0.25");
+        when(qualityLedgerEntryMapper.selectLatestAiOverallRecommendation(SUBMISSION_ID)).thenReturn(ai);
+        when(qualityLedgerEntryMapper.selectHighConfidenceErrorFieldFindings(SUBMISSION_ID, new BigDecimal("0.85"))).thenReturn(List.of());
+        stubInsert(704L);
+
+        SeniorReviewCaseEntity created = seniorReviewCaseService.activateCasesAfterReviewerApprove(submission(), reviewerEntry(900L, "approve"));
+
+        assertThat(created.getSourceSignal()).isEqualTo("ai_reviewer_disagreement");
+        assertThat(created.getStatus()).isEqualTo("open");
+        assertThat(created.getReviewerVerdictEntryId()).isEqualTo(900L);
+        assertThat(created.getAiOverallEntryId()).isEqualTo(800L);
+        assertThat(created.getPayload()).containsEntry("aiRecommendation", "reject").containsEntry("reviewerVerdict", "approve")
+            .containsEntry("disagreementThreshold", new BigDecimal("0.25"));
+    }
+
+    @Test
+    void no_disagreement_case_above_the_threshold_or_when_the_rule_has_none() {
+        when(qualityLedgerEntryMapper.selectHighConfidenceErrorFieldFindings(SUBMISSION_ID, new BigDecimal("0.85"))).thenReturn(List.of());
+        when(qualityLedgerEntryMapper.selectLatestAiOverallRecommendation(SUBMISSION_ID))
+            .thenReturn(withPayload(withPayload(aiOverallEntry(800L, "reject"), "finalScore", "0.2600"), "disagreementThreshold", "0.25"));
+        assertThat(seniorReviewCaseService.activateCasesAfterReviewerApprove(submission(), reviewerEntry(900L, "approve"))).isNull();
+        when(qualityLedgerEntryMapper.selectLatestAiOverallRecommendation(SUBMISSION_ID)).thenReturn(aiOverallEntry(800L, "reject"));
+        assertThat(seniorReviewCaseService.activateCasesAfterReviewerApprove(submission(), reviewerEntry(900L, "approve"))).isNull();
+        verify(seniorReviewCaseMapper, never()).insert(any(SeniorReviewCaseEntity.class));
+    }
+
+    @Test
+    void reviewer_approving_an_ai_pass_opens_no_disagreement_case() {
+        when(qualityLedgerEntryMapper.selectLatestAiOverallRecommendation(SUBMISSION_ID)).thenReturn(aiOverallEntry(800L, "pass"));
+        when(qualityLedgerEntryMapper.selectHighConfidenceErrorFieldFindings(SUBMISSION_ID, new BigDecimal("0.85"))).thenReturn(List.of());
+
+        assertThat(seniorReviewCaseService.activateCasesAfterReviewerApprove(submission(), reviewerEntry(900L, "approve"))).isNull();
+        verify(seniorReviewCaseMapper, never()).insert(any(SeniorReviewCaseEntity.class));
+    }
+
+    @Test
+    void disagreement_case_is_idempotent_per_submission() {
+        SeniorReviewCaseEntity existing = openCase(705L);
+        when(qualityLedgerEntryMapper.selectLatestAiOverallRecommendation(SUBMISSION_ID))
+            .thenReturn(withPayload(aiOverallEntry(800L, "reject"), "disagreementThreshold", "0.60"));
+        when(seniorReviewCaseMapper.selectByCaseKey("submission:300:ai_reviewer_disagreement")).thenReturn(existing);
+        when(qualityLedgerEntryMapper.selectHighConfidenceErrorFieldFindings(SUBMISSION_ID, new BigDecimal("0.85"))).thenReturn(List.of());
+
+        assertThat(seniorReviewCaseService.activateCasesAfterReviewerApprove(submission(), reviewerEntry(900L, "approve"))).isSameAs(existing);
+        verify(seniorReviewCaseMapper, never()).insert(any(SeniorReviewCaseEntity.class));
+    }
+
+    private static QualityLedgerEntryEntity withPayload(QualityLedgerEntryEntity entry, String key, Object value) {
+        Map<String, Object> payload = new java.util.HashMap<>(entry.getPayload());
+        payload.put(key, value);
+        entry.setPayload(payload);
+        return entry;
+    }
+
+    private void stubInsert(Long id) {
+        doAnswer(invocation -> {
+            SeniorReviewCaseEntity entity = invocation.getArgument(0);
+            entity.setId(id);
+            return 1;
+        }).when(seniorReviewCaseMapper).insert(any(SeniorReviewCaseEntity.class));
+    }
+
+    @Test
     void markReviewerDifficulty_opens_case_for_submission() {
         when(submissionMapper.selectById(SUBMISSION_ID)).thenReturn(submission());
         when(seniorReviewCaseMapper.selectByCaseKey("submission:300:reviewer_difficulty")).thenReturn(null);
@@ -164,6 +267,14 @@ class SeniorReviewCaseServiceTest {
         submission.setLabelerId(LABELER_ID);
         submission.setStatusCode("submitted");
         return submission;
+    }
+
+    private static QualityLedgerEntryEntity aiOverallEntry(Long id, String recommendation, String loopOutcome) {
+        QualityLedgerEntryEntity entry = aiOverallEntry(id, recommendation);
+        Map<String, Object> payload = new java.util.HashMap<>(entry.getPayload());
+        payload.put("agentLoopOutcome", loopOutcome);
+        entry.setPayload(payload);
+        return entry;
     }
 
     private static QualityLedgerEntryEntity aiOverallEntry(Long id, String recommendation) {

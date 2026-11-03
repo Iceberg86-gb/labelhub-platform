@@ -689,6 +689,41 @@ class AiReviewServiceTest {
     }
 
     @Test
+    void internal_agent_result_carries_agent_loop_outcome_into_the_ai_recommendation_ledger_payload() {
+        TaskEntity task = task(10L, 1001L);
+        task.setCurrentAiReviewRuleId(19L);
+        when(taskMapper.selectById(10L)).thenReturn(task);
+        AiReviewRuleEntity calibrated = activeRule(19L, 10L, 7L);
+        calibrated.setDisagreementThreshold(new BigDecimal("0.25"));
+        calibrated.setEscalateLoopFlags(true);
+        when(aiReviewRuleMapper.selectById(19L)).thenReturn(calibrated);
+        when(aiCallMapper.insert(any(AiCallEntity.class))).thenAnswer(invocation -> {
+            AiCallEntity entity = invocation.getArgument(0);
+            entity.setId(900L);
+            return 1;
+        });
+
+        service.recordInternalResult(new InternalAiReviewResultCommand(
+            300L,
+            "submission:300:ai_review:promptVersionId:7:adapter:agent-default-v1:ruleVersionId:19",
+            "manual_review",
+            new BigDecimal("0.35"),
+            List.of(new DimensionScoreValue("overall", new BigDecimal("0.35"), "r")),
+            "s",
+            List.of(),
+            "{}",
+            1, 1, null, 1, "agent", "m",
+            Map.of("overallSuggestion", "manual_review", "agentLoop", Map.of("outcome", "flagged", "steps", 1))
+        ));
+
+        ArgumentCaptor<Map<String, Object>> payloadCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(ledgerService).appendAiOverallRecommendation(eq(300L), eq(10L), eq(900L), payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue()).containsEntry("agentLoopOutcome", "flagged")
+            .containsEntry("disagreementThreshold", new BigDecimal("0.25"))
+            .containsEntry("escalateLoopFlags", true);
+    }
+
+    @Test
     void internal_agent_result_uses_api_scoring_authority_instead_of_agent_recommendation() {
         TaskEntity task = task(10L, 1001L);
         task.setCurrentAiReviewRuleId(19L);
@@ -734,6 +769,8 @@ class AiReviewServiceTest {
         assertThat(payloadCaptor.getValue()).containsEntry("recommendation", "reject");
         assertThat(payloadCaptor.getValue()).containsEntry("passThreshold", new BigDecimal("0.80"));
         assertThat(payloadCaptor.getValue()).containsEntry("rejectThreshold", new BigDecimal("0.40"));
+        assertThat(payloadCaptor.getValue()).doesNotContainKey("agentLoopOutcome")
+            .doesNotContainKey("disagreementThreshold").doesNotContainKey("escalateLoopFlags");
         verify(ledgerService, never()).createEntry(any(), any(), eq("reviewer_overall_verdict"), any());
     }
 

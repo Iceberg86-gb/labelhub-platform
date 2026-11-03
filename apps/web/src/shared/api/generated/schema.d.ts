@@ -924,6 +924,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ai-review/rules/{ruleId}/shadow-stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ADR-020 §3 (read-only, W3a). Shadow auto-pass error of this rule version measured on production data: among submissions the AI routed to pass and a human has judged (latest human verdict, so senior arbitration wins), the share the human rejected, with a Wilson 95% upper bound. Grouped by prompt version and model, because a gate decision is only valid for the exact (rule, prompt, model) it was measured on. */
+        get: operations["getAiReviewRuleShadowStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ai-review/rules/{ruleId}/publish": {
         parameters: {
             query?: never;
@@ -2141,6 +2158,10 @@ export interface components {
             threshold?: number | null;
             passThreshold: number;
             rejectThreshold: number;
+            /** @description ADR-020. When set, a reviewer approve of a submission the AI scored at or below this value opens a senior arbitration case (ai_reviewer_disagreement). Must be <= rejectThreshold. Null disables the signal. Choose it with `python -m labelhub_evals calibrate` (evals/reports/w3a-calibration.md). */
+            disagreementThreshold?: number | null;
+            /** @description ADR-020. Open a senior case (ai_loop_flagged) for agent-loop outcomes flagged/downgraded outside the manual zone. Omitted means false (off): calibration found the flag alone has low precision. */
+            escalateLoopFlags?: boolean;
         };
         AiReviewRule: {
             /** Format: int64 */
@@ -2156,6 +2177,10 @@ export interface components {
             threshold: number;
             passThreshold: number;
             rejectThreshold: number;
+            /** @description ADR-020. When set, a reviewer approve of a submission the AI scored at or below this value opens a senior arbitration case (ai_reviewer_disagreement). Must be <= rejectThreshold. Null disables the signal. Choose it with `python -m labelhub_evals calibrate` (evals/reports/w3a-calibration.md). */
+            disagreementThreshold?: number | null;
+            /** @description ADR-020. Open a senior case (ai_loop_flagged) for agent-loop outcomes flagged/downgraded outside the manual zone. Omitted means false (off): calibration found the flag alone has low precision. */
+            escalateLoopFlags?: boolean;
             status: components["schemas"]["AiReviewRuleStatus"];
             /** @description Server-derived. True when this rule id equals the task's current_ai_review_rule_id. */
             isCurrent: boolean;
@@ -2163,6 +2188,27 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             activatedAt?: string | null;
+        };
+        AiReviewRuleShadowStats: {
+            /** Format: int64 */
+            ruleId: number;
+            groups: components["schemas"]["AiReviewRuleShadowStatsGroup"][];
+        };
+        AiReviewRuleShadowStatsGroup: {
+            /** Format: int64 */
+            promptVersionId: number | null;
+            modelName: string;
+            /** @description Submissions the AI routed to pass that have a human verdict. */
+            aiPassJudged: number;
+            /** @description Of those, how many the latest human verdict rejected. */
+            humanRejected: number;
+            /** Format: decimal */
+            errorRate?: string | null;
+            /**
+             * Format: decimal
+             * @description Wilson score 95% upper bound of the error rate (z = 1.96); the ADR-020 auto gate compares this.
+             */
+            wilsonUpper95?: string | null;
         };
         /** @enum {string} */
         PromptVersionStatus: "draft" | "published";
@@ -2424,7 +2470,7 @@ export interface components {
         /** @enum {string} */
         SeniorReviewCaseType: "arbitration" | "sampling";
         /** @enum {string} */
-        SeniorReviewCaseSourceSignal: "ai_manual_review" | "ai_error_conflict" | "reviewer_difficulty" | "sampling";
+        SeniorReviewCaseSourceSignal: "ai_manual_review" | "ai_error_conflict" | "reviewer_difficulty" | "sampling" | "ai_loop_flagged" | "ai_reviewer_disagreement";
         /** @enum {string} */
         SeniorReviewCaseStatus: "pending_reviewer" | "open" | "resolved" | "canceled";
         /** @enum {string} */
@@ -4641,6 +4687,37 @@ export interface operations {
             401: components["responses"]["ErrorUnauthorized"];
             403: components["responses"]["ErrorForbidden"];
             404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    getAiReviewRuleShadowStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shadow statistics for the rule version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiReviewRuleShadowStats"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            /** @description Requested resource does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     publishAiReviewRule: {

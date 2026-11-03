@@ -45,4 +45,6 @@ export const SENIOR_CASE_SOURCE_LABELS: Record<SeniorReviewCaseSourceSignal, str
   ai_error_conflict: 'AI 冲突',
   reviewer_difficulty: '疑难仲裁',
   sampling: '抽检',
+  ai_loop_flagged: 'AI 自相矛盾',
+  ai_reviewer_disagreement: '人机分歧',
 };

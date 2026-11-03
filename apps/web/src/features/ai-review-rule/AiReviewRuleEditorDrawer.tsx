@@ -1,4 +1,4 @@
-import { Button, Input, SideSheet, Space, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Checkbox, Input, SideSheet, Space, TextArea, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconDelete, IconPlus } from '@douyinfe/semi-icons';
 import { useState } from 'react';
 import {
@@ -150,6 +150,34 @@ export function AiReviewRuleEditorDrawer({ taskId, open, onClose }: AiReviewRule
               分数高于通过阈值会建议通过,低于打回阈值会建议打回,中间区建议人工复核。
             </Typography.Text>
           </label>
+
+          <label className="ai-review-rule-field">
+            <Typography.Text strong>人机分歧升级阈值(可选)</Typography.Text>
+            <Input
+              inputMode="decimal"
+              placeholder="留空表示关闭;不大于打回阈值,例如 0.25"
+              value={state.disagreementThreshold}
+              onChange={(value) => setState((current) => ({ ...current, disagreementThreshold: value }))}
+            />
+            {errors.disagreementThreshold ? (
+              <Typography.Text className="ai-review-rule-error">{errors.disagreementThreshold}</Typography.Text>
+            ) : null}
+            <Typography.Text type="tertiary">
+              AI 分数不高于该值、但初审判通过时,自动进入高级仲裁。建议用 evals calibrate 的结果设置。
+            </Typography.Text>
+          </label>
+
+          <div className="ai-review-rule-field">
+            <Checkbox
+              checked={state.escalateLoopFlags}
+              onChange={(event) => setState((current) => ({ ...current, escalateLoopFlags: Boolean(event.target.checked) }))}
+            >
+              AI 自相矛盾时进入高级仲裁
+            </Checkbox>
+            <Typography.Text type="tertiary">
+              AI 的建议与分数矛盾时转高级仲裁。校准数据显示这一信号准确率较低,默认关闭。
+            </Typography.Text>
+          </div>
 
           {serverError ? <Typography.Text className="ai-review-rule-error">{serverError}</Typography.Text> : null}
 

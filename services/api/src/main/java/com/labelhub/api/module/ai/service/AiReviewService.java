@@ -557,6 +557,14 @@ public class AiReviewService {
         output.put("passThreshold", score.passThreshold());
         output.put("rejectThreshold", score.rejectThreshold());
         output.put("scoringRuleVersion", score.scoringRuleVersion());
+        // ADR-020: snapshot the rule's escalation signals with the AI evidence; omitted when not configured, so
+        // rules without them produce byte-identical output to before.
+        if (activeRule != null && activeRule.getDisagreementThreshold() != null) {
+            output.put("disagreementThreshold", activeRule.getDisagreementThreshold());
+        }
+        if (activeRule != null && Boolean.TRUE.equals(activeRule.getEscalateLoopFlags())) {
+            output.put("escalateLoopFlags", true);
+        }
         return new AiCallResult(
             output,
             score.recommendation(),
@@ -621,6 +629,16 @@ public class AiReviewService {
         payload.put("scoringRuleVersion", result.output().get("scoringRuleVersion"));
         payload.put("dimensionScores", result.output().getOrDefault("dimensionScores", List.of()));
         payload.put("summary", result.summary());
+        if (result.output().get("disagreementThreshold") != null) {
+            payload.put("disagreementThreshold", result.output().get("disagreementThreshold"));
+        }
+        if (Boolean.TRUE.equals(result.output().get("escalateLoopFlags"))) {
+            payload.put("escalateLoopFlags", true);
+        }
+        // ADR-020 §1: the agent loop outcome (ADR-019) feeds the escalation rules.
+        if (result.output().get("agentLoop") instanceof Map<?, ?> loop && loop.get("outcome") != null) {
+            payload.put("agentLoopOutcome", String.valueOf(loop.get("outcome")));
+        }
         return payload;
     }
 

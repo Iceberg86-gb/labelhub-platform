@@ -113,4 +113,60 @@ public interface AiCallMapper {
         """)
     @ResultMap("aiCallResultMap")
     List<AiCallEntity> selectBySubmissionIdsOrdered(@Param("submissionIds") List<Long> submissionIds);
+
+    /**
+     * ADR-020 shadow stats: AI-pass submissions of a rule version that have a human verdict, and how many the latest
+     * human verdict (any review level, latest wins) rejected; grouped by prompt version and model.
+     */
+    @Select("""
+        SELECT ac.prompt_version_id AS promptVersionId,
+               ac.model_name AS modelName,
+               COUNT(*) AS judged,
+               SUM(CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(v.payload, '$.verdict')) = 'reject' THEN 1 ELSE 0 END) AS rejected
+        FROM ai_calls ac
+        JOIN (
+            SELECT ranked.submission_id, ranked.payload
+            FROM (
+                SELECT qle.submission_id, qle.payload,
+                       ROW_NUMBER() OVER (PARTITION BY qle.submission_id ORDER BY qle.created_at DESC, qle.id DESC) AS rn
+                FROM quality_ledger_entries qle
+                WHERE qle.evidence_type = 'reviewer_overall_verdict'
+            ) ranked
+            WHERE ranked.rn = 1
+        ) v ON v.submission_id = ac.submission_id
+        WHERE ac.ai_review_rule_id = #{ruleId}
+          AND ac.purpose = 'submission_review'
+          AND ac.status = 'completed'
+          AND ac.verdict = 'pass'
+        GROUP BY ac.prompt_version_id, ac.model_name
+        ORDER BY ac.prompt_version_id, ac.model_name
+        """)
+    List<ShadowStatsRow> selectShadowStatsByRuleId(@Param("ruleId") Long ruleId);
+
+    /** Mutable row so MyBatis auto-maps it by property name, like the other result types in this project. */
+    class ShadowStatsRow {
+        private Long promptVersionId;
+        private String modelName;
+        private Long judged;
+        private Long rejected;
+
+        public ShadowStatsRow() {
+        }
+
+        public ShadowStatsRow(Long promptVersionId, String modelName, Long judged, Long rejected) {
+            this.promptVersionId = promptVersionId;
+            this.modelName = modelName;
+            this.judged = judged;
+            this.rejected = rejected;
+        }
+
+        public Long getPromptVersionId() { return promptVersionId; }
+        public void setPromptVersionId(Long promptVersionId) { this.promptVersionId = promptVersionId; }
+        public String getModelName() { return modelName; }
+        public void setModelName(String modelName) { this.modelName = modelName; }
+        public Long getJudged() { return judged; }
+        public void setJudged(Long judged) { this.judged = judged; }
+        public Long getRejected() { return rejected; }
+        public void setRejected(Long rejected) { this.rejected = rejected; }
+    }
 }

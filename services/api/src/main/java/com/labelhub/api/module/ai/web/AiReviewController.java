@@ -1,5 +1,8 @@
 package com.labelhub.api.module.ai.web;
 
+import com.labelhub.api.generated.model.AiReviewRuleShadowStats;
+import com.labelhub.api.generated.model.AiReviewRuleShadowStatsGroup;
+import com.labelhub.api.module.ai.service.AiReviewShadowStatsService;
 import com.labelhub.api.generated.model.AiReviewResult;
 import com.labelhub.api.generated.model.AiReviewRule;
 import com.labelhub.api.generated.model.AiReviewRuleRequest;
@@ -39,6 +42,7 @@ public class AiReviewController implements AiReviewApi {
     private final AiReviewRuleService aiReviewRuleService;
     private final AiReviewRuleDtoMapper aiReviewRuleDtoMapper;
     private final TaskAiPrereviewService taskAiPrereviewService;
+    private final AiReviewShadowStatsService shadowStatsService;
 
     public AiReviewController(
         AiReviewService aiReviewService,
@@ -46,7 +50,8 @@ public class AiReviewController implements AiReviewApi {
         AiReviewDtoMapper aiReviewDtoMapper,
         AiReviewRuleService aiReviewRuleService,
         AiReviewRuleDtoMapper aiReviewRuleDtoMapper,
-        TaskAiPrereviewService taskAiPrereviewService
+        TaskAiPrereviewService taskAiPrereviewService,
+        AiReviewShadowStatsService shadowStatsService
     ) {
         this.aiReviewService = aiReviewService;
         this.fieldAssistService = fieldAssistService;
@@ -54,6 +59,25 @@ public class AiReviewController implements AiReviewApi {
         this.aiReviewRuleService = aiReviewRuleService;
         this.aiReviewRuleDtoMapper = aiReviewRuleDtoMapper;
         this.taskAiPrereviewService = taskAiPrereviewService;
+        this.shadowStatsService = shadowStatsService;
+    }
+
+    @Override
+    public ResponseEntity<AiReviewRuleShadowStats> getAiReviewRuleShadowStats(@PathVariable("ruleId") Long ruleId) {
+        AiReviewShadowStatsService.View view = shadowStatsService.shadowStats(ruleId, currentUserId());
+        AiReviewRuleShadowStats dto = new AiReviewRuleShadowStats();
+        dto.setRuleId(view.ruleId());
+        dto.setGroups(view.groups().stream().map(group -> {
+            AiReviewRuleShadowStatsGroup item = new AiReviewRuleShadowStatsGroup();
+            item.setPromptVersionId(group.promptVersionId());
+            item.setModelName(group.modelName());
+            item.setAiPassJudged(Math.toIntExact(group.aiPassJudged()));
+            item.setHumanRejected(Math.toIntExact(group.humanRejected()));
+            item.setErrorRate(group.errorRate());
+            item.setWilsonUpper95(group.wilsonUpper95());
+            return item;
+        }).toList());
+        return ResponseEntity.ok(dto);
     }
 
     @Override

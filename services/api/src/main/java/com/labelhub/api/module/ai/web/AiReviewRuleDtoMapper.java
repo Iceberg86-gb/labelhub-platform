@@ -33,6 +33,8 @@ public class AiReviewRuleDtoMapper {
         dto.setThreshold(view.rule().getThreshold());
         dto.setPassThreshold(view.rule().getPassThreshold() == null ? view.rule().getThreshold() : view.rule().getPassThreshold());
         dto.setRejectThreshold(view.rule().getRejectThreshold());
+        dto.setDisagreementThreshold(view.rule().getDisagreementThreshold());
+        dto.setEscalateLoopFlags(Boolean.TRUE.equals(view.rule().getEscalateLoopFlags()));
         dto.setStatus(AiReviewRuleStatus.fromValue(view.rule().getStatusCode()));
         dto.setIsCurrent(view.isCurrent());
         dto.setCreatedAt(offset(view.rule().getCreatedAt()));
