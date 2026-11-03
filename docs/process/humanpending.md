@@ -969,3 +969,15 @@ v2 交付：
 - api：SeniorReviewCaseServiceTest 14 条、AiReviewServiceTest 44 条、AiReviewRuleServiceTest 14 条、AiReviewShadowStatsServiceTest 3 条、AiReviewControllerTest 通过。新增的影子统计集成测试需要 Docker，由 CI 执行。
 - web：ai-review-rule 相关测试 21 条通过，typecheck 通过。
 - evals：calibrate 测试通过，报告逐字节复现。
+
+## 271. #270-1 裁决：选定 ≤ 25% 仲裁预算的工作点(2026-11-03)
+
+owner 选择 ≤ 25% 仲裁预算这一档：
+- 推荐配置：通过阈值 0.60，打回阈值 0.45，人机分歧阈值 0.25，自相矛盾升级关闭。
+- 依据：`evals/reports/w3a-calibration.md`，假设审核员错误率 e = 0.10，按留出集计算：
+  - 仲裁比例 24.4%，与现状约 23% 相当；
+  - 每千条导出的坏样本 8.48，现状为 21.10。
+
+落地方式：Owner 在规则编辑器中按上述取值发布新的规则版本。已有规则版本不会被改写，规则按版本只追加，代码层面的默认值仍然是"关闭"。
+
+#270-2 的前提条件继续有效：换任务或换模型需要重新校准；真实任务进入 suggest 模式后，用影子统计验证。
