@@ -81,12 +81,16 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
                    WHEN s.status = 'submitted'
                         AND JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'reject'
                      THEN 'rejected'
+                   WHEN s.status = 'submitted' AND latest_verdict.id IS NULL
+                        AND EXISTS (SELECT 1 FROM quality_ledger_entries pa WHERE pa.submission_id = active_submission.id AND pa.evidence_type = 'policy_auto_accept')
+                     THEN 'approved'
                    WHEN s.status = 'submitted' THEN 'submitted'
                    ELSE s.status
                  END AS labeler_work_status,
                  CASE
                    WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'approve' THEN 'approved'
                    WHEN JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'reject' THEN 'rejected'
+                   WHEN latest_verdict.id IS NULL AND EXISTS (SELECT 1 FROM quality_ledger_entries pa WHERE pa.submission_id = active_submission.id AND pa.evidence_type = 'policy_auto_accept') THEN 'approved'
                    WHEN active_submission.id IS NOT NULL THEN 'pending'
                    ELSE NULL
                  END AS final_verdict
@@ -150,6 +154,9 @@ public interface SessionMapper extends BaseMapper<SessionEntity> {
                    WHEN s.status = 'submitted'
                         AND JSON_UNQUOTE(JSON_EXTRACT(latest_verdict.payload, '$.verdict')) = 'reject'
                      THEN 'rejected'
+                   WHEN s.status = 'submitted' AND latest_verdict.id IS NULL
+                        AND EXISTS (SELECT 1 FROM quality_ledger_entries pa WHERE pa.submission_id = active_submission.id AND pa.evidence_type = 'policy_auto_accept')
+                     THEN 'approved'
                    WHEN s.status = 'submitted' THEN 'submitted'
                    ELSE s.status
                  END AS labeler_work_status

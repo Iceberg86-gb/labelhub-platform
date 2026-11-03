@@ -80,7 +80,26 @@ public class QualityDtoMapper {
         if ("ai_overall_recommendation".equals(entryType)) {
             return toAiOverallRecommendationPayload(raw);
         }
+        if ("policy_auto_accept".equals(entryType) || "policy_auto_sample".equals(entryType)) {
+            return toPolicyEvidencePayload(raw);
+        }
         return toReviewerOverallVerdictPayload(raw);
+    }
+
+    private com.labelhub.api.generated.model.PolicyEvidencePayload toPolicyEvidencePayload(Map<String, Object> raw) {
+        com.labelhub.api.generated.model.PolicyEvidencePayload dto = new com.labelhub.api.generated.model.PolicyEvidencePayload();
+        dto.setPolicyEventId(longOrNull(raw.get("policyEventId")));
+        dto.setRuleId(longOrNull(raw.get("ruleId")));
+        dto.setPromptVersionId(longOrNull(raw.get("promptVersionId")));
+        dto.setModelName(raw.get("modelName") == null ? null : String.valueOf(raw.get("modelName")));
+        dto.setMaxError(raw.get("maxError") == null ? null : new java.math.BigDecimal(String.valueOf(raw.get("maxError"))));
+        dto.setSampleRate(raw.get("sampleRate") == null ? null : new java.math.BigDecimal(String.valueOf(raw.get("sampleRate"))));
+        dto.setEnabledBy(longOrNull(raw.get("enabledBy")));
+        return dto;
+    }
+
+    private static Long longOrNull(Object value) {
+        return value == null ? null : Long.valueOf(String.valueOf(value));
     }
 
     private ReviewerOverallVerdictPayload toReviewerOverallVerdictPayload(Map<String, Object> raw) {

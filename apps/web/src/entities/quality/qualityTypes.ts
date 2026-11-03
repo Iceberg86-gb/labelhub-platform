@@ -22,12 +22,15 @@ export const VERDICT_STATUS_LABELS: Record<VerdictStatus, string> = {
   pending: '待审核',
   approved: '已通过',
   rejected: '已拒绝',
+  // ADR-020: admitted by the owner's auto-pass policy, no human verdict. Never shown as "已通过".
+  accepted_by_policy: '策略准入',
 };
 
 export const VERDICT_STATUS_COLORS = {
   pending: 'orange',
   approved: 'green',
   rejected: 'red',
+  accepted_by_policy: 'orange',
 } as const satisfies Record<VerdictStatus, 'orange' | 'green' | 'red'>;
 
 export const REVIEWER_VERDICT_LABELS: Record<ReviewerVerdict, string> = {

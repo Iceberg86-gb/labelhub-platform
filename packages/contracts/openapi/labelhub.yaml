@@ -3099,7 +3099,10 @@ components:
           format: int64
         status:
           type: string
-          enum: [pending, approved, rejected]
+          enum: [pending, approved, rejected, accepted_by_policy]
+          description: >-
+            accepted_by_policy (ADR-020): admitted by the owner's auto-pass policy (policy_auto_accept evidence) and
+            not judged by a human since. Distinct from approved, which always means a human verdict.
         derivedFromEntryId:
           type: integer
           format: int64
@@ -4736,16 +4739,49 @@ components:
           format: date-time
     QualityLedgerEntryType:
       type: string
-      enum: [reviewer_overall_verdict, ai_field_finding, ai_overall_recommendation]
+      enum: [reviewer_overall_verdict, ai_field_finding, ai_overall_recommendation, policy_auto_accept, policy_auto_sample]
       description: |
         Quality ledger entry types. M4 implemented `reviewer_overall_verdict`.
         M5 adds `ai_field_finding` for AI-derived field-level evidence.
         P-A adds `ai_overall_recommendation` as non-final AI evidence.
+        ADR-020 adds system evidence `policy_auto_accept` (admitted by the owner's auto-pass policy) and
+        `policy_auto_sample` (sampled for blind human review; hidden from initial reviewers).
     QualityLedgerEntryPayload:
       oneOf:
         - $ref: '#/components/schemas/ReviewerOverallVerdictPayload'
         - $ref: '#/components/schemas/AiFieldFindingPayload'
         - $ref: '#/components/schemas/AiOverallRecommendationPayload'
+        - $ref: '#/components/schemas/PolicyEvidencePayload'
+    PolicyEvidencePayload:
+      type: object
+      required: [policyEventId, ruleId]
+      properties:
+        policyEventId:
+          type: integer
+          format: int64
+        ruleId:
+          type: integer
+          format: int64
+        promptVersionId:
+          type: integer
+          format: int64
+          nullable: true
+        modelName:
+          type: string
+          nullable: true
+        maxError:
+          type: string
+          format: decimal
+          nullable: true
+        sampleRate:
+          type: string
+          format: decimal
+          nullable: true
+        enabledBy:
+          type: integer
+          format: int64
+          nullable: true
+          description: The owner whose auto-pass policy admitted (or sampled) the submission; accountable for it.
     ReviewLevel:
       type: string
       enum: [reviewer, senior_reviewer]
@@ -5073,8 +5109,10 @@ components:
       properties:
         mode:
           type: string
-          description: Export data scope. Defaults to approved_only.
-          enum: [approved_only, full]
+          description: >-
+            Export data scope. Defaults to approved_only (human-approved only). approved_with_policy (ADR-020) also
+            includes submissions admitted by the auto-pass policy; it is never the default.
+          enum: [approved_only, full, approved_with_policy]
           default: approved_only
         fieldMapping:
           $ref: '#/components/schemas/ExportFieldMapping'

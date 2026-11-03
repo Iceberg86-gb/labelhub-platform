@@ -134,6 +134,24 @@ public interface SubmissionMapper {
     @ResultMap("submissionResultMap")
     List<SubmissionEntity> selectApprovedByTaskOrderedById(@Param("taskId") Long taskId);
 
+    /**
+     * ADR-020 §3: submissions admitted by the auto-pass policy (policy_auto_accept) that no human has judged since.
+     * Exported only when the owner opts in (mode approved_with_policy).
+     */
+    @Select("""
+        SELECT id, session_id, task_id, dataset_item_id, labeler_id, schema_version_id,
+               answer_payload, provenance, content_hash, status AS status_code,
+               created_at, superseded_by_id
+        FROM submissions s
+        WHERE s.task_id = #{taskId}
+          AND s.status = 'submitted'
+          AND EXISTS (SELECT 1 FROM quality_ledger_entries pa WHERE pa.submission_id = s.id AND pa.evidence_type = 'policy_auto_accept')
+          AND NOT EXISTS (SELECT 1 FROM quality_ledger_entries v WHERE v.submission_id = s.id AND v.evidence_type = 'reviewer_overall_verdict')
+        ORDER BY s.id ASC
+        """)
+    @ResultMap("submissionResultMap")
+    List<SubmissionEntity> selectPolicyAcceptedByTaskOrderedById(@Param("taskId") Long taskId);
+
     @Select("""
         SELECT id, session_id, task_id, dataset_item_id, labeler_id, schema_version_id,
                answer_payload, provenance, content_hash, status AS status_code,

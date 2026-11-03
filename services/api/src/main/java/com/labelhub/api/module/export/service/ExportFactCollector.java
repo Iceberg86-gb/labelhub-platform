@@ -46,9 +46,16 @@ public class ExportFactCollector {
     public ExportFactBundle collectForTask(Long taskId, ExportDataScope dataScope) {
         TaskEntity task = taskMapper.selectById(taskId);
         ExportDataScope effectiveScope = dataScope == null ? ExportDataScope.APPROVED_ONLY : dataScope;
-        List<SubmissionEntity> submissions = effectiveScope == ExportDataScope.FULL
-            ? submissionMapper.selectSubmittedByTaskOrderedById(taskId)
-            : submissionMapper.selectApprovedByTaskOrderedById(taskId);
+        List<SubmissionEntity> submissions;
+        if (effectiveScope == ExportDataScope.FULL) {
+            submissions = submissionMapper.selectSubmittedByTaskOrderedById(taskId);
+        } else if (effectiveScope == ExportDataScope.APPROVED_WITH_POLICY) {
+            submissions = new java.util.ArrayList<>(submissionMapper.selectApprovedByTaskOrderedById(taskId));
+            submissions.addAll(submissionMapper.selectPolicyAcceptedByTaskOrderedById(taskId));
+            submissions.sort(java.util.Comparator.comparing(SubmissionEntity::getId));
+        } else {
+            submissions = submissionMapper.selectApprovedByTaskOrderedById(taskId);
+        }
         List<Long> submissionIds = submissions.stream().map(SubmissionEntity::getId).toList();
 
         TreeSet<Long> schemaVersionIds = new TreeSet<>();
@@ -72,7 +79,12 @@ public class ExportFactCollector {
         for (SubmissionEntity submission : submissions) {
             QualityLedgerEntryEntity latest =
                 qualityLedgerEntryMapper.selectLatestReviewerOverallVerdict(submission.getId());
-            verdicts.put(submission.getId(), DerivedVerdictSnapshot.derive(submission.getId(), latest));
+            List<QualityLedgerEntryEntity> policy = latest != null
+                ? List.of()
+                : qualityLedgerEntryMapper.selectBySubmissionIdAndType(submission.getId(), "policy_auto_accept");
+            verdicts.put(submission.getId(), policy.isEmpty()
+                ? DerivedVerdictSnapshot.derive(submission.getId(), latest)
+                : DerivedVerdictSnapshot.acceptedByPolicy(submission.getId(), policy.get(policy.size() - 1)));
         }
 
         return new ExportFactBundle(

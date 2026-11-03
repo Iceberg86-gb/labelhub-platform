@@ -302,6 +302,19 @@ public class LedgerService {
     ) {
         SubmissionEntity submission = requireReadableSubmission(submissionId, requesterUserId, requesterRoles);
         long offset = (page - 1) * size;
+        boolean isLabeler = Objects.equals(submission.getLabelerId(), requesterUserId);
+        java.util.function.BooleanSupplier isOwner = () -> {
+            TaskEntity task = taskMapper == null ? null : taskMapper.selectById(submission.getTaskId());
+            return task != null && Objects.equals(task.getOwnerId(), requesterUserId);
+        };
+        if (BlindReviewPolicy.isBlind(qualityLedgerEntryMapper, submission.getId(), requesterRoles, isOwner, isLabeler)) {
+            // ADR-020 blind sampling: filter the whole (small, per-submission) ledger, then page.
+            Long all = qualityLedgerEntryMapper.selectCountBySubmissionId(submission.getId());
+            List<QualityLedgerEntryEntity> visible = BlindReviewPolicy.visible(
+                qualityLedgerEntryMapper.selectBySubmissionId(submission.getId(), 0L, all == null ? 0L : all));
+            List<QualityLedgerEntryEntity> pageItems = visible.stream().skip(offset).limit(size).toList();
+            return new PagedResult<>(pageItems, visible.size(), page, size);
+        }
         List<QualityLedgerEntryEntity> items =
             qualityLedgerEntryMapper.selectBySubmissionId(submission.getId(), offset, size);
         Long total = qualityLedgerEntryMapper.selectCountBySubmissionId(submission.getId());

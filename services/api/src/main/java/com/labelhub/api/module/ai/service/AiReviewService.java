@@ -85,6 +85,12 @@ public class AiReviewService {
     private final AiReviewScoringPolicy scoringPolicy;
     private final SchemaRuntimeAdapter schemaRuntimeAdapter;
     private AutoAcceptService autoAcceptService;
+    private com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper qualityLedgerEntryMapper;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setQualityLedgerEntryMapper(com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper qualityLedgerEntryMapper) {
+        this.qualityLedgerEntryMapper = qualityLedgerEntryMapper;
+    }
 
     /** ADR-020: optional so the many unit tests constructing this service stay unchanged. */
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -355,8 +361,17 @@ public class AiReviewService {
             throw new SubmissionNotFoundException(submissionId);
         }
         List<AiCallEntity> aiCalls = aiCallMapper.selectBySubmissionId(submissionId);
+        boolean blind = qualityLedgerEntryMapper != null && com.labelhub.api.module.quality.service.BlindReviewPolicy.isBlind(
+            qualityLedgerEntryMapper, submissionId, requesterRoles, isOwner, isLabeler);
         for (AiCallEntity aiCall : aiCalls) {
             aiCall.setOutputHash(hash(aiCall.getResponsePayload()));
+            if (blind) {
+                // ADR-020 blind sampling: keep field-level findings, hide the overall judgement and scores.
+                Object findings = aiCall.getResponsePayload() == null ? null : aiCall.getResponsePayload().get("fieldFindings");
+                aiCall.setResponsePayload(findings == null ? Map.of() : Map.of("fieldFindings", findings));
+                aiCall.setScores(Map.of());
+                aiCall.setVerdict(null);
+            }
         }
         return new SubmissionAiProvenanceView(
             submissionId,

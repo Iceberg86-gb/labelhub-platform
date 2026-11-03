@@ -59,6 +59,36 @@ class ExportFactCollectorTest {
         verify(submissionMapper).selectSubmittedByTaskOrderedById(TASK_ID);
     }
 
+    @Test
+    void approved_with_policy_scope_merges_policy_admitted_submissions_in_id_order_and_marks_their_admission() {
+        SubmissionEntity human = new SubmissionEntity();
+        human.setId(302L);
+        SubmissionEntity policy = new SubmissionEntity();
+        policy.setId(301L);
+        com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity accept = new com.labelhub.api.module.quality.entity.QualityLedgerEntryEntity();
+        accept.setId(950L);
+        accept.setEvidenceType("policy_auto_accept");
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task());
+        when(submissionMapper.selectApprovedByTaskOrderedById(TASK_ID)).thenReturn(List.of(human));
+        when(submissionMapper.selectPolicyAcceptedByTaskOrderedById(TASK_ID)).thenReturn(List.of(policy));
+        when(qualityLedgerEntryMapper.selectBySubmissionIdAndType(301L, "policy_auto_accept")).thenReturn(List.of(accept));
+
+        ExportFactBundle bundle = collector.collectForTask(TASK_ID, ExportDataScope.APPROVED_WITH_POLICY);
+
+        org.assertj.core.api.Assertions.assertThat(bundle.submissions()).extracting(SubmissionEntity::getId).containsExactly(301L, 302L);
+        org.assertj.core.api.Assertions.assertThat(bundle.verdicts().get(301L).status()).isEqualTo("accepted_by_policy");
+        org.assertj.core.api.Assertions.assertThat(bundle.verdicts().get(301L).derivedFromEntryId()).isEqualTo(950L);
+    }
+
+    @Test
+    void default_scope_never_includes_policy_admitted_submissions() {
+        when(taskMapper.selectById(TASK_ID)).thenReturn(task());
+        collector.collectForTask(TASK_ID);
+        verify(submissionMapper, org.mockito.Mockito.never()).selectPolicyAcceptedByTaskOrderedById(TASK_ID);
+        org.assertj.core.api.Assertions.assertThat(ExportDataScope.APPROVED_WITH_POLICY.toSnapshotDataScope()).containsEntry("includePolicyAccepted", true);
+        org.assertj.core.api.Assertions.assertThat(ExportDataScope.APPROVED_ONLY.toSnapshotDataScope()).doesNotContainKey("includePolicyAccepted");
+    }
+
     private static TaskEntity task() {
         TaskEntity task = new TaskEntity();
         task.setId(TASK_ID);

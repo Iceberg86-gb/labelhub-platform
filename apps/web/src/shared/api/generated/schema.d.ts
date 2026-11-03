@@ -941,6 +941,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/ai-review/rules/{ruleId}/auto-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ADR-020 §3. Current auto-pass mode of the rule version, its append-only event history and live sample statistics. */
+        get: operations["getAiReviewAutoPolicy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai-review/rules/{ruleId}/auto-policy/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description ADR-020 §3. Enable auto-pass for the task's current published rule version. Refused with 409 AUTO_GATE_NOT_MET unless the shadow evidence for exactly (rule, promptVersionId, modelName) has at least minSamples AI-pass submissions with a human verdict and its Wilson 95% upper bound is <= maxError. Appends an enable event. */
+        post: operations["enableAiReviewAutoPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/ai-review/rules/{ruleId}/auto-policy/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description ADR-020 §3. Back to suggest mode (appends a disable event; idempotent when already suggest). */
+        post: operations["disableAiReviewAutoPolicy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ai-review/rules/{ruleId}/publish": {
         parameters: {
             query?: never;
@@ -1564,8 +1615,11 @@ export interface components {
         Verdict: {
             /** Format: int64 */
             submissionId: number;
-            /** @enum {string} */
-            status: "pending" | "approved" | "rejected";
+            /**
+             * @description accepted_by_policy (ADR-020): admitted by the owner's auto-pass policy (policy_auto_accept evidence) and not judged by a human since. Distinct from approved, which always means a human verdict.
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected" | "accepted_by_policy";
             /** Format: int64 */
             derivedFromEntryId?: number | null;
             /** Format: date-time */
@@ -2189,6 +2243,66 @@ export interface components {
             /** Format: date-time */
             activatedAt?: string | null;
         };
+        AiReviewAutoPolicyEnableRequest: {
+            /** Format: int64 */
+            promptVersionId: number;
+            modelName: string;
+            /** @description Owner-set ceiling for the auto-pass error rate; no default (the owner is accountable for it). */
+            maxError: number;
+            /** @description Shadow AI-pass submissions with a human verdict required; default and floor 200. */
+            minSamples?: number | null;
+            /** @description Share of would-be auto-accepted submissions still sent to blind initial review; default 0.10. */
+            sampleRate?: number | null;
+        };
+        AiReviewAutoPolicyDisableRequest: {
+            reason?: string | null;
+        };
+        AiReviewAutoPolicyEvent: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            action: "enable" | "disable" | "circuit_break";
+            /** Format: int64 */
+            promptVersionId?: number | null;
+            modelName?: string | null;
+            /** Format: decimal */
+            maxError?: string | null;
+            minSamples?: number | null;
+            /** Format: decimal */
+            sampleRate?: string | null;
+            evidence?: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            actorType: "owner" | "system";
+            /** Format: int64 */
+            actorId?: number | null;
+            reason?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AiReviewAutoPolicySampleStats: {
+            sampled: number;
+            judged: number;
+            humanRejected: number;
+            /**
+             * Format: decimal
+             * @description The circuit breaker trips when this exceeds maxError.
+             */
+            wilsonLower95?: string | null;
+            /** Format: decimal */
+            wilsonUpper95?: string | null;
+            autoAccepted: number;
+        };
+        AiReviewAutoPolicyState: {
+            /** Format: int64 */
+            ruleId: number;
+            /** @enum {string} */
+            mode: "suggest" | "auto";
+            current?: components["schemas"]["AiReviewAutoPolicyEvent"];
+            events: components["schemas"]["AiReviewAutoPolicyEvent"][];
+            samples?: components["schemas"]["AiReviewAutoPolicySampleStats"];
+        };
         AiReviewRuleShadowStats: {
             /** Format: int64 */
             ruleId: number;
@@ -2382,10 +2496,30 @@ export interface components {
          * @description Quality ledger entry types. M4 implemented `reviewer_overall_verdict`.
          *     M5 adds `ai_field_finding` for AI-derived field-level evidence.
          *     P-A adds `ai_overall_recommendation` as non-final AI evidence.
+         *     ADR-020 adds system evidence `policy_auto_accept` (admitted by the owner's auto-pass policy) and
+         *     `policy_auto_sample` (sampled for blind human review; hidden from initial reviewers).
          * @enum {string}
          */
-        QualityLedgerEntryType: "reviewer_overall_verdict" | "ai_field_finding" | "ai_overall_recommendation";
-        QualityLedgerEntryPayload: components["schemas"]["ReviewerOverallVerdictPayload"] | components["schemas"]["AiFieldFindingPayload"] | components["schemas"]["AiOverallRecommendationPayload"];
+        QualityLedgerEntryType: "reviewer_overall_verdict" | "ai_field_finding" | "ai_overall_recommendation" | "policy_auto_accept" | "policy_auto_sample";
+        QualityLedgerEntryPayload: components["schemas"]["ReviewerOverallVerdictPayload"] | components["schemas"]["AiFieldFindingPayload"] | components["schemas"]["AiOverallRecommendationPayload"] | components["schemas"]["PolicyEvidencePayload"];
+        PolicyEvidencePayload: {
+            /** Format: int64 */
+            policyEventId: number;
+            /** Format: int64 */
+            ruleId: number;
+            /** Format: int64 */
+            promptVersionId?: number | null;
+            modelName?: string | null;
+            /** Format: decimal */
+            maxError?: string | null;
+            /** Format: decimal */
+            sampleRate?: string | null;
+            /**
+             * Format: int64
+             * @description The owner whose auto-pass policy admitted (or sampled) the submission; accountable for it.
+             */
+            enabledBy?: number | null;
+        };
         /** @enum {string} */
         ReviewLevel: "reviewer" | "senior_reviewer";
         ReviewerOverallVerdictPayload: {
@@ -2552,11 +2686,11 @@ export interface components {
         };
         CreateTaskExportRequest: {
             /**
-             * @description Export data scope. Defaults to approved_only.
+             * @description Export data scope. Defaults to approved_only (human-approved only). approved_with_policy (ADR-020) also includes submissions admitted by the auto-pass policy; it is never the default.
              * @default approved_only
              * @enum {string}
              */
-            mode: "approved_only" | "full";
+            mode: "approved_only" | "full" | "approved_with_policy";
             fieldMapping?: components["schemas"]["ExportFieldMapping"];
             trainingFormat?: components["schemas"]["TrainingExportFormat"];
             trainingProfile?: components["schemas"]["TrainingExportProfile"];
@@ -4707,6 +4841,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AiReviewRuleShadowStats"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            /** @description Requested resource does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getAiReviewAutoPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Auto policy state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiReviewAutoPolicyState"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            /** @description Requested resource does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    enableAiReviewAutoPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiReviewAutoPolicyEnableRequest"];
+            };
+        };
+        responses: {
+            /** @description Auto-pass enabled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiReviewAutoPolicyState"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            /** @description Requested resource does not exist. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Gate not met (AUTO_GATE_NOT_MET), with the measured evidence in the message. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    disableAiReviewAutoPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ruleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["AiReviewAutoPolicyDisableRequest"];
+            };
+        };
+        responses: {
+            /** @description Auto-pass disabled. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiReviewAutoPolicyState"];
                 };
             };
             401: components["responses"]["ErrorUnauthorized"];

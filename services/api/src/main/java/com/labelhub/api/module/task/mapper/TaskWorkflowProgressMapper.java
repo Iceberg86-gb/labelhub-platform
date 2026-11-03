@@ -48,7 +48,8 @@ public interface TaskWorkflowProgressMapper {
               ELSE 0
             END) AS ai_prereview_completed_count,
             SUM(CASE
-              WHEN s.status = 'submitted' AND latest_reviewer.id IS NULL THEN 1
+              WHEN s.status = 'submitted' AND latest_reviewer.id IS NULL
+                AND NOT EXISTS (SELECT 1 FROM quality_ledger_entries pa WHERE pa.submission_id = s.id AND pa.evidence_type = 'policy_auto_accept') THEN 1
               ELSE 0
             END) AS pending_review_count,
             SUM(CASE
@@ -62,6 +63,7 @@ public interface TaskWorkflowProgressMapper {
                   latest_resolved_senior_case.id IS NULL
                   OR latest_resolved_senior_case.resolution NOT IN ('overturn_to_reject', 'boundary_rejected')
                 ) THEN 1
+              WHEN latest_overall.id IS NULL AND EXISTS (SELECT 1 FROM quality_ledger_entries pa WHERE pa.submission_id = s.id AND pa.evidence_type = 'policy_auto_accept') THEN 1
               ELSE 0
             END) AS approved_count,
             SUM(CASE
