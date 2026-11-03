@@ -105,6 +105,26 @@ def cmd_run(args) -> int:
     return 0
 
 
+def cmd_analyze(args) -> int:
+    from labelhub_evals.analyze import run_analysis
+
+    text = run_analysis(Path(args.run_dir), golden.load(Path(args.golden)))
+    if args.out:
+        out = Path(args.out)
+        if args.check:
+            if not out.exists() or out.read_text(encoding="utf-8") != text:
+                print(f"{out} is stale; regenerate with `analyze {args.run_dir} --out {args.out}`", file=sys.stderr)
+                return 3
+            print(f"{out} is up to date")
+            return 0
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+        print(f"wrote {out}")
+    else:
+        print(text)
+    return 0
+
+
 # --- chatgpt ---------------------------------------------------------------------------------------
 def _chatgpt_context():
     from labelhub_evals.chatgpt.config import Endpoints, home_dir
@@ -362,6 +382,13 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--recordings-dir", default=str(EVALS_ROOT / "recordings"))
     r.add_argument("--require-reproduced", action="store_true", help="fail unless an identical run already exists (CI gate)")
     r.set_defaults(fn=cmd_run)
+
+    an = sub.add_parser("analyze", help="error analysis of a run against its golden set")
+    an.add_argument("run_dir")
+    an.add_argument("--golden", default=str(DATASET_DIR / "golden.jsonl"))
+    an.add_argument("--out", help="write the markdown report here")
+    an.add_argument("--check", action="store_true", help="fail if --out differs from a fresh analysis (CI)")
+    an.set_defaults(fn=cmd_analyze)
 
     c = sub.add_parser("chatgpt", help="Sign in with ChatGPT (ADR-018)").add_subparsers(dest="chatgpt_cmd", required=True)
     login = c.add_parser("login")

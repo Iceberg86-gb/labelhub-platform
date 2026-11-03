@@ -226,3 +226,26 @@ def test_committed_smoke_baseline_reproduces_in_replay_mode(tmp_path):
     provider = RecordingProvider(None, RecordingStore(EVALS / "recordings"), "replay", FakeProvider.identity, review.PROMPT_VERSION)
     _, reproduced = run(items, provider, RunConfig("helpsteer2-h1-smoke", FakeProvider.identity), tmp_path / "runs")
     assert reproduced, "replay produced a run that was not committed; commit it or fix the drift"
+
+
+# --- analysis -------------------------------------------------------------------------------------
+def test_analysis_counts_wrong_zone_by_attribute_cell_and_sweeps_thresholds():
+    from labelhub_evals.analyze import analyze, render
+
+    items = [golden.GoldenItem(f"i{n}", n, {}, t, {"helpfulness": h, "correctness": c, "coherence": 4, "complexity": 1, "verbosity": 1})
+             for n, (t, h, c) in enumerate([("pass", 4, 4), ("pass", 4, 4), ("reject", 2, 2), ("reject", 0, 0)])]
+    results = [
+        {"item_id": "i0", "truth": "pass", "route": "reject", "score": "0.1000", "model_suggestion": "reject"},
+        {"item_id": "i1", "truth": "pass", "route": "pass", "score": "0.9000", "model_suggestion": "pass"},
+        {"item_id": "i2", "truth": "reject", "route": "pass", "score": "0.8500", "model_suggestion": "pass"},
+        {"item_id": "i3", "truth": "reject", "route": "manual_review", "score": None, "model_suggestion": None},
+    ]
+    a = analyze(items, results)
+    assert a["grid"]["pass"][(4, 4)] == {"reject": 1, "pass": 1}
+    assert {r["threshold"]: r["error"] for r in a["pass_sweep"]}["0.80"] == "50.0%"
+    assert {r["threshold"]: r["error"] for r in a["pass_sweep"]}["0.90"] == "0.0%"
+    assert {r["threshold"]: r["items"] for r in a["reject_sweep"]}["0.10"] == 1
+    assert a["suggestions"]["none"] == 1
+    assert render("x", a) == render("x", analyze(items, results))
+    with pytest.raises(ValueError):
+        analyze(items[:1], results)

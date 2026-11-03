@@ -98,7 +98,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 | 阶段 | 内容 | 状态 |
 |---|---|---|
 | W0 | CI 与工程基线：集成测试真实运行，跳过即判失败 | ✅ 完成 |
-| W1 | 离线评测框架：基于 HelpSteer2 的黄金集、录制/回放、单次调用的基线成绩（[`evals/`](evals/)，支持 ChatGPT 登录跑评测，[ADR-018](docs/adr/ADR-018-chatgpt-sign-in-for-local-evals.md)） | 进行中 |
+| W1 | 离线评测框架：基于 HelpSteer2 的黄金集、录制/回放、单次调用的基线成绩（[`evals/`](evals/)，支持 ChatGPT 登录跑评测，[ADR-018](docs/adr/ADR-018-chatgpt-sign-in-for-local-evals.md)；[基线报告](evals/reports/w1-baseline.md)） | ✅ 完成 |
 | W2 | Agent 循环：工具层 + 基于 Schema 校验器的自我纠错 | 计划中 |
 | W3 | 策略层：三区阈值改造成权限模式，预算控制，阈值校准 | 计划中 |
 | W4 | 判例记忆：检索人类裁决作为参考，人机分歧回流 | 计划中 |
