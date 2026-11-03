@@ -3,6 +3,8 @@ package com.labelhub.agent.llm.runtime;
 import com.labelhub.agent.api.AiReviewContext;
 import com.labelhub.agent.api.AiReviewResultPayload;
 import com.labelhub.agent.llm.AiReviewProvider;
+import com.labelhub.agent.llm.ReviewAttempt;
+import java.util.List;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -31,5 +33,17 @@ public class RegistryBackedAiReviewProvider implements AiReviewProvider {
             );
         }
         return openAiCompatibleClient.review(context, source);
+    }
+
+    @Override
+    public AiReviewResultPayload correct(AiReviewContext context, List<ReviewAttempt> attempts) {
+        RuntimeProviderSource source = resolver.resolve(context.submissionId());
+        if (!"openai-compatible".equalsIgnoreCase(source.providerType())) {
+            throw new RuntimeProviderResolutionException(
+                "Unsupported runtime provider type: " + source.providerType(),
+                "unsupported_provider_type"
+            );
+        }
+        return openAiCompatibleClient.review(context, source, attempts);
     }
 }

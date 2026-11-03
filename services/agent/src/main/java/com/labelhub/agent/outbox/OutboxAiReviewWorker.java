@@ -6,7 +6,7 @@ import com.labelhub.agent.api.AiReviewApiClient;
 import com.labelhub.agent.api.AiReviewContext;
 import com.labelhub.agent.api.AiReviewResultEnvelope;
 import com.labelhub.agent.api.AiReviewResultPayload;
-import com.labelhub.agent.llm.AiReviewProvider;
+import com.labelhub.agent.loop.AiReviewAgentLoop;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +18,7 @@ public class OutboxAiReviewWorker {
 
     private final OutboxRepository outboxRepository;
     private final AiReviewApiClient aiReviewApiClient;
-    private final AiReviewProvider aiReviewProvider;
+    private final AiReviewAgentLoop reviewLoop;
     private final ObjectMapper objectMapper;
     private final Clock clock;
     private final String workerId;
@@ -31,18 +31,18 @@ public class OutboxAiReviewWorker {
     public OutboxAiReviewWorker(
         OutboxRepository outboxRepository,
         AiReviewApiClient aiReviewApiClient,
-        AiReviewProvider aiReviewProvider,
+        AiReviewAgentLoop reviewLoop,
         ObjectMapper objectMapper,
         Clock clock,
         @Value("${labelhub.agent.outbox.worker-id:agent-local}") String workerId,
         @Value("${labelhub.agent.outbox.batch-size:10}") int batchSize,
         @Value("${labelhub.agent.outbox.max-attempts:3}") int maxAttempts,
         @Value("${labelhub.agent.outbox.base-delay-ms:1000}") long baseDelayMs,
-        @Value("${labelhub.agent.outbox.lease-seconds:60}") int leaseSeconds
+        @Value("${labelhub.agent.outbox.lease-seconds:150}") int leaseSeconds
     ) {
         this.outboxRepository = outboxRepository;
         this.aiReviewApiClient = aiReviewApiClient;
-        this.aiReviewProvider = aiReviewProvider;
+        this.reviewLoop = reviewLoop;
         this.objectMapper = objectMapper;
         this.clock = clock;
         this.workerId = workerId;
@@ -74,7 +74,7 @@ public class OutboxAiReviewWorker {
         try {
             Long submissionId = submissionId(event);
             AiReviewContext context = aiReviewApiClient.getContext(submissionId);
-            AiReviewResultPayload result = aiReviewProvider.review(context);
+            AiReviewResultPayload result = reviewLoop.run(context);
             aiReviewApiClient.reportResult(new AiReviewResultEnvelope(
                 context.submissionId(),
                 context.idempotencyKey(),

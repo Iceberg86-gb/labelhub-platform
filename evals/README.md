@@ -62,6 +62,20 @@ make evals-baseline          # 在仓库根目录运行：下载固定版本的�
 
 之后每一个改变 agent 行为的改动，都要和这条基线对比（ADR-017 §1.5）。
 
+## 2.2 W2：校验 → 修正循环（ADR-019）
+
+```bash
+python -m labelhub_evals run --provider chatgpt --mode record --loop-max-steps 3
+python -m labelhub_evals compare runs/700607c95f112de6 runs/<新 run_id> --out reports/w2-vs-w1.md
+```
+
+- **v2 规则（ADR-019 修订）**：只把形式错误（字段引用、结构、维度）反馈给模型修正；建议与分数矛盾只标记为转人工，不发给模型；修正后路由一旦改变，就丢弃这次修正。v1 的失败数据见 `reports/w2-loop-analysis.md`。
+- **第 1 步复用 W1 的录制**：第 1 步和 H1 的调用完全相同，录制键也相同，所以不会产生新调用。只有被校验器判为有错的条目，才会为修正步骤调用模型。按 W1 的数据，656 条第一次的答案有错。
+- **校验规则与生产一致**：校验器是 `review_validation.py`，与 API 的 `AiReviewOutputValidator` 共用同一份契约语料 `packages/contracts/fixtures/review-output-validation-corpus.json`。反馈给模型的文本与 agent 逐字节一致，由 `review-loop-feedback.json` 固定。
+- **路由仍然只看最终输出的分数**，和生产一致（API 是评分权威）。降级的条目同样按分数路由。
+- **`compare` 是关卡**：自动通过区错误率不得高于基线，失败时退出码为 1。其他指标无论好坏都会列出。
+- **备用方式**：如果某个模型不接受回放的工具调用（HTTP 400），加上 `--correction-style text`，改为在一条用户消息里引用之前的调用。两种方式的录制分开保存，`run_id` 也不同。
+
 ## 3. ChatGPT 登录与模型切换
 
 ```bash

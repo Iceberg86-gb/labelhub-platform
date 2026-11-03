@@ -182,6 +182,7 @@
 |------|------|-------------|------|
 | GET | `/internal/ai-review/submissions/{id}/context` | `getAiReviewContext` | Worker 拉取 AI 预审上下文 |
 | POST | `/internal/ai-review/results` | `reportAiReviewResult` | Worker 回写结构化预审结果（function-calling 强制，ADR-006） |
+| POST | `/internal/ai-review/submissions/{id}/validate-review` | `validateAiReviewOutput` | Worker 校验候选的 AI 审核输出，只读（ADR-019，H2 自我纠错循环） |
 | POST | `/internal/exports/jobs/{exportJobId}/run` | —（**契约缺失**） | Worker 执行导出作业。实现见 `InternalExportController`，但未登记进 `labelhub.yaml` |
 
 ---

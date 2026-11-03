@@ -2294,6 +2294,31 @@ paths:
                 $ref: '#/components/schemas/InternalAiReviewContext'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /internal/ai-review/submissions/{submissionId}/validate-review:
+    post:
+      tags: [Internal]
+      operationId: validateAiReviewOutput
+      description: >-
+        ADR-019 (ADR-017 H2). Deterministically validates a candidate record_ai_review output against this
+        submission's review context: configured dimensions, pass/reject thresholds and schema stableIds.
+        Read-only. Behaviour is pinned by packages/contracts/fixtures/review-output-validation-corpus.json.
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InternalAiReviewValidationRequest'
+      responses:
+        '200':
+          description: Validation result; valid=false lists every problem the model should correct.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalAiReviewValidation'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -5122,6 +5147,49 @@ components:
           type: string
         renderedPrompt:
           type: string
+    InternalAiReviewValidationRequest:
+      type: object
+      required: [output]
+      properties:
+        output:
+          description: Candidate record_ai_review arguments exactly as the model produced them (any JSON value).
+    InternalAiReviewValidation:
+      type: object
+      required: [valid, rulesVersion, errors]
+      properties:
+        valid:
+          type: boolean
+        route:
+          type: string
+          nullable: true
+          enum: [pass, reject, manual_review, null]
+          description: >-
+            Zone the API's scoring authority assigns this output (same arithmetic as AiReviewScoringPolicy);
+            null when the output is not structurally valid. ADR-019 v2: a correction turn that changes it is discarded.
+        finalScore:
+          type: string
+          format: decimal
+          nullable: true
+        rulesVersion:
+          type: string
+          description: Validator rule set version, e.g. review-output-v1.
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/InternalAiReviewValidationError'
+    InternalAiReviewValidationError:
+      type: object
+      required: [code, path, message]
+      properties:
+        code:
+          type: string
+          enum: [invalid_structure, missing_dimension, duplicate_dimension, unknown_dimension, unknown_field, suggestion_score_conflict, error_finding_on_pass]
+        path:
+          type: string
+          description: Location in the output, e.g. overallSuggestion, dimensionScores[1].dimension, fieldFindings[0].stableId; "$" for the whole value.
+        message:
+          type: string
+          description: Human/model readable explanation, fed back to the model verbatim.
     InternalAiReviewResult:
       type: object
       required: [overallSuggestion, finalScore, dimensionScores, summary]

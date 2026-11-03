@@ -35,4 +35,9 @@ public class FakeAiReviewProvider implements AiReviewProvider {
             Map.of("overallSuggestion", "pass", "dimensionScores", scores)
         );
     }
+
+    @Override
+    public AiReviewResultPayload correct(AiReviewContext context, List<ReviewAttempt> attempts) {
+        return review(context);
+    }
 }

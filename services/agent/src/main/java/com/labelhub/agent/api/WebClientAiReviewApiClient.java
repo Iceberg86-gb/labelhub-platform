@@ -39,4 +39,17 @@ public class WebClientAiReviewApiClient implements AiReviewApiClient {
             .toBodilessEntity()
             .block();
     }
+
+    @Override
+    public AiReviewValidation validateReview(Long submissionId, Object output) {
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("output", output);
+        return webClient.post()
+            .uri("/internal/ai-review/submissions/{submissionId}/validate-review", submissionId)
+            .header("X-Internal-Token", internalToken)
+            .bodyValue(body)
+            .retrieve()
+            .bodyToMono(AiReviewValidation.class)
+            .block();
+    }
 }

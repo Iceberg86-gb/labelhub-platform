@@ -22,7 +22,11 @@ labelhub:
       batch-size: ${LABELHUB_AGENT_OUTBOX_BATCH_SIZE:10}
       max-attempts: ${LABELHUB_AGENT_OUTBOX_MAX_ATTEMPTS:3}
       base-delay-ms: ${LABELHUB_AGENT_OUTBOX_BASE_DELAY_MS:1000}
-      lease-seconds: ${LABELHUB_AGENT_OUTBOX_LEASE_SECONDS:60}
+      lease-seconds: ${LABELHUB_AGENT_OUTBOX_LEASE_SECONDS:150}
+    review-loop:
+      # ADR-019 (H2). enabled=false restores the H1 single-call behaviour.
+      enabled: ${LABELHUB_AGENT_REVIEW_LOOP_ENABLED:true}
+      max-steps: ${LABELHUB_AGENT_REVIEW_LOOP_MAX_STEPS:3}
   llm:
     primary-provider: ${LLM_PRIMARY_PROVIDER:doubao}
     provider:

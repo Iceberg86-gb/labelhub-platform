@@ -75,3 +75,24 @@ class RecordingProvider:
         if self.mode == "record":
             self.store.put(key, model=self.model, prompt_version=self.prompt_version, input_hash=input_hash, response=response)
         return response
+
+    def correct(self, input_hash: str, review_input: dict, attempts: list, style: str) -> ProviderResponse:
+        """ADR-019 correction turn. Keyed by the whole conversation so far (each attempt's arguments and
+        feedback), under a prompt version that names the loop and the correction style."""
+        from labelhub_evals.review_loop import FEEDBACK_VERSION
+
+        prompt_version = f"{self.prompt_version}+{FEEDBACK_VERSION}" + ("" if style == "tool" else f"+{style}")
+        turn_hash = canonical_hash({"attempts": [{"arguments": a.arguments, "feedback": a.feedback} for a in attempts], "input_hash": input_hash})
+        key = recording_key(self.model, prompt_version, turn_hash)
+        if self.mode != "live":
+            cached = self.store.get(key)
+            if cached is not None:
+                self.hits += 1
+                return cached
+            if self.mode == "replay":
+                raise ReplayMiss(f"no recording for correction turn {len(attempts)} of {input_hash} ({self.model} / {prompt_version})")
+        self.misses += 1
+        response = self.inner.correct(review_input, attempts, style)
+        if self.mode == "record":
+            self.store.put(key, model=self.model, prompt_version=prompt_version, input_hash=turn_hash, response=response)
+        return response

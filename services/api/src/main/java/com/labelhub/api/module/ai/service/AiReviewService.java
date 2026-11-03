@@ -40,6 +40,7 @@ import com.labelhub.api.module.schema.exception.SubmissionNotFoundException;
 import com.labelhub.api.module.schema.mapper.SchemaVersionMapper;
 import com.labelhub.api.module.schema.mapper.SubmissionMapper;
 import com.labelhub.api.module.schema.runtime.SchemaRuntimeAdapter;
+import com.labelhub.api.module.schema.util.StableIdExtractor;
 import com.labelhub.api.module.task.entity.TaskEntity;
 import com.labelhub.api.module.task.mapper.TaskMapper;
 import com.labelhub.api.shared.canonical.Canonicalizer;
@@ -50,6 +51,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -399,6 +401,33 @@ public class AiReviewService {
             contextScore.scoringRuleVersion(),
             businessPrompt,
             PromptTemplate.build(businessPrompt, input, objectMapper)
+        );
+    }
+
+    /**
+     * ADR-019: the facts a candidate AI review output is validated against, resolved exactly as
+     * {@link #getInternalContext(Long)} resolves them (active rule, dimensions, thresholds, schema).
+     */
+    public AiReviewOutputValidator.Context getReviewValidationContext(Long submissionId) {
+        SubmissionEntity submission = submissionMapper.selectById(submissionId);
+        if (submission == null) {
+            throw new SubmissionNotFoundException(submissionId);
+        }
+        TaskEntity task = taskMapper.selectById(submission.getTaskId());
+        if (task == null) {
+            throw new SubmissionNotFoundException(submissionId);
+        }
+        SchemaVersionEntity schemaVersion = schemaVersionMapper.selectById(submission.getSchemaVersionId());
+        AiReviewRuleEntity activeRule = activeReviewRule(task);
+        ScoredAiReview thresholds = score(emptyResult(Map.of()), activeRule);
+        Set<String> stableIds = schemaVersion == null
+            ? Set.of()
+            : new LinkedHashSet<>(new StableIdExtractor().extract(schemaRuntimeAdapter.toSchemaDocument(schemaVersion.getSchemaJson())));
+        return new AiReviewOutputValidator.Context(
+            dimensionsOf(activeRule),
+            thresholds.passThreshold(),
+            thresholds.rejectThreshold(),
+            stableIds
         );
     }
 

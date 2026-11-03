@@ -1,0 +1,22 @@
+{
+  "description": "ADR-019 correction prompt (v2) fed back to the model after a failed validate-review. Only correctable codes are fed back; suggestion/score conflicts are flagged deterministically, never sent to the model. services/agent (ReviewFeedback) and evals (review_loop.py) must render byte-identical text; both test against this file.",
+  "promptVersion": "h2-validate-loop-v2",
+  "header": "Your record_ai_review call failed validation:",
+  "line": "- [{code}] {path}: {message}",
+  "footer": "Call record_ai_review again with a complete, corrected result. Fix exactly the problems listed: only reference fields that exist, and score every configured dimension exactly once. Keep your judgement of the submission unchanged: the same overallSuggestion and the same scores.",
+  "example": {
+    "errors": [
+      {
+        "code": "unknown_field",
+        "path": "fieldFindings[0].stableId",
+        "message": "stableId response-1 does not exist; known fields: prompt, response"
+      },
+      {
+        "code": "unknown_field",
+        "path": "fieldFindings[0].fieldPath",
+        "message": "fieldPath finding-1 does not start with a known field; known fields: prompt, response"
+      }
+    ],
+    "rendered": "Your record_ai_review call failed validation:\n- [unknown_field] fieldFindings[0].stableId: stableId response-1 does not exist; known fields: prompt, response\n- [unknown_field] fieldFindings[0].fieldPath: fieldPath finding-1 does not start with a known field; known fields: prompt, response\nCall record_ai_review again with a complete, corrected result. Fix exactly the problems listed: only reference fields that exist, and score every configured dimension exactly once. Keep your judgement of the submission unchanged: the same overallSuggestion and the same scores."
+  }
+}

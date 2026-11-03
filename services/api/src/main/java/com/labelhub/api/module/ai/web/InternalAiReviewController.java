@@ -6,14 +6,19 @@ import com.labelhub.api.generated.model.FieldFinding;
 import com.labelhub.api.generated.model.InternalAiReviewContext;
 import com.labelhub.api.generated.model.InternalAiReviewResult;
 import com.labelhub.api.generated.model.InternalAiReviewResultRequest;
+import com.labelhub.api.generated.model.InternalAiReviewValidation;
+import com.labelhub.api.generated.model.InternalAiReviewValidationError;
+import com.labelhub.api.generated.model.InternalAiReviewValidationRequest;
 import com.labelhub.api.generated.web.InternalApi;
 import com.labelhub.api.module.ai.service.DimensionScoreValue;
 import com.labelhub.api.module.ai.service.InternalAiReviewResultCommand;
 import com.labelhub.api.module.ai.service.AiReviewService;
+import com.labelhub.api.module.ai.service.AiReviewOutputValidator;
 import com.labelhub.api.module.ai.service.view.InternalAiReviewContextView;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -23,9 +28,40 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalAiReviewController implements InternalApi {
 
     private final AiReviewService aiReviewService;
+    private final AiReviewOutputValidator outputValidator;
 
     public InternalAiReviewController(AiReviewService aiReviewService) {
+        this(aiReviewService, new AiReviewOutputValidator());
+    }
+
+    @Autowired
+    public InternalAiReviewController(AiReviewService aiReviewService, AiReviewOutputValidator outputValidator) {
         this.aiReviewService = aiReviewService;
+        this.outputValidator = outputValidator;
+    }
+
+    @Override
+    public ResponseEntity<InternalAiReviewValidation> validateAiReviewOutput(
+        @PathVariable("submissionId") Long submissionId,
+        @Valid @RequestBody InternalAiReviewValidationRequest internalAiReviewValidationRequest
+    ) {
+        AiReviewOutputValidator.Context context = aiReviewService.getReviewValidationContext(submissionId);
+        Object output = internalAiReviewValidationRequest.getOutput();
+        List<AiReviewOutputValidator.Error> errors = outputValidator.validate(output, context);
+        AiReviewOutputValidator.Routing routing = outputValidator.routing(output, context);
+        InternalAiReviewValidation dto = new InternalAiReviewValidation();
+        dto.setValid(errors.isEmpty());
+        dto.setRoute(routing.route() == null ? null : InternalAiReviewValidation.RouteEnum.fromValue(routing.route()));
+        dto.setFinalScore(routing.finalScore());
+        dto.setRulesVersion(AiReviewOutputValidator.RULES_VERSION);
+        dto.setErrors(errors.stream().map(error -> {
+            InternalAiReviewValidationError item = new InternalAiReviewValidationError();
+            item.setCode(InternalAiReviewValidationError.CodeEnum.fromValue(error.code()));
+            item.setPath(error.path());
+            item.setMessage(error.message());
+            return item;
+        }).toList());
+        return ResponseEntity.ok(dto);
     }
 
     @Override

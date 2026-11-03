@@ -60,6 +60,10 @@ jobs:
           python -m labelhub_evals golden build
           python -m labelhub_evals run --provider chatgpt --model gpt-6.1-terra --effort low --mode replay --require-reproduced
           python -m labelhub_evals analyze runs/700607c95f112de6 --out reports/w1-baseline-analysis.md --check
+      - name: W2 (H2 v2 loop) run reproduces and still passes its gate against the W1 baseline
+        run: |
+          python -m labelhub_evals run --provider chatgpt --model gpt-6.1-terra --effort low --mode replay --loop-max-steps 3 --require-reproduced
+          python -m labelhub_evals compare runs/700607c95f112de6 runs/76b0cd706ca35fdd --out reports/w2v2-vs-w1.md --check
       - name: Replay must not leave untracked files
         run: test -z "$(git status --porcelain -- .)"
 

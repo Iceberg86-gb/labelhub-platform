@@ -1,0 +1,809 @@
+[
+  {
+    "caseId": "valid-pass",
+    "description": "Consistent pass: score in pass zone, findings reference real fields.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": [
+        {
+          "fieldPath": "answer",
+          "severity": "info",
+          "finding": "note",
+          "stableId": "answer"
+        }
+      ]
+    },
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
+  },
+  {
+    "caseId": "valid-reject",
+    "description": "Consistent reject at exactly the reject threshold (<= is reject).",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "reject",
+      "confidence": 0.2,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.2
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [],
+    "expectedRoute": "reject",
+    "expectedFinalScore": "0.2000"
+  },
+  {
+    "caseId": "valid-manual",
+    "description": "Consistent manual_review in the middle zone.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "manual_review",
+      "confidence": 0.5,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.5
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [],
+    "expectedRoute": "manual_review",
+    "expectedFinalScore": "0.5000"
+  },
+  {
+    "caseId": "valid-pass-boundary",
+    "description": "Score exactly at pass threshold (>= is pass).",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.8,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.8
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.8000"
+  },
+  {
+    "caseId": "valid-nested-path",
+    "description": "fieldPath root is checked; nested segments after '.' or '[' are free.",
+    "context": {
+      "dimensions": [
+        "accuracy",
+        "format"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.40",
+      "stableIds": [
+        "label",
+        "notes",
+        "child_a"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "accuracy",
+          "score": 0.9
+        },
+        {
+          "dimension": "format",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": [
+        {
+          "fieldPath": "notes[0].text",
+          "severity": "info",
+          "finding": "note"
+        },
+        {
+          "fieldPath": "child_a.value",
+          "severity": "info",
+          "finding": "note",
+          "stableId": "child_a"
+        }
+      ]
+    },
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
+  },
+  {
+    "caseId": "valid-null-stableid",
+    "description": "stableId may be null; fieldPath alone is checked.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": [
+        {
+          "fieldPath": "reason",
+          "severity": "info",
+          "finding": "note",
+          "stableId": null
+        }
+      ]
+    },
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
+  },
+  {
+    "caseId": "not-an-object",
+    "description": "Arguments that are not a JSON object stop validation.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": [
+      "pass"
+    ],
+    "expectedErrors": [
+      {
+        "code": "invalid_structure",
+        "path": "$"
+      }
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
+  },
+  {
+    "caseId": "missing-required",
+    "description": "Every missing required key is reported, in schema order; semantic rules do not run.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9
+    },
+    "expectedErrors": [
+      {
+        "code": "invalid_structure",
+        "path": "summary"
+      },
+      {
+        "code": "invalid_structure",
+        "path": "dimensionScores"
+      },
+      {
+        "code": "invalid_structure",
+        "path": "fieldFindings"
+      }
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
+  },
+  {
+    "caseId": "bad-enum-and-range",
+    "description": "Enum and [0,1] range violations; booleans are not numbers.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "approve",
+      "confidence": true,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [
+      {
+        "code": "invalid_structure",
+        "path": "overallSuggestion"
+      },
+      {
+        "code": "invalid_structure",
+        "path": "confidence"
+      }
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
+  },
+  {
+    "caseId": "bad-dimension-row",
+    "description": "Row-level structure errors carry the index.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "",
+          "score": 0.9
+        },
+        {
+          "dimension": "overall",
+          "score": 1.5
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [
+      {
+        "code": "invalid_structure",
+        "path": "dimensionScores[0].dimension"
+      },
+      {
+        "code": "invalid_structure",
+        "path": "dimensionScores[1].score"
+      }
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
+  },
+  {
+    "caseId": "bad-finding-row",
+    "description": "Finding structure: fieldPath, severity enum, finding text, optional confidence range.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": [
+        {
+          "fieldPath": "",
+          "severity": "fatal",
+          "finding": 3,
+          "confidence": 2
+        }
+      ]
+    },
+    "expectedErrors": [
+      {
+        "code": "invalid_structure",
+        "path": "fieldFindings[0].fieldPath"
+      },
+      {
+        "code": "invalid_structure",
+        "path": "fieldFindings[0].severity"
+      },
+      {
+        "code": "invalid_structure",
+        "path": "fieldFindings[0].finding"
+      },
+      {
+        "code": "invalid_structure",
+        "path": "fieldFindings[0].confidence"
+      }
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
+  },
+  {
+    "caseId": "missing-dimension",
+    "description": "A configured dimension without a score is reported (the scoring policy would silently use confidence).",
+    "context": {
+      "dimensions": [
+        "accuracy",
+        "format"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.40",
+      "stableIds": [
+        "label",
+        "notes",
+        "child_a"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "accuracy",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [
+      {
+        "code": "missing_dimension",
+        "path": "dimensionScores"
+      }
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
+  },
+  {
+    "caseId": "unknown-and-duplicate-dimension",
+    "description": "Duplicate is reported before unknown checks for the same row; unknown dimensions are reported.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.9
+        },
+        {
+          "dimension": "overall",
+          "score": 0.9
+        },
+        {
+          "dimension": "style",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [
+      {
+        "code": "duplicate_dimension",
+        "path": "dimensionScores[1].dimension"
+      },
+      {
+        "code": "unknown_dimension",
+        "path": "dimensionScores[2].dimension"
+      }
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
+  },
+  {
+    "caseId": "unknown-field-stableid",
+    "description": "Invented stableIds (seen in real recordings: response-1, finding-1) are rejected.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": [
+        {
+          "fieldPath": "answer",
+          "severity": "info",
+          "finding": "note",
+          "stableId": "answer-1"
+        },
+        {
+          "fieldPath": "finding-1",
+          "severity": "info",
+          "finding": "note",
+          "stableId": "finding-1"
+        }
+      ]
+    },
+    "expectedErrors": [
+      {
+        "code": "unknown_field",
+        "path": "fieldFindings[0].stableId"
+      },
+      {
+        "code": "unknown_field",
+        "path": "fieldFindings[1].stableId"
+      },
+      {
+        "code": "unknown_field",
+        "path": "fieldFindings[1].fieldPath"
+      }
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
+  },
+  {
+    "caseId": "suggestion-reject-score-middle",
+    "description": "Most common real conflict: suggests reject while the score routes to manual review.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "reject",
+      "confidence": 0.35,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.35
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [
+      {
+        "code": "suggestion_score_conflict",
+        "path": "overallSuggestion"
+      }
+    ],
+    "expectedRoute": "manual_review",
+    "expectedFinalScore": "0.3500"
+  },
+  {
+    "caseId": "suggestion-pass-score-middle",
+    "description": "Suggests pass below the pass threshold.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.7,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.7
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [
+      {
+        "code": "suggestion_score_conflict",
+        "path": "overallSuggestion"
+      }
+    ],
+    "expectedRoute": "manual_review",
+    "expectedFinalScore": "0.7000"
+  },
+  {
+    "caseId": "suggestion-manual-score-pass",
+    "description": "manual_review with a pass-zone score would be auto-passed: conflict.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "manual_review",
+      "confidence": 0.95,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.95
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [
+      {
+        "code": "suggestion_score_conflict",
+        "path": "overallSuggestion"
+      }
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9500"
+  },
+  {
+    "caseId": "conflict-uses-policy-average",
+    "description": "Zone uses the policy's equal-weight average with confidence fallback for missing dimensions.",
+    "context": {
+      "dimensions": [
+        "accuracy",
+        "format"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.40",
+      "stableIds": [
+        "label",
+        "notes",
+        "child_a"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.5,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "accuracy",
+          "score": 0.95
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [
+      {
+        "code": "missing_dimension",
+        "path": "dimensionScores"
+      },
+      {
+        "code": "suggestion_score_conflict",
+        "path": "overallSuggestion"
+      }
+    ],
+    "expectedRoute": "manual_review",
+    "expectedFinalScore": "0.7250"
+  },
+  {
+    "caseId": "conflict-half-up-rounding",
+    "description": "Average rounds to 4 decimals HALF_UP before comparison: (0.79995+0.79996)/2 = 0.799955 -> 0.8000, which is pass.",
+    "context": {
+      "dimensions": [
+        "accuracy",
+        "format"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.40",
+      "stableIds": [
+        "label",
+        "notes",
+        "child_a"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "accuracy",
+          "score": 0.79995
+        },
+        {
+          "dimension": "format",
+          "score": 0.79996
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.8000"
+  },
+  {
+    "caseId": "error-finding-on-pass",
+    "description": "A pass with an error-severity finding is contradictory.",
+    "context": {
+      "dimensions": [
+        "overall"
+      ],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": [
+        {
+          "fieldPath": "answer",
+          "severity": "warning",
+          "finding": "note",
+          "stableId": "answer"
+        },
+        {
+          "fieldPath": "reason",
+          "severity": "error",
+          "finding": "note",
+          "stableId": "reason"
+        }
+      ]
+    },
+    "expectedErrors": [
+      {
+        "code": "error_finding_on_pass",
+        "path": "fieldFindings[1].severity"
+      }
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
+  },
+  {
+    "caseId": "empty-dimension-config",
+    "description": "No configured dimensions means the policy default ['overall'].",
+    "context": {
+      "dimensions": [],
+      "passThreshold": "0.80",
+      "rejectThreshold": "0.20",
+      "stableIds": [
+        "answer",
+        "reason"
+      ]
+    },
+    "output": {
+      "overallSuggestion": "pass",
+      "confidence": 0.9,
+      "summary": "ok",
+      "dimensionScores": [
+        {
+          "dimension": "overall",
+          "score": 0.9
+        }
+      ],
+      "fieldFindings": []
+    },
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
+  }
+]
