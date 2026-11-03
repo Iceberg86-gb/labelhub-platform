@@ -84,6 +84,13 @@ public class AiReviewService {
     private final AuditLogService auditLogService;
     private final AiReviewScoringPolicy scoringPolicy;
     private final SchemaRuntimeAdapter schemaRuntimeAdapter;
+    private AutoAcceptService autoAcceptService;
+
+    /** ADR-020: optional so the many unit tests constructing this service stay unchanged. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setAutoAcceptService(AutoAcceptService autoAcceptService) {
+        this.autoAcceptService = autoAcceptService;
+    }
 
     @Autowired
     public AiReviewService(
@@ -502,6 +509,10 @@ public class AiReviewService {
         requireOneRow(aiCallMapper.insert(aiCall), "insert ai_call");
         List<AiCallInFieldEntity> rows = appendFieldRows(command.submissionId(), aiCall.getId(), result.fieldFindings(), now);
         appendAiEvidenceLedger(command.submissionId(), submission.getTaskId(), aiCall.getId(), result);
+        if (autoAcceptService != null) {
+            // ADR-020 §3: only the agent path (H2-validated) can be admitted by the auto-pass policy.
+            autoAcceptService.onAgentResultRecorded(command.submissionId(), submission.getTaskId(), aiCall, result);
+        }
         aiCall.setOutputHash(hash(responsePayload));
         return new AiReviewResultView(aiCall, result, rows, false);
     }

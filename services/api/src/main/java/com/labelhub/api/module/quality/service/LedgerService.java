@@ -50,6 +50,10 @@ public class LedgerService {
     private final Clock clock;
     private final AuditLogService auditLogService;
     private final SeniorReviewCaseService seniorReviewCaseService;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
+    public static final String POLICY_AUTO_ACCEPT = "policy_auto_accept";
+    public static final String POLICY_AUTO_SAMPLE = "policy_auto_sample";
 
     @Autowired
     public LedgerService(
@@ -115,6 +119,37 @@ public class LedgerService {
         Clock clock
     ) {
         this(submissionMapper, null, taskMapper, qualityLedgerEntryMapper, null, clock, AuditLogService.noop(), null, null);
+    }
+
+    @Autowired(required = false)
+    void setEventPublisher(org.springframework.context.ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    /**
+     * ADR-020 §3: append system policy evidence. policy_auto_accept = admitted by the owner's auto-pass policy without
+     * a human verdict; policy_auto_sample = would have been auto-accepted but was sampled for blind human review.
+     * Never a reviewer_overall_verdict: the AI/policy does not write human verdicts (ADR-005).
+     */
+    @Transactional(propagation = Propagation.REQUIRED)
+    public QualityLedgerEntryEntity appendPolicyEvidence(Long submissionId, Long taskId, Long aiCallId, String evidenceType, Map<String, Object> payload) {
+        if (!POLICY_AUTO_ACCEPT.equals(evidenceType) && !POLICY_AUTO_SAMPLE.equals(evidenceType)) {
+            throw new LedgerEntryTypeNotSupportedException(evidenceType);
+        }
+        if (payload == null || payload.get("policyEventId") == null || payload.get("ruleId") == null) {
+            throw new LedgerEntryPayloadInvalidException("policy evidence requires policyEventId and ruleId");
+        }
+        QualityLedgerEntryEntity entity = new QualityLedgerEntryEntity();
+        entity.setSubmissionId(Objects.requireNonNull(submissionId, "submissionId"));
+        entity.setTaskId(Objects.requireNonNull(taskId, "taskId"));
+        entity.setEvidenceType(evidenceType);
+        entity.setActorType("system");
+        entity.setActorId(null);
+        entity.setAiCallId(aiCallId);
+        entity.setPayload(payload);
+        entity.setCreatedAt(LocalDateTime.now(clock));
+        requireOneRow(qualityLedgerEntryMapper.insert(entity), "insert policy evidence ledger entry");
+        return entity;
     }
 
     @Transactional
@@ -189,6 +224,9 @@ public class LedgerService {
         entity.setCreatedAt(LocalDateTime.now(clock));
         requireOneRow(qualityLedgerEntryMapper.insert(entity), "insert quality ledger entry");
         String verdict = String.valueOf(payload.get("verdict"));
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new HumanVerdictRecordedEvent(submissionId, submission.getTaskId(), entity.getId(), verdict, reviewLevel));
+        }
         if ("approve".equals(verdict)) {
             recordReviewAction(submission, entity, reviewerUserId, verdict);
             activateSeniorCasesAfterReviewerApprove(submission, entity);

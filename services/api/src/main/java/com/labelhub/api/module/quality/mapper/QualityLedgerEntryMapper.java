@@ -71,6 +71,17 @@ public interface QualityLedgerEntryMapper {
     @ResultMap("qualityLedgerEntryResultMap")
     QualityLedgerEntryEntity selectLatestReviewerOverallVerdict(@Param("submissionId") Long submissionId);
 
+    /** ADR-020: all entries of one evidence type for a submission (e.g. policy_auto_accept / policy_auto_sample). */
+    @Select("""
+        SELECT id, submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at
+        FROM quality_ledger_entries
+        WHERE submission_id = #{submissionId}
+          AND evidence_type = #{evidenceType}
+        ORDER BY created_at ASC, id ASC
+        """)
+    @ResultMap("qualityLedgerEntryResultMap")
+    List<QualityLedgerEntryEntity> selectBySubmissionIdAndType(@Param("submissionId") Long submissionId, @Param("evidenceType") String evidenceType);
+
     @Select("""
         SELECT id, submission_id, task_id, evidence_type, actor_type, actor_id, ai_call_id, payload, created_at
         FROM quality_ledger_entries
