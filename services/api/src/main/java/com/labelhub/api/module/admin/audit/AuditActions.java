@@ -23,6 +23,10 @@ public final class AuditActions {
     public static final String AI_REVIEW_FIELD_ASSIST = "ai_review.field_assist";
     public static final String AI_REVIEW_FAILED = "ai_review.failed";                        // REQUIRES_NEW: implementation lands in Cluster 3
     public static final String AI_REVIEW_RECORDED_FAILED_CALL = "ai_review.recorded_failed_call";
+    public static final String AI_AUTO_POLICY_ENABLE = "ai_review.auto_policy_enable";       // ADR-020 §3
+    public static final String AI_AUTO_POLICY_DISABLE = "ai_review.auto_policy_disable";
+    public static final String AI_AUTO_POLICY_CIRCUIT_BREAK = "ai_review.auto_policy_circuit_break";
+    public static final String AI_AUTO_ACCEPT = "ai_review.policy_auto_accept";
     public static final String REVIEW_APPROVE = "review.approve";
     public static final String REVIEW_REJECT = "review.reject";
     public static final String EXPORT_SNAPSHOT_CREATE = "export.snapshot_create";

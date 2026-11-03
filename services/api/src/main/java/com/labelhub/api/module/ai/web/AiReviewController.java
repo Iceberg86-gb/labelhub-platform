@@ -1,5 +1,11 @@
 package com.labelhub.api.module.ai.web;
 
+import com.labelhub.api.generated.model.AiReviewAutoPolicyDisableRequest;
+import com.labelhub.api.generated.model.AiReviewAutoPolicyEnableRequest;
+import com.labelhub.api.generated.model.AiReviewAutoPolicyEvent;
+import com.labelhub.api.generated.model.AiReviewAutoPolicySampleStats;
+import com.labelhub.api.generated.model.AiReviewAutoPolicyState;
+import com.labelhub.api.module.ai.service.AutoPolicyService;
 import com.labelhub.api.generated.model.AiReviewRuleShadowStats;
 import com.labelhub.api.generated.model.AiReviewRuleShadowStatsGroup;
 import com.labelhub.api.module.ai.service.AiReviewShadowStatsService;
@@ -43,6 +49,7 @@ public class AiReviewController implements AiReviewApi {
     private final AiReviewRuleDtoMapper aiReviewRuleDtoMapper;
     private final TaskAiPrereviewService taskAiPrereviewService;
     private final AiReviewShadowStatsService shadowStatsService;
+    private final AutoPolicyService autoPolicyService;
 
     public AiReviewController(
         AiReviewService aiReviewService,
@@ -51,7 +58,8 @@ public class AiReviewController implements AiReviewApi {
         AiReviewRuleService aiReviewRuleService,
         AiReviewRuleDtoMapper aiReviewRuleDtoMapper,
         TaskAiPrereviewService taskAiPrereviewService,
-        AiReviewShadowStatsService shadowStatsService
+        AiReviewShadowStatsService shadowStatsService,
+        AutoPolicyService autoPolicyService
     ) {
         this.aiReviewService = aiReviewService;
         this.fieldAssistService = fieldAssistService;
@@ -60,6 +68,67 @@ public class AiReviewController implements AiReviewApi {
         this.aiReviewRuleDtoMapper = aiReviewRuleDtoMapper;
         this.taskAiPrereviewService = taskAiPrereviewService;
         this.shadowStatsService = shadowStatsService;
+        this.autoPolicyService = autoPolicyService;
+    }
+
+    @Override
+    public ResponseEntity<AiReviewAutoPolicyState> getAiReviewAutoPolicy(@PathVariable("ruleId") Long ruleId) {
+        return ResponseEntity.ok(toAutoPolicyState(autoPolicyService.state(ruleId, currentUserId())));
+    }
+
+    @Override
+    public ResponseEntity<AiReviewAutoPolicyState> enableAiReviewAutoPolicy(
+        @PathVariable("ruleId") Long ruleId,
+        @Valid @RequestBody AiReviewAutoPolicyEnableRequest request
+    ) {
+        AutoPolicyService.EnableCommand command = new AutoPolicyService.EnableCommand(
+            request.getPromptVersionId(), request.getModelName(), request.getMaxError(), request.getMinSamples(), request.getSampleRate());
+        return ResponseEntity.ok(toAutoPolicyState(autoPolicyService.enable(ruleId, currentUserId(), command)));
+    }
+
+    @Override
+    public ResponseEntity<AiReviewAutoPolicyState> disableAiReviewAutoPolicy(
+        @PathVariable("ruleId") Long ruleId,
+        @Valid @RequestBody(required = false) AiReviewAutoPolicyDisableRequest request
+    ) {
+        String reason = request == null ? null : request.getReason();
+        return ResponseEntity.ok(toAutoPolicyState(autoPolicyService.disable(ruleId, currentUserId(), reason)));
+    }
+
+    private AiReviewAutoPolicyState toAutoPolicyState(AutoPolicyService.State state) {
+        AiReviewAutoPolicyState dto = new AiReviewAutoPolicyState();
+        dto.setRuleId(state.ruleId());
+        dto.setMode(AiReviewAutoPolicyState.ModeEnum.fromValue(state.mode()));
+        dto.setCurrent(state.current() == null ? null : toAutoPolicyEvent(state.current()));
+        dto.setEvents(state.events().stream().map(this::toAutoPolicyEvent).toList());
+        if (state.samples() != null) {
+            AiReviewAutoPolicySampleStats samples = new AiReviewAutoPolicySampleStats();
+            samples.setSampled(Math.toIntExact(state.samples().sampled()));
+            samples.setJudged(Math.toIntExact(state.samples().judged()));
+            samples.setHumanRejected(Math.toIntExact(state.samples().humanRejected()));
+            samples.setWilsonLower95(state.samples().wilsonLower95());
+            samples.setWilsonUpper95(state.samples().wilsonUpper95());
+            samples.setAutoAccepted(Math.toIntExact(state.samples().autoAccepted()));
+            dto.setSamples(samples);
+        }
+        return dto;
+    }
+
+    private AiReviewAutoPolicyEvent toAutoPolicyEvent(com.labelhub.api.module.ai.entity.AiReviewAutoPolicyEventEntity entity) {
+        AiReviewAutoPolicyEvent dto = new AiReviewAutoPolicyEvent();
+        dto.setId(entity.getId());
+        dto.setAction(AiReviewAutoPolicyEvent.ActionEnum.fromValue(entity.getAction()));
+        dto.setPromptVersionId(entity.getPromptVersionId());
+        dto.setModelName(entity.getModelName());
+        dto.setMaxError(entity.getMaxError());
+        dto.setMinSamples(entity.getMinSamples());
+        dto.setSampleRate(entity.getSampleRate());
+        dto.setEvidence(entity.getEvidence() == null ? java.util.Map.of() : entity.getEvidence());
+        dto.setActorType(AiReviewAutoPolicyEvent.ActorTypeEnum.fromValue(entity.getActorType()));
+        dto.setActorId(entity.getActorId());
+        dto.setReason(entity.getReason());
+        dto.setCreatedAt(entity.getCreatedAt() == null ? null : entity.getCreatedAt().atOffset(java.time.ZoneOffset.UTC));
+        return dto;
     }
 
     @Override

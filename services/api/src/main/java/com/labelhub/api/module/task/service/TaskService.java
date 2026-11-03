@@ -201,6 +201,8 @@ public class TaskService {
         taskDeletionMapper.deleteReviewActions(taskId);
         // Step 8: blocks fk_senior_cases_* before submissions, tasks, users, or ledger delete.
         taskDeletionMapper.deleteSeniorReviewCases(taskId);
+        // ADR-020: auto-pass policy events reference ai_review_rules and tasks.
+        taskDeletionMapper.deleteAiReviewAutoPolicyEvents(taskId);
         // Step 9: blocks fk_export_snapshots_job/task/rule before export_jobs, tasks, or rules delete.
         taskDeletionMapper.deleteExportSnapshots(taskId);
         // Step 10: blocks fk_quality_ledger_submission/task/ai_call before submissions, tasks, or ai_calls delete.

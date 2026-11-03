@@ -142,3 +142,16 @@ Proposed（2026-11-03）。对应 ADR-017 的 H3 阶段。
 校准结果是一组取舍，而不是唯一答案：具体选哪个点，取决于高级审核员的人力和审核员的真实错误率，需要 owner 决定（humanpending #270）。
 
 **owner 已选定（humanpending #271）≤ 25% 预算的工作点**：通过阈值 0.60、打回阈值 0.45、人机分歧阈值 0.25，自相矛盾升级关闭。通过发布新的规则版本落地；代码层面的默认值保持关闭。
+
+## W3b 设计确认（2026-11-03，owner 已确认）
+
+1. **策略状态用只追加的事件表**（`ai_review_auto_policy_events`，并加入 conventions §4 的 append-only 清单），不修改规则行。动作只有 `enable`、`disable`、`circuit_break` 三种；一条规则版本当前的模式取它的最新事件：`enable` 表示 `auto`，否则是 `suggest`。每条事件记录操作者、阈值参数和当时的门槛证据快照。
+2. **门槛锁定到精确组合。** 开启时由 Owner 选择（prompt 版本, 模型）分组，API 用 W3a 的影子统计校验：样本数 ≥ `min_samples`，并且 Wilson 95% 上界 ≤ `max_error`。规则必须是任务当前生效的版本。自动准入时，如果实际调用的模型或 prompt 与门槛分组不一致，这条提交按 `suggest` 处理。
+3. **可以自动准入的提交**必须同时满足：AI 路由为 `pass`；H2 循环的结果是 `valid` 或 `corrected`（没有经过循环的同步调用一律不能自动准入）；没有 error 级的字段发现。
+   - 抽检按 `hash(submission_id : 策略事件 id)` 确定性地选取，选中的写一条 `policy_auto_sample` 证据，照常进入初审；
+   - 其余的写一条 `policy_auto_accept` 证据，退出初审队列。
+4. **盲审（owner 选择）。** 对抽检样本，初审员（`REVIEWER` 角色）看不到 AI 的整体建议、分数和抽检标记；字段级发现照常展示。高级审核员和 Owner 不受影响。
+5. **熔断：修订 §3 的原文"抽检错误率的 Wilson 上界超过上限"。** 样本少的时候上界很大，例如 0/1 的上界约 79%，按原文第一条抽检就会触发熔断。改为抽检错误率的 **Wilson 95% 下界** > `max_error` 时熔断，即有统计显著的证据表明错误率超标。熔断时追加一条 `circuit_break` 事件，系统自动退回 `suggest`，同时写审计日志。
+6. **导出（owner 选择）：默认不包含策略准入的数据。** Owner 必须显式勾选 `includePolicyAccepted` 才会导出这部分数据；每条导出数据的准入来源（`human` / `policy`）都写进 manifest。
+7. **派生状态。** 存在 `policy_auto_accept`、且之后没有任何人工裁决的提交，verdict 派生为 `accepted_by_policy`。在标注员的状态和 Owner 的进度统计里按"已通过"计算。
+8. **分两个 PR 交付。** W3b-1 是后端核心和集成测试，W3b-2 是前端：影子统计展示、开关、状态标签、导出选项和盲审展示。
