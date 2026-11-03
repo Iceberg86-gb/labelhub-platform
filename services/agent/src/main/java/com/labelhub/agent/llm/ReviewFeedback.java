@@ -9,11 +9,11 @@ import java.util.List;
  */
 public final class ReviewFeedback {
 
-    public static final String PROMPT_VERSION = "h2-validate-loop-v1";
+    public static final String PROMPT_VERSION = "h2-validate-loop-v2";
     static final String HEADER = "Your record_ai_review call failed validation:";
-    static final String FOOTER = "Call record_ai_review again with a complete, corrected result. Fix exactly the problems listed. "
-        + "Only reference fields that exist, score every configured dimension once, and make overallSuggestion agree with the zone "
-        + "your scores fall in. Change your judgement of the submission only if an error shows your own fields contradict each other.";
+    static final String FOOTER = "Call record_ai_review again with a complete, corrected result. Fix exactly the problems listed: "
+        + "only reference fields that exist, and score every configured dimension exactly once. Keep your judgement of the "
+        + "submission unchanged: the same overallSuggestion and the same scores.";
 
     private ReviewFeedback() {
     }

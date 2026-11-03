@@ -68,12 +68,51 @@ def test_valid_first_answer_needs_one_call(tmp_path):
     assert (result.outcome, result.steps, p.corrections) == ("valid", 1, [])
 
 
-def test_conflict_is_fed_back_and_corrected(tmp_path):
-    p = Scripted(out("reject", 0.35), out("manual_review", 0.35))
+def test_conflict_is_flagged_and_never_sent_to_the_model(tmp_path):
+    """v2: on the real baseline the model 'fixed' every conflict by moving scores into an auto zone."""
+    p = Scripted(out("reject", 0.35))
     result = run_loop(recorder(tmp_path, p), "h", {"prompt": "p", "response": "r"}, CTX, 3)
-    assert (result.outcome, result.steps) == ("corrected", 2)
+    assert (result.outcome, result.steps, p.corrections) == ("flagged", 1, [])
+    assert [e.code for e in result.final_errors] == ["suggestion_score_conflict"]
+
+
+def test_unknown_field_is_fed_back_alone_even_when_a_conflict_is_present(tmp_path):
+    first = out("reject", 0.35, [{"fieldPath": "response", "stableId": "response-1", "severity": "info", "finding": "x"}])
+    fixed = out("reject", 0.35, [{"fieldPath": "response", "stableId": "response", "severity": "info", "finding": "x"}])
+    p = Scripted(first, fixed)
+    result = run_loop(recorder(tmp_path, p), "h", {"prompt": "p", "response": "r"}, CTX, 3)
     n, style, feedback = p.corrections[0]
-    assert (n, style) == (1, "tool") and "[suggestion_score_conflict] overallSuggestion" in feedback
+    assert (n, style) == (1, "tool")
+    assert "[unknown_field]" in feedback and "suggestion_score_conflict" not in feedback
+    assert (result.outcome, result.steps) == ("flagged", 2)  # references fixed, conflict still flagged
+
+
+def test_unknown_field_fixed_without_conflict_is_corrected(tmp_path):
+    first = out("pass", 0.9, [{"fieldPath": "finding-1", "severity": "info", "finding": "x"}])
+    p = Scripted(first, out("pass", 0.9, [{"fieldPath": "response", "severity": "info", "finding": "x"}]))
+    assert run_loop(recorder(tmp_path, p), "h", {"prompt": "p", "response": "r"}, CTX, 3).outcome == "corrected"
+
+
+def test_a_correction_that_moves_the_routing_zone_is_discarded(tmp_path):
+    first = out("manual_review", 0.5, [{"fieldPath": "finding-1", "severity": "info", "finding": "x"}])
+    moved = out("pass", 0.95, [{"fieldPath": "response", "severity": "info", "finding": "x"}])
+    p = Scripted(first, moved)
+    result = run_loop(recorder(tmp_path, p), "h", {"prompt": "p", "response": "r"}, CTX, 3)
+    assert result.outcome == "judgement_changed" and result.final is result.responses[0]
+    item = golden.GoldenItem("h", 0, {"prompt": "p", "response": "r"}, "reject", {})
+    row = evaluate_loop_item(item, recorder(tmp_path / "x", Scripted(first, moved)), RunConfig("g", "scripted/1", loop_max_steps=3))
+    assert row["route"] == "manual_review" and row["score"] == "0.5000"  # the first answer's routing, unchanged
+
+
+def test_a_correction_without_a_tool_call_is_discarded(tmp_path):
+    class Breaks(Scripted):
+        def correct(self, review_input, attempts, style):
+            self.corrections.append(len(attempts))
+            return ProviderResponse(None, "text answer", 1, 1, 1)
+
+    first = out("pass", 0.9, [{"fieldPath": "finding-1", "severity": "info", "finding": "x"}])
+    result = run_loop(recorder(tmp_path, Breaks(first)), "h", {"prompt": "p", "response": "r"}, CTX, 3)
+    assert result.outcome == "correction_failed" and result.final is result.responses[0]
 
 
 def test_never_fixed_is_downgraded_after_max_steps_and_history_grows(tmp_path):
@@ -105,7 +144,7 @@ def test_downgraded_item_keeps_score_routing_and_drops_unknown_findings_and_sums
 
 # --- recordings ----------------------------------------------------------------------------------------
 def test_step_one_reuses_h1_recordings_and_corrections_have_their_own_keys(tmp_path):
-    p = Scripted(out("reject", 0.35), out("manual_review", 0.35))
+    p = Scripted(out("pass", 0.9, [{"fieldPath": "finding-1", "severity": "info", "finding": "x"}]), out("pass", 0.9))
     RecordingProvider(p, RecordingStore(tmp_path), "record", "scripted/1", review.PROMPT_VERSION).review("h", {})  # an H1 run
     replay = RecordingProvider(None, RecordingStore(tmp_path), "replay", "scripted/1", review.PROMPT_VERSION)
     with pytest.raises(ReplayMiss, match="correction turn 1"):
@@ -129,7 +168,7 @@ def test_correction_key_depends_on_attempts_and_style(tmp_path):
 def test_h1_run_identity_has_no_loop_key_so_w1_run_ids_are_stable():
     assert "loop" not in RunConfig("g", "m").identity("x")
     loop = RunConfig("g", "m", loop_max_steps=3).identity("x")["loop"]
-    assert loop == {"correction_style": "tool", "feedback_version": "h2-validate-loop-v1", "max_steps": 3, "rules_version": "review-output-v1"}
+    assert loop == {"correction_style": "tool", "feedback_version": "h2-validate-loop-v2", "max_steps": 3, "rules_version": "review-output-v1"}
 
 
 def test_loop_run_is_reproducible_and_reports_loop_metrics(tmp_path):
@@ -143,7 +182,7 @@ def test_loop_run_is_reproducible_and_reports_loop_metrics(tmp_path):
             if r.arguments is None:
                 return r
             data = json.loads(r.arguments)
-            data["overallSuggestion"] = "reject"  # always contradicts unless score <= 0.20
+            data["fieldFindings"] = [{"fieldPath": "finding-1", "severity": "info", "finding": "invented field"}]
             return ProviderResponse(json.dumps(data), None, r.input_tokens, r.output_tokens, r.latency_ms)
 
     cfg = RunConfig("smoke8", Conflicted.identity, loop_max_steps=3)
@@ -151,6 +190,7 @@ def test_loop_run_is_reproducible_and_reports_loop_metrics(tmp_path):
     run_dir, _ = run(items, rec, cfg, tmp_path / "runs")
     card = json.loads((run_dir / "scorecard.json").read_text())["scorecard"]
     assert card["loop"]["outcomes"]["corrected"] > 0
+    assert card["loop"]["correction_success_rate"] == "1.000000"
     assert card["validator_correction_success_rate"] == card["loop"]["correction_success_rate"]
     assert "Validate-and-correct loop" in (run_dir / "scorecard.md").read_text()
     replay = RecordingProvider(None, RecordingStore(tmp_path / "rec"), "replay", Conflicted.identity, review.PROMPT_VERSION)
@@ -165,7 +205,7 @@ def _card(path: Path, sha: str, ape: str | None, loop=False):
                           "routed_counts": {"pass": 1, "manual_review": 1, "reject": 1},
                           "tokens": {"input_total": 1, "output_total": 1}, "latency_ms": {"p50": 1, "p95": 2}}}
     if loop:
-        card["run"]["loop"] = {"feedback_version": "h2-validate-loop-v1", "max_steps": 3}
+        card["run"]["loop"] = {"feedback_version": "h2-validate-loop-v2", "max_steps": 3}
         card["scorecard"]["loop"] = {"initial_invalid_rate": "0.6", "final_invalid_rate": "0.1", "correction_success_rate": "0.8", "model_calls": 17}
     path.mkdir()
     (path / "scorecard.json").write_text(json.dumps(card))

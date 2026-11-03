@@ -97,8 +97,8 @@ def evaluate_loop_item(item: GoldenItem, recorder, config: RunConfig) -> dict:
     ctx = ValidationContext(config.dimensions, config.pass_threshold, config.reject_threshold, frozenset(item.input))
     loop = run_loop(recorder, item.item_id, item.input, ctx, config.loop_max_steps, config.correction_style)
     final = loop.final
-    if loop.outcome == "downgraded":
-        final = ProviderResponse(json.dumps(downgraded_output(json.loads(final.arguments), loop.step_errors[-1]), sort_keys=True),
+    if loop.downgrades:
+        final = ProviderResponse(json.dumps(downgraded_output(json.loads(final.arguments), loop.final_errors), sort_keys=True),
                                  None, final.input_tokens, final.output_tokens, final.latency_ms)
 
     def total(attr):
@@ -112,7 +112,7 @@ def evaluate_loop_item(item: GoldenItem, recorder, config: RunConfig) -> dict:
         "steps": loop.steps,
         "loop_outcome": loop.outcome,
         "initial_error_codes": codes(loop.step_errors[0]) if loop.step_errors else [],
-        "final_error_codes": codes(loop.step_errors[-1]) if loop.step_errors and loop.outcome == "downgraded" else [],
+        "final_error_codes": codes(loop.final_errors),
     })
     return row
 
@@ -155,10 +155,11 @@ def render_markdown(card: dict) -> str:
             "",
             "| Metric | Value |",
             "|---|---|",
-            f"| Invalid on first answer | {pct(loop['initial_invalid_rate'])} |",
-            f"| Still invalid after the loop (downgraded) | {pct(loop['final_invalid_rate'])} |",
+            f"| Invalid on first answer (any rule / correctable) | {pct(loop['initial_invalid_rate'])} / {pct(loop['initial_correctable_rate'])} |",
+            f"| Flagged (judgement inconsistency, manual_review, not sent to the model) | {pct(loop['flagged_rate'])} |",
+            f"| Downgraded after the loop (still invalid, judgement changed or correction failed) | {pct(loop['final_invalid_rate'])} |",
             f"| Correction success rate | {pct(loop['correction_success_rate'])} |",
-            f"| Outcomes valid / corrected / downgraded / format violation | {o['valid']} / {o['corrected']} / {o['downgraded']} / {o['format_violation']} |",
+            f"| Outcomes valid / corrected / flagged / downgraded / judgement changed / correction failed / format violation | {o['valid']} / {o['corrected']} / {o['flagged']} / {o['downgraded']} / {o['judgement_changed']} / {o['correction_failed']} / {o['format_violation']} |",
             f"| Model calls (mean steps per item) | {loop['model_calls']} ({loop['mean_steps']}) |",
             f"| First-answer error codes | {', '.join(f'{k} {v}' for k, v in loop['initial_error_codes'].items()) or '-'} |",
             f"| Error codes left after the loop | {', '.join(f'{k} {v}' for k, v in loop['final_error_codes'].items()) or '-'} |",

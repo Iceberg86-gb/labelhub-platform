@@ -45,6 +45,10 @@ class AiReviewOutputValidatorCorpusTest {
                 .map(error -> new ExpectedError(error.code(), error.path()))
                 .toList();
             assertThat(actual).as(caseId + ": " + corpusCase.description()).containsExactlyElementsOf(corpusCase.expectedErrors());
+            AiReviewOutputValidator.Routing routing = validator.routing(output, context(corpusCase.context()));
+            assertThat(routing.route()).as(caseId + " route").isEqualTo(corpusCase.expectedRoute());
+            assertThat(routing.finalScore() == null ? null : routing.finalScore().toPlainString())
+                .as(caseId + " finalScore").isEqualTo(corpusCase.expectedFinalScore());
         }
     }
 
@@ -94,7 +98,15 @@ class AiReviewOutputValidatorCorpusTest {
         return DOUBLES.readValue(Files.readString(current.resolve("packages/contracts/fixtures/review-output-validation-corpus.json")), CORPUS_TYPE);
     }
 
-    private record CorpusCase(String caseId, String description, JsonNode context, JsonNode output, List<ExpectedError> expectedErrors) {}
+    private record CorpusCase(
+        String caseId,
+        String description,
+        JsonNode context,
+        JsonNode output,
+        List<ExpectedError> expectedErrors,
+        String expectedRoute,
+        String expectedFinalScore
+    ) {}
 
     private record ExpectedError(String code, String path) {}
 }

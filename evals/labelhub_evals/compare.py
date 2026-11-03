@@ -76,6 +76,8 @@ def compare(base_dir: Path, cand_dir: Path) -> tuple[str, bool]:
     if "loop" in c:
         loop = c["loop"]
         lines.append(f"| Invalid first answer → after loop | | {_fmt(loop['initial_invalid_rate'], 'pct')} → {_fmt(loop['final_invalid_rate'], 'pct')} | |")
+        if "flagged_rate" in loop:
+            lines.append(f"| Flagged (manual_review, not sent to the model) | | {_fmt(loop['flagged_rate'], 'pct')} | |")
         lines.append(f"| Correction success rate | | {_fmt(loop['correction_success_rate'], 'pct')} | |")
         lines.append(f"| Model calls | {b['items']} | {loop['model_calls']} | |")
     return "\n".join(lines) + "\n", passed

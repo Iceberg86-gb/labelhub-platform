@@ -4,6 +4,8 @@
 
 Proposed（2026-11-03）。修订 ADR-017 的 H2 阶段定义；ADR-017 的其余部分不变。评测关卡通过后改为 Accepted。
 
+**v2 修订（2026-11-03，见文末"修订 v2"）**：v1 评测关卡失败。现在矛盾类错误只标记、不反馈给模型；修正步骤只能修正形式，不能改变判断。本文 §1～§5 描述的是 v1，凡与"修订 v2"冲突之处，以"修订 v2"为准。
+
 ## Context
 
 ADR-017 把 H2 写成"产出 → `validate_answer`（Schema + 联动 DSL）→ 根据错误修正"，并且让 `validate_answer` 复用 `AnswerPayloadValidator`。实施时发现这条循环**没有东西可以修正**：
@@ -95,3 +97,32 @@ H2 不改变 `AiReviewScoringPolicy` 的算术和阈值。服务端是评分权�
   - Java 和 Python 两边都跑通共享语料。
   - 用单元测试覆盖 agent 循环的四个分支：一次通过、修正成功、达到上限后降级、校验接口不可用。
   - evals 给出相对 W1 基线的对比报告，结果写进 PR。
+
+## 修订 v2（2026-11-03）
+
+### 为什么修订
+
+v1 的评测（`evals/runs/e6a372b2e05087b7`，对比报告 `evals/reports/w2-vs-w1.md`）**关卡失败**：自动通过区错误率从 8.93% 升到 10.74%，自动打回区错误率从 53.14% 升到 63.05%，转人工比例从 33.14% 降到 1.06%。
+
+失败分析（`evals/reports/w2-loop-analysis.md`）表明：
+
+- 333 条"建议与分数矛盾"**全部**是模型改分数、迁就自己原来的建议来"修好"的，没有一条是改建议。
+- 其中"建议打回 + 分数落在中间区"的 287 条里，77% 的真值是应通过。
+
+对这个模型来说，落在中间区的分数恰恰是它不确定的信号。让它消除矛盾，就等于让它把这个信号抹掉。另一方面，只修正字段引用的 323 条，路由一条都没变。
+
+### 决定
+
+1. **错误分两类：**
+   - **可修正（形式错误）**：`invalid_structure`、`missing_dimension`、`duplicate_dimension`、`unknown_dimension`、`unknown_field`。只把这几类反馈给模型。
+   - **只标记（判断不一致）**：`suggestion_score_conflict`、`error_finding_on_pass`。**永远不反馈给模型**，确定性地降级为 `manual_review`，并记录 `agentLoop.outcome = flagged`。
+2. **修正只能修正形式，不能改变判断。** `validate-review` 的响应增加 `route` 和 `finalScore` 两个字段，由 API 的评分权威计算，agent 不另写一套算术。如果修正后的 `route` 和第一次答案的不同，就丢弃这次修正，上报第一次的答案，并按降级处理（`judgement_changed`）。修正这一步失败（例如没有调用工具、调用出错）时，同样保留第一次的答案（`correction_failed`）。因此**最终路由永远等于第一次答案的路由**，也就等于 H1 的路由。关卡（自动通过区错误率不得升高）因此由设计保证，评测实际衡量的是修正成功率和成本。
+3. **反馈 prompt 升级为 `h2-validate-loop-v2`**：删除"让 overallSuggestion 与分数区间一致"的要求，改为明确要求"保持原有的判断：overallSuggestion 和分数都不变"。
+4. **agent 记录的结果取值**：`valid`、`corrected`、`flagged`、`downgraded`、`judgement_changed`、`correction_failed`、`downgraded_no_correction_support`。evals 使用同一套取值，另外多一个 `format_violation`。
+
+### 结果
+
+H2 不会让路由变好，它带来的价值在两方面：
+
+- **溯源质量**：不再写入引用不存在字段的字段发现。
+- **给 H3 留下信号**：判断不一致的标记会写进溯源。H3 校准策略时，应该把这个标记当作特征，例如"建议打回 + 分数在中间区"时 77% 应通过。

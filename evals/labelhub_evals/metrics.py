@@ -75,18 +75,26 @@ def scorecard(results: list[dict], *, price_in_per_mtok: Decimal | None = None, 
 
 
 def _loop_metrics(results: list[dict]) -> dict:
-    """ADR-019 loop metrics. Rates are over items whose first answer parsed (format violations never loop)."""
+    """ADR-019 loop metrics. Rates are over items whose first answer parsed (format violations never loop).
+    Correction success = items with correctable errors on the first answer that ended valid, corrected or
+    flagged (i.e. their correctable errors were fixed without changing the judgement)."""
     from collections import Counter
+
+    from labelhub_evals.review_validation import CORRECTABLE
 
     looped = [r for r in results if r["loop_outcome"] != "format_violation"]
     outcomes = Counter(r["loop_outcome"] for r in results)
     initial = Counter(code for r in looped for code in r["initial_error_codes"])
     final = Counter(code for r in looped for code in r["final_error_codes"])
+    needs_fix = [r for r in looped if CORRECTABLE & set(r["initial_error_codes"])]
+    fixed = [r for r in needs_fix if r["loop_outcome"] in ("corrected", "flagged")]
     return {
-        "outcomes": {k: outcomes.get(k, 0) for k in ("valid", "corrected", "downgraded", "format_violation")},
+        "outcomes": {k: outcomes.get(k, 0) for k in ("valid", "corrected", "flagged", "downgraded", "judgement_changed", "correction_failed", "format_violation")},
         "initial_invalid_rate": _ratio(sum(1 for r in looped if r["initial_error_codes"]), len(looped)),
-        "final_invalid_rate": _ratio(outcomes.get("downgraded", 0), len(looped)),
-        "correction_success_rate": _ratio(outcomes.get("corrected", 0), outcomes.get("corrected", 0) + outcomes.get("downgraded", 0)),
+        "initial_correctable_rate": _ratio(len(needs_fix), len(looped)),
+        "flagged_rate": _ratio(outcomes.get("flagged", 0), len(looped)),
+        "final_invalid_rate": _ratio(sum(outcomes.get(k, 0) for k in ("downgraded", "judgement_changed", "correction_failed")), len(looped)),
+        "correction_success_rate": _ratio(len(fixed), len(needs_fix)),
         "mean_steps": None if not results else (Decimal(sum(r["steps"] for r in results)) / Decimal(len(results))).quantize(Decimal("0.0001")),
         "model_calls": sum(r["steps"] for r in results),
         "initial_error_codes": dict(sorted(initial.items())),

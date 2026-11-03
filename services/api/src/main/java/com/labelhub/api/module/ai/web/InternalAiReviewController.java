@@ -45,12 +45,14 @@ public class InternalAiReviewController implements InternalApi {
         @PathVariable("submissionId") Long submissionId,
         @Valid @RequestBody InternalAiReviewValidationRequest internalAiReviewValidationRequest
     ) {
-        List<AiReviewOutputValidator.Error> errors = outputValidator.validate(
-            internalAiReviewValidationRequest.getOutput(),
-            aiReviewService.getReviewValidationContext(submissionId)
-        );
+        AiReviewOutputValidator.Context context = aiReviewService.getReviewValidationContext(submissionId);
+        Object output = internalAiReviewValidationRequest.getOutput();
+        List<AiReviewOutputValidator.Error> errors = outputValidator.validate(output, context);
+        AiReviewOutputValidator.Routing routing = outputValidator.routing(output, context);
         InternalAiReviewValidation dto = new InternalAiReviewValidation();
         dto.setValid(errors.isEmpty());
+        dto.setRoute(routing.route() == null ? null : InternalAiReviewValidation.RouteEnum.fromValue(routing.route()));
+        dto.setFinalScore(routing.finalScore());
         dto.setRulesVersion(AiReviewOutputValidator.RULES_VERSION);
         dto.setErrors(errors.stream().map(error -> {
             InternalAiReviewValidationError item = new InternalAiReviewValidationError();

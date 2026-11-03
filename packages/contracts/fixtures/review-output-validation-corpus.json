@@ -32,7 +32,9 @@
         }
       ]
     },
-    "expectedErrors": []
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
   },
   {
     "caseId": "valid-reject",
@@ -60,7 +62,9 @@
       ],
       "fieldFindings": []
     },
-    "expectedErrors": []
+    "expectedErrors": [],
+    "expectedRoute": "reject",
+    "expectedFinalScore": "0.2000"
   },
   {
     "caseId": "valid-manual",
@@ -88,7 +92,9 @@
       ],
       "fieldFindings": []
     },
-    "expectedErrors": []
+    "expectedErrors": [],
+    "expectedRoute": "manual_review",
+    "expectedFinalScore": "0.5000"
   },
   {
     "caseId": "valid-pass-boundary",
@@ -116,7 +122,9 @@
       ],
       "fieldFindings": []
     },
-    "expectedErrors": []
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.8000"
   },
   {
     "caseId": "valid-nested-path",
@@ -162,7 +170,9 @@
         }
       ]
     },
-    "expectedErrors": []
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
   },
   {
     "caseId": "valid-null-stableid",
@@ -197,7 +207,9 @@
         }
       ]
     },
-    "expectedErrors": []
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
   },
   {
     "caseId": "not-an-object",
@@ -221,7 +233,9 @@
         "code": "invalid_structure",
         "path": "$"
       }
-    ]
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
   },
   {
     "caseId": "missing-required",
@@ -254,7 +268,9 @@
         "code": "invalid_structure",
         "path": "fieldFindings"
       }
-    ]
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
   },
   {
     "caseId": "bad-enum-and-range",
@@ -291,7 +307,9 @@
         "code": "invalid_structure",
         "path": "confidence"
       }
-    ]
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
   },
   {
     "caseId": "bad-dimension-row",
@@ -332,7 +350,9 @@
         "code": "invalid_structure",
         "path": "dimensionScores[1].score"
       }
-    ]
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
   },
   {
     "caseId": "bad-finding-row",
@@ -384,7 +404,9 @@
         "code": "invalid_structure",
         "path": "fieldFindings[0].confidence"
       }
-    ]
+    ],
+    "expectedRoute": null,
+    "expectedFinalScore": null
   },
   {
     "caseId": "missing-dimension",
@@ -419,7 +441,9 @@
         "code": "missing_dimension",
         "path": "dimensionScores"
       }
-    ]
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
   },
   {
     "caseId": "unknown-and-duplicate-dimension",
@@ -464,7 +488,9 @@
         "code": "unknown_dimension",
         "path": "dimensionScores[2].dimension"
       }
-    ]
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
   },
   {
     "caseId": "unknown-field-stableid",
@@ -518,7 +544,9 @@
         "code": "unknown_field",
         "path": "fieldFindings[1].fieldPath"
       }
-    ]
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
   },
   {
     "caseId": "suggestion-reject-score-middle",
@@ -551,7 +579,9 @@
         "code": "suggestion_score_conflict",
         "path": "overallSuggestion"
       }
-    ]
+    ],
+    "expectedRoute": "manual_review",
+    "expectedFinalScore": "0.3500"
   },
   {
     "caseId": "suggestion-pass-score-middle",
@@ -584,7 +614,9 @@
         "code": "suggestion_score_conflict",
         "path": "overallSuggestion"
       }
-    ]
+    ],
+    "expectedRoute": "manual_review",
+    "expectedFinalScore": "0.7000"
   },
   {
     "caseId": "suggestion-manual-score-pass",
@@ -617,7 +649,9 @@
         "code": "suggestion_score_conflict",
         "path": "overallSuggestion"
       }
-    ]
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9500"
   },
   {
     "caseId": "conflict-uses-policy-average",
@@ -656,7 +690,9 @@
         "code": "suggestion_score_conflict",
         "path": "overallSuggestion"
       }
-    ]
+    ],
+    "expectedRoute": "manual_review",
+    "expectedFinalScore": "0.7250"
   },
   {
     "caseId": "conflict-half-up-rounding",
@@ -690,7 +726,9 @@
       ],
       "fieldFindings": []
     },
-    "expectedErrors": []
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.8000"
   },
   {
     "caseId": "error-finding-on-pass",
@@ -736,7 +774,9 @@
         "code": "error_finding_on_pass",
         "path": "fieldFindings[1].severity"
       }
-    ]
+    ],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
   },
   {
     "caseId": "empty-dimension-config",
@@ -762,6 +802,8 @@
       ],
       "fieldFindings": []
     },
-    "expectedErrors": []
+    "expectedErrors": [],
+    "expectedRoute": "pass",
+    "expectedFinalScore": "0.9000"
   }
 ]

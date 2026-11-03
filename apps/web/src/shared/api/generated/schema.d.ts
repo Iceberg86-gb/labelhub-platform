@@ -2727,6 +2727,13 @@ export interface components {
         };
         InternalAiReviewValidation: {
             valid: boolean;
+            /**
+             * @description Zone the API's scoring authority assigns this output (same arithmetic as AiReviewScoringPolicy); null when the output is not structurally valid. ADR-019 v2: a correction turn that changes it is discarded.
+             * @enum {string|null}
+             */
+            route?: "pass" | "reject" | "manual_review" | null;
+            /** Format: decimal */
+            finalScore?: string | null;
             /** @description Validator rule set version, e.g. review-output-v1. */
             rulesVersion: string;
             errors: components["schemas"]["InternalAiReviewValidationError"][];

@@ -54,11 +54,11 @@ class AiReviewAgentLoopTest {
     }
 
     @Test
-    void invalid_output_is_corrected_with_feedback_and_tokens_latency_are_summed() {
+    void correctable_error_is_corrected_with_feedback_and_tokens_latency_are_summed() {
         AiReviewResultPayload first = result("reject", "a1", 100, 20, 300);
         AiReviewResultPayload second = result("manual_review", "a2", 150, 25, 400);
         when(provider.review(context)).thenReturn(first);
-        when(api.validateReview(300L, first.responsePayload())).thenReturn(invalid(CONFLICT));
+        when(api.validateReview(300L, first.responsePayload())).thenReturn(invalid(UNKNOWN));
         when(provider.correct(eq(context), anyList())).thenReturn(second);
         when(api.validateReview(300L, second.responsePayload())).thenReturn(valid());
 
@@ -66,7 +66,7 @@ class AiReviewAgentLoopTest {
 
         ArgumentCaptor<List<ReviewAttempt>> attempts = ArgumentCaptor.forClass(List.class);
         verify(provider).correct(eq(context), attempts.capture());
-        assertThat(attempts.getValue()).containsExactly(new ReviewAttempt("a1", List.of(CONFLICT)));
+        assertThat(attempts.getValue()).containsExactly(new ReviewAttempt("a1", List.of(UNKNOWN)));
         assertThat(out.overallSuggestion()).isEqualTo("manual_review");
         assertThat(out.rawResponse()).isEqualTo("a2");
         assertThat(out.tokenInput()).isEqualTo(250);
@@ -77,8 +77,8 @@ class AiReviewAgentLoopTest {
         List<?> steps = (List<?>) out.responsePayload().get("agentSteps");
         assertThat(steps).hasSize(2);
         assertThat(asMap(steps.get(0))).containsEntry("valid", false)
-            .containsEntry("errors", List.of(Map.of("code", "suggestion_score_conflict", "path", "overallSuggestion")));
-        assertThat(asMap(steps.get(1))).containsEntry("valid", true).containsEntry("promptVersion", "h2-validate-loop-v1");
+            .containsEntry("errors", List.of(Map.of("code", "unknown_field", "path", "fieldFindings[0].stableId")));
+        assertThat(asMap(steps.get(1))).containsEntry("valid", true).containsEntry("promptVersion", "h2-validate-loop-v2");
     }
 
     @Test
@@ -109,7 +109,7 @@ class AiReviewAgentLoopTest {
         AiReviewResultPayload third = result("pass", "a3", 1, 1, 1);
         when(provider.review(context)).thenReturn(first);
         when(provider.correct(eq(context), anyList())).thenReturn(second, third);
-        when(api.validateReview(eq(300L), any())).thenReturn(invalid(CONFLICT));
+        when(api.validateReview(eq(300L), any())).thenReturn(invalid(UNKNOWN));
 
         loop(3).run(context);
 
@@ -124,12 +124,77 @@ class AiReviewAgentLoopTest {
         AiReviewResultPayload first = result("reject", "a1", 1, 1, 1);
         when(provider.review(context)).thenReturn(first);
         when(provider.correct(eq(context), anyList())).thenThrow(new UnsupportedOperationException("no"));
-        when(api.validateReview(eq(300L), any())).thenReturn(invalid(CONFLICT));
+        when(api.validateReview(eq(300L), any())).thenReturn(invalid(UNKNOWN));
 
         AiReviewResultPayload out = loop(3).run(context);
 
         assertThat(out.overallSuggestion()).isEqualTo("manual_review");
         assertThat(loopSummary(out)).containsEntry("outcome", "downgraded_no_correction_support").containsEntry("steps", 1);
+    }
+
+    @Test
+    void judgement_inconsistency_is_flagged_and_never_sent_to_the_model() {
+        AiReviewResultPayload first = result("reject", "a1", 1, 1, 1);
+        when(provider.review(context)).thenReturn(first);
+        when(api.validateReview(eq(300L), any())).thenReturn(invalid(CONFLICT));
+
+        AiReviewResultPayload out = loop(3).run(context);
+
+        verify(provider, never()).correct(any(), anyList());
+        assertThat(out.overallSuggestion()).isEqualTo("manual_review");
+        assertThat(out.fieldFindings()).hasSize(2);  // nothing to drop: no unknown_field
+        assertThat(out.responsePayload()).containsEntry("modelOverallSuggestion", "reject");
+        assertThat(loopSummary(out)).containsEntry("outcome", "flagged").containsEntry("steps", 1).containsEntry("version", "h2-validate-loop-v2");
+    }
+
+    @Test
+    void only_correctable_errors_are_fed_back_and_a_remaining_conflict_is_flagged() {
+        AiReviewResultPayload first = result("reject", "a1", 1, 1, 1);
+        AiReviewResultPayload second = result("reject", "a2", 1, 1, 1);
+        when(provider.review(context)).thenReturn(first);
+        when(api.validateReview(300L, first.responsePayload())).thenReturn(invalid(UNKNOWN, CONFLICT));
+        when(provider.correct(eq(context), anyList())).thenReturn(second);
+        when(api.validateReview(300L, second.responsePayload())).thenReturn(invalid(CONFLICT));
+
+        AiReviewResultPayload out = loop(3).run(context);
+
+        ArgumentCaptor<List<ReviewAttempt>> attempts = ArgumentCaptor.forClass(List.class);
+        verify(provider).correct(eq(context), attempts.capture());
+        assertThat(attempts.getValue().get(0).errors()).containsExactly(UNKNOWN);
+        assertThat(out.rawResponse()).isEqualTo("a2");
+        assertThat(loopSummary(out)).containsEntry("outcome", "flagged").containsEntry("steps", 2);
+    }
+
+    @Test
+    void a_correction_that_changes_the_routing_zone_is_discarded_and_the_first_answer_is_kept() {
+        AiReviewResultPayload first = result("reject", "a1", 100, 10, 100);
+        AiReviewResultPayload moved = result("reject", "a2", 150, 15, 200);
+        when(provider.review(context)).thenReturn(first);
+        when(api.validateReview(300L, first.responsePayload())).thenReturn(invalidIn("manual_review", UNKNOWN, CONFLICT));
+        when(provider.correct(eq(context), anyList())).thenReturn(moved);
+        when(api.validateReview(300L, moved.responsePayload())).thenReturn(validIn("reject"));
+
+        AiReviewResultPayload out = loop(3).run(context);
+
+        assertThat(out.rawResponse()).isEqualTo("a1");
+        assertThat(out.overallSuggestion()).isEqualTo("manual_review");
+        assertThat(out.fieldFindings()).extracting(FieldFindingPayload::stableId).containsExactly("reason");
+        assertThat(out.tokenInput()).isEqualTo(250);  // the discarded call still cost tokens
+        assertThat(loopSummary(out)).containsEntry("outcome", "judgement_changed").containsEntry("steps", 2);
+    }
+
+    @Test
+    void a_failed_correction_turn_keeps_the_validated_first_answer() {
+        AiReviewResultPayload first = result("pass", "a1", 1, 1, 1);
+        when(provider.review(context)).thenReturn(first);
+        when(api.validateReview(eq(300L), any())).thenReturn(invalid(UNKNOWN));
+        when(provider.correct(eq(context), anyList())).thenThrow(new IllegalStateException("provider returned no tool call"));
+
+        AiReviewResultPayload out = loop(3).run(context);
+
+        assertThat(out.rawResponse()).isEqualTo("a1");
+        assertThat(out.overallSuggestion()).isEqualTo("manual_review");
+        assertThat(loopSummary(out)).containsEntry("outcome", "correction_failed");
     }
 
     @Test
@@ -170,11 +235,19 @@ class AiReviewAgentLoopTest {
     }
 
     private static AiReviewValidation valid() {
-        return new AiReviewValidation(true, "review-output-v1", List.of());
+        return validIn("manual_review");
+    }
+
+    private static AiReviewValidation validIn(String route) {
+        return new AiReviewValidation(true, "review-output-v1", List.of(), route, new BigDecimal("0.35"));
     }
 
     private static AiReviewValidation invalid(ReviewValidationError... errors) {
-        return new AiReviewValidation(false, "review-output-v1", List.of(errors));
+        return invalidIn("manual_review", errors);
+    }
+
+    private static AiReviewValidation invalidIn(String route, ReviewValidationError... errors) {
+        return new AiReviewValidation(false, "review-output-v1", List.of(errors), route, new BigDecimal("0.35"));
     }
 
     private static AiReviewResultPayload result(String suggestion, String raw, int in, int out, int latency) {

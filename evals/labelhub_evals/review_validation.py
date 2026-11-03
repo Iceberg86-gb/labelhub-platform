@@ -126,6 +126,20 @@ def _root(field_path: str) -> str:
     return re.split(r"[.\[]", field_path, maxsplit=1)[0]
 
 
+# ADR-019 v2: what the loop may ask the model to fix (form) vs. what it only flags (judgement).
+CORRECTABLE = frozenset({"invalid_structure", "missing_dimension", "duplicate_dimension", "unknown_dimension", "unknown_field"})
+FLAG_ONLY = frozenset({"suggestion_score_conflict", "error_finding_on_pass"})
+
+
+def routing(output, ctx: ValidationContext) -> tuple[str | None, Decimal | None]:
+    """(zone, final score) the API's scoring authority assigns this output; (None, None) when the output is
+    not structurally valid. Returned by validate-review so callers never re-implement the arithmetic."""
+    if _structure(output):
+        return None, None
+    score = final_score(output, ctx.dimensions or ("overall",))
+    return zone(score, ctx), score
+
+
 def validate(output, ctx: ValidationContext) -> list[ValidationError]:
     errors = _structure(output)
     if errors:

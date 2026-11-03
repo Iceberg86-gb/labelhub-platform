@@ -60,6 +60,8 @@ class InternalAiReviewControllerTest {
         assertThat(body).isNotNull();
         assertThat(body.getValid()).isFalse();
         assertThat(body.getRulesVersion()).isEqualTo("review-output-v1");
+        assertThat(body.getRoute()).isEqualTo(InternalAiReviewValidation.RouteEnum.MANUAL_REVIEW);
+        assertThat(body.getFinalScore()).isEqualByComparingTo("0.5000");
         assertThat(body.getErrors()).extracting(e -> e.getCode().getValue(), InternalAiReviewValidationError::getPath)
             .containsExactly(
                 org.assertj.core.groups.Tuple.tuple("unknown_field", "fieldFindings[0].stableId"),
@@ -78,6 +80,7 @@ class InternalAiReviewControllerTest {
 
         assertThat(body.getValid()).isTrue();
         assertThat(body.getErrors()).isEmpty();
+        assertThat(body.getRoute()).isEqualTo(InternalAiReviewValidation.RouteEnum.PASS);
     }
 
     @Test

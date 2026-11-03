@@ -32,6 +32,19 @@ public class AiReviewOutputValidator {
     public record Error(String code, String path, String message) {
     }
 
+    /** ADR-019 v2: the zone and score the scoring authority assigns; both null when the structure is invalid. */
+    public record Routing(String route, BigDecimal finalScore) {
+    }
+
+    public Routing routing(Object output, Context context) {
+        if (!structure(output).isEmpty()) {
+            return new Routing(null, null);
+        }
+        List<String> dimensions = context.dimensions() == null || context.dimensions().isEmpty() ? List.of("overall") : context.dimensions();
+        BigDecimal score = finalScore((Map<?, ?>) output, dimensions);
+        return new Routing(zone(score, context), score);
+    }
+
     public List<Error> validate(Object output, Context context) {
         List<Error> errors = structure(output);
         if (!errors.isEmpty()) {

@@ -24,9 +24,13 @@ import org.springframework.stereotype.Component;
 /**
  * ADR-019 (ADR-017 H2): produce -> validate-review -> correct, at most {@code maxSteps} model calls.
  *
+ * <p>v2 rules (after the v1 evaluation showed the model "fixing" suggestion/score conflicts by moving scores):
  * <ul>
- *   <li>Valid at any step: the result is reported as produced.</li>
- *   <li>Still invalid after {@code maxSteps}, or the provider cannot hold a correction turn: deterministic
+ *   <li>Only form errors ({@link #CORRECTABLE}) are fed back. Judgement inconsistencies (suggestion_score_conflict,
+ *       error_finding_on_pass) are flagged: deterministic manual_review, never sent to the model.</li>
+ *   <li>A correction whose routing zone (computed by the API) differs from the first answer's is discarded; the
+ *       first answer is reported, downgraded. Routing is therefore always the first answer's routing.</li>
+ *   <li>Still invalid after {@code maxSteps}, no correction support, or a failed correction turn: deterministic
  *       downgrade (overallSuggestion = manual_review, findings on unknown fields dropped).</li>
  *   <li>validate-review itself failing propagates, so the outbox retries; nothing is reported unvalidated.</li>
  * </ul>
@@ -36,7 +40,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class AiReviewAgentLoop {
 
-    public static final String LOOP_VERSION = "h2-validate-loop-v1";
+    public static final String LOOP_VERSION = "h2-validate-loop-v2";
+    /** ADR-019 v2: form errors the model is asked to fix. Judgement inconsistencies are only flagged. */
+    static final Set<String> CORRECTABLE = Set.of(
+        "invalid_structure", "missing_dimension", "duplicate_dimension", "unknown_dimension", "unknown_field");
     private static final Pattern FINDING_INDEX = Pattern.compile("^fieldFindings\\[(\\d+)]");
 
     private final AiReviewProvider provider;
@@ -60,34 +67,50 @@ public class AiReviewAgentLoop {
     }
 
     public AiReviewResultPayload run(AiReviewContext context) {
-        AiReviewResultPayload current = provider.review(context);
+        AiReviewResultPayload first = provider.review(context);
         if (!enabled) {
-            return current;
+            return first;
         }
         List<AiReviewResultPayload> produced = new ArrayList<>();
         List<Map<String, Object>> steps = new ArrayList<>();
         List<ReviewAttempt> attempts = new ArrayList<>();
-        String rulesVersion = null;
+        AiReviewResultPayload current = first;
+        String firstRoute = null;
+        List<ReviewValidationError> firstErrors = List.of();
         for (int step = 1; ; step++) {
             produced.add(current);
             AiReviewValidation validation = apiClient.validateReview(context.submissionId(), current.responsePayload());
             if (validation == null) {
                 throw new IllegalStateException("validate-review returned no body");
             }
-            rulesVersion = validation.rulesVersion();
+            String rulesVersion = validation.rulesVersion();
             List<ReviewValidationError> errors = validation.errorsOrEmpty();
             steps.add(step(step, errors));
-            if (validation.isValid()) {
-                return finish(current, produced, steps, step == 1 ? "valid" : "corrected", rulesVersion);
+            if (step == 1) {
+                firstRoute = validation.route();
+                firstErrors = errors;
+            } else if (firstRoute != null && !firstRoute.equals(validation.route())) {
+                // Corrections may fix form, never judgement: keep the first answer, downgraded.
+                return downgrade(first, firstErrors, produced, steps, "judgement_changed", rulesVersion);
+            }
+            List<ReviewValidationError> correctable = errors.stream().filter(e -> CORRECTABLE.contains(e.code())).toList();
+            if (correctable.isEmpty()) {
+                if (errors.isEmpty()) {
+                    return finish(current, produced, steps, step == 1 ? "valid" : "corrected", rulesVersion);
+                }
+                return downgrade(current, errors, produced, steps, "flagged", rulesVersion);
             }
             if (step >= maxSteps) {
                 return downgrade(current, errors, produced, steps, "downgraded", rulesVersion);
             }
-            attempts.add(new ReviewAttempt(current.rawResponse(), errors));
+            attempts.add(new ReviewAttempt(current.rawResponse(), correctable));
             try {
                 current = provider.correct(context, List.copyOf(attempts));
             } catch (UnsupportedOperationException unsupported) {
                 return downgrade(current, errors, produced, steps, "downgraded_no_correction_support", rulesVersion);
+            } catch (RuntimeException correctionFailed) {
+                // The first answer is already validated; a failed correction turn must not discard it.
+                return downgrade(first, firstErrors, produced, steps, "correction_failed", rulesVersion);
             }
         }
     }
