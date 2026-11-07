@@ -2419,6 +2419,33 @@ paths:
                 $ref: '#/components/schemas/InternalAiReviewContext'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /internal/ai-review/submissions/{submissionId}/precedents:
+    get:
+      tags: [Internal]
+      operationId: getAiReviewPrecedents
+      description: >-
+        ADR-021 (ADR-017 H4). BM25 top-k precedents for this submission: other submissions of the same task and
+        schema version, excluding the submission itself and its dataset item, with their current human verdict
+        (reviewer or senior). Never AI outputs; policy-accepted submissions are not precedents. Retrieval is pinned
+        by packages/contracts/fixtures/precedent-retrieval-corpus.json. Read-only.
+      parameters:
+        - $ref: '#/components/parameters/SubmissionId'
+        - name: k
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+      responses:
+        '200':
+          description: Precedents, most similar first (possibly empty).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalAiReviewPrecedents'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
   /internal/ai-review/submissions/{submissionId}/validate-review:
     post:
       tags: [Internal]
@@ -5435,6 +5462,52 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/InternalAiReviewResult'
+        precedents:
+          description: >-
+            ADR-021: the precedents the context carried, echoed unchanged so the API can audit exactly what the
+            model saw. Omit when the context had none.
+          type: array
+          items:
+            $ref: '#/components/schemas/AiReviewPrecedent'
+        precedentsHash:
+          type: string
+          nullable: true
+    AiReviewPrecedent:
+      type: object
+      required: [rank, submissionId, verdict, source, submission]
+      properties:
+        rank:
+          type: integer
+          minimum: 1
+        submissionId:
+          type: integer
+          format: int64
+        verdict:
+          type: string
+          enum: [approved, rejected]
+        source:
+          type: string
+          enum: [reviewer, senior]
+          description: senior when a resolved senior arbitration decided the verdict.
+        submission:
+          type: string
+          description: "The precedent's content as 'path: text' lines, cut to 1200 code points."
+    InternalAiReviewPrecedents:
+      type: object
+      required: [submissionId, version, precedents, precedentsHash]
+      properties:
+        submissionId:
+          type: integer
+          format: int64
+        version:
+          type: string
+          description: Retrieval and rendering version, e.g. h4-precedents-v1.
+        precedents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiReviewPrecedent'
+        precedentsHash:
+          type: string
     InternalAiReviewContext:
       type: object
       required: [submissionId, idempotencyKey, promptVersion, promptVersionId, providerAdapterVersion, input, inputHash, dimensions, threshold, rejectFloor, passThreshold, rejectThreshold, scoringRuleVersion, businessPrompt, renderedPrompt]
@@ -5488,6 +5561,18 @@ components:
           type: string
         renderedPrompt:
           type: string
+          description: Includes the precedent block when precedents is non-empty (ADR-021 §3).
+        precedentVersion:
+          type: string
+          nullable: true
+          description: ADR-021; null when precedent memory is disabled.
+        precedents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AiReviewPrecedent'
+        precedentsHash:
+          type: string
+          nullable: true
     InternalAiReviewValidationRequest:
       type: object
       required: [output]

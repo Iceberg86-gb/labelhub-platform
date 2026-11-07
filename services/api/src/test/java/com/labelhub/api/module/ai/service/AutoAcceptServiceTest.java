@@ -61,6 +61,7 @@ class AutoAcceptServiceTest {
         call.setAiReviewRuleId(19L);
         call.setPromptVersionId(7L);
         call.setModelName(model);
+        call.setProviderAdapterVersion("agent-default-v1");
         return call;
     }
 
@@ -108,6 +109,10 @@ class AutoAcceptServiceTest {
         assertThat(service.onAgentResultRecorded(id, 44L, call("gpt-6.1-terra"), result("pass", "flagged"))).isEqualTo(AutoAcceptService.Decision.NOT_ELIGIBLE);
         assertThat(service.onAgentResultRecorded(id, 44L, call("gpt-6.1-terra"), result("pass", null))).isEqualTo(AutoAcceptService.Decision.NOT_ELIGIBLE);
         assertThat(service.onAgentResultRecorded(id, 44L, call("gpt-6.1-terra"), result("pass", "valid", "info", "error"))).isEqualTo(AutoAcceptService.Decision.NOT_ELIGIBLE);
+        // ADR-021 §3: evidence gathered without precedent memory does not cover a call made with it.
+        AiCallEntity withPrecedents = call("gpt-6.1-terra");
+        withPrecedents.setProviderAdapterVersion("agent-default-v1+h4-precedents-v1");
+        assertThat(service.onAgentResultRecorded(id, 44L, withPrecedents, result("pass", "valid"))).isEqualTo(AutoAcceptService.Decision.NOT_ELIGIBLE);
         when(policyService.activeEnable(19L)).thenReturn(null);
         assertThat(service.onAgentResultRecorded(id, 44L, call("gpt-6.1-terra"), result("pass", "valid"))).isEqualTo(AutoAcceptService.Decision.NOT_ELIGIBLE);
         verify(ledgerService, never()).appendPolicyEvidence(anyLong(), anyLong(), anyLong(), any(), any());

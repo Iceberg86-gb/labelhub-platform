@@ -29,7 +29,7 @@ class AiReviewShadowStatsServiceTest {
     @Test
     void groups_by_prompt_and_model_with_error_rate_and_wilson_upper_bound() {
         ownedRule(19L, 44L, 1001L);
-        when(aiCallMapper.selectShadowStatsByRuleId(19L)).thenReturn(List.of(
+        when(aiCallMapper.selectShadowStatsByRuleId(19L, "agent-default-v1")).thenReturn(List.of(
             new ShadowStatsRow(7L, "gpt-6.1-terra", 200L, 0L),
             new ShadowStatsRow(7L, "gpt-6.1-sol", 280L, 25L)
         ));
@@ -50,7 +50,7 @@ class AiReviewShadowStatsServiceTest {
         ownedRule(19L, 44L, 1001L);
         assertThatThrownBy(() -> service.shadowStats(19L, 2002L)).isInstanceOf(AiReviewRuleNotFoundException.class);
         assertThatThrownBy(() -> service.shadowStats(404L, 1001L)).isInstanceOf(AiReviewRuleNotFoundException.class);
-        verify(aiCallMapper, never()).selectShadowStatsByRuleId(19L);
+        verify(aiCallMapper, never()).selectShadowStatsByRuleId(19L, "agent-default-v1");
     }
 
     @Test

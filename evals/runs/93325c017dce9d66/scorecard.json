@@ -1,0 +1,82 @@
+{
+  "run": {
+    "dimensions": [
+      "overall"
+    ],
+    "golden": {
+      "name": "golden",
+      "sha256": "5e0df257bb341d48a184c7a2c00cdb0b7cc2a57224378b9ae249e086f002c81e"
+    },
+    "loop": {
+      "correction_style": "tool",
+      "feedback_version": "h2-validate-loop-v2",
+      "max_steps": 3,
+      "rules_version": "review-output-v1"
+    },
+    "model": "chatgpt/gpt-6.1-terra@low",
+    "pass_threshold": "0.80",
+    "precedents": {
+      "k": 3,
+      "retrieval_sha256": "86d9655be9f9caf36ce135ff54d8976b1721d7088c62df9c6e1f98bf7bb29c86",
+      "version": "h4-precedents-v1"
+    },
+    "prompt_version": "h1-single-call-v1",
+    "reject_threshold": "0.20",
+    "scoring_rule_version": "equal-weight-three-zone-v2"
+  },
+  "run_id": "93325c017dce9d66",
+  "scorecard": {
+    "auto_pass_error_rate": "0.093656",
+    "auto_reject_error_rate": "0.506494",
+    "cohen_kappa_decided": "0.386424",
+    "cost_per_item_usd": null,
+    "decided_agreement": "0.684358",
+    "format_violation_rate": "0.000000",
+    "items": 1038,
+    "latency_ms": {
+      "p50": 6869,
+      "p95": 16426
+    },
+    "loop": {
+      "correction_success_rate": "1.000000",
+      "final_error_codes": {
+        "suggestion_score_conflict": 315
+      },
+      "final_invalid_rate": "0.000000",
+      "flagged_rate": "0.303468",
+      "initial_correctable_rate": "0.446050",
+      "initial_error_codes": {
+        "suggestion_score_conflict": 315,
+        "unknown_field": 463
+      },
+      "initial_invalid_rate": "0.539499",
+      "mean_steps": "1.4461",
+      "model_calls": 1501,
+      "outcomes": {
+        "corrected": 245,
+        "correction_failed": 0,
+        "downgraded": 0,
+        "flagged": 315,
+        "format_violation": 0,
+        "judgement_changed": 0,
+        "valid": 478
+      }
+    },
+    "manual_review_rate": "0.310212",
+    "routed_counts": {
+      "manual_review": 322,
+      "pass": 331,
+      "reject": 385
+    },
+    "tokens": {
+      "input_total": 2933806,
+      "items_with_usage": 1038,
+      "output_total": 313487
+    },
+    "truth_counts": {
+      "pass": 736,
+      "reject": 302
+    },
+    "validator_correction_success_rate": "1.000000"
+  }
+}

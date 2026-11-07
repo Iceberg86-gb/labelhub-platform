@@ -75,11 +75,7 @@ public class OutboxAiReviewWorker {
             Long submissionId = submissionId(event);
             AiReviewContext context = aiReviewApiClient.getContext(submissionId);
             AiReviewResultPayload result = reviewLoop.run(context);
-            aiReviewApiClient.reportResult(new AiReviewResultEnvelope(
-                context.submissionId(),
-                context.idempotencyKey(),
-                result
-            ));
+            aiReviewApiClient.reportResult(AiReviewResultEnvelope.of(context, result));
             outboxRepository.markProcessed(event.id(), workerId);
             return true;
         } catch (Exception exception) {

@@ -80,7 +80,7 @@ class AutoPolicyServiceTest {
     }
 
     private void shadow(long judged, long rejected) {
-        when(aiCallMapper.selectShadowStatsByRuleId(RULE)).thenReturn(List.of(new ShadowStatsRow(PROMPT, MODEL, judged, rejected)));
+        when(aiCallMapper.selectShadowStatsByRuleId(RULE, "agent-default-v1")).thenReturn(List.of(new ShadowStatsRow(PROMPT, MODEL, judged, rejected)));
     }
 
     @Test
@@ -119,7 +119,7 @@ class AutoPolicyServiceTest {
 
     @Test
     void evidence_from_another_model_or_prompt_does_not_count() {
-        when(aiCallMapper.selectShadowStatsByRuleId(RULE)).thenReturn(List.of(new ShadowStatsRow(PROMPT, "other-model", 1000L, 0L)));
+        when(aiCallMapper.selectShadowStatsByRuleId(RULE, "agent-default-v1")).thenReturn(List.of(new ShadowStatsRow(PROMPT, "other-model", 1000L, 0L)));
         assertThatThrownBy(() -> service.enable(RULE, OWNER, cmd("0.05"))).isInstanceOf(AutoPolicyGateException.class);
         assertThatThrownBy(() -> service.enable(RULE, OWNER, new AutoPolicyService.EnableCommand(8L, MODEL, new BigDecimal("0.05"), null, null)))
             .isInstanceOf(AutoPolicyGateException.class).hasMessageContaining("prompt");

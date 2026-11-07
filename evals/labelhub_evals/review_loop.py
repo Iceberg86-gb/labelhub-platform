@@ -38,9 +38,9 @@ class Attempt:
         return render_feedback(list(self.errors))
 
 
-def text_style_message(review_input: dict, attempts: list[Attempt]) -> str:
+def text_style_message(review_input: dict, attempts: list[Attempt], precedent_block: str | None = None) -> str:
     """Fallback for providers that reject replayed tool calls: one user turn quoting the previous call."""
-    parts = [review.user_message(review_input)]
+    parts = [review.user_message(review_input, precedent_block)]
     for i, attempt in enumerate(attempts, 1):
         parts.append(f"\nYour record_ai_review call #{i} was:\n{attempt.arguments}\n{attempt.feedback}")
     return "\n".join(parts)
@@ -86,10 +86,11 @@ def _parse(response: ProviderResponse):
         return None
 
 
-def run_loop(recorder, input_hash: str, review_input: dict, ctx: ValidationContext, max_steps: int, style: str = "tool") -> LoopResult:
+def run_loop(recorder, input_hash: str, review_input: dict, ctx: ValidationContext, max_steps: int, style: str = "tool",
+             precedents=None) -> LoopResult:
     if max_steps < 1:
         raise ValueError("max_steps must be >= 1")
-    first = recorder.review(input_hash, review_input)
+    first = recorder.review(input_hash, review_input, precedents)
     responses = [first]
     step_errors: list[list[ValidationError]] = []
     attempts: list[Attempt] = []
@@ -113,7 +114,7 @@ def run_loop(recorder, input_hash: str, review_input: dict, ctx: ValidationConte
         if len(responses) >= max_steps:
             return LoopResult(response, responses, step_errors, "downgraded", errors)
         attempts.append(Attempt(response.arguments, tuple(correctable)))
-        response = recorder.correct(input_hash, review_input, list(attempts), style)
+        response = recorder.correct(input_hash, review_input, list(attempts), style, precedents)
         responses.append(response)
         output = _parse(response)
         if output is None:

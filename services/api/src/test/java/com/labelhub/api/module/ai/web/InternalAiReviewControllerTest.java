@@ -124,7 +124,10 @@ class InternalAiReviewControllerTest {
             new BigDecimal("0.20"),
             "equal-weight-three-zone-v2",
             "business prompt",
-            "rendered prompt"
+            "rendered prompt",
+            null,
+            List.of(),
+            null
         );
     }
 }

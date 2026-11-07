@@ -1,6 +1,8 @@
 package com.labelhub.api.module.ai.web;
 
 import com.labelhub.api.generated.model.AiCallUsage;
+import com.labelhub.api.generated.model.AiReviewPrecedent;
+import com.labelhub.api.generated.model.InternalAiReviewPrecedents;
 import com.labelhub.api.generated.model.DimensionScore;
 import com.labelhub.api.generated.model.FieldFinding;
 import com.labelhub.api.generated.model.InternalAiReviewContext;
@@ -10,6 +12,8 @@ import com.labelhub.api.generated.model.InternalAiReviewValidation;
 import com.labelhub.api.generated.model.InternalAiReviewValidationError;
 import com.labelhub.api.generated.model.InternalAiReviewValidationRequest;
 import com.labelhub.api.generated.web.InternalApi;
+import com.labelhub.api.module.ai.precedent.Precedent;
+import com.labelhub.api.module.ai.precedent.PrecedentService;
 import com.labelhub.api.module.ai.service.DimensionScoreValue;
 import com.labelhub.api.module.ai.service.InternalAiReviewResultCommand;
 import com.labelhub.api.module.ai.service.AiReviewService;
@@ -29,15 +33,61 @@ public class InternalAiReviewController implements InternalApi {
 
     private final AiReviewService aiReviewService;
     private final AiReviewOutputValidator outputValidator;
+    private final PrecedentService precedentService;
 
     public InternalAiReviewController(AiReviewService aiReviewService) {
-        this(aiReviewService, new AiReviewOutputValidator());
+        this(aiReviewService, new AiReviewOutputValidator(), null);
     }
 
     @Autowired
-    public InternalAiReviewController(AiReviewService aiReviewService, AiReviewOutputValidator outputValidator) {
+    public InternalAiReviewController(AiReviewService aiReviewService, AiReviewOutputValidator outputValidator,
+                                      @Autowired(required = false) PrecedentService precedentService) {
         this.aiReviewService = aiReviewService;
         this.outputValidator = outputValidator;
+        this.precedentService = precedentService;
+    }
+
+    /** ADR-021: read-only BM25 precedent search (also the backing of the H5 MCP search_precedents tool). */
+    @Override
+    public ResponseEntity<InternalAiReviewPrecedents> getAiReviewPrecedents(
+        @PathVariable("submissionId") Long submissionId,
+        Integer k
+    ) {
+        if (precedentService == null) {
+            return ResponseEntity.notFound().build();
+        }
+        PrecedentService.Result result = precedentService.forSubmission(submissionId, k);
+        InternalAiReviewPrecedents dto = new InternalAiReviewPrecedents();
+        dto.setSubmissionId(submissionId);
+        dto.setVersion(result.version());
+        dto.setPrecedents(toPrecedentDtos(result.precedents()));
+        dto.setPrecedentsHash(result.hash());
+        return ResponseEntity.ok(dto);
+    }
+
+    static List<AiReviewPrecedent> toPrecedentDtos(List<Precedent> precedents) {
+        return precedents.stream().map(p -> {
+            AiReviewPrecedent dto = new AiReviewPrecedent();
+            dto.setRank(p.rank());
+            dto.setSubmissionId(p.submissionId());
+            dto.setVerdict(AiReviewPrecedent.VerdictEnum.fromValue(p.verdict()));
+            dto.setSource(AiReviewPrecedent.SourceEnum.fromValue(p.source()));
+            dto.setSubmission(p.submission());
+            return dto;
+        }).toList();
+    }
+
+    static List<Precedent> fromPrecedentDtos(List<AiReviewPrecedent> dtos) {
+        if (dtos == null) {
+            return null;
+        }
+        return dtos.stream().map(d -> new Precedent(
+            d.getRank() == null ? 0 : d.getRank(),
+            d.getSubmissionId(),
+            d.getVerdict() == null ? null : d.getVerdict().getValue(),
+            d.getSource() == null ? null : d.getSource().getValue(),
+            d.getSubmission()
+        )).toList();
     }
 
     @Override
@@ -95,6 +145,9 @@ public class InternalAiReviewController implements InternalApi {
         dto.setScoringRuleVersion(view.scoringRuleVersion());
         dto.setBusinessPrompt(view.businessPrompt());
         dto.setRenderedPrompt(view.renderedPrompt());
+        dto.setPrecedentVersion(view.precedentVersion());
+        dto.setPrecedents(toPrecedentDtos(view.precedents() == null ? List.of() : view.precedents()));
+        dto.setPrecedentsHash(view.precedentsHash());
         return dto;
     }
 
@@ -119,7 +172,9 @@ public class InternalAiReviewController implements InternalApi {
             result.getLatencyMs(),
             result.getModelProvider(),
             result.getModelName(),
-            result.getResponsePayload() == null ? Map.of() : result.getResponsePayload()
+            result.getResponsePayload() == null ? Map.of() : result.getResponsePayload(),
+            fromPrecedentDtos(request.getPrecedents()),
+            request.getPrecedentsHash()
         );
     }
 

@@ -54,6 +54,12 @@ labelhub:
           output-per-1m-usd: 0.87
     provider-secrets:
       master-key: ${LABELHUB_LLM_PROVIDER_MASTER_KEY:}
+    # ADR-021 (H4) precedent memory: BM25 over human verdicts of the same task + schema version, injected into the
+    # agent review prompt. Off until the H4 eval gate passes; switching it changes the provider adapter version.
+    precedents:
+      enabled: ${LABELHUB_AI_PRECEDENTS_ENABLED:false}
+      top-k: ${LABELHUB_AI_PRECEDENTS_TOP_K:3}
+      pool-limit: ${LABELHUB_AI_PRECEDENTS_POOL_LIMIT:2000}
   security:
     jwt-secret: ${JWT_SECRET:dev-only-32-bytes-minimum-secret-please-change-me}
     jwt-ttl-hours: ${JWT_TTL_HOURS:1}

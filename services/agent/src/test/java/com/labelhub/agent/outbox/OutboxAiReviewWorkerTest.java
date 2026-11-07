@@ -65,6 +65,32 @@ class OutboxAiReviewWorkerTest {
     }
 
     @Test
+    void precedents_of_the_context_are_echoed_unchanged_with_the_result() throws Exception {
+        OutboxEvent event = event(5L, 0, "{\"submissionId\":300}");
+        AiReviewContext base = context();
+        List<Map<String, Object>> precedents = List.of(Map.of("rank", 1, "submissionId", 41, "verdict", "approved",
+            "source", "senior", "submission", "answerPayload.answer: yes"));
+        AiReviewContext context = new AiReviewContext(base.submissionId(), base.idempotencyKey(), base.promptVersion(),
+            base.promptVersionId(), base.aiReviewRuleId(), "agent-default-v1+h4-precedents-v1", base.input(), base.inputHash(),
+            base.dimensions(), base.threshold(), base.rejectFloor(), base.passThreshold(), base.rejectThreshold(),
+            base.scoringRuleVersion(), base.businessPrompt(), base.renderedPrompt(), "h4-precedents-v1", precedents, "f".repeat(64));
+        when(repository.findDueAiReviewEvents(10, 60)).thenReturn(List.of(event));
+        when(repository.claim(5L, "worker-1", 60)).thenReturn(true);
+        when(apiClient.getContext(300L)).thenReturn(context);
+        when(provider.review(context)).thenReturn(result());
+
+        worker.processDueEvents();
+
+        ArgumentCaptor<AiReviewResultEnvelope> captor = ArgumentCaptor.forClass(AiReviewResultEnvelope.class);
+        verify(apiClient).reportResult(captor.capture());
+        assertThat(captor.getValue().precedents()).isEqualTo(precedents);
+        assertThat(captor.getValue().precedentsHash()).isEqualTo("f".repeat(64));
+        // Without precedent memory nothing extra is sent (older APIs keep working).
+        String json = new ObjectMapper().writeValueAsString(new AiReviewResultEnvelope(300L, "k", result()));
+        assertThat(json).doesNotContain("precedents");
+    }
+
+    @Test
     void processDueEvents_schedules_retry_with_exponential_backoff_on_failure() {
         OutboxEvent event = event(2L, 1, "{\"submissionId\":301}");
         when(repository.findDueAiReviewEvents(10, 60)).thenReturn(List.of(event));
@@ -195,7 +221,10 @@ class OutboxAiReviewWorkerTest {
             new BigDecimal("0.20"),
             "equal-weight-three-zone-v2",
             "business prompt",
-            "rendered prompt"
+            "rendered prompt",
+            null,
+            List.of(),
+            null
         );
     }
 

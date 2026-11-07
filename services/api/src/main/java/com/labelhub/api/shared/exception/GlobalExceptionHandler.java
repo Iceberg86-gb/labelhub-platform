@@ -193,6 +193,12 @@ public class GlobalExceptionHandler {
             .body(error("AI_PROVIDER_INPUT_HASH_MISMATCH", "Cannot reuse AI result, input changed"));
     }
 
+    @ExceptionHandler(com.labelhub.api.module.ai.precedent.InvalidPrecedentsException.class)
+    ResponseEntity<ApiError> invalidPrecedents(com.labelhub.api.module.ai.precedent.InvalidPrecedentsException exception) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+            .body(error("AI_REVIEW_INVALID_PRECEDENTS", exception.getMessage()));
+    }
+
     @ExceptionHandler(InvalidAiReviewRuleException.class)
     ResponseEntity<ApiError> invalidAiReviewRule(InvalidAiReviewRuleException exception) {
         ApiFieldError fieldError = new ApiFieldError();

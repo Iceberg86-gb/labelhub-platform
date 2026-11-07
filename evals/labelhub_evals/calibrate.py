@@ -139,6 +139,23 @@ def best_under(rows: list[dict], all_policies: list[Policy], e: Decimal, budget:
     return min(feasible, key=lambda p: (p.bad_per_1000, p.escalation_rate, p.policy.label())) if feasible else None
 
 
+def held_out(split: tuple[list[dict], list[dict]], all_policies: list[Policy], e: Decimal, budget: Decimal,
+             cache: dict | None = None) -> tuple[Decimal, Decimal] | None:
+    """2-fold held-out (escalation %, bad exports / 1000): pick the best policy under the budget on one half,
+    score it on the other, average. None when a fold has no feasible policy. `split` = folds(prepared rows),
+    built once by the caller: `cache` is keyed by the fold lists' identity, so they must stay alive."""
+    fold_a, fold_b = split
+    held = []
+    for fit, test in ((fold_a, fold_b), (fold_b, fold_a)):
+        pick = best_under(fit, all_policies, e, budget, cache)
+        if pick is not None:
+            held.append(evaluate(test, pick.policy, e))
+    if len(held) != 2:
+        return None
+    return ((sum(h.escalation_rate for h in held) / 2 * 100).quantize(Decimal("0.1")),
+            (sum(h.bad_per_1000 for h in held) / 2).quantize(Decimal("0.01")))
+
+
 def render(run_id: str, rows: list[dict], reviewer_errors: list[Decimal], budgets: list[Decimal]) -> str:
     with_loop = any("loop_outcome" in r for r in rows)
     all_policies = list(policies(with_loop))
@@ -157,7 +174,7 @@ def render(run_id: str, rows: list[dict], reviewer_errors: list[Decimal], budget
     ]
     rows = rows if rows and "_bp" in rows[0] else prepare(rows)
     full_counts = {pol: counts(rows, pol) for pol in all_policies}
-    fold_a, fold_b = folds(rows)
+    split = folds(rows)
     cache: dict = {}
     for e in reviewer_errors:
         points = [point(len(rows), pol, full_counts[pol], e) for pol in all_policies]
@@ -183,17 +200,8 @@ def render(run_id: str, rows: list[dict], reviewer_errors: list[Decimal], budget
             if best is None:
                 lines.append(f"| ≤ {budget * 100:.0f}% | infeasible | | | | |")
                 continue
-            held = []
-            for fit, test in ((fold_a, fold_b), (fold_b, fold_a)):
-                pick = best_under(fit, all_policies, e, budget, cache)
-                if pick is not None:
-                    held.append(evaluate(test, pick.policy, e))
-            if len(held) == 2:
-                h_esc = (sum(h.escalation_rate for h in held) / 2 * 100).quantize(Decimal("0.1"))
-                h_bad = (sum(h.bad_per_1000 for h in held) / 2).quantize(Decimal("0.01"))
-                held_cells = f"{h_esc}% | {h_bad}"
-            else:
-                held_cells = "n/a | n/a"
+            held = held_out(split, all_policies, e, budget, cache)
+            held_cells = "n/a | n/a" if held is None else f"{held[0]}% | {held[1]}"
             lines.append(f"| ≤ {budget * 100:.0f}% | {best.policy.label()} | {best.escalation_rate * 100:.1f}% | {best.bad_per_1000} | {held_cells} |")
         lines += ["", "<details><summary>Full Pareto frontier</summary>", "", "| Escalation rate | Bad exports / 1000 | Policy |", "|---|---|---|"]
         lines += [f"| {p.escalation_rate * 100:.1f}% | {p.bad_per_1000} | {p.policy.label()} |" for p in frontier(points)]

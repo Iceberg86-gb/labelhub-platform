@@ -18,6 +18,9 @@ public record InternalAiReviewContextView(
     BigDecimal rejectFloor,
     String scoringRuleVersion,
     String businessPrompt,
-    String renderedPrompt
+    String renderedPrompt,
+    String precedentVersion,
+    java.util.List<com.labelhub.api.module.ai.precedent.Precedent> precedents,
+    String precedentsHash
 ) {
 }

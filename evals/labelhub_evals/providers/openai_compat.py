@@ -23,25 +23,25 @@ class OpenAiCompatibleProvider:
     def identity(self) -> str:
         return f"openai-compatible/{self.model}"
 
-    def request_body(self, review_input: dict) -> dict:
+    def request_body(self, review_input: dict, precedent_block: str | None = None) -> dict:
         return {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": review.SYSTEM_INSTRUCTIONS},
-                {"role": "user", "content": review.user_message(review_input)},
+                {"role": "user", "content": review.user_message(review_input, precedent_block)},
             ],
             "temperature": 0,
             "tools": [{"type": "function", "function": {"name": review.TOOL_NAME, "description": review.TOOL_DESCRIPTION, "parameters": review.tool_parameters()}}],
             "tool_choice": {"type": "function", "function": {"name": review.TOOL_NAME}},
         }
 
-    def correction_body(self, review_input: dict, attempts: list, style: str) -> dict:
+    def correction_body(self, review_input: dict, attempts: list, style: str, precedent_block: str | None = None) -> dict:
         """Same conversation shape as services/agent OpenAiCompatibleAiReviewRuntimeClient."""
         from labelhub_evals.review_loop import text_style_message
 
-        body = self.request_body(review_input)
+        body = self.request_body(review_input, precedent_block)
         if style == "text":
-            body["messages"][1]["content"] = text_style_message(review_input, attempts)
+            body["messages"][1]["content"] = text_style_message(review_input, attempts, precedent_block)
             return body
         for i, attempt in enumerate(attempts, 1):
             call_id = f"call_review_attempt_{i}"
@@ -50,11 +50,11 @@ class OpenAiCompatibleProvider:
             body["messages"].append({"role": "tool", "tool_call_id": call_id, "content": attempt.feedback})
         return body
 
-    def correct(self, review_input: dict, attempts: list, style: str) -> ProviderResponse:
-        return self._send(self.correction_body(review_input, attempts, style))
+    def correct(self, review_input: dict, attempts: list, style: str, precedent_block: str | None = None) -> ProviderResponse:
+        return self._send(self.correction_body(review_input, attempts, style, precedent_block))
 
-    def review(self, review_input: dict) -> ProviderResponse:
-        return self._send(self.request_body(review_input))
+    def review(self, review_input: dict, precedent_block: str | None = None) -> ProviderResponse:
+        return self._send(self.request_body(review_input, precedent_block))
 
     def _send(self, body: dict) -> ProviderResponse:
         request = urllib.request.Request(

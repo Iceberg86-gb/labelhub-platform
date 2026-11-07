@@ -89,6 +89,19 @@ python -m labelhub_evals calibrate runs/76b0cd706ca35fdd --out reports/w3a-calib
 
 模型假设审核员以概率 *e* 对称地犯错、高级审核员不出错，*e* 会分档列出。每个预算下都同时给出样本内和 2 折留出两组数字，以留出的数字为准。
 
+## 2.4 W4：判例记忆（ADR-021）
+
+```bash
+python -m labelhub_evals precedents build      # 下载固定版本的 HelpSteer2 train，重建判例池；BM25 检索结果需约 2 分钟
+python -m labelhub_evals run --provider chatgpt --model gpt-6.1-terra --effort low --mode record --loop-max-steps 3 --precedents 3
+python -m labelhub_evals gate-h4 runs/76b0cd706ca35fdd runs/<新 run_id> --out reports/w4-gate.md
+```
+
+- **判例池**：HelpSteer2 train（去重后 20,323 条），与黄金集的 prompt 没有任何重叠。每条黄金样本取 BM25 前 5 名，检索结果提交在 `datasets/helpsteer2-h4/retrieval.jsonl`，只含 id。判例正文 `pool.jsonl` 不进仓库，由 `precedents build` 重建；`--skip-retrieval` 只校验，不重算 BM25。
+- **录制键**：带判例的调用使用 prompt 版本 `h1-single-call-v1+h4-precedents-v1`，键中包含判例的 hash，所以不会复用 H1 的录制。真实评测需要重新调用一遍模型。
+- **关卡（`gate-h4`）**：两个 run 都按 H3 的方法校准。在仲裁预算 ≤ 25%、e = 0.10 时，留出集每千条坏样本数必须**严格低于** H3；e = 0.05 和 e = 0.20 时不能更高；格式违规率最多上升 1 个百分点。关卡不过就不合并。
+- `smoke-pool.jsonl` 只包含冒烟集用到的判例，所以 `make evals` 不需要联网。
+
 ## 3. ChatGPT 登录与模型切换
 
 ```bash

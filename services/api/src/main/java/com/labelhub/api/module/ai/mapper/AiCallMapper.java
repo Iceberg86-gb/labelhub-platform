@@ -116,7 +116,8 @@ public interface AiCallMapper {
 
     /**
      * ADR-020 shadow stats: AI-pass submissions of a rule version that have a human verdict, and how many the latest
-     * human verdict (any review level, latest wins) rejected; grouped by prompt version and model.
+     * human verdict (any review level, latest wins) rejected; grouped by prompt version and model. Only calls of one
+     * provider adapter version count (ADR-021 §3: evidence with and without precedent memory never mixes).
      */
     @Select("""
         SELECT ac.prompt_version_id AS promptVersionId,
@@ -135,13 +136,14 @@ public interface AiCallMapper {
             WHERE ranked.rn = 1
         ) v ON v.submission_id = ac.submission_id
         WHERE ac.ai_review_rule_id = #{ruleId}
+          AND ac.provider_adapter_version = #{providerAdapterVersion}
           AND ac.purpose = 'submission_review'
           AND ac.status = 'completed'
           AND ac.verdict = 'pass'
         GROUP BY ac.prompt_version_id, ac.model_name
         ORDER BY ac.prompt_version_id, ac.model_name
         """)
-    List<ShadowStatsRow> selectShadowStatsByRuleId(@Param("ruleId") Long ruleId);
+    List<ShadowStatsRow> selectShadowStatsByRuleId(@Param("ruleId") Long ruleId, @Param("providerAdapterVersion") String providerAdapterVersion);
 
     /** Mutable row so MyBatis auto-maps it by property name, like the other result types in this project. */
     class ShadowStatsRow {

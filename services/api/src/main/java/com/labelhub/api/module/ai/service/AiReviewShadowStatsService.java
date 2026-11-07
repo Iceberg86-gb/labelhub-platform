@@ -29,6 +29,20 @@ public class AiReviewShadowStatsService {
     private final TaskMapper taskMapper;
     private final AiCallMapper aiCallMapper;
 
+    private com.labelhub.api.module.ai.precedent.PrecedentProperties precedentProperties;
+
+    /** ADR-021 §3: shadow evidence is scoped to the adapter version (with/without precedent memory). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPrecedentProperties(com.labelhub.api.module.ai.precedent.PrecedentProperties precedentProperties) {
+        this.precedentProperties = precedentProperties;
+    }
+
+    String currentAdapterVersion() {
+        return precedentProperties == null
+            ? com.labelhub.api.module.ai.precedent.PrecedentProperties.BASE_ADAPTER_VERSION
+            : precedentProperties.adapterVersion();
+    }
+
     public AiReviewShadowStatsService(AiReviewRuleMapper aiReviewRuleMapper, TaskMapper taskMapper, AiCallMapper aiCallMapper) {
         this.aiReviewRuleMapper = aiReviewRuleMapper;
         this.taskMapper = taskMapper;
@@ -44,7 +58,7 @@ public class AiReviewShadowStatsService {
         if (task == null || !Objects.equals(task.getOwnerId(), ownerId)) {
             throw new AiReviewRuleNotFoundException(ruleId);  // same 404 for missing and cross-owner, like the other rule endpoints
         }
-        List<Group> groups = aiCallMapper.selectShadowStatsByRuleId(ruleId).stream()
+        List<Group> groups = aiCallMapper.selectShadowStatsByRuleId(ruleId, currentAdapterVersion()).stream()
             .map(row -> {
                 long judged = row.getJudged() == null ? 0 : row.getJudged();
                 long rejected = row.getRejected() == null ? 0 : row.getRejected();

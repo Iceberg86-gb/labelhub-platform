@@ -1328,6 +1328,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/ai-review/submissions/{submissionId}/precedents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ADR-021 (ADR-017 H4). BM25 top-k precedents for this submission: other submissions of the same task and schema version, excluding the submission itself and its dataset item, with their current human verdict (reviewer or senior). Never AI outputs; policy-accepted submissions are not precedents. Retrieval is pinned by packages/contracts/fixtures/precedent-retrieval-corpus.json. Read-only. */
+        get: operations["getAiReviewPrecedents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ai-review/submissions/{submissionId}/validate-review": {
         parameters: {
             query?: never;
@@ -2867,6 +2884,31 @@ export interface components {
             submissionId: number;
             idempotencyKey: string;
             result: components["schemas"]["InternalAiReviewResult"];
+            /** @description ADR-021: the precedents the context carried, echoed unchanged so the API can audit exactly what the model saw. Omit when the context had none. */
+            precedents?: components["schemas"]["AiReviewPrecedent"][];
+            precedentsHash?: string | null;
+        };
+        AiReviewPrecedent: {
+            rank: number;
+            /** Format: int64 */
+            submissionId: number;
+            /** @enum {string} */
+            verdict: "approved" | "rejected";
+            /**
+             * @description senior when a resolved senior arbitration decided the verdict.
+             * @enum {string}
+             */
+            source: "reviewer" | "senior";
+            /** @description The precedent's content as 'path: text' lines, cut to 1200 code points. */
+            submission: string;
+        };
+        InternalAiReviewPrecedents: {
+            /** Format: int64 */
+            submissionId: number;
+            /** @description Retrieval and rendering version, e.g. h4-precedents-v1. */
+            version: string;
+            precedents: components["schemas"]["AiReviewPrecedent"][];
+            precedentsHash: string;
         };
         InternalAiReviewContext: {
             /** Format: int64 */
@@ -2899,7 +2941,12 @@ export interface components {
             rejectThreshold: string;
             scoringRuleVersion: string;
             businessPrompt: string;
+            /** @description Includes the precedent block when precedents is non-empty (ADR-021 §3). */
             renderedPrompt: string;
+            /** @description ADR-021; null when precedent memory is disabled. */
+            precedentVersion?: string | null;
+            precedents?: components["schemas"]["AiReviewPrecedent"][];
+            precedentsHash?: string | null;
         };
         InternalAiReviewValidationRequest: {
             /** @description Candidate record_ai_review arguments exactly as the model produced them (any JSON value). */
@@ -5567,6 +5614,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InternalAiReviewContext"];
+                };
+            };
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    getAiReviewPrecedents: {
+        parameters: {
+            query?: {
+                k?: number;
+            };
+            header?: never;
+            path: {
+                submissionId: components["parameters"]["SubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Precedents, most similar first (possibly empty). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternalAiReviewPrecedents"];
                 };
             };
             404: components["responses"]["ErrorNotFound"];
