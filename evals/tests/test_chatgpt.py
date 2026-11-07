@@ -492,3 +492,21 @@ def test_select_skip_catalog_still_requires_a_passing_test(stub, tmp_path, monke
     assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "test") == 0
     assert _cli(stub, tmp_path, monkeypatch, "chatgpt", "apply") == 0
     assert ProfileStore(tmp_path).active().identity() == "chatgpt/gpt-5.5"
+
+
+def test_logout_clears_tokens_whose_key_is_gone(tmp_path, monkeypatch, capsys):
+    """The key vanished from the keychain: load() refuses, and logout must still clear the local tokens."""
+    from labelhub_evals import cli
+    from labelhub_evals.chatgpt.credentials import CredentialsStore
+
+    monkeypatch.setenv("LABELHUB_EVALS_HOME", str(tmp_path))
+    monkeypatch.setenv("LABELHUB_EVALS_NO_KEYRING", "1")
+    store = CredentialsStore(tmp_path)
+    store.save(creds())
+    store.key_path.unlink()
+    with pytest.raises(RuntimeError):
+        store.load()
+
+    assert cli.main(["chatgpt", "logout"]) == 0
+    assert "unreadable" in capsys.readouterr().out
+    assert store.load() is None
