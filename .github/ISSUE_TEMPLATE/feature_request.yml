@@ -1,0 +1,22 @@
+name: 功能建议 / Feature request
+description: 提出新能力或改进
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 谁在什么场景下遇到了什么困难？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议的方案
+  - type: checkboxes
+    id: governance
+    attributes:
+      label: 治理约束
+      options:
+        - label: 这个建议不需要让 AI 写最终裁决，也不需要修改 append-only 的事实
+        - label: 如果改变 AI 行为，我理解它需要先通过离线评测关卡

@@ -111,6 +111,10 @@ first storage/provider operation: provider secret encryption needs
 `LABELHUB_PA_INITIAL_PASSWORD`, and MinIO access needs the object-storage access
 and secret keys.
 
+## Demo Data
+
+With the API running, `python3 scripts/seed-demo.py` walks one complete pipeline through the public API (no SQL): the owner creates a task, schema, dataset and AI review rule; the labeler submits; the owner runs AI pre-review; the reviewer judges some submissions; the owner issues an MCP token. It only uses the local demo accounts — never point it at a shared environment.
+
 ## Verification
 
 Use the unified backend verification entrypoint:
