@@ -34,7 +34,8 @@ class Provider(Protocol):
     def identity(self) -> str:
         """Stable model identity: provider/model[@effort]. Part of the replay cache key and run_id."""
 
-    def review(self, review_input: dict) -> ProviderResponse: ...
+    def review(self, review_input: dict, precedent_block: str | None = None) -> ProviderResponse: ...
 
-    def correct(self, review_input: dict, attempts: list, style: str) -> ProviderResponse:
-        """ADR-019 correction turn: replay each failed attempt and its feedback, force the tool again."""
+    def correct(self, review_input: dict, attempts: list, style: str, precedent_block: str | None = None) -> ProviderResponse:
+        """ADR-019 correction turn: replay each failed attempt and its feedback, force the tool again.
+        `precedent_block` (ADR-021) is rendered into the first user turn exactly as in review()."""

@@ -1,0 +1,77 @@
+{
+  "run": {
+    "dimensions": [
+      "overall"
+    ],
+    "golden": {
+      "name": "helpsteer2-h1-smoke",
+      "sha256": "3a68d2295657ea38facc595b6a833adbb0f270ecaa56ca311d10621db3703403"
+    },
+    "loop": {
+      "correction_style": "tool",
+      "feedback_version": "h2-validate-loop-v2",
+      "max_steps": 3,
+      "rules_version": "review-output-v1"
+    },
+    "model": "fake/hash-heuristic-v1",
+    "pass_threshold": "0.80",
+    "precedents": {
+      "k": 3,
+      "retrieval_sha256": "86d9655be9f9caf36ce135ff54d8976b1721d7088c62df9c6e1f98bf7bb29c86",
+      "version": "h4-precedents-v1"
+    },
+    "prompt_version": "h1-single-call-v1",
+    "reject_threshold": "0.20",
+    "scoring_rule_version": "equal-weight-three-zone-v2"
+  },
+  "run_id": "d42a5aa0e2406ef5",
+  "scorecard": {
+    "auto_pass_error_rate": "0.166667",
+    "auto_reject_error_rate": null,
+    "cohen_kappa_decided": "0.000000",
+    "cost_per_item_usd": null,
+    "decided_agreement": "0.833333",
+    "format_violation_rate": "0.000000",
+    "items": 24,
+    "latency_ms": {
+      "p50": 869,
+      "p95": 1373
+    },
+    "loop": {
+      "correction_success_rate": null,
+      "final_error_codes": {},
+      "final_invalid_rate": "0.000000",
+      "flagged_rate": "0.000000",
+      "initial_correctable_rate": "0.000000",
+      "initial_error_codes": {},
+      "initial_invalid_rate": "0.000000",
+      "mean_steps": "1.0000",
+      "model_calls": 24,
+      "outcomes": {
+        "corrected": 0,
+        "correction_failed": 0,
+        "downgraded": 0,
+        "flagged": 0,
+        "format_violation": 0,
+        "judgement_changed": 0,
+        "valid": 24
+      }
+    },
+    "manual_review_rate": "0.250000",
+    "routed_counts": {
+      "manual_review": 6,
+      "pass": 18,
+      "reject": 0
+    },
+    "tokens": {
+      "input_total": 15061,
+      "items_with_usage": 24,
+      "output_total": 1440
+    },
+    "truth_counts": {
+      "pass": 17,
+      "reject": 7
+    },
+    "validator_correction_success_rate": null
+  }
+}

@@ -83,7 +83,9 @@ migrate-check: test-db require-java17
 # Offline evals (ADR-017 H1): unit tests + replay of the committed smoke baseline. No network, no credentials.
 evals:
 	cd evals && python3 -m pytest -q && python3 -m labelhub_evals run --golden datasets/helpsteer2-h1/smoke.jsonl \
-		--golden-name helpsteer2-h1-smoke --provider fake --mode replay --require-reproduced
+		--golden-name helpsteer2-h1-smoke --provider fake --mode replay --require-reproduced && \
+		python3 -m labelhub_evals run --golden datasets/helpsteer2-h1/smoke.jsonl --golden-name helpsteer2-h1-smoke \
+		--provider fake --mode replay --loop-max-steps 3 --precedents 3 --require-reproduced
 
 # W1 real-model baseline (ADR-017 H1): downloads pinned HelpSteer2 once, then replays. No credentials.
 evals-baseline:

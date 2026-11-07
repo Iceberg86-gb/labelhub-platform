@@ -55,6 +55,10 @@ jobs:
         run: >-
           python -m labelhub_evals run --golden datasets/helpsteer2-h1/smoke.jsonl --golden-name helpsteer2-h1-smoke
           --provider fake --mode replay --require-reproduced
+      - name: H4 precedent smoke run reproduces from the committed smoke pool (ADR-021, offline)
+        run: >-
+          python -m labelhub_evals run --golden datasets/helpsteer2-h1/smoke.jsonl --golden-name helpsteer2-h1-smoke
+          --provider fake --mode replay --loop-max-steps 3 --precedents 3 --require-reproduced
       - name: Real-model W1 baseline reproduces byte-for-byte (downloads pinned HelpSteer2, replay only)
         run: |
           python -m labelhub_evals golden build
@@ -66,6 +70,8 @@ jobs:
           python -m labelhub_evals compare runs/700607c95f112de6 runs/76b0cd706ca35fdd --out reports/w2v2-vs-w1.md --check
       - name: W3a threshold calibration report regenerates from the W2 recordings
         run: python -m labelhub_evals calibrate runs/76b0cd706ca35fdd --out reports/w3a-calibration.md --check
+      - name: H4 precedent pool rebuilds from pinned HelpSteer2 train and matches the committed retrieval
+        run: python -m labelhub_evals precedents build --skip-retrieval
       - name: Replay must not leave untracked files
         run: test -z "$(git status --porcelain -- .)"
 

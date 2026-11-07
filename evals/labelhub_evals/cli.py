@@ -16,6 +16,7 @@ from labelhub_evals.runner import RunConfig, RunConflict, run
 
 EVALS_ROOT = Path(__file__).resolve().parents[1]
 DATASET_DIR = EVALS_ROOT / "datasets" / "helpsteer2-h1"
+PRECEDENT_DIR = EVALS_ROOT / "datasets" / "helpsteer2-h4"
 
 # A fixed, harmless input for `chatgpt test`: the probe proves the draft model accepts the forced tool call.
 PROBE_INPUT = {"prompt": "What is the capital of France?", "response": "The capital of France is Paris."}
@@ -83,12 +84,24 @@ def cmd_run(args) -> int:
     live = None if args.mode == "replay" else _live_provider(args)
     model = _model_identity(args, live)
     provider = RecordingProvider(live, RecordingStore(Path(args.recordings_dir)), args.mode, model, review.PROMPT_VERSION)
+    precedent_set = None
+    if args.precedents is not None:
+        from labelhub_evals.precedent_pool import PoolError
+        from labelhub_evals.precedent_pool import load as load_precedents
+
+        try:
+            precedent_set = load_precedents(Path(args.precedent_dir), items, args.precedents)
+        except (PoolError, FileNotFoundError) as exc:
+            print(f"precedents: {exc}", file=sys.stderr)
+            return 2
     config = RunConfig(golden_name=Path(args.golden).stem if args.golden_name is None else args.golden_name, model=model,
-                       loop_max_steps=args.loop_max_steps, correction_style=args.correction_style)
+                       loop_max_steps=args.loop_max_steps, correction_style=args.correction_style,
+                       precedents_k=args.precedents, precedent_retrieval_sha256=None if precedent_set is None else precedent_set.retrieval_sha256)
     price_in = Decimal(args.price_in) if args.price_in else None
     price_out = Decimal(args.price_out) if args.price_out else None
     try:
-        run_dir, reproduced = run(items, provider, config, Path(args.runs_dir), price_in=price_in, price_out=price_out)
+        run_dir, reproduced = run(items, provider, config, Path(args.runs_dir), price_in=price_in, price_out=price_out,
+                                  precedent_set=precedent_set)
     except ReplayMiss as exc:
         print(f"replay miss: {exc}\nrecord first with --mode record", file=sys.stderr)
         return 2
@@ -139,6 +152,42 @@ def cmd_compare(args) -> int:
         if args.check:
             if not out.exists() or out.read_text(encoding="utf-8") != text:
                 print(f"{out} is stale; regenerate with `compare {args.baseline} {args.candidate} --out {args.out}`", file=sys.stderr)
+                return 3
+        else:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(text, encoding="utf-8")
+    print(text)
+    return 0 if passed else 1
+
+
+def cmd_precedents_build(args) -> int:
+    from labelhub_evals.precedent_pool import PoolError, build
+
+    try:
+        manifest = build(Path(args.precedent_dir), EVALS_ROOT / ".cache", DATASET_DIR, check=not args.force,
+                         verify_retrieval=not args.skip_retrieval)
+    except PoolError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
+    pool = manifest["pool"]
+    print(f"precedent pool: {pool['size']} docs, approved/rejected={pool['verdict_counts']['approved']}/{pool['verdict_counts']['rejected']}")
+    print(f"retrieval {manifest['retrieval']['items']} items × top {manifest['retrieval']['k']}, sha256 {manifest['retrieval']['sha256']}")
+    return 0
+
+
+def cmd_gate_h4(args) -> int:
+    from labelhub_evals.gate_h4 import GateError, gate
+
+    try:
+        text, passed = gate(Path(args.reference), Path(args.candidate), Decimal(args.budget))
+    except GateError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if args.out:
+        out = Path(args.out)
+        if args.check:
+            if not out.exists() or out.read_text(encoding="utf-8") != text:
+                print(f"{out} is stale; regenerate with `gate-h4 {args.reference} {args.candidate} --out {args.out}`", file=sys.stderr)
                 return 3
         else:
             out.parent.mkdir(parents=True, exist_ok=True)
@@ -426,6 +475,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--loop-max-steps", type=int, default=None, help="ADR-019 H2: validate-and-correct with at most N model calls per item")
     r.add_argument("--correction-style", choices=["tool", "text"], default="tool",
                    help="how failed calls are replayed to the model (text: fallback if replayed tool calls are rejected)")
+    r.add_argument("--precedents", type=int, default=None, metavar="K", help="ADR-021 H4: add the top-K human-verdict precedents to the prompt")
+    r.add_argument("--precedent-dir", default=str(PRECEDENT_DIR))
     r.add_argument("--require-reproduced", action="store_true", help="fail unless an identical run already exists (CI gate)")
     r.set_defaults(fn=cmd_run)
 
@@ -442,6 +493,21 @@ def build_parser() -> argparse.ArgumentParser:
     cp.add_argument("--out")
     cp.add_argument("--check", action="store_true")
     cp.set_defaults(fn=cmd_compare)
+
+    pb = sub.add_parser("precedents", help="ADR-021 precedent pool").add_subparsers(dest="precedents_cmd", required=True)
+    pbb = pb.add_parser("build", help="download pinned HelpSteer2 train, rebuild the pool and BM25 retrieval deterministically")
+    pbb.add_argument("--precedent-dir", default=str(PRECEDENT_DIR))
+    pbb.add_argument("--force", action="store_true", help="allow a manifest change")
+    pbb.add_argument("--skip-retrieval", action="store_true", help="trust the committed retrieval.jsonl instead of recomputing BM25 (fast)")
+    pbb.set_defaults(fn=cmd_precedents_build)
+
+    g4 = sub.add_parser("gate-h4", help="ADR-021 §6: H4 precedent run vs H3 reference (exit 1 if the gate fails)")
+    g4.add_argument("reference")
+    g4.add_argument("candidate")
+    g4.add_argument("--budget", default="0.25")
+    g4.add_argument("--out")
+    g4.add_argument("--check", action="store_true")
+    g4.set_defaults(fn=cmd_gate_h4)
 
     cal = sub.add_parser("calibrate", help="ADR-020: escalation-rate vs bad-export frontier over threshold policies (replay only)")
     cal.add_argument("run_dir")

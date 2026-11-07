@@ -37,6 +37,9 @@ class RunConfig:
     # ADR-019 (H2). None = H1 single call; identity (and run_id) of H1 runs is unchanged.
     loop_max_steps: int | None = None
     correction_style: str = "tool"
+    # ADR-021 (H4). None = no precedents; identity (and run_id) of H1-H3 runs is unchanged.
+    precedents_k: int | None = None
+    precedent_retrieval_sha256: str | None = None
 
     def identity(self, golden_sha256: str) -> dict:
         ident = self._base_identity(golden_sha256)
@@ -46,6 +49,10 @@ class RunConfig:
 
             ident["loop"] = {"correction_style": self.correction_style, "feedback_version": FEEDBACK_VERSION,
                              "max_steps": self.loop_max_steps, "rules_version": RULES_VERSION}
+        if self.precedents_k is not None:
+            from labelhub_evals.precedents import PRECEDENT_VERSION
+
+            ident["precedents"] = {"k": self.precedents_k, "retrieval_sha256": self.precedent_retrieval_sha256, "version": PRECEDENT_VERSION}
         return ident
 
     def _base_identity(self, golden_sha256: str) -> dict:
@@ -88,14 +95,14 @@ def evaluate_item(item: GoldenItem, response: ProviderResponse, config: RunConfi
     }
 
 
-def evaluate_loop_item(item: GoldenItem, recorder, config: RunConfig) -> dict:
+def evaluate_loop_item(item: GoldenItem, recorder, config: RunConfig, precedents=None) -> dict:
     """H2: run produce -> validate -> correct, then score the final output exactly like H1 (routing by
     score, as the API does). The review input's keys are the fields a finding may reference."""
     from labelhub_evals.review_loop import downgraded_output, run_loop
     from labelhub_evals.review_validation import ValidationContext
 
     ctx = ValidationContext(config.dimensions, config.pass_threshold, config.reject_threshold, frozenset(item.input))
-    loop = run_loop(recorder, item.item_id, item.input, ctx, config.loop_max_steps, config.correction_style)
+    loop = run_loop(recorder, item.item_id, item.input, ctx, config.loop_max_steps, config.correction_style, precedents)
     final = loop.final
     if loop.downgrades:
         final = ProviderResponse(json.dumps(downgraded_output(json.loads(final.arguments), loop.final_errors), sort_keys=True),
@@ -147,6 +154,9 @@ def render_markdown(card: dict) -> str:
         f"| Latency p50 / p95 (ms) | {s['latency_ms']['p50']} / {s['latency_ms']['p95']} |",
         "",
     ]
+    if "precedents" in ident:
+        pc = ident["precedents"]
+        lines[3] += f"  ·  precedents `{pc['version']}` top {pc['k']} (retrieval `{pc['retrieval_sha256'][:12]}`)"
     if "loop" in s:
         loop, cfg = s["loop"], ident["loop"]
         o = loop["outcomes"]
@@ -168,7 +178,8 @@ def render_markdown(card: dict) -> str:
     return "\n".join(lines)
 
 
-def run(items: list[GoldenItem], provider: RecordingProvider, config: RunConfig, runs_dir: Path, *, price_in=None, price_out=None) -> tuple[Path, bool]:
+def run(items: list[GoldenItem], provider: RecordingProvider, config: RunConfig, runs_dir: Path, *, price_in=None, price_out=None,
+        precedent_set=None) -> tuple[Path, bool]:
     """Returns (run directory, reproduced) where reproduced=True means an identical run already existed.
     Live-mode runs are not recorded, hence not reproducible, so they go to runs_dir/_live/<run_id>
     and may be overwritten; only replay/record runs are append-only facts."""
@@ -177,10 +188,13 @@ def run(items: list[GoldenItem], provider: RecordingProvider, config: RunConfig,
     if price_in is not None or price_out is not None:
         identity["pricing_usd_per_mtok"] = {"input": str(price_in), "output": str(price_out)}
     run_id = canonical_hash(identity)[:16]
+    if (config.precedents_k is None) != (precedent_set is None):
+        raise ValueError("precedents_k and precedent_set go together")
+    per_item = (lambda item: None) if precedent_set is None else (lambda item: precedent_set.by_item[item.item_id])  # noqa: E731
     if config.loop_max_steps is None:
-        results = [evaluate_item(item, provider.review(item.item_id, item.input), config) for item in items]
+        results = [evaluate_item(item, provider.review(item.item_id, item.input, per_item(item)), config) for item in items]
     else:
-        results = [evaluate_loop_item(item, provider, config) for item in items]
+        results = [evaluate_loop_item(item, provider, config, per_item(item)) for item in items]
     card = {
         "run_id": run_id,
         "run": identity,

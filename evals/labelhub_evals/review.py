@@ -76,9 +76,12 @@ def tool_parameters() -> dict:
     }
 
 
-def user_message(review_input: dict) -> str:
+def user_message(review_input: dict, precedent_block: str | None = None) -> str:
     # json.dumps escapes quotes/newlines, so submitted text cannot close the data block (conventions §11).
-    return "Business prompt:\n" + BUSINESS_PROMPT + "\nInput:\n" + json.dumps(review_input, ensure_ascii=False, sort_keys=True)
+    # ADR-021: the precedent block sits between the business prompt and the input; without it the
+    # message is byte-identical to H1, so H1 recordings stay valid.
+    middle = "" if precedent_block is None else "\n" + precedent_block + "\n"
+    return "Business prompt:\n" + BUSINESS_PROMPT + middle + "\nInput:\n" + json.dumps(review_input, ensure_ascii=False, sort_keys=True)
 
 
 class FormatViolation(ValueError):

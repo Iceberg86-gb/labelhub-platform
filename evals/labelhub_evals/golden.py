@@ -68,18 +68,24 @@ def review_input(row: dict) -> dict:
     return {"prompt": row["prompt"], "response": row["response"]}
 
 
-def fetch_source(cache_dir: Path) -> Path:
+def fetch_file(cache_dir: Path, file: str, sha256: str) -> Path:
+    """Download one file of the pinned HelpSteer2 revision into the cache and verify its SHA-256."""
     cache_dir.mkdir(parents=True, exist_ok=True)
-    target = cache_dir / f"helpsteer2-{SOURCE_REVISION[:12]}-{SOURCE_FILE}"
+    target = cache_dir / f"helpsteer2-{SOURCE_REVISION[:12]}-{file}"
     if not target.exists():
         tmp = target.with_suffix(".part")
-        with urllib.request.urlopen(SOURCE_URL, timeout=60) as response, open(tmp, "wb") as out:
+        url = f"https://huggingface.co/datasets/{SOURCE_DATASET}/resolve/{SOURCE_REVISION}/{file}"
+        with urllib.request.urlopen(url, timeout=120) as response, open(tmp, "wb") as out:
             out.write(response.read())
         tmp.replace(target)
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
-    if digest != SOURCE_SHA256:
-        raise ValueError(f"{target} sha256 {digest} does not match pinned {SOURCE_SHA256}")
+    if digest != sha256:
+        raise ValueError(f"{target} sha256 {digest} does not match pinned {sha256}")
     return target
+
+
+def fetch_source(cache_dir: Path) -> Path:
+    return fetch_file(cache_dir, SOURCE_FILE, SOURCE_SHA256)
 
 
 def read_source(path: Path) -> list[dict]:

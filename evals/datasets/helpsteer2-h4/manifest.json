@@ -1,0 +1,34 @@
+{
+  "label_rule": {
+    "rule": "pass iff helpfulness >= 3 and correctness >= 3 (0-4 scale); otherwise reject",
+    "version": "hs2-pass-v1"
+  },
+  "license": "CC-BY-4.0",
+  "name": "helpsteer2-h4-precedents",
+  "pool": {
+    "sha256": "c5e5b7b363a37be0b67a6571d1a203f7bb723cafe0441a3c06a41df38bcbc1bb",
+    "size": 20323,
+    "verdict_counts": {
+      "approved": 14130,
+      "rejected": 6193
+    }
+  },
+  "precedent_version": "h4-precedents-v1",
+  "retrieval": {
+    "exclusion": "pool docs with the same prompt as the item",
+    "golden_sha256": "5e0df257bb341d48a184c7a2c00cdb0b7cc2a57224378b9ae249e086f002c81e",
+    "items": 1038,
+    "k": 5,
+    "sha256": "86d9655be9f9caf36ce135ff54d8976b1721d7088c62df9c6e1f98bf7bb29c86"
+  },
+  "smoke_pool": {
+    "sha256": "c02f05bd665dc4376eb0e7ba1e99f8aaa9096b30da6e78482a3c4ac8a9e44132",
+    "size": 89
+  },
+  "source": {
+    "dataset": "nvidia/HelpSteer2",
+    "file": "train.jsonl.gz",
+    "revision": "990b2711a36180dd19d9c94b8627844866f8982a",
+    "sha256": "c0d7e91d738d42e8a08070db26c4c09a9c7631308e1f0fd380ff43d130c9f713"
+  }
+}

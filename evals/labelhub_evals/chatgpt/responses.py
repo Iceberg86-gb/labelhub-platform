@@ -99,11 +99,11 @@ class ResponsesClient:
             raise ProviderError(f"Responses API error: {exc}") from None
 
 
-def review_body(model: str, effort: str | None, review_input: dict) -> dict:
+def review_body(model: str, effort: str | None, review_input: dict, precedent_block: str | None = None) -> dict:
     body = {
         "model": model,
         "instructions": review.SYSTEM_INSTRUCTIONS,
-        "input": [{"role": "user", "content": [{"type": "input_text", "text": review.user_message(review_input)}]}],
+        "input": [{"role": "user", "content": [{"type": "input_text", "text": review.user_message(review_input, precedent_block)}]}],
         "tools": [{"type": "function", "name": review.TOOL_NAME, "description": review.TOOL_DESCRIPTION, "parameters": review.tool_parameters()}],
         "tool_choice": {"type": "function", "name": review.TOOL_NAME},
         "parallel_tool_calls": False,
@@ -113,15 +113,16 @@ def review_body(model: str, effort: str | None, review_input: dict) -> dict:
     return body
 
 
-def correction_body(model: str, effort: str | None, review_input: dict, attempts: list, style: str) -> dict:
+def correction_body(model: str, effort: str | None, review_input: dict, attempts: list, style: str,
+                    precedent_block: str | None = None) -> dict:
     """ADR-019 correction turn for the Responses API (store=false, so the conversation is sent inline).
     tool style: each failed call is replayed as a function_call item followed by its function_call_output.
     text style: one user turn quoting the previous calls (fallback if a model rejects replayed calls)."""
     from labelhub_evals.review_loop import text_style_message
 
-    body = review_body(model, effort, review_input)
+    body = review_body(model, effort, review_input, precedent_block)
     if style == "text":
-        body["input"] = [{"role": "user", "content": [{"type": "input_text", "text": text_style_message(review_input, attempts)}]}]
+        body["input"] = [{"role": "user", "content": [{"type": "input_text", "text": text_style_message(review_input, attempts, precedent_block)}]}]
         return body
     for i, attempt in enumerate(attempts, 1):
         call_id = f"call_review_attempt_{i}"
@@ -138,11 +139,11 @@ class ChatGPTProvider:
     def identity(self) -> str:
         return f"chatgpt/{self.model}" + (f"@{self.effort}" if self.effort else "")
 
-    def review(self, review_input: dict) -> ProviderResponse:
-        return self._call(review_body(self.model, self.effort, review_input))
+    def review(self, review_input: dict, precedent_block: str | None = None) -> ProviderResponse:
+        return self._call(review_body(self.model, self.effort, review_input, precedent_block))
 
-    def correct(self, review_input: dict, attempts: list, style: str) -> ProviderResponse:
-        return self._call(correction_body(self.model, self.effort, review_input, attempts, style))
+    def correct(self, review_input: dict, attempts: list, style: str, precedent_block: str | None = None) -> ProviderResponse:
+        return self._call(correction_body(self.model, self.effort, review_input, attempts, style, precedent_block))
 
     def _call(self, body: dict) -> ProviderResponse:
         start = time.monotonic()
