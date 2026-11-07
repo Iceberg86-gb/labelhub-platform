@@ -53,12 +53,6 @@ public class WebClientMcpApiClient implements McpApiClient {
     }
 
     @Override
-    public JsonNode precedents(Long submissionId, int k) {
-        return webClient.get().uri(b -> b.path("/internal/ai-review/submissions/{id}/precedents").queryParam("k", k).build(submissionId))
-            .header("X-Internal-Token", internalToken).retrieve().bodyToMono(JsonNode.class).block();
-    }
-
-    @Override
     public void appendStep(Map<String, Object> step) {
         webClient.post().uri("/internal/mcp/trajectory-steps").header("X-Internal-Token", internalToken)
             .bodyValue(step).retrieve().toBodilessEntity().block();

@@ -19,7 +19,7 @@ import java.util.Map;
 
 /**
  * ADR-022 §3: the MCP tools. Every tool goes through the API's authority (context, validation, scoring,
- * precedents, results); the tools only adapt shapes. An external proposal is AI evidence, exactly like the
+ * results); the tools only adapt shapes. An external proposal is AI evidence, exactly like the
  * platform agent's, except that it carries no agentLoop marker and so can never be auto-accepted (ADR-020).
  */
 public class McpTools {
@@ -51,8 +51,6 @@ public class McpTools {
                 schema(Map.of("submissionId", submissionId), List.of("submissionId")), true),
             tool("get_guidelines", "The task description and the owner's review criteria (business prompt) for a submission.",
                 schema(Map.of("submissionId", submissionId), List.of("submissionId")), true),
-            tool("search_precedents", "Earlier submissions of this task with their final HUMAN verdict, most similar first (BM25). Reference data only.",
-                schema(Map.of("submissionId", submissionId, "k", Map.of("type", "integer", "minimum", 1, "maximum", 10)), List.of("submissionId")), true),
             tool("validate_review", "Check a candidate review against the submission's rules (dimensions, thresholds, field ids). Read-only.",
                 schema(Map.of("submissionId", submissionId, "review", OpenAiCompatibleAiReviewRuntimeClient.aiReviewToolSchema()),
                     List.of("submissionId", "review")), true),
@@ -94,7 +92,6 @@ public class McpTools {
                 out.put("promptVersion", c.promptVersion());
                 yield ok(out, submissionId);
             }
-            case "search_precedents" -> ok(mcpApi.precedents(submissionId, Math.max(1, Math.min(10, args.path("k").asInt(3)))), submissionId);
             case "validate_review" -> ok(objectMapper.valueToTree(reviewApi.validateReview(submissionId, toPlain(args.get("review")))), submissionId);
             case "submit_review" -> submit(args, submissionId, clientName);
             case "request_human" -> {

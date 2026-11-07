@@ -152,7 +152,7 @@ public class McpServer {
         server.put("name", "labelhub");
         server.put("version", "h5-mcp-v1");
         r.put("instructions", "LabelHub task " + grant.taskId() + " (token '" + grant.name() + "'). You propose AI reviews; humans decide. "
-            + "Typical flow: list_submissions -> get_submission / get_guidelines -> search_precedents -> validate_review -> submit_review. "
+            + "Typical flow: list_submissions -> get_submission / get_guidelines -> validate_review -> submit_review. "
             + "Every call is recorded in an audit trajectory.");
         return new Reply(200, result(id, r), session.id);
     }

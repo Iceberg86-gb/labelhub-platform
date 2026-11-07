@@ -32,7 +32,7 @@ import reactor.netty.http.server.HttpServer;
 
 /**
  * ADR-022 §7 — the H5 gate. The official MCP Java SDK client connects to /mcp (real HTTP, real WebFlux routes)
- * and completes a demo review: initialize -> list_submissions -> get_submission -> search_precedents ->
+ * and completes a demo review: initialize -> list_submissions -> get_submission -> get_guidelines ->
  * validate_review (invalid) -> submit_review (fixed). The API behind it is an in-memory fake that enforces
  * the same contract (token scope, validation); the test asserts the audit facts the API would persist.
  */
@@ -92,12 +92,12 @@ class McpGateTest {
             McpSchema.InitializeResult init = client.initialize();
             assertThat(init.serverInfo().name()).isEqualTo("labelhub");
             assertThat(client.listTools().tools()).extracting(McpSchema.Tool::name).containsExactly(
-                "list_submissions", "get_submission", "get_guidelines", "search_precedents", "validate_review", "submit_review", "request_human");
+                "list_submissions", "get_submission", "get_guidelines", "validate_review", "submit_review", "request_human");
 
             assertThat(call(client, "list_submissions", Map.of(), false).get(0).get("submissionId").asLong()).isEqualTo(SUBMISSION);
             assertThat(call(client, "get_submission", Map.of("submissionId", SUBMISSION), false).get("dimensions").get(0).asText()).isEqualTo("overall");
-            assertThat(call(client, "search_precedents", Map.of("submissionId", SUBMISSION, "k", 2), false).get("precedents").get(0).get("verdict").asText())
-                .isEqualTo("approved");
+            assertThat(call(client, "get_guidelines", Map.of("submissionId", SUBMISSION), false).get("businessPrompt").asText())
+                .isEqualTo("Judge helpfulness.");
             assertThat(call(client, "validate_review", Map.of("submissionId", SUBMISSION, "review", review(false)), false).get("valid").asBoolean()).isFalse();
             // An invalid proposal is refused and nothing reaches the API's results endpoint.
             JsonNode refused = call(client, "submit_review", Map.of("submissionId", SUBMISSION, "review", review(false)), true);
@@ -119,7 +119,7 @@ class McpGateTest {
 
         // Trajectory: one step per tool call, in order, one run, hashed, summarized, token never stored.
         assertThat(api.steps).extracting(s -> s.get("toolName")).containsExactly(
-            "list_submissions", "get_submission", "search_precedents", "validate_review", "submit_review", "submit_review", "get_submission");
+            "list_submissions", "get_submission", "get_guidelines", "validate_review", "submit_review", "submit_review", "get_submission");
         assertThat(api.steps).extracting(s -> s.get("stepNo")).containsExactly(1, 2, 3, 4, 5, 6, 7);
         assertThat(api.steps).extracting(s -> s.get("runId")).containsOnly(api.steps.get(0).get("runId"));
         assertThat(api.steps).allSatisfy(s -> {
@@ -184,12 +184,6 @@ class McpGateTest {
         }
 
         @Override
-        public JsonNode precedents(Long submissionId, int k) {
-            return om.valueToTree(Map.of("version", "h4-precedents-v1", "precedents",
-                List.of(Map.of("rank", 1, "submissionId", 41, "verdict", "approved", "source", "reviewer", "submission", "answerPayload.answer: yes"))));
-        }
-
-        @Override
         public void appendStep(Map<String, Object> step) {
             steps.add(step);
         }
@@ -199,7 +193,7 @@ class McpGateTest {
             return new AiReviewContext(submissionId, "key-" + submissionId, "promptVersion#1", 1L, 9L, "agent-default-v1",
                 Map.of("answerPayload", Map.of("answer", "yes"), "task", Map.of("id", TASK, "title", "demo")), "h", List.of("overall"),
                 new BigDecimal("0.8"), new BigDecimal("0.2"), new BigDecimal("0.8"), new BigDecimal("0.2"), "equal-weight-three-zone-v2",
-                "Judge helpfulness.", "rendered", null, List.of(), null);
+                "Judge helpfulness.", "rendered");
         }
 
         @Override

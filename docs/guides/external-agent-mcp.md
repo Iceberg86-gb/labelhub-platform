@@ -1,6 +1,6 @@
 # 让外部 agent 通过 MCP 参与审核（ADR-022）
 
-外部 agent（Claude Code、Codex 或你自己写的 agent）通过 MCP 接入某个任务后，能读取待审数据和人工判例，并**提交审核提议**。
+外部 agent（Claude Code、Codex 或你自己写的 agent）通过 MCP 接入某个任务后，能读取待审数据和审核标准，并**提交审核提议**。
 
 提议会经过和平台 agent 完全相同的校验与评分，记录为 AI 证据，供人工审核员参考：它不是裁决，也永远不会自动通过。每一次工具调用都会写进只追加的轨迹。
 
@@ -26,12 +26,11 @@ claude mcp add --transport http labelhub http://localhost:8081/mcp --header "Aut
 |---|---|
 | `list_submissions` | 本任务中还没有 AI 审核的提交 |
 | `get_submission` / `get_guidelines` | 被审数据、维度、阈值和业务审核标准 |
-| `search_precedents` | 人工裁决的判例（BM25，ADR-021），只作参考 |
 | `validate_review` | 校验一份候选审核，只读，不落库 |
 | `submit_review` | 提交审核提议。校验不通过就拒绝，并返回需要修改的地方；通过后记录为 AI 证据（`ai_calls.model_provider = mcp:<客户端名>`） |
 | `request_human` | 交还人工处理，不写任何 AI 结论 |
 
-一个典型的提示词：「用 labelhub 的工具审核本任务里还没审的提交：先看 guidelines 和判例，再 validate_review，通过后 submit_review；拿不准就 request_human。」
+一个典型的提示词：「用 labelhub 的工具审核本任务里还没审的提交：先看 guidelines，再 validate_review，通过后 submit_review；拿不准就 request_human。」
 
 ## 4. 查看轨迹
 

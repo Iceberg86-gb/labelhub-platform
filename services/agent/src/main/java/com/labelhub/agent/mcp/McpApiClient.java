@@ -14,7 +14,5 @@ public interface McpApiClient {
 
     JsonNode openSubmissions(Long taskId, int limit);
 
-    JsonNode precedents(Long submissionId, int k);
-
     void appendStep(Map<String, Object> step);
 }

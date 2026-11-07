@@ -6,7 +6,7 @@ Proposed（2026-11-07）。对应 ADR-017 的 H5 阶段。关卡：一个外部 
 
 ## Context
 
-- 到 H4 为止，只有平台自己的 agent（outbox worker）能做 AI 审核。外部 agent（如 Claude Code、Codex 或用户自建的 agent）想参与，只能绕开平台，这样就没有审计，也不受 ADR-019、020 的约束。
+- 到 H3 为止，只有平台自己的 agent（outbox worker）能做 AI 审核。外部 agent（如 Claude Code、Codex 或用户自建的 agent）想参与，只能绕开平台，这样就没有审计，也不受 ADR-019、020 的约束。
 - ADR-017 的 H5 要求：外部 agent 通过 MCP 接入；外部 agent 的身份写进轨迹，并以 provider `mcp:<client>` 写进 `ai_calls`；轨迹 append-only，输入和输出存 hash 加截断摘要，并经过规范化和 AgentSecretRedactor 脱敏。
 - 用户已确认的决策：
   - MCP Server 放在 services/agent；
@@ -37,7 +37,6 @@ Proposed（2026-11-07）。对应 ADR-017 的 H5 阶段。关卡：一个外部 
 | `list_submissions` | 列出令牌所属任务中还没有 AI 审核的提交（最多 50 条） | 新内部接口 |
 | `get_submission` | 被审数据、Schema 字段、维度、阈值和业务 prompt（与内部 agent 拿到的 context 相同） | 现有 context |
 | `get_guidelines` | 任务说明和规则的业务 prompt | 同上 |
-| `search_precedents` | H4 判例：只有人工裁决 | ADR-021 接口 |
 | `validate_review` | ADR-019 校验，返回错误列表和 API 给出的路由 | 现有 validate-review |
 | `submit_review` | 提交一份审核**提议**：先在 API 侧重新校验，有错就拒绝并返回错误，由外部 agent 自己修正；校验通过后写入 `ai_calls`，`model_provider = mcp:<client>` | 现有 results 接口 |
 | `request_human` | 外部 agent 声明自己无法判断，把提交交还人工处理：记录轨迹步骤，不写 AI 结论 | 轨迹 |
@@ -69,6 +68,8 @@ Proposed（2026-11-07）。对应 ADR-017 的 H5 阶段。关卡：一个外部 
 
 ### 6. 不做的事
 
+- 不提供 `search_precedents`。原计划把 H4 的判例检索作为工具开放，但 H4 的评测关卡没有通过（BM25 判例让坏样本导出数变多，见 Iceberg86-gb/labelhub-platform#12），所以 H5 不依赖它。将来 H4 有通过关卡的版本后，再作为新工具加入。
+
 - 不支持跨任务令牌，也不支持外部 agent 写最终裁决或改规则。
 - 不开 SSE 推送，不提供 MCP resources 和 prompts，只提供 tools。
 
@@ -79,7 +80,7 @@ agent 模块中有一个集成测试：用**官方 MCP Java SDK 客户端**连�
 1. `initialize`
 2. `list_submissions`
 3. `get_submission`
-4. `search_precedents`
+4. `get_guidelines`
 5. 一次故意无效的 `validate_review`
 6. 修正后 `submit_review`
 
