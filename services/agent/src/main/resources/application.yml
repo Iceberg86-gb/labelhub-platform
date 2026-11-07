@@ -23,6 +23,9 @@ labelhub:
       max-attempts: ${LABELHUB_AGENT_OUTBOX_MAX_ATTEMPTS:3}
       base-delay-ms: ${LABELHUB_AGENT_OUTBOX_BASE_DELAY_MS:1000}
       lease-seconds: ${LABELHUB_AGENT_OUTBOX_LEASE_SECONDS:150}
+    mcp:
+      # ADR-022 (H5): POST /mcp for external agents with owner-issued task tokens. Every call is authorized by the API.
+      enabled: ${LABELHUB_AGENT_MCP_ENABLED:true}
     review-loop:
       # ADR-019 (H2). enabled=false restores the H1 single-call behaviour.
       enabled: ${LABELHUB_AGENT_REVIEW_LOOP_ENABLED:true}
