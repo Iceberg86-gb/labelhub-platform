@@ -247,7 +247,8 @@ public class OpenAiCompatibleAiReviewRuntimeClient {
         return findings;
     }
 
-    private Map<String, Object> aiReviewToolSchema() {
+    /** The record_ai_review arguments schema; also the MCP submit_review "review" schema (ADR-022). */
+    public static Map<String, Object> aiReviewToolSchema() {
         Map<String, Object> dimensionScore = Map.of(
             "type", "object",
             "required", List.of("dimension", "score"),

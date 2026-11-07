@@ -122,6 +122,10 @@ vi.mock('../../features/ai-review-rule/AiReviewRuleEditorDrawer', () => ({
   AiReviewRuleEditorDrawer: () => null,
 }));
 
+vi.mock('../../features/agent-access/ExternalAgentPanel', () => ({
+  ExternalAgentPanel: () => <section>外部 Agent（MCP）</section>,
+}));
+
 vi.mock('../../features/ai/TaskAiPrereviewPanel', () => ({
   TaskAiPrereviewPanel: () => <section>AI prereview panel</section>,
 }));
