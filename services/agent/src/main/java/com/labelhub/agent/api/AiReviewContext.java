@@ -20,6 +20,11 @@ public record AiReviewContext(
     BigDecimal rejectThreshold,
     String scoringRuleVersion,
     String businessPrompt,
-    String renderedPrompt
+    // Includes the ADR-021 precedent block when precedents is non-empty; the agent sends it as is.
+    String renderedPrompt,
+    // ADR-021: echoed back unchanged with the result so the API can audit what the model saw.
+    String precedentVersion,
+    List<Map<String, Object>> precedents,
+    String precedentsHash
 ) {
 }

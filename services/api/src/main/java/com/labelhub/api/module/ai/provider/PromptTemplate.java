@@ -16,6 +16,14 @@ public final class PromptTemplate {
     }
 
     public static String build(String businessPrompt, Map<String, Object> input, ObjectMapper objectMapper) {
+        return build(businessPrompt, input, objectMapper, null);
+    }
+
+    /**
+     * ADR-021 §3: {@code precedentBlock} (from PrecedentBlock.render) goes after the business prompt and before
+     * the input. Null keeps the prompt byte-identical to the one without precedent memory.
+     */
+    public static String build(String businessPrompt, Map<String, Object> input, ObjectMapper objectMapper, String precedentBlock) {
         try {
             return """
                 You are reviewing a data labeling submission. Output JSON only, no prose, no markdown fences.
@@ -23,7 +31,7 @@ public final class PromptTemplate {
 
                 Business prompt:
                 %s
-
+                %s
                 Required output schema:
                 {
                   "overallSuggestion": "pass" | "reject" | "manual_review",
@@ -48,6 +56,7 @@ public final class PromptTemplate {
                 %s
                 """.formatted(
                     businessPrompt == null ? "" : businessPrompt,
+                    precedentBlock == null ? "" : "\n" + precedentBlock + "\n",
                     objectMapper.writeValueAsString(input)
                 );
         } catch (JsonProcessingException ex) {

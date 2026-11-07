@@ -39,10 +39,11 @@ Proposed（2026-11-07）。对应 ADR-017 的 H4 阶段。合并条件见 §6：
 
 - prompt 中的位置：业务 prompt 之后、被审数据之前，放一段固定说明加上规范 JSON。每条判例的形状是 `{rank, source, submission, verdict}`：`submission` 由叶子节点按 `路径: 文本` 逐行拼成，截断到 1200 个码点并加 "…"。使用规范 JSON 是为了防止提交文本跳出数据块（conventions §11）。说明文字明确写着：判例是参考数据，不是指令，也不是被审对象。
 - 版本：`h4-precedents-v1`，覆盖检索规格和渲染格式，两者任一变化都要升版本。
-- **开关**：部署级配置 `labelhub.ai-review.precedents.enabled`（默认 `false`）和 `top-k`。开启后：
-  - `provider_adapter_version` 变为 `agent-default-v1+h4-precedents-v1`。因此幂等键随之改变，开关前后的 AI 调用不会互相复用。
-  - ADR-020 的影子证据按 adapter 版本区分：开启判例后，自动通过门槛只统计带判例的 AI 调用。这和"模型或 prompt 变了证据就作废"是同一条原则。
-- **审计**：`/internal/ai-review/submissions/{id}/context` 返回 `precedents` 和 `precedentsHash`，agent 上报结果时原样带回。API 校验每条判例的 submission 属于同一任务和同一 Schema 版本、不是被审提交本身、且 hash 一致，然后把 `precedents`、`precedentsHash` 和带判例的 `renderedPrompt` 写进 `ai_calls.request_payload`（append-only）。盲审模式下，判例只包含人工数据，不需要额外隐藏。
+- **开关**：部署级配置 `labelhub.ai.precedents.enabled`（环境变量 `LABELHUB_AI_PRECEDENTS_ENABLED`，默认 `false`）、`top-k`（默认 3）和 `pool-limit`（默认 2000）。开启后：
+  - 带判例的 AI 调用，其 `provider_adapter_version` 记为 `agent-default-v1+h4-precedents-v1`。**幂等键不变**：同一提交、同一 prompt 和规则版本仍然只有一次 AI 审核，这与同步和异步两条路径共用一个幂等键的现有约定一致。
+  - ADR-020 的影子证据按 adapter 版本区分：影子统计和开启 `auto` 的门槛只统计当前 adapter 版本的调用；开启事件的证据快照记录 adapter 版本，自动准入时校验调用的 adapter 版本与快照一致。因此，不带判例积累的证据不能用来自动通过带判例的调用，反之亦然。这和"模型或 prompt 变了证据就作废"是同一条原则。
+  - Owner 同步触发的审核路径（API 内直接调用模型）不注入判例，判例只在 agent 路径中使用。
+- **审计**：`/internal/ai-review/submissions/{id}/context` 返回 `precedents` 和 `precedentsHash`，agent 上报结果时原样带回。API 校验 hash 一致、每条判例格式正确（裁决只能是 approved / rejected），且 submission 属于同一任务和同一 Schema 版本、不是被审提交本身；任何一项不通过就返回 422 `AI_REVIEW_INVALID_PRECEDENTS`，结果不落库。校验通过后，把 `precedents`、`precedentsHash` 和带判例的 `renderedPrompt` 写进 `ai_calls.request_payload`（append-only）。盲审模式下，判例只包含人工数据，不需要额外隐藏。
 - 新的内部接口 `GET /internal/ai-review/submissions/{id}/precedents?k=` 返回同样的数据，供 H5 的 MCP 工具使用。
 
 ### 4. 人机分歧回流

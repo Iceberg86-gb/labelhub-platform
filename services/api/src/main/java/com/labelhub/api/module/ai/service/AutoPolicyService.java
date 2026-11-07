@@ -54,6 +54,20 @@ public class AutoPolicyService {
     private final AuditLogService auditLogService;
     private final Clock clock;
 
+    private com.labelhub.api.module.ai.precedent.PrecedentProperties precedentProperties;
+
+    /** ADR-021 §3: shadow evidence is scoped to the adapter version (with/without precedent memory). */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPrecedentProperties(com.labelhub.api.module.ai.precedent.PrecedentProperties precedentProperties) {
+        this.precedentProperties = precedentProperties;
+    }
+
+    String currentAdapterVersion() {
+        return precedentProperties == null
+            ? com.labelhub.api.module.ai.precedent.PrecedentProperties.BASE_ADAPTER_VERSION
+            : precedentProperties.adapterVersion();
+    }
+
     public AutoPolicyService(
         AiReviewRuleMapper aiReviewRuleMapper,
         TaskMapper taskMapper,
@@ -109,7 +123,7 @@ public class AutoPolicyService {
         if (command.modelName() == null || command.modelName().isBlank()) {
             throw new InvalidAiReviewRuleException("modelName", "必须指定门槛证据对应的模型");
         }
-        AiCallMapper.ShadowStatsRow evidence = aiCallMapper.selectShadowStatsByRuleId(ruleId).stream()
+        AiCallMapper.ShadowStatsRow evidence = aiCallMapper.selectShadowStatsByRuleId(ruleId, currentAdapterVersion()).stream()
             .filter(row -> Objects.equals(row.getPromptVersionId(), command.promptVersionId()) && command.modelName().equals(row.getModelName()))
             .findFirst()
             .orElse(null);
@@ -127,6 +141,7 @@ public class AutoPolicyService {
         snapshot.put("aiPassJudged", judged);
         snapshot.put("humanRejected", rejected);
         snapshot.put("wilsonUpper95", upper);
+        snapshot.put("providerAdapterVersion", currentAdapterVersion());
         snapshot.put("measuredAt", LocalDateTime.now(clock).toString());
         AiReviewAutoPolicyEventEntity event = event(rule, AiReviewAutoPolicyEventEntity.ENABLE, "owner", ownerId, null, snapshot);
         event.setPromptVersionId(command.promptVersionId());

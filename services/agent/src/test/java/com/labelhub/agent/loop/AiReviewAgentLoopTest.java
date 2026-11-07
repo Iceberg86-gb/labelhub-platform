@@ -268,6 +268,6 @@ class AiReviewAgentLoopTest {
     private static AiReviewContext context() {
         return new AiReviewContext(300L, "key", "v1", 7L, null, "agent-default-v1", Map.of(), "hash", List.of("overall"),
             new BigDecimal("0.80"), new BigDecimal("0.20"), new BigDecimal("0.80"), new BigDecimal("0.20"),
-            "equal-weight-three-zone-v2", "biz", "rendered");
+            "equal-weight-three-zone-v2", "biz", "rendered", null, List.of(), null);
     }
 }

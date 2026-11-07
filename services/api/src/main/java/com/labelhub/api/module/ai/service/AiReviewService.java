@@ -85,6 +85,22 @@ public class AiReviewService {
     private final AiReviewScoringPolicy scoringPolicy;
     private final SchemaRuntimeAdapter schemaRuntimeAdapter;
     private AutoAcceptService autoAcceptService;
+    private com.labelhub.api.module.ai.precedent.PrecedentService precedentService;
+    private com.labelhub.api.module.ai.precedent.PrecedentProperties precedentProperties;
+
+    /** ADR-021: optional, like the ADR-020 hooks, so unit tests constructing this service stay unchanged. */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    void setPrecedentMemory(
+        com.labelhub.api.module.ai.precedent.PrecedentService precedentService,
+        com.labelhub.api.module.ai.precedent.PrecedentProperties precedentProperties
+    ) {
+        this.precedentService = precedentService;
+        this.precedentProperties = precedentProperties;
+    }
+
+    private boolean precedentsEnabled() {
+        return precedentService != null && precedentProperties != null && precedentProperties.isEnabled();
+    }
     private com.labelhub.api.module.quality.mapper.QualityLedgerEntryMapper qualityLedgerEntryMapper;
 
     @org.springframework.beans.factory.annotation.Autowired(required = false)
@@ -414,13 +430,19 @@ public class AiReviewService {
         String businessPrompt = promptVersion.getContent();
         List<String> dimensions = dimensionsOf(activeRule);
         ScoredAiReview contextScore = score(emptyResult(input), activeRule);
+        // ADR-021 §3: precedent memory. The idempotency key stays the same (one AI review per submission, prompt
+        // and rule version); the adapter version marks calls made with precedents for ADR-020 evidence.
+        com.labelhub.api.module.ai.precedent.PrecedentService.Result precedents = precedentsEnabled()
+            ? precedentService.forSubmission(submission, datasetItem == null ? Map.of() : nullToEmpty(datasetItem.getItemPayload()),
+                precedentProperties.getTopK())
+            : null;
         return new InternalAiReviewContextView(
             submissionId,
             aiReviewIdempotencyKey(submissionId, promptVersion.getId(), aiReviewRuleId),
             promptVersionLabel(promptVersion),
             promptVersion.getId(),
             aiReviewRuleId,
-            PROVIDER_ADAPTER_VERSION,
+            com.labelhub.api.module.ai.precedent.PrecedentProperties.adapterVersion(precedents != null),
             input,
             hash(input),
             dimensions,
@@ -428,7 +450,10 @@ public class AiReviewService {
             contextScore.rejectThreshold(),
             contextScore.scoringRuleVersion(),
             businessPrompt,
-            PromptTemplate.build(businessPrompt, input, objectMapper)
+            PromptTemplate.build(businessPrompt, input, objectMapper, precedents == null ? null : precedents.block()),
+            precedents == null ? null : precedents.version(),
+            precedents == null ? List.of() : precedents.precedents(),
+            precedents == null ? null : precedents.hash()
         );
     }
 
@@ -493,6 +518,16 @@ public class AiReviewService {
         }
 
         String businessPrompt = promptVersion.getContent();
+        boolean withPrecedents = command.precedentsHash() != null;
+        if (withPrecedents) {
+            if (precedentService == null) {
+                throw new com.labelhub.api.module.ai.precedent.InvalidPrecedentsException("precedent memory is not available on this API");
+            }
+            precedentService.requireAuthentic(submission, command.precedents(), command.precedentsHash());
+        } else if (command.precedents() != null && !command.precedents().isEmpty()) {
+            throw new com.labelhub.api.module.ai.precedent.InvalidPrecedentsException("precedents were echoed without precedentsHash");
+        }
+        List<com.labelhub.api.module.ai.precedent.Precedent> usedPrecedents = command.precedents() == null ? List.of() : command.precedents();
         AiCallResult result = internalCommandResult(command, activeRule);
         Map<String, Object> responsePayload = persistedJsonShape(result.output());
         LocalDateTime now = LocalDateTime.now(clock);
@@ -502,16 +537,32 @@ public class AiReviewService {
         aiCall.setPromptVersion(promptVersionLabel(promptVersion));
         aiCall.setPromptVersionId(promptVersion.getId());
         aiCall.setAiReviewRuleId(aiReviewRuleId);
-        aiCall.setProviderAdapterVersion(PROVIDER_ADAPTER_VERSION);
+        aiCall.setProviderAdapterVersion(com.labelhub.api.module.ai.precedent.PrecedentProperties.adapterVersion(withPrecedents));
         aiCall.setModelProvider(command.modelProvider() == null ? "agent" : command.modelProvider());
         aiCall.setModelName(command.modelName() == null ? "unreported" : command.modelName());
         aiCall.setInputHash(inputHash);
-        aiCall.setRequestPayload(aiRequestPayload(
+        Map<String, Object> agentRequestPayload = aiRequestPayload(
             businessPrompt,
-            PromptTemplate.build(businessPrompt, input, objectMapper),
+            PromptTemplate.build(businessPrompt, input, objectMapper,
+                withPrecedents && !usedPrecedents.isEmpty() ? precedentService.render(usedPrecedents) : null),
             input,
             result.output()
-        ));
+        );
+        if (withPrecedents) {
+            // ADR-021 §3 audit: exactly which human verdicts the model saw (append-only with the ai_call).
+            agentRequestPayload.put("precedentVersion", com.labelhub.api.module.ai.precedent.PrecedentBlock.VERSION);
+            agentRequestPayload.put("precedentsHash", command.precedentsHash());
+            agentRequestPayload.put("precedents", usedPrecedents.stream().map(pr -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("rank", pr.rank());
+                row.put("submissionId", pr.submissionId());
+                row.put("verdict", pr.verdict());
+                row.put("source", pr.source());
+                row.put("submission", pr.submission());
+                return row;
+            }).toList());
+        }
+        aiCall.setRequestPayload(agentRequestPayload);
         aiCall.setResponsePayload(responsePayload);
         aiCall.setScores(normalizedScoreMap(result));
         aiCall.setVerdict(result.overallSuggestion());

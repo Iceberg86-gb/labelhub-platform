@@ -95,6 +95,13 @@ public class AutoAcceptService {
             || !Objects.equals(aiCall.getModelName(), policy.getModelName())) {
             return false;  // the gate evidence is only valid for the exact (rule, prompt, model)
         }
+        Object evidenceAdapter = policy.getEvidence() == null ? null : policy.getEvidence().get("providerAdapterVersion");
+        String expectedAdapter = evidenceAdapter == null
+            ? com.labelhub.api.module.ai.precedent.PrecedentProperties.BASE_ADAPTER_VERSION
+            : String.valueOf(evidenceAdapter);
+        if (!expectedAdapter.equals(aiCall.getProviderAdapterVersion())) {
+            return false;  // ADR-021 §3: evidence without precedents does not cover calls with them, and vice versa
+        }
         if (!"pass".equals(result.overallSuggestion())) {
             return false;  // API scoring authority routed elsewhere
         }
