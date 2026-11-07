@@ -1,0 +1,32 @@
+name: 缺陷报告 / Bug report
+description: 某个功能的行为与预期不符
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+      description: 实际行为与预期行为。
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 角色（Owner / Labeler / Reviewer…）、页面或接口、输入数据。
+      placeholder: |
+        1. 以 owner_demo 登录
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 涉及模块
+      multiple: true
+      options: [web, api, agent / MCP, evals, contracts, infra / 部署, 文档]
+  - type: textarea
+    id: env
+    attributes:
+      label: 环境与日志
+      description: commit、浏览器、相关日志（请先去掉密钥和令牌）。
