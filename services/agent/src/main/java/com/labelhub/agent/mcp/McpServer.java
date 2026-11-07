@@ -92,6 +92,7 @@ public class McpServer {
         try {
             grant = api.authorize(bearer, null);
         } catch (McpAuthException ex) {
+            recordRefusedCall(sessionId, bearer, method, message.path("params"));
             return new Reply(401, null, null);
         }
         if ("initialize".equals(method)) {
@@ -231,6 +232,24 @@ public class McpServer {
         }
         step.put("latencyMs", latency);
         api.appendStep(step);
+    }
+
+    /**
+     * A tools/call on a known session whose token was revoked or expired meanwhile: the session still knows the
+     * token, so the refusal is audited as a denied step (an unknown token has nothing to attribute it to).
+     */
+    private void recordRefusedCall(String sessionId, String bearer, String method, JsonNode params) {
+        Session session = sessionId == null ? null : sessions.remove(sessionId);
+        if (session == null || !"tools/call".equals(method)) {
+            return;
+        }
+        JsonNode args = params.has("arguments") && params.get("arguments").isObject() ? params.get("arguments") : JsonNodeFactory.instance.objectNode();
+        try {
+            record(session, bearer, params.path("name").asText("unknown"), args,
+                new McpTools.Outcome(message("token revoked or expired"), true, null, "token_rejected", null), "denied", 0);
+        } catch (RuntimeException ex) {
+            log.warn("MCP trajectory append failed for refused call on run {}: {}", session.id, ex.getMessage());
+        }
     }
 
     String canonicalJson(JsonNode node) {

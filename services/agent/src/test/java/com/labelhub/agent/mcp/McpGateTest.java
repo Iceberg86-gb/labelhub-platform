@@ -145,7 +145,9 @@ class McpGateTest {
         try (McpSyncClient stranger = client("lhm_not-a-real-token")) {
             assertThatThrownBy(stranger::initialize).isInstanceOf(RuntimeException.class);
         }
-        assertThat(api.steps).isEmpty();
+        // The refused call on the revoked session is audited; the stranger has no session to attribute anything to.
+        assertThat(api.steps).singleElement().satisfies(s -> assertThat(s)
+            .containsEntry("toolName", "list_submissions").containsEntry("status", "denied").containsEntry("policyDecision", "token_rejected"));
     }
 
     @Test
