@@ -193,6 +193,17 @@ public class GlobalExceptionHandler {
             .body(error("AI_PROVIDER_INPUT_HASH_MISMATCH", "Cannot reuse AI result, input changed"));
     }
 
+    @ExceptionHandler(com.labelhub.api.module.agentaccess.service.McpAccessException.class)
+    ResponseEntity<ApiError> mcpAccess(com.labelhub.api.module.agentaccess.service.McpAccessException exception) {
+        return switch (exception.kind()) {
+            case BAD_REQUEST -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error("VALIDATION_ERROR", exception.getMessage()));
+            case UNAUTHORIZED -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error("MCP_UNAUTHORIZED", "MCP token is invalid, revoked or expired"));
+            case NOT_FOUND -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(error("NOT_FOUND", exception.getMessage()));
+            case CONFLICT -> ResponseEntity.status(HttpStatus.CONFLICT).body(error("MCP_TRAJECTORY_CONFLICT", exception.getMessage()));
+            case UNPROCESSABLE -> ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(error("MCP_TRAJECTORY_INVALID", exception.getMessage()));
+        };
+    }
+
     @ExceptionHandler(com.labelhub.api.module.ai.precedent.InvalidPrecedentsException.class)
     ResponseEntity<ApiError> invalidPrecedents(com.labelhub.api.module.ai.precedent.InvalidPrecedentsException exception) {
         return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)

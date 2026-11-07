@@ -59,6 +59,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/platform/cost-metrics").hasRole("PLATFORM_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/platform/labor-metrics").hasRole("PLATFORM_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/platform/efficiency-metrics").hasRole("PLATFORM_ADMIN")
+                .requestMatchers("/tasks/*/mcp-tokens", "/mcp-tokens/**", "/tasks/*/agent-runs", "/agent-runs/**").hasRole("OWNER")  // ADR-022
                 .requestMatchers(HttpMethod.GET, "/tasks/*/submissions").hasRole("OWNER")
                 .requestMatchers(HttpMethod.GET, "/tasks/*/ai-prereview/summary").hasRole("OWNER")
                 .requestMatchers(HttpMethod.POST, "/tasks/*/ai-prereview/enqueue").hasRole("OWNER")

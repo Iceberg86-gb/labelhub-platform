@@ -232,6 +232,8 @@ class TaskServiceDeleteTest {
         order.verify(taskDeletionMapper).deleteReviewActions(TASK_ID);
         order.verify(taskDeletionMapper).deleteSeniorReviewCases(TASK_ID);
         order.verify(taskDeletionMapper).deleteAiReviewAutoPolicyEvents(TASK_ID);
+        order.verify(taskDeletionMapper).deleteAgentTrajectorySteps(TASK_ID);
+        order.verify(taskDeletionMapper).deleteMcpAccessTokens(TASK_ID);
         order.verify(taskDeletionMapper).deleteExportSnapshots(TASK_ID);
         order.verify(taskDeletionMapper).deleteQualityLedgerEntries(TASK_ID);
         order.verify(taskDeletionMapper).deleteAiCalls(TASK_ID);

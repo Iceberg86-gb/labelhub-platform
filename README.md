@@ -89,7 +89,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 从 [**docs/README.md**](docs/README.md) 开始。常用入口：
 
 - [设计基线](docs/architecture/labelhub-complete-design-baseline.md)：业务事实模型的权威来源
-- [架构决策记录](docs/adr/)：ADR-001 ~ 020
+- [架构决策记录](docs/adr/)：ADR-001 ~ 022
 - [工程规范](docs/engineering/conventions.md) 和 [AI 协作宪章](docs/engineering/agent-charter.md)，AI 编码 agent 的入口是 [AGENTS.md](AGENTS.md)
 - [批次审计台账](docs/process/humanpending.md)：append-only，记录了每个合入批次的交付和验证过程
 
@@ -102,7 +102,7 @@ docs/                  设计基线、ADR、指南、设计系统、过程记录
 | W2 | Agent 循环：校验 AI 审核输出并自我纠错（[ADR-019](docs/adr/ADR-019-h2-review-output-validation-loop.md)；[对比报告](evals/reports/w2v2-vs-w1.md)） | ✅ 完成 |
 | W3 | 策略层：升级规则、阈值校准、受控的自动通过（[ADR-020](docs/adr/ADR-020-h3-policy-layer.md)；[校准报告](evals/reports/w3a-calibration.md)） | ✅ 完成 |
 | W4 | 判例记忆：检索人类裁决作为参考，人机分歧回流（[ADR-021](docs/adr/ADR-021-h4-precedent-memory.md)） | 实现完成，等待真实模型评测关卡 |
-| W5 | MCP Server：外部 agent 可以在同一套治理与审计规则下接入 | 计划中 |
+| W5 | MCP Server：外部 agent 可以在同一套治理与审计规则下接入（[ADR-022](docs/adr/ADR-022-h5-mcp-server.md)，[接入指南](docs/guides/external-agent-mcp.md)） | 实现完成，关卡测试通过 |
 
 ## 在线演示
 

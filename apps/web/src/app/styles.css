@@ -8153,3 +8153,81 @@ a {
   align-items: center;
   gap: var(--space-8);
 }
+
+/* ADR-022 W5: external agent (MCP) tokens and trajectory viewer on the owner task page. Token-only. */
+.external-agent-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  margin-top: var(--space-16);
+}
+
+.external-agent-panel__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.external-agent-panel__issued {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  border-radius: var(--radius-panel);
+  background: var(--color-warning-soft);
+}
+
+.external-agent-panel__code,
+.external-agent-panel__summary {
+  display: block;
+  font-size: var(--font-size-small);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.external-agent-panel__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-small);
+}
+
+.external-agent-panel__table th {
+  font-size: var(--font-size-table-header);
+  color: var(--color-text-secondary);
+  text-align: left;
+  font-weight: 600;
+}
+
+.external-agent-panel__table th,
+.external-agent-panel__table td {
+  padding: var(--space-8);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.external-agent-panel__row--selected td {
+  background: var(--color-accent-blue-soft);
+}
+
+.external-agent-panel__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  margin: 0;
+  padding-left: var(--space-20);
+}
+
+.external-agent-panel__step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.external-agent-panel__io {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  color: var(--color-text-secondary);
+}

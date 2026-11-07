@@ -1362,6 +1362,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{taskId}/mcp-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ADR-022 §2. MCP access tokens issued for the task (never the token itself). Task owner only. */
+        get: operations["listMcpTokens"];
+        put?: never;
+        /** @description ADR-022 §2. Issue a task-scoped MCP access token for an external agent. The plaintext token is returned once and only its SHA-256 is stored. Task owner only; audited. */
+        post: operations["issueMcpToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mcp-tokens/{tokenId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description ADR-022 §2. Revoke a token; effective on the next tool call. Idempotent. Task owner only; audited. */
+        post: operations["revokeMcpToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{taskId}/agent-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ADR-022 §4. External agent runs (MCP sessions) on the task, newest first. Task owner only. */
+        get: operations["listAgentRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent-runs/{runId}/steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ADR-022 §4. The append-only trajectory of one run, in step order. Owner of the run's task only. */
+        get: operations["listAgentRunSteps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/mcp/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description ADR-022 §2. Called by the agent's MCP server on every tool call. 401 for an unknown, revoked or expired token; 404 when submissionId is given and is not a submission of the token's task. */
+        post: operations["authorizeMcpCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/mcp/tasks/{taskId}/open-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description ADR-022 §3 list_submissions. Current (not superseded) submissions of the task without a completed AI review, oldest first. */
+        get: operations["listMcpOpenSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/mcp/trajectory-steps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description ADR-022 §4. Append one step of an external agent run. Append-only; (runId, stepNo) is unique and a run belongs to exactly one token and task. */
+        post: operations["appendAgentTrajectoryStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2878,6 +2998,121 @@ export interface components {
             total: number;
             page: number;
             size: number;
+        };
+        McpTokenIssueRequest: {
+            name: string;
+            /** @description Defaults to 30. */
+            expiresInDays?: number;
+        };
+        McpToken: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            taskId: number;
+            name: string;
+            /** @description First characters of the token, to recognise it. */
+            tokenPrefix: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            revokedAt?: string | null;
+            /** @enum {string} */
+            status: "active" | "revoked" | "expired";
+        };
+        McpTokenIssued: {
+            token: components["schemas"]["McpToken"];
+            /** @description The bearer token. Shown once; not retrievable later. */
+            plaintext: string;
+        };
+        McpAuthorizeRequest: {
+            token: string;
+            /** Format: int64 */
+            submissionId?: number;
+        };
+        McpGrant: {
+            /** Format: int64 */
+            tokenId: number;
+            /** Format: int64 */
+            taskId: number;
+            name: string;
+        };
+        McpOpenSubmission: {
+            /** Format: int64 */
+            submissionId: number;
+            /** Format: int64 */
+            datasetItemId: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AgentTrajectoryStepRequest: {
+            runId: string;
+            stepNo: number;
+            /** Format: int64 */
+            tokenId: number;
+            /** Format: int64 */
+            taskId: number;
+            /** Format: int64 */
+            submissionId?: number;
+            clientName: string;
+            clientVersion?: string;
+            toolName: string;
+            inputHash: string;
+            inputSummary?: string;
+            outputHash?: string;
+            outputSummary?: string;
+            /** @enum {string} */
+            status: "ok" | "error" | "denied";
+            /** @description e.g. proposal_rejected_invalid, handoff_to_human. For proposal_submitted the API resolves the ai_call and records proposal_recorded or proposal_replayed. */
+            policyDecision?: string;
+            /** @description Idempotency key of the AI review a submit_review step targeted. */
+            idempotencyKey?: string;
+            latencyMs: number;
+        };
+        AgentTrajectoryStep: {
+            /** Format: int64 */
+            id: number;
+            runId: string;
+            stepNo: number;
+            /** Format: int64 */
+            taskId: number;
+            /** Format: int64 */
+            submissionId?: number | null;
+            /** Format: int64 */
+            tokenId: number;
+            clientName: string;
+            clientVersion?: string | null;
+            toolName: string;
+            inputHash: string;
+            inputSummary?: string | null;
+            outputHash?: string | null;
+            outputSummary?: string | null;
+            /** @enum {string} */
+            status: "ok" | "error" | "denied";
+            policyDecision?: string | null;
+            /** Format: int64 */
+            aiCallId?: number | null;
+            latencyMs: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AgentRunSummary: {
+            runId: string;
+            /** Format: int64 */
+            tokenId: number;
+            tokenName: string;
+            clientName: string;
+            clientVersion?: string | null;
+            steps: number;
+            /** @description Steps whose proposal was recorded as an AI review. */
+            proposals: number;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            lastStepAt: string;
+            /** @enum {string} */
+            lastStatus: "ok" | "error" | "denied";
         };
         InternalAiReviewResultRequest: {
             /** Format: int64 */
@@ -5669,6 +5904,224 @@ export interface operations {
                 };
             };
             404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    listMcpTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tokens, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToken"][];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    issueMcpToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpTokenIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description Token issued. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpTokenIssued"];
+                };
+            };
+            400: components["responses"]["ErrorBadRequest"];
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    revokeMcpToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tokenId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Token after revocation. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpToken"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    listAgentRuns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Run summaries. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunSummary"][];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    listAgentRunSteps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Steps. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTrajectoryStep"][];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            403: components["responses"]["ErrorForbidden"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    authorizeMcpCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpAuthorizeRequest"];
+            };
+        };
+        responses: {
+            /** @description The token's grant. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpGrant"];
+                };
+            };
+            401: components["responses"]["ErrorUnauthorized"];
+            404: components["responses"]["ErrorNotFound"];
+        };
+    };
+    listMcpOpenSubmissions: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                taskId: components["parameters"]["TaskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Submissions awaiting AI review. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpOpenSubmission"][];
+                };
+            };
+        };
+    };
+    appendAgentTrajectoryStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentTrajectoryStepRequest"];
+            };
+        };
+        responses: {
+            /** @description Step recorded. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentTrajectoryStep"];
+                };
+            };
+            /** @description Step number already used, or the run belongs to another token. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Token, task or submission do not match. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
 }

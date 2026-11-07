@@ -24,6 +24,7 @@ import { useTaskWorkflowProgressQuery, type TaskWorkflowProgress } from '../../f
 import { getUser } from '../../shared/api/auth-storage';
 import { RoleBadge } from '../../shared/ui/RoleBadge';
 import { TaskAiPrereviewPanel } from '../../features/ai/TaskAiPrereviewPanel';
+import { ExternalAgentPanel } from '../../features/agent-access/ExternalAgentPanel';
 
 function parseTaskId(raw?: string) {
   const taskId = Number(raw);
@@ -350,6 +351,8 @@ export function OwnerTaskDetailPage() {
         </Card>
 
         <TrustedExportCard taskId={task.id} />
+
+        <ExternalAgentPanel taskId={task.id} />
 
         <Card className="detail-timeline-card detail-timeline-card--quiet detail-timeline-card--compact">
           <div className="timeline-heading">

@@ -203,6 +203,9 @@ public class TaskService {
         taskDeletionMapper.deleteSeniorReviewCases(taskId);
         // ADR-020: auto-pass policy events reference ai_review_rules and tasks.
         taskDeletionMapper.deleteAiReviewAutoPolicyEvents(taskId);
+        // ADR-022: trajectory steps reference submissions, ai_calls and tokens; tokens reference the task.
+        taskDeletionMapper.deleteAgentTrajectorySteps(taskId);
+        taskDeletionMapper.deleteMcpAccessTokens(taskId);
         // Step 9: blocks fk_export_snapshots_job/task/rule before export_jobs, tasks, or rules delete.
         taskDeletionMapper.deleteExportSnapshots(taskId);
         // Step 10: blocks fk_quality_ledger_submission/task/ai_call before submissions, tasks, or ai_calls delete.
