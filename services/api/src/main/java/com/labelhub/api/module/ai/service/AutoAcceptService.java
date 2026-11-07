@@ -91,6 +91,9 @@ public class AutoAcceptService {
     }
 
     private boolean eligible(AiCallEntity aiCall, AiCallResult result, AiReviewAutoPolicyEventEntity policy) {
+        if (aiCall.getModelProvider() != null && aiCall.getModelProvider().startsWith("mcp:")) {
+            return false;  // ADR-022 §3: an external agent's proposal is evidence only, never auto-accepted
+        }
         if (!Objects.equals(aiCall.getPromptVersionId(), policy.getPromptVersionId())
             || !Objects.equals(aiCall.getModelName(), policy.getModelName())) {
             return false;  // the gate evidence is only valid for the exact (rule, prompt, model)

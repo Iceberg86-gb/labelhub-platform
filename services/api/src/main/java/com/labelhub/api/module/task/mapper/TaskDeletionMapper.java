@@ -31,6 +31,10 @@ public interface TaskDeletionMapper {
     int deleteSeniorReviewCases(@Param("taskId") Long taskId);
     @Delete("DELETE FROM ai_review_auto_policy_events WHERE task_id = #{taskId}")
     int deleteAiReviewAutoPolicyEvents(@Param("taskId") Long taskId);
+    @Delete("DELETE FROM agent_trajectory_steps WHERE task_id = #{taskId}")
+    int deleteAgentTrajectorySteps(@Param("taskId") Long taskId);
+    @Delete("DELETE FROM mcp_access_tokens WHERE task_id = #{taskId}")
+    int deleteMcpAccessTokens(@Param("taskId") Long taskId);
     @Delete("DELETE FROM export_snapshots WHERE task_id = #{taskId}")
     int deleteExportSnapshots(@Param("taskId") Long taskId);
     @Delete("DELETE FROM quality_ledger_entries WHERE task_id = #{taskId}")

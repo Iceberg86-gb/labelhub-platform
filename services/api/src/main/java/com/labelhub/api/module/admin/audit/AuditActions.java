@@ -27,6 +27,8 @@ public final class AuditActions {
     public static final String AI_AUTO_POLICY_DISABLE = "ai_review.auto_policy_disable";
     public static final String AI_AUTO_POLICY_CIRCUIT_BREAK = "ai_review.auto_policy_circuit_break";
     public static final String AI_AUTO_ACCEPT = "ai_review.policy_auto_accept";
+    public static final String MCP_TOKEN_ISSUE = "mcp_token.issue";                          // ADR-022 §2
+    public static final String MCP_TOKEN_REVOKE = "mcp_token.revoke";
     public static final String REVIEW_APPROVE = "review.approve";
     public static final String REVIEW_REJECT = "review.reject";
     public static final String EXPORT_SNAPSHOT_CREATE = "export.snapshot_create";
