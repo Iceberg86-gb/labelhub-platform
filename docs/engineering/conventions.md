@@ -162,6 +162,7 @@ LabelHub 采用**局部不可变**,而不是全量事件溯源。
 - `audit_logs`
 - `task_transitions`
 - `ai_review_auto_policy_events`(ADR-020:auto 模式的开启 / 关闭 / 熔断事件,当前态 = 最新事件)
+- `agent_trajectory_steps`(ADR-022:外部 agent 经 MCP 的每次工具调用,输入输出只存 hash + 脱敏截断摘要)
 
 允许作为**当前态**更新的对象(可 update):
 
@@ -172,6 +173,7 @@ LabelHub 采用**局部不可变**,而不是全量事件溯源。
 - `roles`
 - `current_verdicts`(派生缓存视图,可重算覆盖)
 - `export_jobs`(状态字段可变,但对应的 export_snapshots 不可变)
+- `mcp_access_tokens`(ADR-022:只允许撤销,即写一次 `revoked_at`;令牌本身只存 SHA-256)
 
 实现层强制约束:
 

@@ -21,6 +21,8 @@ tags:
   - name: Platform
   - name: PlatformCost
   - name: Internal
+  - name: AgentAccess
+  - name: InternalMcp
 security:
   - bearerAuth: []
 paths:
@@ -2471,6 +2473,202 @@ paths:
                 $ref: '#/components/schemas/InternalAiReviewValidation'
         '404':
           $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/mcp-tokens:
+    get:
+      tags: [AgentAccess]
+      operationId: listMcpTokens
+      description: ADR-022 §2. MCP access tokens issued for the task (never the token itself). Task owner only.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Tokens, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/McpToken'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+    post:
+      tags: [AgentAccess]
+      operationId: issueMcpToken
+      description: >-
+        ADR-022 §2. Issue a task-scoped MCP access token for an external agent. The plaintext token is returned
+        once and only its SHA-256 is stored. Task owner only; audited.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/McpTokenIssueRequest'
+      responses:
+        '201':
+          description: Token issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpTokenIssued'
+        '400':
+          $ref: '#/components/responses/ErrorBadRequest'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /mcp-tokens/{tokenId}/revoke:
+    post:
+      tags: [AgentAccess]
+      operationId: revokeMcpToken
+      description: ADR-022 §2. Revoke a token; effective on the next tool call. Idempotent. Task owner only; audited.
+      parameters:
+        - in: path
+          name: tokenId
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Token after revocation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpToken'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /tasks/{taskId}/agent-runs:
+    get:
+      tags: [AgentAccess]
+      operationId: listAgentRuns
+      description: ADR-022 §4. External agent runs (MCP sessions) on the task, newest first. Task owner only.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+      responses:
+        '200':
+          description: Run summaries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentRunSummary'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /agent-runs/{runId}/steps:
+    get:
+      tags: [AgentAccess]
+      operationId: listAgentRunSteps
+      description: ADR-022 §4. The append-only trajectory of one run, in step order. Owner of the run's task only.
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+      responses:
+        '200':
+          description: Steps.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentTrajectoryStep'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '403':
+          $ref: '#/components/responses/ErrorForbidden'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /internal/mcp/authorize:
+    post:
+      tags: [InternalMcp]
+      operationId: authorizeMcpCall
+      description: >-
+        ADR-022 §2. Called by the agent's MCP server on every tool call. 401 for an unknown, revoked or expired
+        token; 404 when submissionId is given and is not a submission of the token's task.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/McpAuthorizeRequest'
+      responses:
+        '200':
+          description: The token's grant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpGrant'
+        '401':
+          $ref: '#/components/responses/ErrorUnauthorized'
+        '404':
+          $ref: '#/components/responses/ErrorNotFound'
+  /internal/mcp/tasks/{taskId}/open-submissions:
+    get:
+      tags: [InternalMcp]
+      operationId: listMcpOpenSubmissions
+      description: ADR-022 §3 list_submissions. Current (not superseded) submissions of the task without a completed AI review, oldest first.
+      parameters:
+        - $ref: '#/components/parameters/TaskId'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Submissions awaiting AI review.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/McpOpenSubmission'
+  /internal/mcp/trajectory-steps:
+    post:
+      tags: [InternalMcp]
+      operationId: appendAgentTrajectoryStep
+      description: >-
+        ADR-022 §4. Append one step of an external agent run. Append-only; (runId, stepNo) is unique and a run
+        belongs to exactly one token and task.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentTrajectoryStepRequest'
+      responses:
+        '201':
+          description: Step recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentTrajectoryStep'
+        '409':
+          description: Step number already used, or the run belongs to another token.
+        '422':
+          description: Token, task or submission do not match.
 components:
   securitySchemes:
     bearerAuth:
@@ -5451,6 +5649,227 @@ components:
           type: integer
         size:
           type: integer
+    McpTokenIssueRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        expiresInDays:
+          type: integer
+          minimum: 1
+          maximum: 90
+          description: Defaults to 30.
+    McpToken:
+      type: object
+      required: [id, taskId, name, tokenPrefix, createdAt, expiresAt, status]
+      properties:
+        id:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        tokenPrefix:
+          type: string
+          description: First characters of the token, to recognise it.
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [active, revoked, expired]
+    McpTokenIssued:
+      type: object
+      required: [token, plaintext]
+      properties:
+        token:
+          $ref: '#/components/schemas/McpToken'
+        plaintext:
+          type: string
+          description: The bearer token. Shown once; not retrievable later.
+    McpAuthorizeRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+        submissionId:
+          type: integer
+          format: int64
+    McpGrant:
+      type: object
+      required: [tokenId, taskId, name]
+      properties:
+        tokenId:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        name:
+          type: string
+    McpOpenSubmission:
+      type: object
+      required: [submissionId, datasetItemId, createdAt]
+      properties:
+        submissionId:
+          type: integer
+          format: int64
+        datasetItemId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+    AgentTrajectoryStepRequest:
+      type: object
+      required: [runId, stepNo, tokenId, taskId, clientName, toolName, inputHash, status, latencyMs]
+      properties:
+        runId:
+          type: string
+          maxLength: 64
+        stepNo:
+          type: integer
+          minimum: 1
+        tokenId:
+          type: integer
+          format: int64
+        taskId:
+          type: integer
+          format: int64
+        submissionId:
+          type: integer
+          format: int64
+        clientName:
+          type: string
+          maxLength: 128
+        clientVersion:
+          type: string
+          maxLength: 64
+        toolName:
+          type: string
+          maxLength: 64
+        inputHash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        inputSummary:
+          type: string
+        outputHash:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        outputSummary:
+          type: string
+        status:
+          type: string
+          enum: [ok, error, denied]
+        policyDecision:
+          type: string
+          maxLength: 48
+          description: >-
+            e.g. proposal_rejected_invalid, handoff_to_human. For proposal_submitted the API resolves the ai_call and
+            records proposal_recorded or proposal_replayed.
+        idempotencyKey:
+          type: string
+          description: Idempotency key of the AI review a submit_review step targeted.
+        latencyMs:
+          type: integer
+          minimum: 0
+    AgentTrajectoryStep:
+      type: object
+      required: [id, runId, stepNo, taskId, tokenId, clientName, toolName, inputHash, status, latencyMs, createdAt]
+      properties:
+        id:
+          type: integer
+          format: int64
+        runId:
+          type: string
+        stepNo:
+          type: integer
+        taskId:
+          type: integer
+          format: int64
+        submissionId:
+          type: integer
+          format: int64
+          nullable: true
+        tokenId:
+          type: integer
+          format: int64
+        clientName:
+          type: string
+        clientVersion:
+          type: string
+          nullable: true
+        toolName:
+          type: string
+        inputHash:
+          type: string
+        inputSummary:
+          type: string
+          nullable: true
+        outputHash:
+          type: string
+          nullable: true
+        outputSummary:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ok, error, denied]
+        policyDecision:
+          type: string
+          nullable: true
+        aiCallId:
+          type: integer
+          format: int64
+          nullable: true
+        latencyMs:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    AgentRunSummary:
+      type: object
+      required: [runId, tokenId, tokenName, clientName, steps, startedAt, lastStepAt, lastStatus, proposals]
+      properties:
+        runId:
+          type: string
+        tokenId:
+          type: integer
+          format: int64
+        tokenName:
+          type: string
+        clientName:
+          type: string
+        clientVersion:
+          type: string
+          nullable: true
+        steps:
+          type: integer
+        proposals:
+          type: integer
+          description: Steps whose proposal was recorded as an AI review.
+        startedAt:
+          type: string
+          format: date-time
+        lastStepAt:
+          type: string
+          format: date-time
+        lastStatus:
+          type: string
+          enum: [ok, error, denied]
     InternalAiReviewResultRequest:
       type: object
       required: [submissionId, idempotencyKey, result]
