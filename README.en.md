@@ -81,7 +81,6 @@ The first "annotation agent harness" round ([ADR-017](docs/adr/ADR-017-annotatio
 
 **Next** (not started):
 
-- [ ] Fix task hard-delete: `ai_review_rules` are not cleaned up, so the foreign key makes it fail with a 500.
 - [ ] Precedent memory v2: verdict-stratified precedents so the pool's base rate cannot dominate; must pass the H4 gate on a fresh real-model run.
 - [ ] Production exposure of `/mcp` (an ops decision: whether and under which domain).
 - [ ] Export snapshot diff (the audit action `export.snapshot_diff` is reserved but not implemented).

@@ -224,6 +224,7 @@ class TaskServiceDeleteTest {
     private void verifyFullCascadeOrder() {
         InOrder order = inOrder(taskDeletionMapper);
         order.verify(taskDeletionMapper).clearTaskCurrentDataset(TASK_ID);
+        order.verify(taskDeletionMapper).clearTaskCurrentAiReviewRule(TASK_ID);
         order.verify(taskDeletionMapper).clearTaskCurrentSchemaVersion(TASK_ID);
         order.verify(taskDeletionMapper).clearLabelSchemaCurrentVersions(TASK_ID);
         order.verify(taskDeletionMapper).clearSubmissionSupersededBy(TASK_ID);
@@ -237,6 +238,7 @@ class TaskServiceDeleteTest {
         order.verify(taskDeletionMapper).deleteExportSnapshots(TASK_ID);
         order.verify(taskDeletionMapper).deleteQualityLedgerEntries(TASK_ID);
         order.verify(taskDeletionMapper).deleteAiCalls(TASK_ID);
+        order.verify(taskDeletionMapper).deleteAiReviewRules(TASK_ID);
         order.verify(taskDeletionMapper).deleteDrafts(TASK_ID);
         order.verify(taskDeletionMapper).deleteSubmissions(TASK_ID);
         order.verify(taskDeletionMapper).deleteSessions(TASK_ID);
