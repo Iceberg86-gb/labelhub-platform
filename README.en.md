@@ -75,6 +75,17 @@ claude mcp add --transport http labelhub http://localhost:8081/mcp --header "Aut
 
 Offline evals: `make evals` (offline, no credentials) and `make evals-baseline` (replays all H1–H3 real-model results).
 
+## Roadmap
+
+The first "annotation agent harness" round ([ADR-017](docs/adr/ADR-017-annotation-agent-harness.md)) is complete: each stage (W = delivery, H = its eval gate) either passed its gate or was stopped by it — see the [eval table](#evidence-not-claims).
+
+**Next** (not started):
+
+- [ ] Fix task hard-delete: `ai_review_rules` are not cleaned up, so the foreign key makes it fail with a 500.
+- [ ] Precedent memory v2: verdict-stratified precedents so the pool's base rate cannot dominate; must pass the H4 gate on a fresh real-model run.
+- [ ] Production exposure of `/mcp` (an ops decision: whether and under which domain).
+- [ ] Export snapshot diff (the audit action `export.snapshot_diff` is reserved but not implemented).
+
 ## Verification
 
 ```bash
