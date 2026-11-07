@@ -16,6 +16,7 @@ export default defineConfig({
       'src/features/labeling/**/*.test.{ts,tsx}',
       'src/features/ai/**/*.test.{ts,tsx}',
       'src/features/ai-review-rule/**/*.test.{ts,tsx}',
+      'src/features/agent-access/**/*.test.{ts,tsx}',
       'src/features/schema-design/**/*.test.{ts,tsx}',
       'src/entities/labeling/**/*.test.ts',
       'src/entities/schema/**/*.test.ts',

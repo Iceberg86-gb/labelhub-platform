@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed（2026-11-07）。对应 ADR-017 的 H5 阶段。关卡：一个外部 MCP 客户端在同样的审计规则下完成一次演示审核（§7）。
+Proposed（2026-11-07）。对应 ADR-017 的 H5 阶段。关卡：一个外部 MCP 客户端在同样的审计规则下完成一次演示审核（§7），`McpGateTest` 已通过。接入方法见 [外部 agent 接入指南](../guides/external-agent-mcp.md)。
 
 ## Context
 
@@ -54,7 +54,7 @@ Proposed（2026-11-07）。对应 ADR-017 的 H5 阶段。关卡：一个外部 
 - 新表 `agent_trajectory_steps`（由 agent 通过 `POST /internal/mcp/trajectory-steps` 追加；`run_id` 是 MCP 会话 id，`step_no` 由 agent 按会话递增，API 用唯一键兜底，并校验该 run 只属于一个令牌）：
   - 身份与关联：`run_id`、`step_no`（每个 run 内从 1 递增，`(run_id, step_no)` 唯一）、`task_id`、`submission_id`（可空）、`token_id`、`client_name`、`client_version`；
   - 调用：`tool_name`、`input_hash`、`input_summary`、`output_hash`、`output_summary`；
-  - 结果：`status`（`ok` / `error` / `denied`）、`policy_decision`（例如 `proposal_recorded`、`proposal_rejected_invalid`、`proposal_replayed`、`handoff_to_human`）、`ai_call_id`（可空）、`latency_ms`、`created_at`。
+  - 结果：`status`（`ok` / `error` / `denied`）、`policy_decision`（例如 `proposal_recorded`、`proposal_rejected_invalid`、`proposal_replayed`、`handoff_to_human`、`denied_scope`、`token_rejected`；会话进行中令牌被撤销时，被拒的那次调用也会记为 `denied`）、`ai_call_id`（可空）、`latency_ms`、`created_at`。
 - hash = 规范化 JSON 的 sha256。摘要先经 AgentSecretRedactor 脱敏（令牌明文绝不进入摘要），再截断到 500 个码点。
 - Mapper 只提供 insert 和 select，由 contract test 守护。该表加入 conventions §4 的 append-only 清单，并加入任务硬删除的级联清单。`mcp_access_tokens` 同样加入级联清单。
 - 查看接口（Owner 用）：
