@@ -10,6 +10,8 @@ public interface TaskDeletionMapper {
 
     @Update("UPDATE tasks SET current_dataset_id = NULL, updated_at = NOW(3) WHERE id = #{taskId}")
     int clearTaskCurrentDataset(@Param("taskId") Long taskId);
+    @Update("UPDATE tasks SET current_ai_review_rule_id = NULL, updated_at = NOW(3) WHERE id = #{taskId}")
+    int clearTaskCurrentAiReviewRule(@Param("taskId") Long taskId);
     @Update("UPDATE tasks SET current_schema_version_id = NULL, updated_at = NOW(3) WHERE id = #{taskId}")
     int clearTaskCurrentSchemaVersion(@Param("taskId") Long taskId);
     @Update("UPDATE label_schemas SET current_version_id = NULL WHERE task_id = #{taskId}")
@@ -61,6 +63,8 @@ public interface TaskDeletionMapper {
     int deleteDatasetItems(@Param("taskId") Long taskId);
     @Delete("DELETE FROM export_jobs WHERE task_id = #{taskId}")
     int deleteExportJobs(@Param("taskId") Long taskId);
+    @Delete("DELETE FROM ai_review_rules WHERE task_id = #{taskId}")
+    int deleteAiReviewRules(@Param("taskId") Long taskId);
     @Delete("DELETE FROM adjudication_rules WHERE task_id = #{taskId}")
     int deleteAdjudicationRules(@Param("taskId") Long taskId);
     @Delete("DELETE FROM datasets WHERE task_id = #{taskId}")

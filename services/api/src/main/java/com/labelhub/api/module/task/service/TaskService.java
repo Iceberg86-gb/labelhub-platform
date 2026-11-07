@@ -187,6 +187,8 @@ public class TaskService {
 
         // Step 1: blocks fk_tasks_current_dataset before datasets delete.
         taskDeletionMapper.clearTaskCurrentDataset(taskId);
+        // Step 1b: blocks fk_tasks_current_ai_review_rule before ai_review_rules delete.
+        taskDeletionMapper.clearTaskCurrentAiReviewRule(taskId);
         // Step 2: blocks fk_tasks_schema_version before schema_versions delete.
         taskDeletionMapper.clearTaskCurrentSchemaVersion(taskId);
         // Step 3: blocks fk_label_schemas_current_version before schema_versions delete.
@@ -212,6 +214,9 @@ public class TaskService {
         taskDeletionMapper.deleteQualityLedgerEntries(taskId);
         // Step 11: blocks fk_ai_calls_submission before submissions delete.
         taskDeletionMapper.deleteAiCalls(taskId);
+        // Step 11b: ai_review_rules reference the task; ai_calls and auto-policy events (deleted above) reference them.
+        // Their prompt_versions are not task-scoped and are kept.
+        taskDeletionMapper.deleteAiReviewRules(taskId);
         // Step 12: blocks fk_drafts_session before sessions delete.
         taskDeletionMapper.deleteDrafts(taskId);
         // Step 13: blocks fk_submissions_session/task/item/schema_version before parent deletes.
