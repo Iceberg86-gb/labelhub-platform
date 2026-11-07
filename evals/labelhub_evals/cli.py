@@ -268,7 +268,14 @@ def cmd_logout(args) -> int:
     from labelhub_evals.chatgpt import oauth
 
     session, http, _, _ = _chatgpt_context()
-    creds = session.store.load()
+    try:
+        creds = session.store.load()
+    except RuntimeError as exc:
+        # Unreadable local tokens (key gone from the keychain, or corrupted): nothing to revoke remotely,
+        # but logout must still clear them, or the user can never log in again.
+        session.store.delete()
+        print(f"signed out (local tokens were unreadable and have been deleted: {exc})")
+        return 0
     if creds is None:
         print("not signed in")
         return 0
